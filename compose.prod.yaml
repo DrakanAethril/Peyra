@@ -1,0 +1,65 @@
+---
+# Production overlay, named explicitly and after compose.yaml:
+#   docker compose -f compose.yaml -f compose.prod.yaml up --wait
+# Not deployed by the build agents (plan, lot 7): the database and the directory are the
+# establishment's, outside this stack.
+services:
+  php:
+    image: ${IMAGES_PREFIX:-}peyra-php-prod
+    build:
+      context: .
+      target: frankenphp_prod
+    env_file:
+      - .env.prod.local
+    environment:
+      # Hardcoded, never `${APP_ENV:-prod}`: a stray APP_ENV=dev in the invoking shell would load
+      # dev-only bundles this image never installed.
+      APP_ENV: prod
+      # Bounded thread pool: FrankenPHP's default (2 x cores + 1) times the memory limit can exceed
+      # the host's memory. Kept here rather than in .env, which dev shares.
+      FRANKENPHP_CONFIG: num_threads 4
+      FRANKENPHP_WORKER_CONFIG: num 8
+      # Every lock lives on a volume `worker` mounts too, so a screen, a manual run and a scheduled
+      # task see the same locks.
+      LOCK_DSN: flock:///app/var/lock
+    volumes:
+      # Sessions survive a rebuild of the container.
+      - php_sessions:/app/var/sessions
+      - app_locks:/app/var/lock
+
+  # Every recurring task (Symfony Scheduler). Same image and environment as `php`: keep them in
+  # step. It bypasses the entrypoint (which migrates: `php` does that, and two containers migrating
+  # at once is how a deploy corrupts a schema), disables the inherited health check (which asks
+  # Caddy, absent here) and restarts every hour.
+  worker:
+    image: ${IMAGES_PREFIX:-}peyra-php-prod
+    restart: unless-stopped
+    depends_on:
+      php:
+        condition: service_healthy
+    entrypoint: ['docker-php-entrypoint']
+    command: ['php', 'bin/console', 'messenger:consume', 'scheduler_default', '--time-limit=3600', '--memory-limit=192M', '-v']
+    stop_grace_period: 60s
+    healthcheck:
+      disable: true
+    env_file:
+      - .env.prod.local
+    environment:
+      APP_ENV: prod
+      TZ: Europe/Paris
+      DEFAULT_URI: https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}
+      MERCURE_URL: ${CADDY_MERCURE_URL:-http://php/.well-known/mercure}
+      MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}/.well-known/mercure}
+      GOTENBERG_URL: http://gotenberg:3000
+      LOCK_DSN: flock:///app/var/lock
+    volumes:
+      - app_locks:/app/var/lock
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+
+volumes:
+  php_sessions:
+  app_locks:

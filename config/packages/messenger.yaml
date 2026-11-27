@@ -1,0 +1,6 @@
+framework:
+    messenger:
+        # Peyra has no message queue: the only transport is the scheduler's (scheduler_default),
+        # consumed by the `worker` service. Anything else is handled synchronously.
+        transports:
+            sync: 'sync://'

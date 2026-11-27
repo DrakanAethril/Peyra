@@ -1,0 +1,127 @@
+---
+# Development overlay, applied implicitly by a plain `docker compose`.
+services:
+  php:
+    image: ${IMAGES_PREFIX:-}peyra-php-dev
+    build:
+      context: .
+      target: frankenphp_dev
+    volumes:
+      - ./:/app
+      - ./frankenphp/Caddyfile:/etc/frankenphp/Caddyfile:ro
+      - ./frankenphp/conf.d/20-app.dev.ini:/usr/local/etc/php/app.conf.d/20-app.dev.ini:ro
+      # Keep var/ off the bind mount for faster I/O on macOS.
+      - /app/var
+      # Shared with `worker` below, as in production (LOCK_DSN).
+      - app_locks:/app/var/lock
+    environment:
+      # Scoped to source directories, so that runtime cache files never restart the worker.
+      FRANKENPHP_WORKER_CONFIG: |
+        watch ./config/**/*.yaml
+        watch ./migrations/**/*.php
+        watch ./src/**/*.php
+        watch ./templates/**/*.twig
+      # Authenticates the `composer install` the entrypoint runs on an empty vendor/ (always the
+      # case in CI): anonymous dist downloads share a rate limit per IP. Empty on a workstation.
+      COMPOSER_AUTH: "${COMPOSER_AUTH:-}"
+      XDEBUG_MODE: "${XDEBUG_MODE:-develop}"
+      APP_ENV: "${APP_ENV:-dev}"
+      LOCK_DSN: flock:///app/var/lock
+    env_file:
+      - .env.dev.local
+    depends_on:
+      database:
+        condition: service_healthy
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    tty: true
+    # A dev boot installs vendor/ when empty and replays every migration before Caddy listens:
+    # give it the room the production image, which ships its vendor/ built, does not need.
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(false === @file_get_contents('http://localhost:2019/metrics', context: stream_context_create(['http' => ['timeout' => 5]])) ? 1 : 0);"]
+      start_period: 300s
+      interval: 10s
+      timeout: 10s
+      retries: 3
+
+  # MariaDB, as in production. No port published: Formatool's stack runs on the same machine, and
+  # nothing outside the Compose network has to reach this database.
+  database:
+    image: mariadb:${MARIADB_VERSION:-11.4}
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Paris
+    # MARIADB_ROOT_PASSWORD, MARIADB_USER, MARIADB_PASSWORD and MARIADB_DATABASE
+    env_file:
+      - .env.dev.local
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    volumes:
+      - database_data:/var/lib/mysql:rw
+
+  # Fictitious directory for development, seeded from frankenphp/ldap/*.ldif (versioned: every
+  # person in it is invented) on an empty volume only. Reachable from `php` at ldap://openldap:1389.
+  # After changing the tree: `docker compose rm -sf openldap && docker volume rm peyra_ldap_data`.
+  openldap:
+    image: bitnamilegacy/openldap:2.6.10-debian-12-r4
+    restart: unless-stopped
+    environment:
+      LDAP_ADMIN_USERNAME: admin
+      LDAP_ROOT: dc=peyra,dc=lan
+      LDAP_CUSTOM_LDIF_DIR: /ldifs
+    # LDAP_ADMIN_PASSWORD
+    env_file:
+      - .env.dev.local
+    volumes:
+      - ldap_data:/bitnami/openldap
+      - ./frankenphp/ldap:/ldifs:ro
+    healthcheck:
+      # CMD-SHELL so the container's own shell expands the password at run time.
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost:1389 -D cn=admin,dc=peyra,dc=lan -w \"$$LDAP_ADMIN_PASSWORD\" -b dc=peyra,dc=lan -s base"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # The scheduler's worker, as in compose.prod.yaml. Opt-in in dev:
+  #   docker compose --profile worker up -d worker
+  # The process does not reload the code: `docker compose restart worker` after a change.
+  worker:
+    image: ${IMAGES_PREFIX:-}peyra-php-dev
+    profiles: [worker]
+    restart: unless-stopped
+    depends_on:
+      php:
+        condition: service_healthy
+    # Bypasses docker-entrypoint, which migrates: `php` does that.
+    entrypoint: ["docker-php-entrypoint"]
+    command: ["php", "bin/console", "messenger:consume", "scheduler_default", "--time-limit=3600", "--memory-limit=192M", "-v"]
+    healthcheck:
+      disable: true
+    volumes:
+      - ./:/app
+      - ./frankenphp/conf.d/20-app.dev.ini:/usr/local/etc/php/app.conf.d/20-app.dev.ini:ro
+      - /app/var
+      - app_locks:/app/var/lock
+    env_file:
+      - .env.dev.local
+    environment:
+      APP_ENV: "${APP_ENV:-dev}"
+      XDEBUG_MODE: "${XDEBUG_MODE:-develop}"
+      TZ: Europe/Paris
+      DEFAULT_URI: https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}
+      MERCURE_URL: ${CADDY_MERCURE_URL:-http://php/.well-known/mercure}
+      MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}/.well-known/mercure}
+      GOTENBERG_URL: http://gotenberg:3000
+      LOCK_DSN: flock:///app/var/lock
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+volumes:
+  database_data:
+  ldap_data:
+  app_locks:

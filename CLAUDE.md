@@ -50,10 +50,47 @@ institution's: blue `#1B6BA8` (primary action, current line, steps), night blue 
 gold `#c9a04e` (active rail entry, as in the logo); green is reserved for validated states. No
 colour or layout copied from a vendor: the genre, not the copy.
 
-**Commands: none yet.** As in Formatool, everything will run inside the `php` container, with no
-host-side PHP (`docker compose exec php bin/console …`, `docker compose exec -e APP_ENV=test php
-bin/phpunit`, `docker compose exec php composer phpstan`). Rewrite this section once the skeleton
-exists.
+## Commands
+
+Everything runs inside the `php` container; there is no host-side PHP.
+
+```console
+cp .env.dev.local.example .env.dev.local      # once: local, fictitious credentials
+docker compose build --pull                   # build peyra-php-dev
+docker compose up --wait                      # start (dev overlay is implicit)
+docker compose down --remove-orphans          # stop — only ever from this directory
+
+docker compose exec php bin/console <cmd>
+docker compose exec php composer <cmd>
+docker compose exec -e APP_ENV=test php bin/phpunit
+docker compose --profile worker up -d worker  # the scheduler's worker, opt-in in dev
+```
+
+Production needs both files, in this order (not deployed by the build agents):
+
+```console
+docker compose -f compose.yaml -f compose.prod.yaml build --pull
+docker compose -f compose.yaml -f compose.prod.yaml up --wait
+```
+
+**Docker layer.** `compose.yaml` holds `php` (FrankenPHP + Caddy + the bundled Mercure hub) and
+`gotenberg`; `compose.override.yaml` (dev) adds `database` (MariaDB 11.4, no published port),
+`openldap` (the fictitious directory, `frankenphp/ldap/*.ldif`, loaded on an empty volume only) and
+`worker` behind a profile; `compose.prod.yaml` adds the production target and `worker`. The
+Compose project is `peyra`, images `peyra-php-dev` / `peyra-php-prod`, ports 8180 / 8143 (`.env`):
+Formatool runs on the same machine on 80/443 with `app-php-dev`, and nothing here may touch it.
+Dev address: <https://localhost:8143>, liveness probe `/health` (no database).
+
+Gotchas met while building it:
+
+- `SERVER_NAME` declares two sites (`localhost` and `php:80`, the address the application publishes
+  to), so the Caddyfile's Mercure hub **must be named** (`name peyra`): the hub bundled since
+  FrankenPHP 1.13 refuses two unnamed instances and the container never becomes healthy.
+- `composer.json` sets `extra.symfony.docker: false`: Flex recipes must not rewrite the Compose
+  files (the Doctrine recipe would add a PostgreSQL service). PHP extensions are installed once,
+  for the whole project, in the `Dockerfile`.
+- The scheduler's recipe creates `src/Schedule.php`; Peyra's schedule is
+  `App\Scheduler\PeyraSchedule` (`default`), and two providers for one name break the container.
 
 ## Domain rules the code must hold
 
