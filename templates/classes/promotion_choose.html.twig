@@ -1,0 +1,69 @@
+{#
+ # Passage de classe, step 1 (design-ux.md § 4.12): what the rentrée needs (« Sinon l'écran dit ce
+ # qui manque, avec le lien »), then the classes that name a next class, « CG1 2026-2027 → CG2
+ # 2027-2028 ». Empty: « Aucune classe de l'an passé ne nomme de classe suivante. »
+ #}
+{% extends 'classes/_layout.html.twig' %}
+
+{% set classes_tab = 'promotion' %}
+{% set classes_title = 'Passage de classe' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Passage de classe" :trail="[{label: 'Classes', href: path('app_teacher_classes')}]"/>
+{% endblock %}
+
+{% block page %}
+    <div class="px-split--side px-split">
+        {{ include('classes/_promotion_steps.html.twig', {step: 1}) }}
+        <div class="px-stack">
+            {% set missing = checks|filter(c => not c.passed) %}
+            {% if missing is not empty %}
+                <twig:Px:Card title="Avant le passage" meta="ce que l’administration de Peyra prépare">
+                    <twig:Px:Checks :items="checks|map(c => {state: c.passed ? 'passed' : 'warning', text: c.text})"/>
+                    {% if is_granted('ROLE_ADMIN') %}
+                        <p class="px-cluster">
+                            <a class="px-link" href="{{ path('app_admin_years') }}">Années scolaires</a>
+                            <a class="px-link" href="{{ path('app_admin_classes') }}">Classes et classe suivante</a>
+                            <a class="px-link" href="{{ path('app_admin_directory') }}">Correspondance avec l’annuaire</a>
+                        </p>
+                    {% else %}
+                        <p class="px-u-muted">Demandez-le à un administrateur de Peyra{{ administrators is not empty ? ' : ' ~ administrators|map(a => a.displayName)|join(', ', ' ou ') : '' }}.</p>
+                    {% endif %}
+                </twig:Px:Card>
+            {% endif %}
+
+            <twig:Px:Card :flush="true" title="Choisir la classe de l’an passé" meta="chaque classe passe dans la classe suivante qu’elle nomme">
+                {% if sources is empty %}
+                    <twig:Px:Empty icon="graduation-cap" title="Aucune classe de l’an passé ne nomme de classe suivante." text="{{ is_granted('ROLE_ADMIN') ? 'Renseignez la classe suivante dans Administration › Classes.' : 'Un administrateur la renseigne dans Administration › Classes.' }}">
+                        <twig:block name="action">
+                            {% if is_granted('ROLE_ADMIN') %}<twig:Px:Button href="{{ path('app_admin_classes') }}" icon="settings">Classes</twig:Px:Button>{% endif %}
+                        </twig:block>
+                    </twig:Px:Empty>
+                {% else %}
+                    <twig:Px:Table caption="Classes qui passent dans une classe suivante" :rows="true">
+                        <thead>
+                            <tr>
+                                <th scope="col">De</th>
+                                <th scope="col"><span class="px-u-sr-only">vers</span></th>
+                                <th scope="col">Vers</th>
+                                <th scope="col"><span class="px-u-sr-only">Action</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for source in sources %}
+                                <tr data-rows-target="row">
+                                    <td>{{ source.label }}</td>
+                                    <td aria-hidden="true"><twig:ux:icon name="arrow-right" class="px-u-muted"/></td>
+                                    <td>{{ source.nextClass.label }}</td>
+                                    <td class="px-u-right"><a class="px-link" href="{{ path('app_teacher_promotion_students', {id: source.id}) }}">Choisir les étudiants</a></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                {% endif %}
+            </twig:Px:Card>
+        </div>
+    </div>
+{% endblock %}
+
+{% block facts %}<span>Classes à passer · <b>{{ sources|length }}</b></span>{% endblock %}

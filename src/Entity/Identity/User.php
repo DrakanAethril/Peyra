@@ -6,6 +6,7 @@ namespace App\Entity\Identity;
 
 use App\Enum\Identity\AccountKind;
 use App\Enum\Identity\EntryBasis;
+use App\Enum\Identity\PlacementOutcome;
 use App\Repository\Identity\UserRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -40,6 +41,10 @@ class User implements UserInterface
     #[ORM\Column(length: 190)]
     private string $displayName;
 
+    /** « Nom Prénom », how lists of people show and sort a person (design-ux.md § 6.6). */
+    #[ORM\Column(length: 190)]
+    private string $sortName;
+
     #[ORM\Column(length: 190, nullable: true)]
     private ?string $email = null;
 
@@ -52,6 +57,30 @@ class User implements UserInterface
     /** @var list<string> the directory groups read at the last sign-in */
     #[ORM\Column(type: Types::JSON)]
     private array $directoryGroups = [];
+
+    /**
+     * The directory groups read when the account was created, never written again: the placement
+     * at creation read them, and « À placer » shows them (conception § 3 bis).
+     *
+     * @var list<string>
+     */
+    #[ORM\Column(type: Types::JSON)]
+    private array $groupsAtCreation = [];
+
+    /** What the placement at creation made of a student's groups; null for a teacher. */
+    #[ORM\Column(length: 32, nullable: true, enumType: PlacementOutcome::class)]
+    private ?PlacementOutcome $initialPlacement = null;
+
+    /**
+     * Set by hand when a student leaves the field (« Sorti de la filière »): they leave « À placer »,
+     * keep their account and their dossiers. Cleared when they are placed again or sign in again.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $departedAt = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?User $departedBy = null;
 
     #[ORM\Column]
     private bool $administrator = false;
@@ -71,14 +100,16 @@ class User implements UserInterface
     private ?\DateTimeImmutable $lastLoginAt = null;
 
     /** @param list<string> $directoryGroups */
-    public function __construct(string $directoryId, string $login, string $displayName, AccountKind $kind, EntryBasis $entryBasis, array $directoryGroups, \DateTimeImmutable $createdAt)
+    public function __construct(string $directoryId, string $login, string $displayName, AccountKind $kind, EntryBasis $entryBasis, array $directoryGroups, \DateTimeImmutable $createdAt, ?string $sortName = null)
     {
         $this->directoryId = $directoryId;
         $this->login = $login;
         $this->displayName = $displayName;
+        $this->sortName = $sortName ?? $displayName;
         $this->kind = $kind;
         $this->entryBasis = $entryBasis;
         $this->directoryGroups = $directoryGroups;
+        $this->groupsAtCreation = $directoryGroups;
         $this->createdAt = $createdAt;
     }
 
@@ -100,6 +131,11 @@ class User implements UserInterface
     public function getDisplayName(): string
     {
         return $this->displayName;
+    }
+
+    public function getSortName(): string
+    {
+        return $this->sortName;
     }
 
     public function getEmail(): ?string
@@ -133,16 +169,64 @@ class User implements UserInterface
         return $this->directoryGroups;
     }
 
+    /** @return list<string> */
+    public function getGroupsAtCreation(): array
+    {
+        return $this->groupsAtCreation;
+    }
+
+    public function getInitialPlacement(): ?PlacementOutcome
+    {
+        return $this->initialPlacement;
+    }
+
+    /** Written once, by InitialPlacement, when the account is created. */
+    public function recordInitialPlacement(PlacementOutcome $outcome): void
+    {
+        $this->initialPlacement = $outcome;
+    }
+
+    public function getDepartedAt(): ?\DateTimeImmutable
+    {
+        return $this->departedAt;
+    }
+
+    public function getDepartedBy(): ?User
+    {
+        return $this->departedBy;
+    }
+
+    public function isDeparted(): bool
+    {
+        return null !== $this->departedAt;
+    }
+
+    public function markDeparted(\DateTimeImmutable $at, User $by): void
+    {
+        if (!$this->isStudent()) {
+            throw new \LogicException('Only a student leaves the field.');
+        }
+        $this->departedAt = $at;
+        $this->departedBy = $by;
+    }
+
+    public function clearDeparture(): void
+    {
+        $this->departedAt = null;
+        $this->departedBy = null;
+    }
+
     /**
      * What the directory says at a sign-in: login (a rename), name, address, groups, and what the
-     * entry rule made of them.
+     * entry rule made of them. The class is not read again (conception § 3 bis).
      *
      * @param list<string> $directoryGroups
      */
-    public function refreshFromDirectory(string $login, string $displayName, ?string $email, array $directoryGroups, AccountKind $kind, EntryBasis $entryBasis): void
+    public function refreshFromDirectory(string $login, string $displayName, ?string $email, array $directoryGroups, AccountKind $kind, EntryBasis $entryBasis, ?string $sortName = null): void
     {
         $this->login = $login;
         $this->displayName = $displayName;
+        $this->sortName = $sortName ?? $displayName;
         $this->email = $email;
         $this->directoryGroups = $directoryGroups;
         $this->kind = $kind;

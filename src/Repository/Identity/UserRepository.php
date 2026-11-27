@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repository\Identity;
 
+use App\Entity\Identity\Enrolment;
+use App\Entity\Identity\SchoolYear;
 use App\Entity\Identity\User;
 use App\Enum\Identity\AccountKind;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -78,6 +80,98 @@ final class UserRepository extends ServiceEntityRepository
             ->setParameter('like', $like)
             ->orderBy('u.displayName', 'ASC')
             ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Students without an enrolment in the year (« À placer », conception § 3 bis), « Nom Prénom »
+     * order: those still in the field, or those marked as having left it.
+     *
+     * @return list<User>
+     */
+    public function findStudentsWithoutEnrolment(SchoolYear $year, bool $departed = false): array
+    {
+        /* @var list<User> */
+        return $this->createQueryBuilder('u')
+            ->leftJoin(Enrolment::class, 'e', 'WITH', 'e.student = u AND e.schoolYear = :year')
+            ->andWhere('u.kind = :student')
+            ->andWhere('e.id IS NULL')
+            ->andWhere($departed ? 'u.departedAt IS NOT NULL' : 'u.departedAt IS NULL')
+            ->setParameter('year', $year)
+            ->setParameter('student', AccountKind::Student)
+            ->orderBy('u.sortName', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countStudentsWithoutEnrolment(SchoolYear $year): int
+    {
+        return (int) $this->createQueryBuilder('u')
+            ->select('COUNT(u.id)')
+            ->leftJoin(Enrolment::class, 'e', 'WITH', 'e.student = u AND e.schoolYear = :year')
+            ->andWhere('u.kind = :student')
+            ->andWhere('e.id IS NULL')
+            ->andWhere('u.departedAt IS NULL')
+            ->setParameter('year', $year)
+            ->setParameter('student', AccountKind::Student)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /** @return list<User> every student account, « Nom Prénom » order (when no year exists yet) */
+    public function findStudents(): array
+    {
+        /* @var list<User> */
+        return $this->createQueryBuilder('u')
+            ->andWhere('u.kind = :student')
+            ->setParameter('student', AccountKind::Student)
+            ->orderBy('u.sortName', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Students whose name or login contains the text, for « Ajouter des étudiants » to a class.
+     *
+     * @return list<User>
+     */
+    public function searchStudents(string $text, int $limit = 10): array
+    {
+        $like = '%'.addcslashes(mb_strtolower($text), '%_\\').'%';
+
+        /* @var list<User> */
+        return $this->createQueryBuilder('u')
+            ->andWhere('u.kind = :student')
+            ->andWhere('LOWER(u.displayName) LIKE :like OR LOWER(u.sortName) LIKE :like OR LOWER(u.login) LIKE :like')
+            ->setParameter('student', AccountKind::Student)
+            ->setParameter('like', $like)
+            ->orderBy('u.sortName', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Students among these ids, « Nom Prénom » order (ids that are not students are dropped).
+     *
+     * @param list<int> $ids
+     *
+     * @return list<User>
+     */
+    public function findStudentsByIds(array $ids): array
+    {
+        if ([] === $ids) {
+            return [];
+        }
+
+        /* @var list<User> */
+        return $this->createQueryBuilder('u')
+            ->andWhere('u.kind = :student')
+            ->andWhere('u.id IN (:ids)')
+            ->setParameter('student', AccountKind::Student)
+            ->setParameter('ids', $ids)
+            ->orderBy('u.sortName', 'ASC')
             ->getQuery()
             ->getResult();
     }

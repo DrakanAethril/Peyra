@@ -1,0 +1,26 @@
+{# The classes of a year as a list: takes `class_rows` (ClassRow) and `caption` (named apart from Px:Table's `rows` prop). #}
+<twig:Px:Table caption="{{ caption }}" :rows="true">
+    <thead>
+        <tr>
+            <th scope="col">Classe</th>
+            <th scope="col">Niveau</th>
+            <th scope="col" class="px-u-right">Effectif</th>
+            <th scope="col">Enseignants</th>
+            <th scope="col">Classe suivante</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in class_rows %}
+            <tr data-rows-target="row">
+                <td>
+                    <a class="px-link" href="{{ path('app_teacher_class', {id: row.schoolClass.id}) }}">{{ row.schoolClass.name }}</a>
+                    {% if row.mine %} <twig:Px:Badge tone="info" label="Votre classe"/>{% endif %}
+                </td>
+                <td>{{ row.schoolClass.level.label }}</td>
+                <td class="px-u-num">{{ row.students }}</td>
+                <td>{{ row.teacherNames ?? '' }}{% if row.teacherNames is null %}<span class="px-u-muted">Aucun</span>{% endif %}</td>
+                <td>{% if row.schoolClass.nextClass %}{{ row.schoolClass.nextClass.label }}{% else %}<span class="px-u-muted">—</span>{% endif %}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</twig:Px:Table>

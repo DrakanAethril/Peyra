@@ -1,0 +1,79 @@
+{#
+ # Passage de classe, step 2 (design-ux.md § 4.12, steps 2 and 3): the students of last year's
+ # class, all ticked; untick those who repeat or leave and choose, on the right, another class of
+ # the new year, « Ne pas placer » or « Sort de la filière ». A student already enrolled in the new
+ # year is greyed with their class. A GET form: the summary carries the choices.
+ #}
+{% extends 'classes/_layout.html.twig' %}
+
+{% set classes_tab = 'promotion' %}
+{% set classes_title = 'Passage de classe' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ plan.source.name }} → {{ plan.next.label }}" :trail="[{label: 'Classes', href: path('app_teacher_classes')}, {label: 'Passage de classe', href: path('app_teacher_promotion')}]"/>
+{% endblock %}
+
+{% block page %}
+    <div class="px-split--side px-split">
+        {{ include('classes/_promotion_steps.html.twig', {step: 2}) }}
+        <twig:Px:Card :flush="true" title="Étudiants de {{ plan.source.label }}" meta="cochés : ils passent en {{ plan.next.name }}">
+            {% if plan.lines is empty %}
+                <twig:Px:Empty icon="users" title="Personne dans cette classe" text="{{ plan.source.label }} n’a aucun étudiant à faire passer."/>
+            {% else %}
+                <form method="get" action="{{ path('app_teacher_promotion_summary', {id: plan.source.id}) }}" id="promotion-form"
+                      data-controller="promotion" data-action="change->promotion#sync">
+                    <input type="hidden" name="step" value="2">
+                    <twig:Px:Table caption="Étudiants de {{ plan.source.label }} et leur classe en {{ plan.next.schoolYear.label }}">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="px-table__pick"><span class="px-u-sr-only">Passe en {{ plan.next.name }}</span></th>
+                                <th scope="col">Nom</th>
+                                <th scope="col">Dernière connexion</th>
+                                <th scope="col">Sinon</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for line in plan.lines %}
+                                {% set student = line.student %}
+                                {% if line.alreadyEnrolled %}
+                                    <tr class="is-dim">
+                                        <td class="px-table__pick"><label class="px-check"><input type="checkbox" disabled><span class="px-u-sr-only">{{ student.sortName }}, déjà inscrit</span></label></td>
+                                        <td>{{ student.sortName }}</td>
+                                        <td>{{ student.lastLoginAt ? student.lastLoginAt|date('d/m/Y') : 'Jamais connecté' }}</td>
+                                        <td>Déjà en {{ line.alreadyEnrolled.schoolClass.name }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td class="px-table__pick">
+                                            <label class="px-check"><input type="checkbox" name="pass[]" value="{{ student.id }}"{% if line.ticked %} checked{% endif %} data-promotion-target="box" data-student="{{ student.id }}"><span class="px-u-sr-only">{{ student.sortName }} passe en {{ plan.next.name }}</span></label>
+                                        </td>
+                                        <td>{{ student.sortName }}</td>
+                                        <td>{{ student.lastLoginAt ? student.lastLoginAt|date('d/m/Y') : 'Jamais connecté' }}</td>
+                                        <td>
+                                            <label class="px-u-sr-only" for="other-{{ student.id }}">Si {{ student.sortName }} ne passe pas</label>
+                                            <select id="other-{{ student.id }}" name="other[{{ student.id }}]" class="px-select px-select--sm" data-promotion-target="other" data-student="{{ student.id }}"{% if line.ticked %} disabled{% endif %}>
+                                                {% for class in targets|filter(c => c != plan.next) %}
+                                                    <option value="{{ class.id }}"{% if line.choice.formValue == class.id ~ '' %} selected{% endif %}>{{ class.level == plan.source.level ? 'Redouble en ' : 'Va en ' }}{{ class.name }}</option>
+                                                {% endfor %}
+                                                <option value="none"{% if line.choice.formValue == 'none' or line.ticked %} selected{% endif %}>Ne pas placer</option>
+                                                <option value="departed"{% if line.choice.formValue == 'departed' %} selected{% endif %}>Sort de la filière</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                </form>
+            {% endif %}
+            <twig:block name="foot">
+                                    <span class="px-u-muted">Un étudiant non placé apparaît dans « À placer » ; ses dossiers restent.</span>
+                    {% if plan.lines is not empty %}
+                        <twig:Px:Button type="submit" form="promotion-form" variant="primary" icon="arrow-right" class="px-u-push">Voir le récapitulatif</twig:Px:Button>
+                    {% endif %}
+            </twig:block>
+        </twig:Px:Card>
+    </div>
+{% endblock %}
+
+{% block facts %}<span>{{ plan.source.label }} → {{ plan.next.label }}</span><span>Étudiants · <b>{{ plan.lines|length }}</b></span>{% endblock %}

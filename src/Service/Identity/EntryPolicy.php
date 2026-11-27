@@ -56,6 +56,12 @@ final readonly class EntryPolicy
         return $this->adminLogins;
     }
 
+    /** @return list<string> the directory groups that let a student in, which the mapping places */
+    public function studentGroups(): array
+    {
+        return $this->studentGroups;
+    }
+
     /** @return list<string> */
     public function teacherGroups(): array
     {

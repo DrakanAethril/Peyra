@@ -1,7 +1,6 @@
 {#
- # Paramètres › Administration (design-ux.md §§ 2.6 and 3.6), administrators only. A screen sets
- # `admin_tab` and `admin_title` outside any block. The years, the classes and the mapping with the
- # directory join these tabs with their step.
+ # Paramètres › Administration (design-ux.md §§ 2.6 and 3.6), administrators only, in the order of
+ # design-ux.md § 2.6. A screen sets `admin_tab` and `admin_title` outside any block.
  #}
 {% extends 'teacher/_layout.html.twig' %}
 
@@ -11,6 +10,9 @@
 
 {% block module_tabs %}
     <twig:Px:ModuleTabs label="Administration" :tabs="[
+        {label: 'Années scolaires', href: path('app_admin_years'), current: admin_tab == 'years'},
+        {label: 'Classes', href: path('app_admin_classes'), current: admin_tab == 'classes'},
+        {label: 'Correspondance avec l’annuaire', href: path('app_admin_directory'), current: admin_tab == 'directory'},
         {label: 'Enseignants de la filière', href: path('app_admin_teachers'), current: admin_tab == 'teachers'},
         {label: 'Administrateurs', href: path('app_admin_administrators'), current: admin_tab == 'administrators'},
         {label: 'Journal des connexions', href: path('app_admin_logins'), current: admin_tab == 'logins'},

@@ -50,7 +50,11 @@ final class InMemoryDirectory implements Directory
     /** @param list<string> $groups */
     public function add(string $login, string $displayName, array $groups, string $stableId): DirectoryPerson
     {
-        $person = new DirectoryPerson('uid='.$login.',ou=users,dc=peyra,dc=lan', $login, $stableId, $displayName, $login.'@peyra.test', $groups);
+        // « Given Surname »: the last word is the surname, as in the development directory.
+        $words = explode(' ', $displayName);
+        $surname = array_pop($words);
+        $sortName = [] === $words ? $displayName : $surname.' '.implode(' ', $words);
+        $person = new DirectoryPerson('uid='.$login.',ou=users,dc=peyra,dc=lan', $login, $stableId, $displayName, $login.'@peyra.test', $groups, $sortName);
         $this->people[mb_strtolower($login)] = $person;
 
         return $person;

@@ -1,0 +1,31 @@
+{#
+ # The class switcher of the teacher's top bar (design-ux.md § 2.4, design-ui.md § 4.2): the class
+ # in hand (`switcher_class`, else the teacher's first class) with its year and effectif; the menu
+ # lists the classes of the current year, the teacher's own first, then « Années précédentes ».
+ #}
+{% set switcher = class_switcher() %}
+{% if switcher.rows is not empty %}
+    {% set shown = switcher.rows|filter(r => switcher_class is defined and switcher_class and r.schoolClass == switcher_class)|first ?: switcher.rows|first %}
+    <div class="px-classswitch" data-controller="menu" data-action="keydown->menu#keydown">
+        <button type="button" class="px-switcher" aria-haspopup="menu" aria-expanded="false" aria-controls="px-classswitch-panel"
+                data-menu-target="button" data-action="menu#toggle">
+            <b class="px-switcher__name">{{ shown.schoolClass.name }}</b>
+            <small class="px-switcher__meta">{{ switcher.year.label }} · {{ shown.students }} {{ shown.students > 1 ? 'étudiants' : 'étudiant' }}</small>
+            <twig:ux:icon name="chevron-down" aria-hidden="true"/>
+            <span class="px-u-sr-only">, changer de classe</span>
+        </button>
+        <div class="px-popover px-switcher__panel" id="px-classswitch-panel" data-menu-target="panel" hidden>
+            <p class="px-menu__head">Classes {{ switcher.year.label }}</p>
+            <div class="px-menu" role="menu" aria-label="Classes">
+                {% for row in switcher.rows %}
+                    <a class="px-menu__item px-switcher__option" role="menuitem" href="{{ path('app_teacher_class', {id: row.schoolClass.id}) }}"{% if switcher_class is defined and switcher_class and row.schoolClass == switcher_class %} aria-current="true"{% endif %}>
+                        <span>{{ row.schoolClass.name }}{% if row.mine %} <span class="px-u-sr-only">(votre classe)</span>{% endif %}</span>
+                        <small>{{ row.mine ? 'Votre classe · ' : '' }}{{ row.students }} {{ row.students > 1 ? 'étudiants' : 'étudiant' }}</small>
+                    </a>
+                {% endfor %}
+                <div class="px-menu__sep" role="separator"></div>
+                <a class="px-menu__item" role="menuitem" href="{{ path('app_teacher_classes_past') }}"><twig:ux:icon name="history" aria-hidden="true"/>Années précédentes</a>
+            </div>
+        </div>
+    </div>
+{% endif %}

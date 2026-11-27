@@ -5,13 +5,18 @@
 {% block title %}Mes dossiers · Peyra{% endblock %}
 
 {% block page_head %}
-    <twig:Px:PageHead title="Mes dossiers"/>
+    <twig:Px:PageHead title="Mes dossiers">
+        <twig:block name="badge">{% if enrolment %}<twig:Px:Chip>{{ enrolment.schoolClass.label }}</twig:Px:Chip>{% endif %}</twig:block>
+    </twig:Px:PageHead>
 {% endblock %}
 
 {% block page %}
+    {% if enrolment is null %}
+        <twig:Px:Alert tone="warning">Vous n’êtes dans aucune classe pour le moment. Un enseignant va vous placer ; vous n’avez rien à faire.</twig:Px:Alert>
+    {% endif %}
     <twig:Px:Card>
         <twig:Px:Empty :page="true" icon="folder-open" title="Aucun dossier pour l’instant" text="Votre enseignant vous en distribuera un ; il apparaîtra ici."/>
     </twig:Px:Card>
 {% endblock %}
 
-{% block status %}<span>Dossiers · <b>aucun</b></span>{% endblock %}
+{% block status %}<span>Dossiers · <b>aucun</b></span>{% if enrolment %}<span>Classe · <b>{{ enrolment.schoolClass.label }}</b></span>{% endif %}{% endblock %}

@@ -1,0 +1,65 @@
+{#
+ # Administration › Correspondance avec l'annuaire (conception § 3 bis): « une fois par an,
+ # l'administrateur associe chaque groupe de l'annuaire à une classe de l'année ». Read once, when
+ # a student's account is created; never again afterwards.
+ #}
+{% extends 'admin/_layout.html.twig' %}
+
+{% set admin_tab = 'directory' %}
+{% set admin_title = 'Correspondance avec l’annuaire' %}
+{% set status_keys = year and year_classes is not empty ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Correspondance avec l’annuaire" :trail="[
+        {label: 'Paramètres', href: path('app_admin_years')},
+        {label: 'Administration', href: path('app_admin_years')},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    {% if year is null %}
+        <twig:Px:Card>
+            <twig:Px:Empty :page="true" icon="calendar" title="Aucune année scolaire" text="La correspondance se fait pour une année et ses classes : créez d’abord l’année.">
+                <twig:block name="action"><twig:Px:Button variant="primary" href="{{ path('app_admin_years') }}" icon="plus">Nouvelle année</twig:Px:Button></twig:block>
+            </twig:Px:Empty>
+        </twig:Px:Card>
+    {% else %}
+        <twig:Px:Card :flush="true" title="Groupes de l’annuaire" meta="{{ year.label }}">
+            <twig:Px:Filters action="{{ path('app_admin_directory') }}">
+                {% for candidate in years %}
+                    <twig:Px:FilterChip label="{{ candidate.label }}" href="{{ path('app_admin_directory', {year: candidate.id}) }}" :current="candidate == year"/>
+                {% endfor %}
+            </twig:Px:Filters>
+            {% if year_classes is empty %}
+                <twig:Px:Empty icon="graduation-cap" title="Aucune classe en {{ year.label }}" text="Créez les classes de l’année avant de leur associer les groupes de l’annuaire.">
+                    <twig:block name="action"><twig:Px:Button href="{{ path('app_admin_classes', {year: year.id}) }}" icon="plus">Classes</twig:Px:Button></twig:block>
+                </twig:Px:Empty>
+            {% else %}
+                <form method="post" action="{{ path('app_admin_directory_save', {id: year.id}) }}" id="directory-form">
+                    <input type="hidden" name="_token" value="{{ csrf_token('admin-directory-' ~ year.id) }}">
+                    <twig:Px:Table caption="Classe de chaque groupe de l’annuaire en {{ year.label }}" density="regular">
+                        <thead><tr><th scope="col">Groupe de l’annuaire</th><th scope="col">Place les nouveaux comptes en</th></tr></thead>
+                        <tbody>
+                            {% for group in groups %}
+                                <tr>
+                                    <th scope="row"><label for="group-{{ group }}" class="px-u-code">{{ group }}</label></th>
+                                    <td>
+                                        <twig:Px:Select id="group-{{ group }}" name="group[{{ group }}]" size="sm" placeholder="Aucune classe" value="{{ mapped[group] is defined ? mapped[group].id : '' }}" :options="year_classes|map(c => {value: c.id, label: c.name})"/>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                </form>
+            {% endif %}
+            <twig:block name="foot">
+                {% if year_classes is not empty %}
+                                            <span class="px-u-muted">Lue une seule fois, à la création du compte d’un étudiant. Un étudiant de deux groupes qui désignent deux classes, ou d’aucun, attend dans « À placer ».</span>
+                        <twig:Px:Button type="submit" form="directory-form" variant="primary" icon="save" shortcut="F10 Ctrl+S" class="px-u-push">Enregistrer</twig:Px:Button>
+                {% endif %}
+            </twig:block>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}{% if year %}<span>{{ year.label }}</span><span>Groupes associés · <b>{{ mapped|length }}</b> sur {{ groups|length }}</span>{% endif %}{% endblock %}

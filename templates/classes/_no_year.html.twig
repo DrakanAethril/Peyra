@@ -1,0 +1,19 @@
+{#
+ # A year without classes (design-ux.md § 4.1, step 7): an administrator gets one action,
+ # « Préparer l'année »; another teacher is told whom to ask, by name. Takes `year` and `administrators`.
+ #}
+<twig:Px:Card>
+    {% if is_granted('ROLE_ADMIN') %}
+        <twig:Px:Empty :page="true" icon="graduation-cap"
+                       title="{{ year ? 'L’année ' ~ year.label ~ ' n’a pas encore de classe' : 'Aucune année scolaire pour l’instant' }}"
+                       text="Créez l’année, ses classes et la correspondance avec les groupes de l’annuaire ; les étudiants y seront placés à leur première connexion.">
+            <twig:block name="action">
+                <twig:Px:Button variant="primary" href="{{ year ? path('app_admin_classes') : path('app_admin_years') }}" icon="settings">Préparer l’année</twig:Px:Button>
+            </twig:block>
+        </twig:Px:Empty>
+    {% else %}
+        <twig:Px:Empty :page="true" icon="graduation-cap"
+                       title="{{ year ? 'L’année ' ~ year.label ~ ' n’a pas encore de classe' : 'Aucune année scolaire pour l’instant' }}"
+                       text="Demandez à un administrateur de Peyra de créer les classes de l’année{{ administrators is not empty ? ' : ' ~ administrators|map(a => a.displayName)|join(', ', ' ou ') : '' }}."/>
+    {% endif %}
+</twig:Px:Card>

@@ -30,6 +30,11 @@
         gap: var(--px-space-10);
         color: var(--px-text-strong);
         font-family: var(--px-font-title);
+
+        /* The pills after a title keep the interface's face, even under the teacher's serif titles. */
+        & > * {
+            font-family: var(--px-font-ui);
+        }
         font-size: var(--px-fs-18);
         font-weight: var(--px-fw-semibold);
         line-height: var(--px-lh-tight);
@@ -156,5 +161,54 @@
             flex: 1;
             min-width: 0;
         }
+    }
+
+    /* A form of a few short fields side by side, its button at the end of the line. */
+    .px-formrow {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: var(--px-space-12);
+
+        & > .px-field {
+            flex: 0 1 220px;
+            min-width: 160px;
+        }
+
+        & > .px-field--wide {
+            flex-basis: 320px;
+        }
+
+        & > .px-btn,
+        & > .px-check {
+            margin-block-end: 2px;
+        }
+    }
+
+    /* Label and value pairs in a card: « Classe suivante · BTS CG 2 · 2027-2028 ». */
+    .px-facts {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        gap: var(--px-space-6) var(--px-space-16);
+        align-items: baseline;
+
+        & dt {
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-12);
+        }
+
+        & dd {
+            margin: 0;
+            color: var(--px-text);
+        }
+    }
+
+    /* A plain list of names in a card. */
+    .px-namelist {
+        display: grid;
+        gap: var(--px-space-4);
+        margin: 0;
+        padding: 0;
+        list-style: none;
     }
 }

@@ -1,0 +1,6 @@
+{# The three steps of a passage de classe (design-ui.md § 4.11, vertical variant). Takes `step` (1 to 3) and, past the first, `plan` and `query`. #}
+<twig:Px:Stepper label="Passage de classe" :vertical="true" :steps="[
+    {label: 'Classe de l’an passé', href: path('app_teacher_promotion'), state: step > 1 ? 'done' : 'current'},
+    {label: 'Étudiants', href: step > 1 ? path('app_teacher_promotion_students', {id: plan.source.id}) ~ (query ?? '') : null, state: step > 2 ? 'done' : (step == 2 ? 'current' : 'todo')},
+    {label: 'Récapitulatif', state: step == 3 ? 'current' : 'todo'},
+]"/>

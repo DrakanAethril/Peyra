@@ -79,7 +79,8 @@ final readonly class LdapDirectory implements Directory
 
     /**
      * The person an entry describes. The name is « givenName sn » (in production the `cn` is the
-     * login, as Formatool found), else `displayName`, else `cn`, else the login.
+     * login, as Formatool found), else `displayName`, else `cn`, else the login; the sort name is
+     * « sn givenName » when there is a surname, the name otherwise.
      *
      * @param list<string> $groups
      */
@@ -98,10 +99,11 @@ final readonly class LdapDirectory implements Directory
         if ('' === $name) {
             $name = $read('displayName') ?? $read('cn') ?? $login;
         }
+        $sortName = null === $read('sn') ? $name : trim($read('sn').' '.($read('givenName') ?? ''));
         $groups = array_values(array_unique(array_map(strtolower(...), $groups)));
         sort($groups);
 
-        return new DirectoryPerson($entry->getDn(), $login, $stableId, $name, $read('mail'), $groups);
+        return new DirectoryPerson($entry->getDn(), $login, $stableId, $name, $read('mail'), $groups, $sortName);
     }
 
     private static function text(?string $value): ?string

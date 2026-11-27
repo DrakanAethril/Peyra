@@ -4,11 +4,12 @@ import { Controller } from '@hotwired/stimulus';
  * Picks one account by typing part of a name or a login (CLAUDE.md, « Forms »: picking users uses
  * an autocomplete fed by ajax). The list comes from `url` (?q=…, JSON [{id, name, login}]) 150 ms
  * after the last key, from the second character; ↑ ↓ choose, Entrée takes the option, Échap closes.
- * The chosen id goes to the hidden `value` target, which the form submits.
+ * The chosen id goes to the hidden `value` target, which the form submits; `empty` is the line shown
+ * when nobody matches.
  */
 export default class extends Controller {
     static targets = ['input', 'value', 'panel', 'list'];
-    static values = { url: String };
+    static values = { url: String, empty: { type: String, default: 'Aucun enseignant ne correspond.' } };
 
     connect() {
         this.options = [];
@@ -65,7 +66,7 @@ export default class extends Controller {
             const empty = document.createElement('li');
             empty.className = 'px-picker__empty';
             empty.setAttribute('role', 'presentation');
-            empty.textContent = 'Aucun enseignant ne correspond.';
+            empty.textContent = this.emptyValue;
             this.listTarget.append(empty);
         }
         this.panelTarget.hidden = false;

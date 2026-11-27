@@ -65,6 +65,7 @@ docker compose exec php composer <cmd>
 docker compose exec -e APP_ENV=test php bin/phpunit
 docker compose exec -e APP_ENV=test php vendor/bin/paratest --processes=4   # setup: tests/README.md
 docker compose --profile worker up -d worker  # the scheduler's worker, opt-in in dev
+docker compose exec php bin/console app:dev:school # dev only, once: years, classes, mapping, teachers
 
 docker compose exec php composer cs-check          # coding standard (cs-fix applies it)
 docker compose exec php bin/console cache:warmup   # PHPStan reads the compiled dev container
@@ -94,7 +95,7 @@ docker compose -f compose.yaml -f compose.prod.yaml up --wait
 ```
 
 **Docker layer.** `compose.yaml` holds `php` (FrankenPHP + Caddy + the bundled Mercure hub) and
-`gotenberg`; `compose.override.yaml` (dev) adds `database` (MariaDB 11.4, no published port),
+`gotenberg`; `compose.override.yaml` (dev) adds `database` (MariaDB 11.8 as in production, no published port),
 `openldap` (the fictitious directory, `frankenphp/ldap/*.ldif`, loaded on an empty volume only) and
 `worker` behind a profile; `compose.prod.yaml` adds the production target and `worker`. The
 Compose project is `peyra`, images `peyra-php-dev` / `peyra-php-prod`, ports 8180 / 8143 (`.env`):
@@ -137,7 +138,10 @@ Gotchas met while building it:
   `PxComponentsTest` pins their markup. Write `<tag{{ attributes }}>` with no space before:
   the attribute bag brings its own leading space.
   Inside a component's block, a prop of the component hides the page's variable of the same name
-  (`rows` in a `Px:Table`, `label` or `error` in a `Px:Field`): name the page's variables apart.
+  (`rows` in a `Px:Table`, `label` or `error` in a `Px:Field`), and so does a variable the
+  component's template sets (`classes` in `Px:Table`, a string there): name the page's variables
+  apart (`class_rows`, `year_classes`). A selection of rows is `selection_controller.js` (boxes in
+  the first column, `px-lotbar` in place of the filters once one is ticked).
 - **Shells**: `layout/pgi.html.twig` (student), `layout/teacher.html.twig`, `layout/public.html.twig`.
   The first two capture their blocks (`{% set x %}{{ block('x') }}{% endset %}`) and include
   `layout/_shell.html.twig`: a child template's block placed inside a `<twig:…>` tag would belong
@@ -257,6 +261,34 @@ The fictitious directory `frankenphp/ldap/10-tree.ldif` (password **`peyra-dev`*
 The service account is `cn=svc-peyra,ou=service,dc=peyra,dc=lan`. After changing the tree:
 `docker compose rm -sf openldap && docker volume rm peyra_ldap_data && docker compose up -d openldap`.
 
+### Years, classes and placement (built at step 0.5)
+
+Conception § 3 bis, held by code in `src/Service/Identity/`:
+
+- `SchoolYear` (exactly one current, chosen by an administrator; the years before it are history:
+  `SchoolClassVoter` lets every teacher read every class and place students only in the current
+  year or a later one), `SchoolClass` (per year, level 1 or 2, `nextClass` in a later year),
+  `Enrolment` (one per student and year, UNIQUE; origin directory / manual / promotion),
+  `TeacherClass`, `DirectoryGroupMapping` (per year, group → class).
+- **Placement at creation, once**: `AccountProvisioner` calls `InitialPlacement` for a new student
+  only; the rule is the pure `PlacementRule` (one class designated by the groups, else « à placer »
+  with its reason, kept on `User::$initialPlacement`). The groups read then are
+  `User::$groupsAtCreation`; a later sign-in rewrites `directoryGroups` and never the class.
+- **`Enrolments` is the one door of placement by hand** (place, move, remove, departure), every
+  gesture written to the administration journal (`AdministrationEvent::$detail` says what). Removing
+  deletes the year's enrolment (the journal keeps it); nothing touches an account or a dossier.
+- « Sorti de la filière » (`User::$departedAt`) takes a student out of « À placer »; placing them
+  or their next sign-in brings them back. It deletes nothing.
+- `Promotion` / `PromotionPlan`: the passage de classe in three GET steps then one POST; a student
+  already enrolled in the target year is left as is, so the gesture can be made again.
+- `SchoolYears::create()` may take over the previous year (classes by name and level, mapping,
+  and the next class of last year's first-year classes when the new year has a single second-year
+  class); teachers are never taken over. `YearPreparation` lists what the rentrée still needs.
+- `User::$sortName` is « Nom Prénom » (`sn givenName`): lists of people show and sort on it.
+- `app:dev:school` (dev and test only) builds 2025-2026 and 2026-2027 with their classes; students
+  are placed by their own first sign-in, as in production. Classes are the institution's: they are
+  never part of the demonstration dossier (`app:demo:install`, lot 1).
+
 ## Conventions (as in Formatool)
 
 - **Code is English, display text is French.** Identifiers, comments and docblocks are English; only
@@ -271,7 +303,8 @@ The service account is `cn=svc-peyra,ou=service,dc=peyra,dc=lan`. After changing
   controller rather than grow one.
 - **Type at the boundary, never cast further in.** Recreate Formatool's readers rather than casting
   inline: `JsonRequestPayload` (fetch bodies), `QueryValue` (query strings — `InputBag::getInt()`
-  answers a 400 to the empty string a filter bar submits), `FormValue` (`getData()` is mixed),
+  answers a 400 to the empty string a filter bar submits), `PostValue` (the fields of a plain
+  posted form: ids, a table of choices by id or by key), `FormValue` (`getData()` is mixed),
   `DataTableParams` (paging, capped). Shapes are `@phpstan-type` on the producer,
   `@phpstan-import-type` where consumed.
 - **Interactivity is Stimulus controllers** under `assets/controllers/`; never inline JS. A POST form

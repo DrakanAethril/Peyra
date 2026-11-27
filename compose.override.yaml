@@ -47,7 +47,7 @@ services:
   # MariaDB, as in production. No port published: Formatool's stack runs on the same machine, and
   # nothing outside the Compose network has to reach this database.
   database:
-    image: mariadb:${MARIADB_VERSION:-11.4}
+    image: mariadb:${MARIADB_VERSION:-11.8}
     restart: unless-stopped
     environment:
       TZ: Europe/Paris
