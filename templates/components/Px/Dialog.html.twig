@@ -1,0 +1,16 @@
+{#
+ # Px:Dialog - a native modal <dialog> for typing, never for confirming (design-ui.md § 4.14).
+ # Opened by any element carrying data-px-open="{id}". With `src`, its body is a server fragment
+ # fetched at opening and posted back by fetch (422 = the fragment again, a redirect = done).
+ # Blocks: `content` (body), `foot`. The foot's « Annuler » is the abandon target: over typed
+ # values, Escape arms it instead of closing.
+ #}
+{% props id, title, size = null, src = null %}
+<dialog id="{{ id }}"{{ attributes.defaults({class: 'px-dialog' ~ (size ? ' px-dialog--' ~ size : '')}) }} aria-labelledby="{{ id }}-title" data-controller="dialog" data-action="click->dialog#backdrop submit->dialog#submit confirm:arm->dialog#arming"{% if src %} data-dialog-src-value="{{ src }}"{% endif %}>
+    <header class="px-dialog__head">
+        <h2 id="{{ id }}-title">{{ title }}</h2>
+        <twig:Px:IconButton icon="x" label="Fermer" data-action="dialog#close"/>
+    </header>
+    <div class="px-dialog__body" data-dialog-target="body">{% block content %}{% endblock %}</div>
+    {% if block('foot') is defined and block('foot')|trim is not empty %}<footer class="px-dialog__foot">{{ block('foot') }}</footer>{% endif %}
+</dialog>

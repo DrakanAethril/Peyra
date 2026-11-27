@@ -1,0 +1,5 @@
+{# Px:Skeleton - the first load of a list taking more than 300 ms; its container is aria-busy. #}
+{% props rows = 5 %}
+<div{{ attributes.defaults({class: 'px-skeleton'}) }} aria-hidden="true">
+    {% for i in 1..rows %}<div class="px-skeleton__row"><i></i><i></i><i></i></div>{% endfor %}
+</div>

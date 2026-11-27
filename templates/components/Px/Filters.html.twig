@@ -1,0 +1,16 @@
+{#
+ # Px:Filters - the filter bar, first line of a list card: a GET form (design-ui.md § 4.7). Content:
+ # Px:FilterChip links, value filters; `search` adds the search field on the right (« / » focuses it).
+ #}
+{% props action, search = null, searchName = 'q', searchLabel = 'Rechercher', resetHref = null %}
+<form method="get" action="{{ action }}"{{ attributes.defaults({class: 'px-filters'}) }} role="search">
+    {% block content %}{% endblock %}
+    {% if resetHref %}<twig:Px:Button variant="quiet" size="sm" href="{{ resetHref }}">Réinitialiser</twig:Px:Button>{% endif %}
+    {% if search is not null %}
+        <label class="px-inputicon px-filters__search">
+            <span class="px-u-sr-only">{{ searchLabel }}</span>
+            <twig:ux:icon name="search" aria-hidden="true"/>
+            <input type="search" class="px-input px-input--sm" name="{{ searchName }}" value="{{ search }}" placeholder="{{ searchLabel }}…" data-px-shortcut="/">
+        </label>
+    {% endif %}
+</form>

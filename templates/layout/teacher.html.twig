@@ -1,0 +1,58 @@
+{#
+ # The teacher space (design-ux.md § 2.4): same skeleton, Spectral titles, comfortable rows, no keys in the status bar.
+ # A screen extends it and fills the blocks below; it may set, outside any block,
+ # `rail_home` (the brand's link) and `status_keys` (list of {combo, verb}, at most four).
+ #   rail, rail_foot            Px:RailGroup / Px:RailItem entries
+ #   context_bar                a Px:ContextBar
+ #   topbar_start, topbar_search, topbar_end
+ #   module_tabs                a Px:ModuleTabs (absent on a dashboard)
+ #   page_head                  a Px:PageHead
+ #   page                       the cards
+ #   status                     the status bar's facts
+ #   foot                       a Px:ActionFoot, in place of the status bar (a run through a series)
+ #}
+{% extends 'base.html.twig' %}
+
+{% block shell %}teacher{% endblock %}
+
+{% block body %}
+    {%- set rail_html %}{{ block('rail') }}{% endset -%}
+    {%- set rail_foot_html %}{{ block('rail_foot') }}{% endset -%}
+    {%- set context_bar_html %}{{ block('context_bar') }}{% endset -%}
+    {%- set topbar_start_html %}{{ block('topbar_start') }}{% endset -%}
+    {%- set topbar_search_html %}{{ block('topbar_search') }}{% endset -%}
+    {%- set topbar_end_html %}{{ block('topbar_end') }}{% endset -%}
+    {%- set module_tabs_html %}{{ block('module_tabs') }}{% endset -%}
+    {%- set page_head_html %}{{ block('page_head') }}{% endset -%}
+    {%- set page_html %}{{ block('page') }}{% endset -%}
+    {%- set status_html %}{{ block('status') }}{% endset -%}
+    {%- set foot_html %}{{ block('foot') }}{% endset -%}
+    {{ include('layout/_shell.html.twig', {
+        rail: rail_html,
+        rail_foot: rail_foot_html,
+        context_bar: context_bar_html,
+        topbar_start: topbar_start_html,
+        topbar_search: topbar_search_html,
+        topbar_end: topbar_end_html,
+        module_tabs: module_tabs_html,
+        page_head: page_head_html,
+        page: page_html,
+        status: status_html,
+        foot: foot_html,
+        rail_home: rail_home ?? '#main',
+        rail_label: 'Espace enseignant',
+        status_keys: status_keys ?? [],
+    }) }}
+{% endblock %}
+
+{% block rail %}{% endblock %}
+{% block rail_foot %}{% endblock %}
+{% block context_bar %}{% endblock %}
+{% block topbar_start %}{% endblock %}
+{% block topbar_search %}{% endblock %}
+{% block topbar_end %}{% endblock %}
+{% block module_tabs %}{% endblock %}
+{% block page_head %}{% endblock %}
+{% block page %}{% endblock %}
+{% block status %}{% endblock %}
+{% block foot %}{% endblock %}

@@ -1,0 +1,13 @@
+{#
+ # Px:Drawer - a side panel without backdrop: the screen stays readable and usable (design-ui.md
+ # § 4.14). Opened by data-px-open="{id}", closed by its cross or Escape. Blocks `content`, `foot`.
+ #}
+{% props id, title, size = null %}
+<aside id="{{ id }}"{{ attributes.defaults({class: 'px-drawer' ~ (size ? ' px-drawer--' ~ size : '')}) }} role="dialog" aria-modal="false" aria-labelledby="{{ id }}-title" data-controller="drawer" inert>
+    <header class="px-drawer__head">
+        <h2 id="{{ id }}-title" tabindex="-1">{{ title }}</h2>
+        <twig:Px:IconButton icon="x" label="Fermer" data-action="drawer#close"/>
+    </header>
+    <div class="px-drawer__body">{% block content %}{% endblock %}</div>
+    {% if block('foot') is defined and block('foot')|trim is not empty %}<footer class="px-drawer__foot">{{ block('foot') }}</footer>{% endif %}
+</aside>

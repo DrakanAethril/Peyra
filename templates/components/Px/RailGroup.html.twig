@@ -1,0 +1,6 @@
+{# Px:RailGroup - a labelled group of rail entries (« Gestion », « Comptabilité »…). #}
+{% props label %}
+<div{{ attributes.defaults({class: 'px-rail__group'}) }} role="group" aria-label="{{ label }}">
+    <p class="px-rail__label" aria-hidden="true">{{ label }}</p>
+    {% block content %}{% endblock %}
+</div>

@@ -1,0 +1,8 @@
+{# Px:Trail - see App\Twig\Components\Px\Trail. The « › » is drawn by the stylesheet. #}
+<nav{{ attributes.defaults({class: 'px-trail'}) }} aria-label="Fil d’Ariane">
+    <ol>
+        {% for segment in segments %}
+            <li><a href="{{ segment.href }}"{% if loop.last %} aria-current="page"{% endif %}>{{ segment.label }}</a></li>
+        {% endfor %}
+    </ol>
+</nav>

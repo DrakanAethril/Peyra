@@ -1,0 +1,3 @@
+{# Px:FilterChip - one filter of a list, a GET link; the active one is night blue. #}
+{% props label, href, count = null, current = false %}
+<a href="{{ href }}"{{ attributes.defaults({class: 'px-filters__chip'}) }}{% if current %} aria-current="true"{% endif %}>{{ label }}{% if count is not null %}&nbsp;· {{ count }}{% endif %}</a>

@@ -1,0 +1,23 @@
+{#
+ # Px:Rail - the night-blue module rail (design-ui.md § 4.1). `state` is the person's choice read
+ # from the px_rail cookie (collapsed, expanded or null: unfolded from 1440 px, folded below).
+ # Content: Px:RailItem entries, grouped with a <div class="px-rail__group"> and its label;
+ # block `foot`: help and the like. The fold button is the rail's own.
+ #}
+{% props home, state = null, label = 'Modules' %}
+{% set classes = 'px-rail' ~ (state == 'collapsed' ? ' is-collapsed' : '') ~ (state == 'expanded' ? ' is-expanded' : '') %}
+<nav id="px-rail"{{ attributes.defaults({class: classes}) }} aria-label="{{ label }}" data-controller="rail">
+    <a class="px-rail__brand" href="{{ home }}" aria-label="Peyra, tableau de bord" data-tooltip="Tableau de bord">
+        <img src="{{ asset('brand/seal-mini.svg') }}" alt="" width="24" height="24">
+        {{ source('@brand/wordmark.svg') }}
+    </a>
+    {% block content %}{% endblock %}
+    <div class="px-rail__foot">
+        {% block foot %}{% endblock %}
+        <button type="button" class="px-rail__item px-rail__toggle" data-rail-target="toggle" data-action="rail#toggle" aria-label="Replier le menu" data-tooltip="Replier le menu" aria-controls="px-rail" aria-expanded="true">
+            <twig:ux:icon name="panel-left-close" aria-hidden="true" data-rail-icon="close"/>
+            <twig:ux:icon name="panel-left-open" aria-hidden="true" data-rail-icon="open" hidden/>
+            <span class="px-rail__text">Replier le menu</span>
+        </button>
+    </div>
+</nav>

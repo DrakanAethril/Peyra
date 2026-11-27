@@ -1,0 +1,17 @@
+{#
+ # Px:Card - a white card, no shadow (design-ui.md § 4.10). `title` and `meta` make the head;
+ # blocks `actions` (in the head), `content` (the body), `foot`. `flush` for a table, a tree or code
+ # that touches the edges; `density` sets the row height of what it holds. A card holds no card.
+ #}
+{% props title = null, meta = null, flush = false, density = null, headingLevel = 2 %}
+<section{{ attributes.defaults({class: 'px-card' ~ (flush ? ' px-card--flush' : '')}) }}{% if density %} data-density="{{ density }}"{% endif %}>
+    {% if title %}
+        <header class="px-card__head">
+            <h{{ headingLevel }}>{{ title }}</h{{ headingLevel }}>
+            {% if meta %}<small>{{ meta }}</small>{% endif %}
+            {% if block('actions') is defined and block('actions')|trim is not empty %}<div class="px-card__actions">{{ block('actions') }}</div>{% endif %}
+        </header>
+    {% endif %}
+    <div class="px-card__body">{% block content %}{% endblock %}</div>
+    {% if block('foot') is defined and block('foot')|trim is not empty %}<footer class="px-card__foot">{{ block('foot') }}</footer>{% endif %}
+</section>

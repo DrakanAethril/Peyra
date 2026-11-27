@@ -1,0 +1,15 @@
+{#
+ # Px:Table - the dense table and its scrolling wrapper (design-ui.md § 4.7). The caller writes the
+ # thead/tbody/tfoot as content. `density` is compact, regular or comfortable (the shell's default
+ # otherwise); `variant` raw (a query result) or plain (a statement in a card); `caption` names the
+ # table for screen readers, visibly when `captionVisible`. `rows` turns on the keyboard reading
+ # of the rows (rows_controller.js): mark them data-rows-target="row".
+ #}
+{% props caption, density = null, variant = null, captionVisible = false, stickyFirst = false, rows = false %}
+{% set classes = 'px-table' ~ (variant ? ' px-table--' ~ variant : '') ~ (stickyFirst ? ' px-table--sticky-first' : '') %}
+<div class="px-table-wrap">
+    <table{{ attributes.defaults({class: classes}) }}{% if density %} data-density="{{ density }}"{% endif %}{% if rows %} data-controller="rows" data-action="keydown->rows#keydown"{% endif %}>
+        <caption{% if not captionVisible %} class="px-u-sr-only"{% endif %}>{{ caption }}</caption>
+        {% block content %}{% endblock %}
+    </table>
+</div>

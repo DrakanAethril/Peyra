@@ -1,0 +1,125 @@
+{#
+ # The teacher shell in the gallery (design-ux.md § 2.4): the correction screen of mock-up 7, built
+ # from the components alone. Development and test only (DesignGalleryController).
+ #}
+{% extends 'layout/teacher.html.twig' %}
+
+{% set rail_home = path('app_design_teacher') %}
+
+{% block title %}Espace enseignant · Galerie · Peyra{% endblock %}
+
+{% block rail %}
+    <twig:Px:RailItem href="#main" icon="house" label="Accueil"/>
+    <twig:Px:RailItem href="#main" icon="graduation-cap" label="Classes et missions" :current="true"/>
+    <twig:Px:RailItem href="#main" icon="book-copy" label="Dossiers modèles"/>
+    <twig:Px:RailItem href="#main" icon="files" label="Générateur de pièces"/>
+    <twig:Px:RailItem href="#main" icon="chart-column" label="Référentiel et passeport"/>
+    <twig:Px:RailItem href="#main" icon="settings" label="Paramètres"/>
+{% endblock %}
+
+{% block rail_foot %}
+    <twig:Px:RailItem href="#main" icon="circle-help" label="Aide et documentation" :numbered="false"/>
+{% endblock %}
+
+{# The class switcher and the search trigger are drawn with their classes until their components exist (0.5, 1.5). #}
+{% block topbar_start %}
+    <button type="button" class="px-switcher" aria-haspopup="listbox" aria-expanded="false">
+        <b class="px-switcher__name">BTS CG 1</b>
+        <small class="px-switcher__meta">2026-2027 · 24 étudiants</small>
+        <twig:ux:icon name="chevron-down" aria-hidden="true"/>
+    </button>
+{% endblock %}
+
+{% block topbar_search %}
+    <button type="button" class="px-cmdk-trigger">
+        <twig:ux:icon name="search" aria-hidden="true"/>
+        <span>Étudiant, mission, dossier modèle…</span>
+        <twig:Px:Kbd combo="Ctrl+K"/>
+    </button>
+{% endblock %}
+
+{% block topbar_end %}
+    <twig:Px:Chip tone="role">Espace enseignant</twig:Px:Chip>
+    <twig:Px:IconButton icon="bell" label="Notifications"/>
+    <twig:Px:Avatar name="Jean Prost" :me="true" :decorative="false"/>
+{% endblock %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Chevalier Manon" :trail="[
+        {label: 'Classes', href: path('app_design_teacher')},
+        {label: 'BTS CG 1', href: path('app_design_teacher')},
+        {label: 'Mission 4', href: path('app_design_teacher')},
+        {label: 'Tâche 2 · Facture Scierie du Haut-Forez', href: path('app_design_teacher')},
+    ]">
+        <twig:block name="badge"><twig:Px:Badge tone="warning" label="1 écart d’imputation"/></twig:block>
+        <twig:block name="actions">
+            <twig:Px:Button icon="chevron-left" shortcut="F7">Précédent</twig:Px:Button>
+            <twig:Px:Chip>Copie 8 sur 24</twig:Px:Chip>
+            <twig:Px:Button icon="chevron-right" shortcut="F8">Suivant</twig:Px:Button>
+            <twig:Px:Button href="{{ path('app_design_gallery') }}" icon="external-link">Ouvrir son dossier</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <div class="px-split--even px-split">
+        <twig:Px:Card title="Attendu" meta="corrigé, montants de sa variante" :flush="true" density="regular">
+            <twig:Px:Table caption="Écriture attendue">
+                <thead><tr><th scope="col">Compte</th><th scope="col">Intitulé</th><th scope="col" class="px-u-right">Débit</th><th scope="col" class="px-u-right">Crédit</th></tr></thead>
+                <tbody>
+                    <tr><td class="px-u-code">601000</td><td>Achats de matières premières</td><td class="px-u-num">2&#8239;622,00</td><td class="px-u-num"></td></tr>
+                    <tr><td class="px-u-code">624100</td><td>Transports sur achats</td><td class="px-u-num">85,00</td><td class="px-u-num"></td></tr>
+                    <tr><td class="px-u-code">445660</td><td>TVA déductible sur ABS</td><td class="px-u-num">541,40</td><td class="px-u-num"></td></tr>
+                    <tr><td class="px-u-code">401SCIE</td><td>Scierie du Haut-Forez</td><td class="px-u-num"></td><td class="px-u-num">3&#8239;248,40</td></tr>
+                </tbody>
+                <tfoot><tr class="px-table__total"><th scope="row" colspan="2">Totaux</th><td class="px-u-num">3&#8239;248,40</td><td class="px-u-num">3&#8239;248,40</td></tr></tfoot>
+            </twig:Px:Table>
+        </twig:Px:Card>
+        <twig:Px:Card title="Saisi par l’étudiante" meta="ACH · 12/11/2026 · validé à 10 h 31" :flush="true" density="regular">
+            <twig:Px:Table caption="Écriture saisie par l’étudiante">
+                <thead><tr><th scope="col">Compte</th><th scope="col">Intitulé</th><th scope="col" class="px-u-right">Débit</th><th scope="col" class="px-u-right">Crédit</th><th scope="col">Écart</th></tr></thead>
+                <tbody>
+                    <tr class="is-error"><td class="px-u-code">601000</td><td>Achats de matières premières</td><td class="px-u-num">2&#8239;707,00</td><td class="px-u-num"></td><td><twig:Px:Badge tone="danger" label="+ 85,00"/></td></tr>
+                    <tr class="is-error is-dim"><td class="px-u-code">624100</td><td>Transports sur achats</td><td class="px-u-num">—</td><td class="px-u-num"></td><td><twig:Px:Badge tone="danger" label="Ligne absente"/></td></tr>
+                    <tr><td class="px-u-code">445660</td><td>TVA déductible sur ABS</td><td class="px-u-num">541,40</td><td class="px-u-num"></td><td><twig:Px:Badge tone="success" label="Conforme"/></td></tr>
+                    <tr><td class="px-u-code">401SCIE</td><td>Scierie du Haut-Forez</td><td class="px-u-num"></td><td class="px-u-num">3&#8239;248,40</td><td><twig:Px:Badge tone="success" label="Conforme"/></td></tr>
+                </tbody>
+                <tfoot><tr class="px-table__total"><th scope="row" colspan="2">Totaux</th><td class="px-u-num">3&#8239;248,40</td><td class="px-u-num">3&#8239;248,40</td><td></td></tr></tfoot>
+            </twig:Px:Table>
+        </twig:Px:Card>
+    </div>
+    <div class="px-split--even px-split">
+        <twig:Px:Card title="Lecture de l’écart">
+            <twig:Px:Checks :items="[
+                {state: 'warning', text: 'Erreur d’imputation : le port facturé (85,00) est enregistré avec les matières.'},
+                {state: 'passed', text: 'Tiers, TVA, date, journal et total conformes.'},
+                {state: 'passed', text: 'Admis par le corrigé : 601000 ou 601100 ; 624100 obligatoire.'},
+                {state: 'warning', text: 'Même écart chez 8 autres étudiants de la classe.'},
+            ]"/>
+        </twig:Px:Card>
+        <twig:Px:Card title="Positionnement" meta="1.5 Enregistrement et suivi des opérations relatives aux fournisseurs">
+            <twig:Px:Segmented legend="Positionnement" :legendHidden="true" name="t-level" value="2" hint="Proposé par l’outil d’après les écarts. Vous décidez." :options="[
+                {value: 1, label: 'Non acquis'}, {value: 2, label: 'En cours d’acquisition'}, {value: 3, label: 'Acquis'}, {value: 4, label: 'Maîtrisé'},
+            ]"/>
+            <twig:Px:Field id="t-comment" label="Commentaire">
+                <twig:Px:Input id="t-comment" :area="true" value="Relis la facture : le port est une charge à part. Quel compte ?"/>
+            </twig:Px:Field>
+        </twig:Px:Card>
+    </div>
+    <div class="px-kpis">
+        <twig:Px:Kpi label="Dossiers distribués" value="24"/>
+        <twig:Px:Kpi label="Missions terminées" value="4" note="sur 24"/>
+        <twig:Px:Kpi label="En cours" value="17"/>
+        <twig:Px:Kpi label="Pas commencées" value="3"/>
+    </div>
+{% endblock %}
+
+{% block foot %}
+    <twig:Px:ActionFoot>
+        7 copies corrigées sur 24
+        <twig:block name="actions">
+            <twig:Px:Button>Demander une contrepassation</twig:Px:Button>
+            <twig:Px:Button variant="primary" shortcut="F10">Enregistrer et passer au suivant</twig:Px:Button>
+        </twig:block>
+    </twig:Px:ActionFoot>
+{% endblock %}

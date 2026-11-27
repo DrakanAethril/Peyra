@@ -1,0 +1,11 @@
+{#
+ # Px:Empty - why it is empty, and the one action that fills it when there is one (design-ui.md
+ # § 4.13). No illustration. Block `action`. `page` for the empty state of a whole page.
+ #}
+{% props title, text = null, icon = 'inbox', page = false %}
+<div{{ attributes.defaults({class: 'px-empty' ~ (page ? ' px-empty--page' : '')}) }}>
+    <twig:ux:icon name="{{ icon }}" aria-hidden="true"/>
+    <p class="px-empty__title">{{ title }}</p>
+    {% if text %}<p class="px-empty__text">{{ text }}</p>{% endif %}
+    {% if block('action') is defined and block('action')|trim is not empty %}<div class="px-empty__action">{{ block('action') }}</div>{% endif %}
+</div>

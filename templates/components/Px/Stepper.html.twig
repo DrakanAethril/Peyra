@@ -1,0 +1,17 @@
+{#
+ # Px:Stepper - the steps of a process (design-ui.md § 4.11). `steps`: list of {label, href?,
+ # state: done|current|todo}. A done step is a link; the current one too; a step to come is not.
+ #}
+{% props steps, label = 'Étapes', vertical = false %}
+<ol{{ attributes.defaults({class: 'px-stepper' ~ (vertical ? ' px-stepper--vertical' : '')}) }} aria-label="{{ label }}">
+    {% for step in steps %}
+        {% set state = step.state ?? 'todo' %}
+        <li{% if state == 'done' %} class="is-done"{% elseif state == 'current' %} aria-current="step"{% endif %}>
+            {% if state != 'todo' and step.href is defined %}
+                <a href="{{ step.href }}"><i aria-hidden="true">{{ state == 'done' ? '✓' : loop.index }}</i>{{ step.label }}{% if state == 'done' %}<span class="px-u-sr-only"> (faite)</span>{% endif %}</a>
+            {% else %}
+                <span><i aria-hidden="true">{{ state == 'done' ? '✓' : loop.index }}</i>{{ step.label }}{% if state == 'done' %}<span class="px-u-sr-only"> (faite)</span>{% endif %}</span>
+            {% endif %}
+        </li>
+    {% endfor %}
+</ol>

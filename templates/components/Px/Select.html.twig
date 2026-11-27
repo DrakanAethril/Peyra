@@ -1,0 +1,13 @@
+{#
+ # Px:Select - a native select dressed as an input (design-ui.md § 4.5). A select for input starts
+ # on a prompt (`placeholder`, « Choisir un journal… »); one for consultation may start on its first
+ # value. `options` is a list of {value, label}; `value` is the selected one.
+ #}
+{% props id, options, name = null, value = null, placeholder = null, size = null, hint = null, error = null, required = false %}
+{% set described = [hint ? id ~ '_hint' : null, error ? id ~ '_error' : null]|filter(v => v is not null)|join(' ') %}
+<select id="{{ id }}" name="{{ name ?? id }}"{{ attributes.defaults({class: 'px-select' ~ (size ? ' px-select--' ~ size : '')}) }}{% if described %} aria-describedby="{{ described }}"{% endif %}{% if error %} aria-invalid="true"{% endif %}{% if required %} required{% endif %}>
+    {% if placeholder %}<option value=""{% if value is null or value == '' %} selected{% endif %}>{{ placeholder }}</option>{% endif %}
+    {% for option in options %}
+        <option value="{{ option.value }}"{% if value is not null and value ~ '' == option.value ~ '' %} selected{% endif %}>{{ option.label }}</option>
+    {% endfor %}
+</select>

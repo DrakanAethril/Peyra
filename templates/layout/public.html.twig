@@ -1,0 +1,27 @@
+{#
+ # The public shell: sign-in, error pages, « À propos » (design-ui.md § 6). A centred card on the
+ # page background, the seal and the word above, the source-code link below (AGPL § 13).
+ # Blocks: `card` (the card's content), `card_class` (px-public__card--wide for a wider card).
+ #}
+{% extends 'base.html.twig' %}
+
+{% block shell %}public{% endblock %}
+
+{% block body %}
+    <main class="px-public" id="main">
+        <div class="px-public__card {% block card_class %}{% endblock %}">
+            {% block brand %}
+                <div class="px-public__brand">
+                    <img src="{{ asset('brand/seal.svg') }}" alt="" width="72" height="72">
+                    {{ source('@brand/wordmark.svg') }}
+                    <span class="px-public__tagline">PGI pédagogique</span>
+                </div>
+            {% endblock %}
+            {% block card %}{% endblock %}
+            <footer class="px-public__foot">
+                <a class="px-link" href="https://github.com/DrakanAethril/Peyra">Code source</a>
+                <span>Licence AGPL-3.0</span>
+            </footer>
+        </div>
+    </main>
+{% endblock %}

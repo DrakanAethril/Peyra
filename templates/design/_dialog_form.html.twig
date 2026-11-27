@@ -1,0 +1,16 @@
+{# The gallery's dialog fragment: a field to type, refused empty with a 422 (DesignGalleryController::dialog). #}
+<form method="post" action="{{ path('app_design_dialog') }}" class="px-form" novalidate>
+    {% if error %}
+        <twig:Px:Alert tone="danger" title="Le formulaire contient une erreur.">
+            <a class="px-link" href="#motif">{{ error }}</a>
+        </twig:Px:Alert>
+    {% endif %}
+    <p>L’écriture ACH-000457 sera contrepassée à la date du dossier, le 30/11/2026.</p>
+    <twig:Px:Field id="motif" label="Motif" :required="true" :error="error" hint="Il figurera dans la piste d’audit.">
+        <twig:Px:Input id="motif" :value="reason" :area="true" :error="error is not null" :hint="true" :required="true"/>
+    </twig:Px:Field>
+    <div class="px-dialog__foot">
+        <twig:Px:ConfirmButton label="Annuler" confirmLabel="Abandonner la saisie" variant="secondary" type="button" data-dialog-target="abandon" data-action="dialog#close"/>
+        <twig:Px:Button variant="primary" type="submit" shortcut="F10">Contrepasser</twig:Px:Button>
+    </div>
+</form>

@@ -1,0 +1,12 @@
+{#
+ # Px:Input - a text input (design-ui.md § 4.5). `hint` and `error` (booleans or texts) link it to
+ # the Px:Field messages of the same id; `size` is sm or lg; `area` makes it a textarea.
+ #}
+{% props id, name = null, value = null, type = 'text', size = null, area = false, hint = null, error = null, required = false, placeholder = null %}
+{% set described = [hint ? id ~ '_hint' : null, error ? id ~ '_error' : null]|filter(v => v is not null)|join(' ') %}
+{% set classes = 'px-input' ~ (size ? ' px-input--' ~ size : '') ~ (area ? ' px-input--area' : '') %}
+{% if area %}
+<textarea id="{{ id }}" name="{{ name ?? id }}"{{ attributes.defaults({class: classes}) }}{% if described %} aria-describedby="{{ described }}"{% endif %}{% if error %} aria-invalid="true"{% endif %}{% if required %} required{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}>{{ value }}</textarea>
+{% else %}
+<input type="{{ type }}" id="{{ id }}" name="{{ name ?? id }}"{% if value is not null %} value="{{ value }}"{% endif %}{{ attributes.defaults({class: classes}) }}{% if described %} aria-describedby="{{ described }}"{% endif %}{% if error %} aria-invalid="true"{% endif %}{% if required %} required{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}>
+{% endif %}

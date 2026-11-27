@@ -1,0 +1,358 @@
+{#
+ # The design system's gallery (step 0.3): every Px component in every state, in the student shell.
+ # Development and test only (DesignGalleryController). Figures are written as the amount filter of
+ # step 0.6 will print them: U+202F between thousands, two decimals, U+2212 for a minus.
+ #}
+{% extends 'layout/pgi.html.twig' %}
+{% use 'design/_student_chrome.html.twig' %}
+
+{% set rail_home = path('app_design_gallery') %}
+{% set status_keys = [
+    {combo: 'F10', verb: 'enregistrer'},
+    {combo: 'Ctrl+Enter', verb: 'valider'},
+    {combo: '?', verb: 'raccourcis'},
+    {combo: 'Ctrl+K', verb: 'rechercher'},
+] %}
+
+{% block title %}Galerie du système de design · Peyra{% endblock %}
+
+{% block context_bar %}
+    <twig:Px:ContextBar backLabel="Revenir à la correction" backHref="{{ path('app_design_teacher') }}">Dossier de Manon Chevalier, vous agissez en votre nom</twig:Px:ContextBar>
+{% endblock %}
+
+{% block module_tabs %}
+    <twig:Px:ModuleTabs label="Comptabilité" :tabs="[
+        {label: 'Saisie', href: path('app_design_gallery'), current: true},
+        {label: 'Brouillard', href: path('app_design_gallery') ~ '#tableaux'},
+        {label: 'Consultation', href: path('app_design_gallery') ~ '#champs'},
+        {label: 'Lettrage', href: path('app_design_gallery') ~ '#cartes'},
+        {label: 'Éditions', href: path('app_design_gallery') ~ '#messages'},
+    ]"/>
+{% endblock %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Galerie du système de design" :trail="[
+        {label: 'Comptabilité', href: path('app_design_gallery')},
+        {label: 'Saisie', href: path('app_design_gallery')},
+        {label: 'Journal ACH · novembre 2026', href: path('app_design_gallery')},
+    ]">
+        <twig:block name="badge"><twig:Px:Badge tone="warning" label="Brouillard"/></twig:block>
+        <twig:block name="actions">
+            <twig:Px:Button variant="quiet" icon="flag">Signaler une anomalie</twig:Px:Button>
+            <twig:Px:Button icon="eye" shortcut="F7">Pièce en grand</twig:Px:Button>
+            <twig:Px:Button icon="undo-2" data-px-open="px-gallery-dialog">Contrepasser…</twig:Px:Button>
+            <twig:Px:Button variant="primary" icon="save" shortcut="F10 Ctrl+S" data-px-open="px-gallery-drawer">Enregistrer</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block status %}
+    <span>Brouillard · <b>7 écritures</b></span>
+    <span>Solde 401SCIE · <b>3&#8239;248,40 C</b></span>
+    <span class="px-statusbar__live">Mise à jour en direct</span>
+{% endblock %}
+
+{% block page %}
+    {% if reason %}
+        <twig:Px:Alert tone="success" title="Le dialogue a été validé.">Motif reçu : « {{ reason }} ». Le serveur a répondu par une redirection, que la page a suivie.</twig:Px:Alert>
+    {% endif %}
+
+    <twig:Px:Alert tone="info" title="Galerie de développement">Chaque composant Px dans chacun de ses états. Les écrans les emploient tels quels ; une règle qui manque devient une variante ici d’abord. <a class="px-link" href="{{ path('app_design_teacher') }}">Espace enseignant</a> · <a class="px-link" href="{{ path('app_design_public') }}">Coquille publique</a></twig:Px:Alert>
+
+    <div class="px-kpis">
+        <twig:Px:Kpi label="Écritures au brouillard" value="7" note="dont 2 aujourd’hui"/>
+        <twig:Px:Kpi label="Écart de rapprochement" value="0,00" note="contrôle passé" state="ok"/>
+        <twig:Px:Kpi label="Écart de TVA" value="85,00" note="à corriger" state="alert"/>
+        <twig:Px:Kpi label="Pièces à traiter" value="3" note="voir la liste" href="#tableaux"/>
+    </div>
+
+    {# ------------------------------------------------------------------ Buttons #}
+    <twig:Px:Card title="Boutons" meta="§ 4.4">
+        <div class="px-cluster">
+            <twig:Px:Button variant="quiet">Discret</twig:Px:Button>
+            <twig:Px:Button>Secondaire</twig:Px:Button>
+            <twig:Px:Button variant="danger" icon="trash-2">Supprimer</twig:Px:Button>
+            <twig:Px:Button :pressed="true" icon="link-2">Afficher les lettrées</twig:Px:Button>
+            <twig:Px:Button :pressed="false" icon="link-2">Bascule relâchée</twig:Px:Button>
+            <twig:Px:Button variant="primary" icon="save" shortcut="Ctrl+Enter">Valider</twig:Px:Button>
+        </div>
+        <div class="px-cluster">
+            <twig:Px:Button size="sm">Petit</twig:Px:Button>
+            <twig:Px:Button size="sm" variant="primary">Petit principal</twig:Px:Button>
+            <twig:Px:Button size="lg">Grand</twig:Px:Button>
+            <twig:Px:Button size="lg" variant="primary">Se connecter</twig:Px:Button>
+            <twig:Px:Button href="#main" icon="external-link">Lien en bouton</twig:Px:Button>
+        </div>
+        <div class="px-cluster">
+            <twig:Px:Button :disabled="true">Désactivé</twig:Px:Button>
+            <twig:Px:Button variant="primary" :disabled="true" id="gallery-validate" disabledReason="L’écriture n’est pas équilibrée : il manque 85,00 au débit." shortcut="F10">Enregistrer</twig:Px:Button>
+            <twig:Px:Button :busy="true" icon="refresh-cw">Recalcul…</twig:Px:Button>
+            <twig:Px:Button variant="primary" :busy="true">Enregistrement…</twig:Px:Button>
+        </div>
+        <div class="px-cluster">
+            <twig:Px:IconButton icon="printer" label="Imprimer"/>
+            <twig:Px:IconButton icon="download" label="Télécharger"/>
+            <twig:Px:IconButton icon="bell" label="Notifications" :dot="true" dotLabel="du nouveau"/>
+            <twig:Px:IconButton icon="eye-off" label="Masquer les noms" :pressed="true"/>
+            <twig:Px:IconButton icon="zoom-in" label="Agrandir" size="sm"/>
+            <twig:Px:IconButton icon="trash-2" label="Supprimer la ligne" :disabled="true"/>
+            <span>Un lien <a class="px-link" href="#main">Ouvrir le dossier</a> et, dans un paragraphe, <a class="px-link" href="#main">la consigne<twig:ux:icon name="external-link" aria-hidden="true"/></a>.</span>
+        </div>
+        <div class="px-cluster">
+            <form action="#main" method="get">
+                <twig:Px:ConfirmButton label="Supprimer le brouillon" confirmLabel="Confirmer la suppression" icon="trash-2"/>
+            </form>
+            <form action="#main" method="get">
+                <twig:Px:ConfirmButton label="Délettrer" confirmLabel="Confirmer le délettrage" variant="secondary" size="sm"/>
+            </form>
+        </div>
+    </twig:Px:Card>
+
+    {# ------------------------------------------------------------------ Pills, chips, keys, avatars #}
+    <div class="px-split--even px-split">
+        <twig:Px:Card title="Pastilles et puces" meta="§§ 4.2, 4.9">
+            <div class="px-cluster">
+                <twig:Px:Badge tone="success" label="Validée"/>
+                <twig:Px:Badge tone="warning" label="À traiter"/>
+                <twig:Px:Badge tone="danger" label="Écart 85,00"/>
+                <twig:Px:Badge tone="info" label="En cours"/>
+                <twig:Px:Badge tone="neutral" label="Pas commencée"/>
+            </div>
+            <div class="px-cluster">
+                <twig:Px:Badge tone="info" :dot="false" label="Factur-X"/>
+                <twig:Px:Badge tone="neutral" :dot="false" label="Lecture seule"/>
+                <twig:Px:Badge tone="success" label="A" full="Pointé, lettre A"/>
+                <twig:Px:Badge tone="success" label="0" full="Aucun écart"/>
+            </div>
+            <div class="px-cluster">
+                <twig:Px:Chip>Exercice 2026</twig:Px:Chip>
+                <twig:Px:Chip tone="role">Espace enseignant</twig:Px:Chip>
+                <twig:Px:Chip tone="info" icon="calendar">Date du dossier · 30 nov. 2026</twig:Px:Chip>
+            </div>
+        </twig:Px:Card>
+        <twig:Px:Card title="Touches et avatars" meta="§ 4.15">
+            <div class="px-cluster">
+                <twig:Px:Kbd combo="F10"/> <twig:Px:Kbd combo="Ctrl+K"/> <twig:Px:Kbd combo="Ctrl+Enter"/>
+                <twig:Px:Kbd combo="Enter"/> <twig:Px:Kbd combo="Escape"/> <twig:Px:Kbd combo="ArrowUp"/><twig:Px:Kbd combo="ArrowDown"/>
+                <twig:Px:Kbd combo="Ctrl+Alt+ArrowRight"/> <twig:Px:Kbd combo="Shift+Tab"/>
+            </div>
+            <div class="px-cluster">
+                <twig:Px:Avatar name="Inès Moreau" :me="true" :decorative="false"/>
+                <twig:Px:Avatar name="Manon Chevalier" :decorative="false"/>
+                <twig:Px:Avatar name="Théo Garnier" size="sm" :decorative="false"/>
+                <twig:Px:Avatar name="Élodie Roux" size="lg" :decorative="false"/>
+            </div>
+        </twig:Px:Card>
+    </div>
+
+    {# ------------------------------------------------------------------ Fields #}
+    <twig:Px:Card title="Champs" meta="§ 4.5" id="champs">
+        <div class="px-fieldrow">
+            <twig:Px:Field id="g-journal" label="Journal" :required="true">
+                <twig:Px:Select id="g-journal" placeholder="Choisir un journal…" :options="[{value: 'ACH', label: 'ACH · Achats'}, {value: 'VTE', label: 'VTE · Ventes'}, {value: 'BQ1', label: 'BQ1 · Banque'}]" value="ACH" :required="true"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="g-date" label="Date" error="La période de novembre 2026 est close.">
+                <twig:Px:Input id="g-date" value="12/11/2026" class="px-u-code" :error="true"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="g-piece" label="N° de pièce" hint="Numéro du fournisseur.">
+                <twig:Px:Input id="g-piece" value="FA-2611-0457" :hint="true"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="g-label" label="Libellé" :wide="true">
+                <twig:Px:Input id="g-label" placeholder="Libellé de l’écriture"/>
+            </twig:Px:Field>
+        </div>
+        <div class="px-fieldrow">
+            <twig:Px:Field id="g-readonly" label="Lecture seule">
+                <twig:Px:Input id="g-readonly" value="401SCIE" readonly/>
+            </twig:Px:Field>
+            <twig:Px:Field id="g-disabled" label="Désactivé">
+                <twig:Px:Input id="g-disabled" value="Période close" disabled/>
+            </twig:Px:Field>
+            <twig:Px:Field id="g-small" label="Petit (filtre)">
+                <twig:Px:Input id="g-small" size="sm" placeholder="Filtrer…"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="g-period" label="Période (consultation)">
+                <twig:Px:Select id="g-period" :options="[{value: '2026-11', label: 'Novembre 2026'}, {value: '2026-10', label: 'Octobre 2026'}]"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="g-large" label="Grand (connexion)">
+                <twig:Px:Input id="g-large" size="lg" placeholder="Identifiant"/>
+            </twig:Px:Field>
+        </div>
+        <div class="px-split">
+            <twig:Px:Field id="g-comment" label="Commentaire de correction" hint="Visible de l’étudiante une fois la correction publiée.">
+                <twig:Px:Input id="g-comment" :area="true" :hint="true" value="Relis la facture : le port est une charge à part. Quel compte ?"/>
+            </twig:Px:Field>
+            <twig:Px:Segmented legend="Positionnement" name="g-level" value="2" hint="Proposé par l’outil d’après les écarts. Vous décidez." :options="[
+                {value: 1, label: 'Non acquis'}, {value: 2, label: 'En cours d’acquisition'}, {value: 3, label: 'Acquis'}, {value: 4, label: 'Maîtrisé'},
+            ]"/>
+        </div>
+        <div class="px-split">
+            <twig:Px:CheckGroup legend="Modules ouverts par la mission" name="g-modules" :options="[
+                {value: 'sales', label: 'Ventes', checked: true},
+                {value: 'purchases', label: 'Achats et stocks', checked: true},
+                {value: 'bank', label: 'Banque'},
+                {value: 'payroll', label: 'Paie et social', disabled: true},
+            ]"/>
+            <div class="px-stack">
+                <twig:Px:CheckGroup legend="Comportement comptable" name="g-behaviour" type="radio" :inline="true" :options="[
+                    {value: 'propose', label: 'Proposer', checked: true},
+                    {value: 'let', label: 'Laisser saisir'},
+                    {value: 'post', label: 'Comptabiliser'},
+                ]"/>
+                <twig:Px:CheckGroup legend="Classes destinataires" name="g-classes" :inline="true" error="Choisissez au moins une classe." :options="[
+                    {value: 'cg1', label: 'BTS CG 1'},
+                    {value: 'cg2', label: 'BTS CG 2'},
+                ]"/>
+            </div>
+        </div>
+    </twig:Px:Card>
+
+    {# ------------------------------------------------------------------ Tables, filters, pager #}
+    <twig:Px:Card title="Tableau, filtres, pagination" meta="§ 4.7" :flush="true" id="tableaux">
+        <twig:Px:Filters action="{{ path('app_design_gallery') }}" search="" searchLabel="Rechercher une écriture" resetHref="{{ path('app_design_gallery') }}">
+            <twig:Px:FilterChip label="À traiter" :count="3" href="{{ path('app_design_gallery') }}" :current="true"/>
+            <twig:Px:FilterChip label="Brouillard" :count="7" href="{{ path('app_design_gallery') }}"/>
+            <twig:Px:FilterChip label="Validées" :count="431" href="{{ path('app_design_gallery') }}"/>
+            <twig:Px:FilterChip label="Toutes" href="{{ path('app_design_gallery') }}"/>
+            <twig:Px:Select id="g-filter-journal" name="journal" size="sm" :options="[{value: '', label: 'Tous les journaux'}, {value: 'ACH', label: 'ACH'}, {value: 'VTE', label: 'VTE'}]"/>
+        </twig:Px:Filters>
+        <twig:Px:Table caption="Écritures du journal ACH, novembre 2026" :rows="true">
+            <thead>
+                <tr>
+                    <twig:Px:SortHeader label="Date" field="date" :sort="sort" :direction="direction"/>
+                    <th scope="col">Pièce</th>
+                    <twig:Px:SortHeader label="Compte" field="account" :sort="sort" :direction="direction"/>
+                    <th scope="col">Libellé</th>
+                    <twig:Px:SortHeader label="Débit" field="debit" :sort="sort" :direction="direction" :right="true"/>
+                    <th scope="col" class="px-u-right">Crédit</th>
+                    <th scope="col">État</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="is-dim"><td class="px-u-code">01/11</td><td></td><td class="px-u-code">401SCIE</td><td>Solde précédent</td><td class="px-u-num"></td><td class="px-u-num">12&#8239;480,50</td><td></td></tr>
+                <tr class="is-current" aria-selected="true" data-rows-target="row"><td class="px-u-code">12/11</td><td class="px-u-code">FA-0457</td><td class="px-u-code">601000</td><td>Achats de matières premières</td><td class="px-u-num">2&#8239;707,00</td><td class="px-u-num"></td><td><twig:Px:Badge tone="warning" label="Brouillard"/></td></tr>
+                <tr class="is-todo" data-rows-target="row"><td class="px-u-code">12/11</td><td class="px-u-code">FA-0457</td><td class="px-u-code">445660</td><td>TVA déductible sur ABS</td><td class="px-u-num">541,40</td><td class="px-u-num"></td><td><twig:Px:Badge tone="warning" label="À traiter"/></td></tr>
+                <tr class="is-error" data-rows-target="row"><td class="px-u-code">12/11</td><td class="px-u-code">FA-0457</td><td class="px-u-code">401SCIE</td><td>Scierie du Haut-Forez</td><td class="px-u-num"></td><td class="px-u-num">3&#8239;248,40</td><td><twig:Px:Badge tone="danger" label="Écart 85,00"/></td></tr>
+                <tr class="px-table__section"><th colspan="7" scope="rowgroup">Contrepassations</th></tr>
+                <tr class="is-flash" data-rows-target="row"><td class="px-u-code">14/11</td><td class="px-u-code">OD-0012</td><td class="px-u-code">606300</td><td>Petit équipement</td><td class="px-u-num"></td><td class="px-u-num">138,00</td><td><twig:Px:Badge tone="neutral" label="Contrepassée"/></td></tr>
+                <tr class="px-table__subtotal"><td colspan="4">Sous-total de la page</td><td class="px-u-num">3&#8239;248,40</td><td class="px-u-num">3&#8239;386,40</td><td></td></tr>
+            </tbody>
+            <tfoot>
+                <tr class="px-table__total"><th scope="row" colspan="4">Totaux du filtre</th><td class="px-u-num">48&#8239;612,90</td><td class="px-u-num">48&#8239;612,90</td><td><twig:Px:Badge tone="success" label="Équilibré"/></td></tr>
+            </tfoot>
+        </twig:Px:Table>
+        <twig:Px:Pager :total="431" :perPage="50" :page="page"/>
+    </twig:Px:Card>
+
+    <div class="px-split--even px-split">
+        <twig:Px:Card title="Densités" meta="28 / 32 / 40 px" :flush="true">
+            <twig:Px:Table caption="Ligne compacte" density="compact" :captionVisible="true">
+                <tbody><tr><td>Salaire de base</td><td class="px-u-num">151,67 h</td><td class="px-u-num">2&#8239;350,00</td></tr></tbody>
+            </twig:Px:Table>
+            <twig:Px:Table caption="Ligne normale" density="regular" :captionVisible="true">
+                <tbody><tr><td>Achats de matières premières</td><td class="px-u-code">601000</td><td class="px-u-num">2&#8239;622,00</td></tr></tbody>
+            </twig:Px:Table>
+            <twig:Px:Table caption="Ligne confortable" density="comfortable" :captionVisible="true">
+                <tbody><tr><td><twig:Px:Avatar name="Manon Chevalier" size="sm"/> Manon Chevalier</td><td class="px-u-num">18 / 18</td><td><twig:Px:Badge tone="success" label="Terminée"/></td></tr></tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+        <twig:Px:Card title="Résultat de requête et état" meta="variantes raw et plain" :flush="true">
+            <twig:Px:Table caption="Résultat de la requête" variant="raw">
+                <thead><tr><th scope="col">num_compte</th><th scope="col">intitule</th><th scope="col" class="px-u-right">solde</th></tr></thead>
+                <tbody>
+                    <tr><td class="px-u-code">401SCIE</td><td>Scierie du Haut-Forez</td><td class="px-u-num">−&#8239;3&#8239;248,40</td></tr>
+                    <tr><td class="px-u-code">411DUP</td><td>Dupuis Habitat</td><td class="px-u-num">5&#8239;980,00</td></tr>
+                </tbody>
+            </twig:Px:Table>
+            <twig:Px:Table caption="Résultat de l’exercice" variant="plain">
+                <tbody>
+                    <tr><td>Produits d’exploitation</td><td class="px-u-num">812&#8239;400,00</td></tr>
+                    <tr><td>Charges d’exploitation</td><td class="px-u-num">744&#8239;910,00</td></tr>
+                </tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+    </div>
+
+    {# ------------------------------------------------------------------ Tabs, steps #}
+    <div class="px-split--even px-split">
+        <twig:Px:Card title="Onglets" meta="§ 4.11, une adresse par onglet" :flush="true">
+            <twig:Px:Tabs label="Fiche du tiers" :tabs="[
+                {label: 'Identité', href: path('app_design_gallery'), current: true},
+                {label: 'Échéances', href: path('app_design_gallery'), count: 4},
+                {label: 'Relances', href: path('app_design_gallery')},
+                {label: 'Historique', href: path('app_design_gallery')},
+            ]"/>
+            <twig:Px:Empty icon="file-text" title="Scierie du Haut-Forez" text="Le contenu de l’onglet courant vient ici."/>
+        </twig:Px:Card>
+        <twig:Px:Card title="Étapes" meta="§ 4.11">
+            <twig:Px:Stepper label="Déclaration de TVA" :steps="[
+                {label: 'Préparation', href: path('app_design_gallery'), state: 'done'},
+                {label: 'Cadrage et CA3', href: path('app_design_gallery'), state: 'current'},
+                {label: 'Télédéclaration', state: 'todo'},
+                {label: 'Liquidation', state: 'todo'},
+            ]"/>
+            <twig:Px:Stepper label="Distribution d’un dossier" :vertical="true" :steps="[
+                {label: 'Dossier modèle', href: path('app_design_gallery'), state: 'done'},
+                {label: 'Classes', href: path('app_design_gallery'), state: 'current'},
+                {label: 'Variantes'},
+                {label: 'Mission'},
+                {label: 'Récapitulatif'},
+                {label: 'Distribution'},
+            ]"/>
+        </twig:Px:Card>
+    </div>
+
+    {# ------------------------------------------------------------------ Cards, checks #}
+    <div class="px-split--even px-split" id="cartes">
+        <twig:Px:Card title="Contrôles avant validation" meta="Assistance : avertissements">
+            <twig:Px:Checks :items="[
+                {state: 'passed', text: 'L’écriture est équilibrée.'},
+                {state: 'passed', text: 'Le tiers, la date et le journal sont renseignés.'},
+                {state: 'warning', text: 'La TVA ne correspond pas à la base (attendu d’après le taux : 541,40). Vous pouvez enregistrer.'},
+                {state: 'blocking', text: 'Novembre 2026 est clos. Choisissez une date dans une période ouverte.'},
+            ]"/>
+            <twig:block name="foot"><span>4 contrôles</span><a class="px-link px-u-push" href="#main">Voir la règle</a></twig:block>
+        </twig:Px:Card>
+        <twig:Px:Card title="Carte avec actions" meta="pied et en-tête">
+            <twig:block name="actions"><twig:Px:Button size="sm" icon="refresh-cw">Actualiser</twig:Px:Button></twig:block>
+            <p>Une carte ne contient pas de carte. Son en-tête porte un titre, une méta et, au besoin, des actions de petite taille ; son pied, un texte de 12 px.</p>
+            <twig:Px:Skeleton :rows="3"/>
+            <twig:block name="foot">Dernière mise à jour à 10 h 42</twig:block>
+        </twig:Px:Card>
+    </div>
+
+    {# ------------------------------------------------------------------ Messages #}
+    <twig:Px:Card title="Alertes et états vides" meta="§ 4.13" id="messages">
+        <twig:Px:Alert tone="info" actionLabel="Voir la consigne" actionHref="#main">La date du dossier a été avancée au 30/11/2026 par votre enseignant.</twig:Px:Alert>
+        <twig:Px:Alert tone="success">Écriture ACH-000457 validée.</twig:Px:Alert>
+        <twig:Px:Alert tone="warning" title="Contrôle en avertissement">La TVA ne correspond pas à la base (attendu d’après le taux : 541,40). Vous pouvez enregistrer.</twig:Px:Alert>
+        <twig:Px:Alert tone="danger" title="Le formulaire contient 2 erreurs.">
+            <ul><li><a class="px-link" href="#g-date">La période de novembre 2026 est close.</a></li><li><a class="px-link" href="#g-journal">Indiquez le journal.</a></li></ul>
+        </twig:Px:Alert>
+        <div class="px-split">
+            <twig:Px:Empty title="Aucune pièce à traiter" text="Les prochaines arriveront ici."/>
+            <twig:Px:Empty icon="list-filter" title="Aucun résultat" text="Aucune écriture ne correspond à ces filtres.">
+                <twig:block name="action"><twig:Px:Button size="sm" href="{{ path('app_design_gallery') }}">Réinitialiser</twig:Px:Button></twig:block>
+            </twig:Px:Empty>
+        </div>
+        <twig:Px:Empty icon="lock" title="Module fermé" text="La mission en cours n’ouvre pas ce module."/>
+    </twig:Px:Card>
+
+    {# ------------------------------------------------------------------ Overlays #}
+    <twig:Px:Card title="Dialogue, tiroir, raccourcis" meta="§ 4.14">
+        <p>Le dialogue sert à saisir, jamais à confirmer : son contenu vient du serveur et y retourne ; un refus renvoie le formulaire en 422. Le tiroir laisse l’écran lisible. <kbd class="px-kbd">?</kbd> ouvre la liste des raccourcis.</p>
+        <div class="px-cluster">
+            <twig:Px:Button icon="undo-2" data-px-open="px-gallery-dialog">Ouvrir le dialogue</twig:Px:Button>
+            <twig:Px:Button icon="graduation-cap" data-px-open="px-gallery-drawer">Ouvrir le tiroir</twig:Px:Button>
+            <twig:Px:Button icon="keyboard" data-px-open="px-shortcuts">Raccourcis</twig:Px:Button>
+        </div>
+    </twig:Px:Card>
+
+    <twig:Px:Dialog id="px-gallery-dialog" title="Contrepasser l’écriture ACH-000457" src="{{ path('app_design_dialog') }}"/>
+
+    <twig:Px:Drawer id="px-gallery-drawer" title="Mission 4 · Facture de la Scierie">
+        <p>Contrôler puis enregistrer la facture de la Scierie du Haut-Forez. La pièce est dans la boîte « Pièces ».</p>
+        <twig:Px:Checks :items="[{state: 'passed', text: 'Tâche 1 · Ouvrir le dossier'}, {state: 'warning', text: 'Tâche 2 · Enregistrer la facture'}]"/>
+        <twig:block name="foot"><twig:Px:Button variant="primary" icon="check">Tâche terminée</twig:Px:Button></twig:block>
+    </twig:Px:Drawer>
+{% endblock %}

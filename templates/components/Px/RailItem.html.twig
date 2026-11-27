@@ -1,0 +1,6 @@
+{# Px:RailItem - see App\Twig\Components\Px\RailItem. Folded, the label is the tooltip. #}
+<a href="{{ href }}"{{ attributes.defaults({class: 'px-rail__item'}) }} data-tooltip="{{ label }}"{% if numbered %} data-px-rail-entry{% endif %}{% if current %} aria-current="page"{% endif %}>
+    <twig:ux:icon name="{{ icon }}" aria-hidden="true"/>
+    <span class="px-rail__text">{{ label }}</span>
+    {%- if count %}<span class="px-rail__count" aria-label="{{ countLabel }}"><span aria-hidden="true">{{ count }}</span></span>{% endif -%}
+</a>

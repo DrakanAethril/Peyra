@@ -1,0 +1,11 @@
+{#
+ # Px:TopBar - the white bar above the page (design-ui.md § 4.1). Blocks: `start` (dossier or class
+ # switcher), `content` (the search trigger, centred), `end` (chips, bell, avatar). Under 1024 px a
+ # menu button opens the rail as a drawer.
+ #}
+<header{{ attributes.defaults({class: 'px-topbar'}) }}>
+    <twig:Px:IconButton icon="menu" label="Ouvrir le menu" class="px-topbar__menu" data-px-open="px-rail" aria-controls="px-rail" aria-expanded="false"/>
+    {% block start %}{% endblock %}
+    {% block content %}{% endblock %}
+    <div class="px-topbar__end">{% block end %}{% endblock %}</div>
+</header>

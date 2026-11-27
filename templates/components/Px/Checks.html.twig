@@ -1,0 +1,15 @@
+{#
+ # Px:Checks - a list of checks (design-ui.md § 4.10). `items`: list of {state: passed|warning|blocking,
+ # text}. Each mark says its state in words to a screen reader.
+ #}
+{% props items %}
+{% set marks = {passed: '✓', warning: '!', blocking: '×'} %}
+{% set words = {passed: 'Contrôle passé : ', warning: 'À vérifier : ', blocking: 'Bloquant : '} %}
+<ul{{ attributes.defaults({class: 'px-checks'}) }}>
+    {% for item in items %}
+        <li class="px-checks__item is-{{ item.state }}">
+            <span class="px-checks__mark" aria-hidden="true">{{ marks[item.state] }}</span>
+            <span><span class="px-u-sr-only">{{ words[item.state] }}</span>{{ item.text }}</span>
+        </li>
+    {% endfor %}
+</ul>
