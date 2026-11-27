@@ -413,10 +413,18 @@ import`). `peyra.tfplan` peut être supprimé après l'`apply`.
    La commande dit si l'annuaire répond, si le compte de service se lie, et comment Peyra lit la
    personne : son DN, l'attribut d'où vient son identifiant stable (`objectGUID` attendu), son nom,
    ses groupes, et ce que la règle d'entrée en ferait. Elle n'affiche aucun secret.
-6. Se connecter sur `https://pgi.beaupeyrat.org` avec un identifiant de `PEYRA_ADMIN_LOGINS`, puis,
+6. Installer le dossier de démonstration, Menuiserie Vasseur SARL, premier dossier modèle de la
+   bibliothèque commune (une seule fois : la commande ne remplace jamais un modèle installé, et
+   `deploy-prod.sh` ne la lance pas, pour qu'un modèle qu'un administrateur a supprimé ne revienne
+   pas) :
+
+   ```console
+   dc exec php bin/console app:demo:install
+   ```
+7. Se connecter sur `https://pgi.beaupeyrat.org` avec un identifiant de `PEYRA_ADMIN_LOGINS`, puis,
    dans Paramètres › Administration : l'année scolaire, les classes, la correspondance des groupes
    de l'annuaire avec les classes. Les étudiants sont placés à leur première connexion.
-7. Ouvrir Paramètres › Administration › Journal des connexions : la colonne « Adresse » doit montrer
+8. Ouvrir Paramètres › Administration › Journal des connexions : la colonne « Adresse » doit montrer
    l'adresse du poste, pas celle de nginx (voir « Diagnostics »).
 
 ## Mise à jour

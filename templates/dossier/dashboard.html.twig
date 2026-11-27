@@ -1,0 +1,41 @@
+{#
+ # The dossier's dashboard (design-ux.md § 3.2, gabarit T). The modules feed it as they come:
+ # pieces to process, the brouillard to validate, the bank to reconcile, the deadlines at the
+ # dossier's date. For now: the dossier's date, its exercise and period, the company.
+ #}
+{% extends 'dossier/_layout.html.twig' %}
+
+{% set rail_current = 'dashboard' %}
+{% set dossier_title = 'Tableau de bord' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Tableau de bord">
+        <twig:block name="badge">{% if dossier.template %}<twig:Px:Badge :of="dossier.kind"/>{% endif %}</twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% set company = dossier.company %}
+    <div class="px-kpis">
+        <twig:Px:Kpi label="Date du dossier" value="{{ dossier.dossierDate|date_chip }}" note="{{ view.canSetDate ? 'à changer depuis la puce du bandeau' : 'avancée par votre enseignant' }}"/>
+        <twig:Px:Kpi label="Exercice" value="{{ view.exercise ? view.exercise.code : 'Aucun' }}" note="{{ view.exercise ? 'du ' ~ view.exercise.startsOn|date_fr ~ ' au ' ~ view.exercise.endsOn|date_fr : 'aucun exercice à la date du dossier' }}" href="{{ path('app_dossier_company', {dossier: dossier.id}) ~ '#exercices' }}"/>
+        <twig:Px:Kpi label="Période" value="{{ view.period ? view.period.label : '—' }}" note="{{ view.period ? (view.period.closed ? 'close : elle refuse les écritures' : 'ouverte') : 'hors exercice' }}" href="{{ path('app_dossier_company', {dossier: dossier.id}) ~ '#exercices' }}"/>
+        <twig:Px:Kpi label="Exercices" value="{{ exercises|length }}" note="{{ exercises|filter(e => e.closed)|length }} clos" href="{{ path('app_dossier_company', {dossier: dossier.id}) ~ '#exercices' }}"/>
+    </div>
+
+    <div class="px-split px-split--even">
+        <twig:Px:Card title="À traiter">
+            <twig:Px:Empty icon="inbox" title="Rien à traiter pour l’instant" text="Les pièces reçues, le brouillard à valider et les échéances à la date du dossier s’afficheront ici."/>
+        </twig:Px:Card>
+        <twig:Px:Card title="Société" meta="{{ company.legalForm.shortName }} · SIRET {{ company.siret|siret }}">
+            <twig:block name="actions"><twig:Px:Button size="sm" href="{{ path('app_dossier_company', {dossier: dossier.id}) }}" icon="database">Fiche société</twig:Px:Button></twig:block>
+            <dl class="px-facts">
+                <dt>Dénomination</dt><dd>{{ company.name }}</dd>
+                <dt>Activité</dt><dd>{{ company.activity }}</dd>
+                <dt>Adresse</dt><dd>{{ company.street }}{% if company.street2 %}, {{ company.street2 }}{% endif %}, {{ company.postalCode }} {{ company.city }}</dd>
+                <dt>TVA</dt><dd>{{ company.vatRegime.label }}</dd>
+                <dt>Régime fiscal</dt><dd>{{ company.profitTaxRegime.label }}</dd>
+            </dl>
+        </twig:Px:Card>
+    </div>
+{% endblock %}

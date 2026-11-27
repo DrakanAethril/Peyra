@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Entity\Identity\User;
+use App\Enum\Dossier\DossierKind;
+use App\Repository\Identity\SchoolYearRepository;
+use App\Service\Identity\SchoolClasses;
 use App\Tests\Support\BuildsSchool;
 use App\Tests\Support\RegulatoryFixtures;
+use App\Tests\Support\SavesDossiers;
 use App\Tests\Support\SignsIn;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -20,6 +24,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  */
 final class RoleAccessSmokeTest extends WebTestCase
 {
+    use SavesDossiers;
     use BuildsSchool;
     use SignsIn;
 
@@ -125,6 +130,45 @@ final class RoleAccessSmokeTest extends WebTestCase
                 $actual[$role] = $client->getResponse()->getStatusCode();
             }
             self::assertSame($expected, $actual, $url);
+        }
+    }
+
+    /**
+     * A student's dossier (lot 1, step 1.1): ines.morel holds it, prof.durand teaches her class this
+     * year, prof.martin - an administrator - does not: no administrator enters a student's dossier
+     * outside their classes.
+     */
+    public function testTheScreensOfADossier(): void
+    {
+        $client = static::createClient();
+        $client->disableReboot();
+        $this->submitLogin($client, self::ACCOUNTS['teacher']);
+        $this->signOut($client);
+        $this->submitLogin($client, self::ACCOUNTS['admin']);
+        $martin = $this->account($client, self::ACCOUNTS['admin']);
+        \assert($martin instanceof User);
+        [, $cg1] = $this->buildYear($client, $martin, 2026, true);
+        $durand = $this->account($client, self::ACCOUNTS['teacher']);
+        \assert($durand instanceof User);
+        $client->getContainer()->get(SchoolClasses::class)->addTeacher($cg1, $durand, $martin, new \DateTimeImmutable('2026-11-27 10:00'));
+        $client->getContainer()->get('doctrine')->getManager()->flush();
+        $this->signOut($client);
+        $this->submitLogin($client, self::ACCOUNTS['student']);
+        $ines = $this->account($client, self::ACCOUNTS['student']);
+        \assert($ines instanceof User);
+        $dossier = (int) $this->savedDossier(DossierKind::Student, $ines, $client->getContainer()->get(SchoolYearRepository::class)->findCurrent())->getId();
+
+        $holders = ['student' => 200, 'teacher' => 200, 'admin' => 404, 'refused' => 302];
+        foreach (['/d/'.$dossier, '/d/'.$dossier.'/company'] as $url) {
+            $actual = [];
+            foreach (self::ACCOUNTS as $role => $login) {
+                self::ensureKernelShutdown();
+                $client = static::createClient();
+                $this->submitLogin($client, $login);
+                $client->request('GET', $url);
+                $actual[$role] = $client->getResponse()->getStatusCode();
+            }
+            self::assertSame($holders, $actual, $url);
         }
     }
 

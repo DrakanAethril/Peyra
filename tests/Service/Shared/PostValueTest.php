@@ -40,6 +40,19 @@ final class PostValueTest extends TestCase
         self::assertSame([], PostValue::stringsByKey($request, 'group'));
     }
 
+    public function testReadsCentsZeroAndNegativeIncluded(): void
+    {
+        $request = Request::create('/', 'POST', ['capital' => '8000000', 'zero' => '0', 'credit' => '-13800', 'empty' => '', 'words' => '12,50', 'list' => ['1']]);
+
+        self::assertSame(8000000, PostValue::cents($request, 'capital'));
+        self::assertSame(0, PostValue::cents($request, 'zero'));
+        self::assertSame(-13800, PostValue::cents($request, 'credit'));
+        self::assertNull(PostValue::cents($request, 'empty'));
+        self::assertNull(PostValue::cents($request, 'words'));
+        self::assertNull(PostValue::cents($request, 'list'));
+        self::assertNull(PostValue::cents($request, 'absent'));
+    }
+
     public function testReadsATableOfChoicesOffTheQueryString(): void
     {
         $request = Request::create('/?other[4]=none&other[x]=1&other[5]=12');

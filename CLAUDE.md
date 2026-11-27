@@ -72,6 +72,8 @@ sign-in, as in production):
 docker compose exec php bin/console doctrine:migrations:migrate -n
 docker compose exec php bin/console app:dev:school           # dev and test only: years, classes, mapping, teachers
 docker compose exec php bin/console app:regulatory:sync      # installs config/regulatory/<année>.yaml
+docker compose exec php bin/console app:demo:install         # Menuiserie Vasseur, a template of the common library
+docker compose exec php bin/console app:dev:dossiers         # dev and test only, after the students' first sign-in: their own copy
 ```
 
 Quality — the definition of done of a step runs all of it (plan README § 6):
@@ -98,6 +100,8 @@ empty, and `PeyraScheduleTest` pins that list, so adding a task is a decision th
 | `app:regulatory:sync [--dry-run]` | Installs the millésime files `config/regulatory/<année>.yaml`; only ever adds rows, never over an administrator's value. **Every deploy runs it** |
 | `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
+| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
+| `app:dev:dossiers` | **Development and test only**, until the distribution of step 1.8: gives each student enrolled this year their own Menuiserie Vasseur, built from the fixtures (the template installed first if missing). Sign the students in first: their first sign-in places them |
 | `app:test:parallel-databases` | **Test only.** Copies the migrated `peyra_test` into `peyra_test1`… for ParaTest (tests/README.md) |
 
 ```console
@@ -327,10 +331,10 @@ The fictitious directory `frankenphp/ldap/10-tree.ldif` (password **`peyra-dev`*
 
 | Login | Name | Groups | Enters as | After `app:dev:school`, what it shows |
 |---|---|---|---|---|
-| `prof.martin` | Jean-Pierre Martin | teacher, cg-1, cg-2 | teacher, **administrator** (bootstrap list) | every class of both years; Paramètres › Administration |
-| `prof.durand` | Sophie Durand | teacher, cg-1 | teacher | « Mes classes » = BTS CG 1 2026-2027; Administration answers 404 |
+| `prof.martin` | Jean-Pierre Martin | teacher, cg-1, cg-2 | teacher, **administrator** (bootstrap list) | every class of both years; Paramètres › Administration; every student's dossier (he teaches every class) and the common library's template, which he changes |
+| `prof.durand` | Sophie Durand | teacher, cg-1 | teacher | « Mes classes » = BTS CG 1 2026-2027; Administration answers 404; the dossiers of the BTS CG 1 students, a 404 on the others' |
 | `prof.leroy` | Marc Leroy | teacher, sio-1 | **refused** until authorised by name | the refusal of design-ux § 3.6, then entry once added |
-| `lucas.bernard`, `manon.chevalier`, `theo.garnier`, `ines.morel`, `adam.roussel`, `chloe.fabre` | Lucas Bernard, Manon Chevalier, Théo Garnier, Inès Morel, Adam Roussel, Chloé Fabre | student, cg-1 | students of first year | placed in BTS CG 1 2026-2027 at their first sign-in |
+| `lucas.bernard`, `manon.chevalier`, `theo.garnier`, `ines.morel`, `adam.roussel`, `chloe.fabre` | Lucas Bernard, Manon Chevalier, Théo Garnier, Inès Morel, Adam Roussel, Chloé Fabre | student, cg-1 | students of first year | placed in BTS CG 1 2026-2027 at their first sign-in; their Menuiserie Vasseur after `app:dev:dossiers` |
 | `yasmine.haddad`, `louis.perret`, `camille.dufour`, `nathan.mercier`, `lea.boyer`, `sacha.lambert` | Yasmine Haddad, Louis Perret, Camille Dufour, Nathan Mercier, Léa Boyer, Sacha Lambert | student, cg-2 | students of second year | placed in BTS CG 2 2026-2027 at their first sign-in |
 | `jules.martel` | Jules Martel | student, cg-1, cg-2 | student with two contradictory groups | « à placer », with the amber banner on « Mes dossiers » |
 | `enzo.petit` | Enzo Petit | student, sio-1 | **refused** | « Peyra est réservé aux étudiants et aux enseignants du BTS CG… » |
@@ -368,6 +372,51 @@ Conception § 3 bis, held by code in `src/Service/Identity/`:
 - `app:dev:school` (dev and test only) builds 2025-2026 and 2026-2027 with their classes; students
   are placed by their own first sign-in, as in production. Classes are the institution's: they are
   never part of the demonstration dossier (`app:demo:install`, lot 1).
+
+## Dossier, context and rights (built at step 1.1)
+
+Conception §§ 3 bis and 4, held by code in `src/Entity/Dossier/`, `src/Service/Dossier/`,
+`App\Doctrine\Filter\DossierFilter` and `App\Security\Voter\DossierVoter`:
+
+- **`Dossier`** (global): its kind (`DossierKind`: template, student, group, snapshot), the company
+  embedded (`Company`, replaced whole through `CompanySheet`, which names every fault under its
+  field), its **date** (`dossierDate`), its owner (the student; a template's author; nobody for a
+  group or the **common library**), the school year it was made in (« Mes dossiers » groups by it),
+  its origin (`sourceTemplate`, `distributedBy`).
+- **`DossierOwned`** + `DossierOwnedTrait`: every business row carries a mandatory `dossier_id`.
+  `DossierOwnedEntitiesTest` makes every entity take a side - DossierOwned, or named in its closed
+  list of global entities with the reason. **Who enters a dossier (`DossierMember`, `DossierShare`)
+  is global**: read by the voter before any context, and never copied with the dossier.
+- **The filter `dossier`** (enabled in `config/packages/doctrine.yaml`) narrows every ORM read of a
+  DossierOwned row to the context's dossiers, and **throws `DossierContextMissing` without one**.
+  `App\Service\Dossier\DossierContext` is its only writer: `enter()`, `within()` (another dossier
+  for a moment), `across()` (several dossiers the caller may read: listings), `reset()` between two
+  requests of the worker. A command enters the dossier it works on. Only ORM queries are filtered:
+  DBAL goes around it, so business code never reads a DossierOwned table through DBAL.
+- **`App\Security\DossierRouteListener`** (kernel.request, after the firewall): a route with
+  `{dossier}` loads it, asks `DossierVoter::VIEW` - a refusal is a 404 - then enters its context
+  and hands the controller its `Dossier $dossier` argument. It notes a student's visit (« dernier
+  passage », every five minutes at most) and the first visit after a date move
+  (`Dossier::$dateMoveUnseen`: the chip flashes once).
+- **`DossierVoter`**: VIEW, EDIT, SET_DATE. A student's or a group's dossier: its student or
+  members (VIEW, EDIT, never SET_DATE); the teachers of a class one of them is enrolled in **this
+  school year** (everything, every year's dossiers - `DossierHolders::teachesThisYear()`); the teacher
+  who distributed it (VIEW). A template: its author; its shares (VIEW, plus EDIT and SET_DATE when
+  « modification »); the common library read by every teacher, changed by administrators. **No
+  administrator bypass** for a student's dossier; a snapshot is never opened.
+- **`DossierClock::today()`** is the date of the context's dossier; `DossierDates::move()` is the
+  one door that moves it (a `DossierDateChange` row, append-only, and the audit trail).
+- `Exercise` and monthly `Period`s are opened by `Exercises::open()` (bounds from the pure
+  `PeriodPlan`: calendar months cut by the exercise's bounds, 1 to 24 months, no overlap).
+- **Screens**: `/d/{dossier}` (dashboard), `/d/{dossier}/company` (Système d'information › Société,
+  F10), POST `/d/{dossier}/date`. `templates/dossier/_layout.html.twig` is the PGI inside a dossier:
+  `dossier_shell(dossier)` (`DossierShell`) gives the switcher (the student's dossiers by year; a
+  teacher sees that student's), the date chip and its panel (`popover_controller.js`: day in full,
+  exercise, period, the last three moves - never a real date - and, for SET_DATE, « Avancer la
+  date »), and the teacher's ribbon (`Px:ContextBar`, violet; `tone="template"` gold). Child
+  templates set `rail_current` and `dossier_title`; the shell's `view` exists only inside blocks.
+- `fixtures/demo/company.yaml` is the demonstration dossier's first file (`DemoCompanyFile` checks
+  it whole); the dossier grows there with the steps.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

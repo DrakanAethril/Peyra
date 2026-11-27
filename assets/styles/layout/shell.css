@@ -555,6 +555,88 @@
         margin-inline-start: auto;
     }
 
+    /* A single dossier: the switcher is a text, without a menu (design-ui.md § 4.2). */
+    .px-switcher--static {
+        border-color: transparent;
+        background: transparent;
+        padding-inline-start: 0;
+
+        &:hover {
+            border-color: transparent;
+        }
+    }
+
+    /* ---------------------------------------------------------------- Date chip (design-ui.md § 4.2) */
+
+    .px-datechip {
+        position: relative;
+        display: inline-flex;
+        min-width: 0;
+
+        & > .px-chip {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+
+    /* The date just moved: one flash of the action blue (design-ux.md A18). */
+    .px-chip.is-flash {
+        animation: px-datechip-flash var(--px-dur-flash) var(--px-ease) 2;
+    }
+
+    @keyframes px-datechip-flash {
+        50% {
+            background: var(--px-action);
+            color: var(--px-text-on-action);
+        }
+    }
+
+    .px-datechip__day {
+        margin: 0;
+        font-family: var(--px-font-title);
+        font-size: var(--px-fs-14);
+        font-weight: var(--px-fw-semibold);
+        color: var(--px-text-strong);
+    }
+
+    .px-datechip__head {
+        margin: 0;
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-11);
+        font-weight: var(--px-fw-semibold);
+        letter-spacing: .06em;
+        text-transform: uppercase;
+    }
+
+    .px-datechip__changes {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: var(--px-space-4);
+        font-size: var(--px-fs-12);
+
+        & small {
+            color: var(--px-text-muted);
+        }
+    }
+
+    .px-datechip__lock {
+        width: var(--px-icon-sm);
+        height: var(--px-icon-sm);
+        margin-inline-end: var(--px-space-4);
+        vertical-align: -2px;
+    }
+
+    .px-datechip__form {
+        display: grid;
+        gap: var(--px-space-8);
+        justify-items: start;
+        padding-block-start: var(--px-space-10);
+        border-block-start: 1px solid var(--px-border);
+    }
+
     /* ---------------------------------------------------------------- Context bar (C4) */
 
     .px-contextbar {
@@ -572,6 +654,16 @@
             margin-inline-start: auto;
             color: var(--px-role-text);
             text-decoration: underline;
+        }
+    }
+
+    /* A teacher in a template: the gold ribbon (design-ux.md § 2.4, « bandeau or »). */
+    .px-contextbar--template {
+        background: var(--px-mission-bg);
+        color: var(--px-mission-strong);
+
+        & a {
+            color: var(--px-mission-strong);
         }
     }
 

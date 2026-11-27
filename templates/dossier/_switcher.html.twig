@@ -1,0 +1,41 @@
+{#
+ # The dossier switcher (design-ui.md § 4.2, design-ux.md § 2.1): the company and its exercise; the
+ # panel lists the dossiers by school year, the most recent first, with a tick on the one in hand,
+ # then « Tous mes dossiers ». With a single dossier it is a text, without a menu. Changing dossier
+ # opens the other one's dashboard. (The restore point joins the panel at step 1.8.)
+ #}
+{% set exercise_label = view.exercise ? 'Exercice ' ~ view.exercise.code : 'Hors exercice' %}
+{% if view.switcherCount <= 1 %}
+    <div class="px-switcher px-switcher--static">
+        <b class="px-switcher__name">{{ dossier.name }}</b>
+        <small class="px-switcher__meta">{{ exercise_label }}</small>
+    </div>
+{% else %}
+    <div class="px-classswitch px-dossierswitch" data-controller="menu" data-action="keydown->menu#keydown">
+        <button type="button" class="px-switcher" aria-haspopup="menu" aria-expanded="false" aria-controls="px-dossierswitch-panel"
+                data-menu-target="button" data-action="menu#toggle">
+            <b class="px-switcher__name">{{ dossier.name }}</b>
+            <small class="px-switcher__meta">{{ exercise_label }}</small>
+            <twig:ux:icon name="chevron-down" aria-hidden="true"/>
+            <span class="px-u-sr-only">, changer de dossier</span>
+        </button>
+        <div class="px-popover px-switcher__panel" id="px-dossierswitch-panel" data-menu-target="panel" hidden>
+            <div class="px-menu" role="menu" aria-label="Dossiers">
+                {% for group in view.switcher %}
+                    <p class="px-menu__head" role="presentation">{{ group.year }}</p>
+                    {% for row in group.rows %}
+                        {% set here = row.dossier == dossier %}
+                        <a class="px-menu__item px-switcher__option" role="menuitem" href="{{ path('app_dossier_dashboard', {dossier: row.dossier.id}) }}"{% if here %} aria-current="true"{% endif %}>
+                            <span>{% if here %}<twig:ux:icon name="check" aria-hidden="true"/>{% endif %}{{ row.dossier.name }}{% if here %} <span class="px-u-sr-only">(dossier ouvert)</span>{% endif %}</span>
+                            <small>{{ row.exercise ? 'Exercice ' ~ row.exercise.code : 'Hors exercice' }} · {{ row.dossier.dossierDate|date_chip }}</small>
+                        </a>
+                    {% endfor %}
+                {% endfor %}
+                {% if not view.teacher %}
+                    <div class="px-menu__sep" role="separator"></div>
+                    <a class="px-menu__item" role="menuitem" href="{{ path('app_student_dossiers') }}"><twig:ux:icon name="folder-open" aria-hidden="true"/>Tous mes dossiers</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endif %}

@@ -16,6 +16,12 @@ doctrine:
                 is_bundle: false
                 dir: '%kernel.project_dir%/src/Entity'
                 prefix: 'App\Entity'
+        filters:
+            # Every DossierOwned row is read inside a dossier's context, or the query throws
+            # (App\Service\Dossier\DossierContext writes its parameter).
+            dossier:
+                class: App\Doctrine\Filter\DossierFilter
+                enabled: true
 
 when@test:
     doctrine:

@@ -70,10 +70,19 @@ final class FrenchFormatTest extends TestCase
         self::assertSame('12/11/2026', FrenchFormat::dayMonth($day, 2025));
         self::assertSame('12 nov. 2026', FrenchFormat::chipDate($day));
         self::assertSame('1 févr. 2026', FrenchFormat::chipDate(new \DateTimeImmutable('2026-02-01')));
+        self::assertSame('jeudi 12 novembre 2026', FrenchFormat::longDate($day));
+        self::assertSame('jeudi 1er janvier 2026', FrenchFormat::longDate(new \DateTimeImmutable('2026-01-01')));
+        self::assertSame('lundi 30 novembre 2026', FrenchFormat::longDate(new \DateTimeImmutable('2026-11-30')));
         self::assertSame('novembre 2026', FrenchFormat::period($day));
         self::assertSame('août 2026', FrenchFormat::period(new \DateTimeImmutable('2026-08-31')));
         self::assertSame('10'.self::N.'h'.self::N.'42', FrenchFormat::clock($day));
         self::assertSame('9'.self::N.'h'.self::N.'05', FrenchFormat::clock(new \DateTimeImmutable('2026-11-12 09:05')));
+    }
+
+    public function testSiretInItsGroups(): void
+    {
+        self::assertSame('999 412 736 00018', FrenchFormat::siret('99941273600018'));
+        self::assertSame('1234', FrenchFormat::siret('1234'));
     }
 
     public function testDurations(): void

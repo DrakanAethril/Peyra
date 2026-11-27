@@ -1,7 +1,7 @@
 {#
  # The avatar and its menu (design-ux.md § 2.1, « Avatar »; design-ui.md § 4.6, « Menu »), in the top
- # bar of both shells. Only the entries whose screen exists are drawn: Mon profil, Mes dossiers, Mes
- # missions, Mon passeport and Aide join it with their steps. « Formatool » is the way back to the
+ # bar of both shells. Only the entries whose screen exists are drawn (« Mes dossiers » for a
+ # student): Mon profil, Mes missions, Mon passeport and Aide join it with their steps. « Formatool » is the way back to the
  # campus platform (conception § 3, « Lien retour »), drawn when FORMATOOL_URL is set.
  #}
 {% set me = app.user %}
@@ -21,6 +21,9 @@
             {% set formatool = formatool_url() %}
             {% if formatool %}
                 <a class="px-menu__item" role="menuitem" href="{{ formatool }}"><twig:ux:icon name="external-link" aria-hidden="true"/>Formatool</a>
+            {% endif %}
+            {% if me.student %}
+                <a class="px-menu__item" role="menuitem" href="{{ path('app_student_dossiers') }}"><twig:ux:icon name="folder-open" aria-hidden="true"/>Mes dossiers</a>
             {% endif %}
             <a class="px-menu__item" role="menuitem" href="{{ path('app_about') }}"><twig:ux:icon name="info" aria-hidden="true"/>À propos</a>
             <div class="px-menu__sep" role="separator"></div>

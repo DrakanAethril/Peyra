@@ -124,6 +124,16 @@ final class PxComponentsTest extends KernelTestCase
         self::assertStringNotContainsString('›', $html, 'The separator is drawn by the stylesheet, never written.');
     }
 
+    public function testContextBarIsVioletInAStudentsDossierAndGoldInATemplate(): void
+    {
+        $student = $this->renderTwigComponent('Px:ContextBar', ['backLabel' => 'Revenir', 'backHref' => '/teacher'], 'Dossier de Manon Chevalier')->toString();
+        $template = $this->renderTwigComponent('Px:ContextBar', ['backLabel' => 'Revenir', 'backHref' => '/teacher', 'tone' => 'template'], 'Dossier modèle')->toString();
+
+        self::assertStringContainsString('class="px-contextbar" role="note"', $student);
+        self::assertStringContainsString('<a href="/teacher">Revenir</a>', $student);
+        self::assertStringContainsString('class="px-contextbar px-contextbar--template"', $template);
+    }
+
     public function testAvatarInitials(): void
     {
         self::assertSame('MC', Avatar::initialsOf('Manon Chevalier'));

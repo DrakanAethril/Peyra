@@ -28,6 +28,8 @@ docker compose build --pull
 docker compose up --wait
 docker compose exec php bin/console app:dev:school      # une seule fois : années et classes de démonstration
 docker compose exec php bin/console app:regulatory:sync # les millésimes réglementaires du dépôt (config/regulatory)
+docker compose exec php bin/console app:demo:install    # le dossier de démonstration, Menuiserie Vasseur SARL
+docker compose exec php bin/console app:dev:dossiers    # après la première connexion des étudiants : leur dossier
 ```
 
 L'application répond alors sur <https://localhost:8143> (certificat local à accepter) ;
@@ -56,6 +58,9 @@ liste complète est dans `CLAUDE.md`. Seuls les étudiants et les enseignants du
 aucun mot de passe n'est conservé par Peyra. `app:dev:school` crée les années 2025-2026 et
 2026-2027 (courante), les classes « BTS CG 1 » et « BTS CG 2 » et leur correspondance avec les
 groupes `cg-1` et `cg-2` : un étudiant est placé dans sa classe à sa première connexion.
+`app:demo:install` installe Menuiserie Vasseur SARL comme dossier modèle de la bibliothèque commune ;
+`app:dev:dossiers` en donne une copie à chaque étudiant placé (en attendant la distribution), qu'il
+ouvre depuis « Mes dossiers » et que les enseignants de sa classe ouvrent depuis sa fiche.
 
 La pile de développement : `php` (FrankenPHP et Caddy), `database` (MariaDB, comme en
 production), `openldap` (un annuaire fictif, versionné dans `frankenphp/ldap/`), `gotenberg`
