@@ -1,0 +1,68 @@
+# Menuiserie Vasseur SARL - its entry templates (« modèles d'écriture », step 1.4b): the entries
+# that come back every month in the prepared data (operations-2026.md: the rent LOY-2026-xx, the
+# leasing LBE-2026-xx, the accountant's fees, the Banque Populaire's fees FRAIS-BQ2-xx), an
+# ordinary purchase and sale at 20 %, a supplier's payment. Called with F6 in the entry grid, or in
+# the guided entry. Checked by TemplateRules, as the fiche.
+#
+# `account` is typed as the grid types it: an account number, or a third party's auxiliary code;
+# `third_party` names the third party of a collective typed by number - left out, the call asks it.
+# `base` (ht, ttc) is the amount a call asks, `rate` the VAT rate it proposes, in percent.
+# `amount`: ht, tva, ttc, fixed (with `fixed`, euros as text), balance, typed. « {mois} » in a label
+# becomes the entry's month.
+
+templates:
+  - code: LOYER
+    label: "Loyer de l'atelier"
+    journal: ACH
+    base: ht
+    rate: '20'
+    lines:
+      - { account: '613200', side: debit, amount: ht, label: "Loyer {mois}" }
+      - { account: '445660', side: debit, amount: tva, label: "Loyer {mois}" }
+      - { account: 401SCIV, side: credit, amount: ttc, label: "Loyer {mois}" }
+  - code: CBAIL
+    label: "Crédit-bail du chariot élévateur"
+    journal: ACH
+    base: ht
+    rate: '20'
+    lines:
+      - { account: '612200', side: debit, amount: ht, label: "Crédit-bail chariot {mois}" }
+      - { account: '445660', side: debit, amount: tva, label: "Crédit-bail chariot {mois}" }
+      - { account: 401LBAI, side: credit, amount: ttc, label: "Crédit-bail chariot {mois}" }
+  - code: HONOR
+    label: "Honoraires du cabinet Delorme"
+    journal: ACH
+    base: ht
+    rate: '20'
+    lines:
+      - { account: '622600', side: debit, amount: ht, label: "Honoraires {mois}" }
+      - { account: '445660', side: debit, amount: tva, label: "Honoraires {mois}" }
+      - { account: 401DELO, side: credit, amount: ttc, label: "Honoraires {mois}" }
+  - code: ACHAT20
+    label: "Facture d'achat à 20 %"
+    journal: ACH
+    base: ttc
+    rate: '20'
+    lines:
+      - { account: '601000', side: debit, amount: ht }
+      - { account: '445660', side: debit, amount: tva }
+      - { account: '401000', side: credit, amount: ttc }
+  - code: VENTE20
+    label: "Facture de vente à 20 %"
+    journal: VTE
+    base: ht
+    rate: '20'
+    lines:
+      - { account: '411000', side: debit, amount: ttc }
+      - { account: '701000', side: credit, amount: ht }
+      - { account: '445710', side: credit, amount: tva }
+  - code: FRAISBQ2
+    label: "Frais de la Banque Populaire"
+    journal: BQ2
+    lines:
+      - { account: '627800', side: debit, amount: fixed, fixed: '32.00', label: "Frais bancaires {mois}" }
+  - code: REGLFOUR
+    label: "Règlement d'un fournisseur"
+    journal: BQ2
+    lines:
+      - { account: '401000', side: debit, amount: typed, label: "Règlement fournisseur" }

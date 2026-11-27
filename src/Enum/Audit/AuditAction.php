@@ -76,6 +76,15 @@ enum AuditAction: string
     /** A validated entry reversed by its inverse entry. */
     case EntryReversed = 'accounting.entry_reversed';
 
+    /** An entry template created. */
+    case EntryTemplateCreated = 'accounting.entry_template_created';
+
+    /** An entry template changed. */
+    case EntryTemplateChanged = 'accounting.entry_template_changed';
+
+    /** An entry template deleted. */
+    case EntryTemplateDeleted = 'accounting.entry_template_deleted';
+
     public function label(): string
     {
         return match ($this) {
@@ -101,6 +110,9 @@ enum AuditAction: string
             self::EntryDiscarded => 'Écriture du brouillard supprimée',
             self::EntryValidated => 'Écriture validée',
             self::EntryReversed => 'Écriture contrepassée',
+            self::EntryTemplateCreated => 'Modèle d’écriture créé',
+            self::EntryTemplateChanged => 'Modèle d’écriture modifié',
+            self::EntryTemplateDeleted => 'Modèle d’écriture supprimé',
         };
     }
 }

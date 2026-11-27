@@ -9,7 +9,9 @@ use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\Period;
 use App\Entity\Identity\User;
 use App\Enum\Accounting\JournalType;
+use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntryRepository;
+use App\Repository\Accounting\EntryTemplateRepository;
 use App\Repository\Accounting\JournalRepository;
 use App\Repository\Accounting\PendingEntryRepository;
 use App\Repository\Dossier\PeriodRepository;
@@ -23,8 +25,12 @@ use App\Service\Accounting\Entry\GridOutcome;
 use App\Service\Accounting\Entry\JournalGrid;
 use App\Service\Accounting\Entry\PendingEntries;
 use App\Service\Accounting\Entry\PendingStale;
+use App\Service\Accounting\Template\GuidedEntry;
+use App\Service\Accounting\Template\TemplateCall;
+use App\Service\Shared\DateValue;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\JsonRequestPayload;
+use App\Service\Shared\Money;
 use App\Service\Shared\QueryValue;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -42,7 +48,8 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * person's pending work and the dossier's plan and third parties, so that typing never waits for
  * the server; the browser then keeps the pending work at every line left (`keep`), F10 saves it to
  * the brouillard (`save`), Ctrl Entrée validates the month's brouillard (`validate`), Alt Inser
- * creates the account typed (`account`). The journal and the month last entered are taken again
+ * creates the account typed (`account`), F6 calls one of the journal's entry templates (`template`:
+ * its lines, amounts computed from the amount typed, laid in the current entry by the browser). The journal and the month last entered are taken again
  * (the session, per dossier). Whoever only reads the dossier sees the grid without fields.
  */
 #[Route('/d/{dossier}/accounting/entry', requirements: ['dossier' => '\d+'])]
@@ -51,7 +58,7 @@ final class EntryGridController extends AbstractController
     private const string SESSION_KEY = 'entry_grid';
 
     #[Route('', name: 'app_accounting_entry', methods: ['GET'])]
-    public function index(Dossier $dossier, Request $request, JournalRepository $journals, PeriodRepository $periods, EntryRepository $entries, PendingEntryRepository $pendingRows, PendingEntries $pending, JournalGrid $grid, #[CurrentUser] User $me): Response
+    public function index(Dossier $dossier, Request $request, JournalRepository $journals, PeriodRepository $periods, EntryRepository $entries, PendingEntryRepository $pendingRows, PendingEntries $pending, JournalGrid $grid, EntryTemplateRepository $templates, AccountRepository $accounts, #[CurrentUser] User $me): Response
     {
         $remembered = $this->remembered($request, $dossier);
         $journal = $this->journalOf($dossier, $journals, QueryValue::trimmed($request, 'journal', $remembered['journal'] ?? ''));
@@ -83,6 +90,7 @@ final class EntryGridController extends AbstractController
             'others' => $others,
             'drafts_count' => \count($entries->findDrafts()),
             'level' => $context->level,
+            'guided_open' => $editable && GuidedEntry::isOpen($context->level, $this->isGranted('ROLE_TEACHER')),
             'grid' => [
                 'groups' => $grid->groups($context, $editable ? $me : null),
                 'revision' => $editable ? $pending->revision($journal, $period, $me) : 0,
@@ -92,6 +100,7 @@ final class EntryGridController extends AbstractController
                 'exercise' => ['start' => $period->getExercise()->getStartsOn()->format('Y-m-d'), 'end' => $period->getExercise()->getEndsOn()->format('Y-m-d')],
                 'dossierDate' => $dossier->getDossierDate()->format('Y-m-d'),
                 'focus' => QueryValue::nullableInt($request, 'entry'),
+                'templates' => $this->templatesOf($dossier, $journal, $templates, $accounts),
             ],
             'lookup' => $grid->lookup($context),
         ]);
@@ -155,6 +164,53 @@ final class EntryGridController extends AbstractController
             'account' => ['n' => $account->getNumber(), 'l' => $account->getLabel(), 'c' => $account->isCollective(), 't' => $account->isLettrable(), 'b' => 0],
             'message' => \sprintf('Compte %s créé.', $account->getNumber()).(null !== $draft->warning ? ' '.$draft->warning : ''),
         ]);
+    }
+
+    /**
+     * F6: an entry template of the journal called at the entry's date with the amount and the rate
+     * typed - its lines as the grid types them; the browser lays them in the current entry, and
+     * nothing is written before the line is left.
+     */
+    #[Route('/template', name: 'app_accounting_entry_template', methods: ['POST'])]
+    public function template(Dossier $dossier, Request $request, EntryTemplateRepository $templates, AccountRepository $accounts): JsonResponse
+    {
+        $this->guard($dossier, $request);
+        $payload = JsonRequestPayload::fromRequest($request);
+        $template = $templates->findOneByCode($dossier, strtoupper($payload->string('template'))) ?? throw new NotFoundHttpException('No such template.');
+        $date = DateValue::parse($payload->string('date')) ?? $dossier->getDossierDate();
+        $cents = $payload->int('amount');
+        $call = TemplateCall::lines($template, $date, null === $cents ? null : Money::cents($cents), $payload->string('rate'), '', static fn (string $number) => $accounts->findOneByNumber($dossier, $number));
+        if ([] !== $call['errors']) {
+            return new JsonResponse(['errors' => $call['errors']], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return new JsonResponse([
+            'lines' => array_map(static fn ($line): array => $line->toArray(), $call['lines']),
+            'message' => \sprintf('Modèle %s posé : %s.', $template->getCode(), $template->getLabel()),
+        ]);
+    }
+
+    /**
+     * The journal's entry templates as F6 lists them: code, label, the amount a call asks and the
+     * rate it proposes.
+     *
+     * @return list<array{code: string, label: string, asks: bool, base: string, rate: string, party: bool}>
+     */
+    private function templatesOf(Dossier $dossier, Journal $journal, EntryTemplateRepository $templates, AccountRepository $accounts): array
+    {
+        $list = [];
+        foreach ($templates->findByDossier($dossier, $journal) as $template) {
+            $list[] = [
+                'code' => $template->getCode(),
+                'label' => $template->getLabel(),
+                'asks' => $template->asksAmount(),
+                'base' => $template->getBase()?->label() ?? '',
+                'rate' => str_replace('.', ',', (string) $template->getVatRate()),
+                'party' => TemplateCall::asksThirdParty($template, static fn (string $number) => $accounts->findOneByNumber($dossier, $number)),
+            ];
+        }
+
+        return $list;
     }
 
     /** The answer to F10 and Ctrl Entrée: the grid drawn again, and what was done. */

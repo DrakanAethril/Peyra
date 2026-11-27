@@ -62,11 +62,13 @@ groupes `cg-1` et `cg-2` : un étudiant est placé dans sa classe à sa premièr
 avec son plan de comptes (le PCG 2026 de l'ANC, complété de ses comptes propres), ses six
 journaux et ses 59 tiers (clients, fournisseurs et autres, chacun sur son compte collectif avec son
 code auxiliaire, ou sur son compte), sa balance d'ouverture du 1er janvier 2026 (une écriture
-validée du journal des à-nouveaux équilibrée à 459 260,31) et les achats et la Banque Populaire de
-janvier, datée du 31 janvier 2026 ; `app:dev:dossiers` en donne une copie à chaque étudiant placé
+validée du journal des à-nouveaux équilibrée à 459 260,31), les achats et la Banque Populaire de
+janvier et ses sept modèles d'écriture (loyer, crédit-bail, honoraires, achat et vente à 20 %, frais
+bancaires, règlement fournisseur), datée du 31 janvier 2026 ; `app:dev:dossiers` en donne une copie à chaque étudiant placé
 (en attendant la distribution), qu'il ouvre depuis « Mes dossiers » et que les enseignants de sa classe ouvrent
 depuis sa fiche. Comptabilité › Saisie y est la grille de saisie au clavier, par journal et par
-mois, à la manière de Sage. Les plans comptables de référence (PCG 2026, PCG 2025, PCG antérieur), lus dans
+mois, à la manière de Sage : F6 y appelle un modèle d'écriture (HT, TVA et TTC calculés du montant
+tapé), et la saisie guidée part d'un modèle et de quelques champs. Les plans comptables de référence (PCG 2026, PCG 2025, PCG antérieur), lus dans
 les textes de l'ANC, sont dans `fixtures/pcg/`.
 
 La pile de développement : `php` (FrankenPHP et Caddy), `database` (MariaDB, comme en

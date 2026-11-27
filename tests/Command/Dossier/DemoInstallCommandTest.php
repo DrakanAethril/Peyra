@@ -15,16 +15,19 @@ use App\Enum\Dossier\DossierKind;
 use App\Enum\ThirdParty\PaymentMethod;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\EntryRepository;
+use App\Repository\Accounting\EntryTemplateRepository;
 use App\Repository\Dossier\DossierRepository;
 use App\Service\Accounting\Ledger\EntryScope;
 use App\Service\Accounting\Ledger\LedgerReader;
+use App\Service\Accounting\Template\TemplateCall;
 use App\Service\Dossier\DossierContext;
+use App\Service\Shared\Money;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
-/** app:demo:install puts Menuiserie Vasseur SARL in the common library once, from fixtures/demo/: exercises, plan, journals, third parties. */
+/** app:demo:install puts Menuiserie Vasseur SARL in the common library once, from fixtures/demo/: exercises, plan, journals, third parties, entries, entry templates. */
 final class DemoInstallCommandTest extends KernelTestCase
 {
     public function testInstallsTheTemplateOnceWithItsExercises(): void
@@ -137,5 +140,16 @@ final class DemoInstallCommandTest extends KernelTestCase
             $bank = $reader->accountBalance($account('512200') ?? throw new \LogicException(), new \DateTimeImmutable('2026-01-01'), $end, EntryScope::WithDrafts)->balance()->cents;
             self::assertSame(1_511_678, $bank, 'Banque Populaire au 31/01/2026 : 15 116,78 D (operations-2026.md § 2.5).');
         });
+
+        // Its entry templates (step 1.4b): the rent, the leasing, the fees, a purchase and a sale at 20 %, the bank's.
+        $templates = $context->within($vasseur, static fn (): array => self::getContainer()->get(EntryTemplateRepository::class)->findByDossier($vasseur));
+        self::assertSame(['ACHAT20 ACH', 'CBAIL ACH', 'FRAISBQ2 BQ2', 'HONOR ACH', 'LOYER ACH', 'REGLFOUR BQ2', 'VENTE20 VTE'], array_map(static fn ($t): string => $t->getCode().' '.$t->getJournal()->getCode(), $templates));
+        $rent = $templates[4];
+        $call = $context->within($vasseur, static fn (): array => TemplateCall::lines($rent, new \DateTimeImmutable('2026-02-01'), Money::cents(320_000), '', '', $account));
+        self::assertSame(
+            [['613200', 320_000, 0], ['445660', 64_000, 0], ['401SCIV', 0, 384_000]],
+            array_map(static fn ($line): array => [$line->account, $line->debit, $line->credit], $call['lines']),
+            'Le loyer de février : 3 200,00 HT, 640,00 de TVA, 3 840,00 à la SCI (LOY-2026-02).',
+        );
     }
 }

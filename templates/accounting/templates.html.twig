@@ -1,0 +1,62 @@
+{#
+ # Comptabilité › Paramètres comptables › Modèles d'écriture (design-ux.md § 3.2, gabarit L): the
+ # dossier's entry templates by code - journal, the amount a call asks and its rate, their lines.
+ # A row opens the fiche; N creates one. A template whose account or third party no longer exists
+ # says « À revoir ». In the entry grid, F6 calls the templates of its journal.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set settings_current = 'templates' %}
+{% set dossier_title = 'Modèles d’écriture' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouveau modèle'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Modèles d’écriture" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Paramètres comptables', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Modèles d’écriture', href: path('app_accounting_templates', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button href="{{ path('app_accounting_template_new', {dossier: dossier.id}) }}" variant="primary" icon="plus" shortcut="N">Nouveau modèle</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_settings_tabs.html.twig') }}
+
+    <twig:Px:Card :flush="true">
+        {% if template_rows is empty %}
+            <twig:Px:Empty icon="copy" title="Aucun modèle d’écriture" text="Un modèle pose en une touche les lignes d’une écriture qui revient : un loyer, une facture d’achat à 20 %, des frais bancaires. Dans la grille de saisie, F6 l’appelle et calcule HT, TVA et TTC depuis le montant tapé."/>
+        {% else %}
+            <twig:Px:Table caption="Modèles d’écriture de {{ dossier.name }}" :rows="true">
+                <thead>
+                    <tr>
+                        <th scope="col">Code</th>
+                        <th scope="col">Intitulé</th>
+                        <th scope="col">Journal</th>
+                        <th scope="col">Montant demandé</th>
+                        <th scope="col">Lignes</th>
+                        <th scope="col"><span class="px-u-sr-only">État</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in template_rows %}
+                        {% set one = row.template %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-code"><a class="px-link" href="{{ path('app_accounting_template', {dossier: dossier.id, code: one.code}) }}">{{ one.code }}</a></td>
+                            <td>{{ one.label }}</td>
+                            <td><span class="px-u-code">{{ one.journal.code }}</span> {{ one.journal.label }}</td>
+                            <td>{% if one.asksAmount and one.base %}{{ one.base.label }} · TVA {{ one.vatRate|percent }}{% else %}<span class="px-u-muted">aucun</span>{% endif %}</td>
+                            <td class="px-tlines__summary">{% for line in one.lines %}<span class="px-u-code">{{ line.account }}</span>{% if not loop.last %} · {% endif %}{% endfor %}</td>
+                            <td>{% if row.fault %}<twig:Px:Badge tone="warning" label="À revoir" full="À revoir : {{ row.fault }}"/>{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>Modèles · <b>{{ template_rows|length }}</b></span>{% endblock %}

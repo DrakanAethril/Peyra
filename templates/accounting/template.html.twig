@@ -1,0 +1,125 @@
+{#
+ # The fiche of an entry template (design-ux.md § 3.2, « Modèles d'écriture », gabarit F): code,
+ # label, journal, the amount a call asks (HT or TTC) and the VAT rate it proposes, then the lines as
+ # the entry grid types them - an account number or an auxiliary code (F4), the third party of a
+ # collective typed by number (empty: asked at the call), a label (« {mois} » becomes the entry's
+ # month), the side, and the amount: HT, TVA, TTC, a fixed amount, the balance, or to type. Inser
+ # adds a line, Ctrl Suppr removes the current one (template_lines_controller.js). F10 saves;
+ # whoever only reads sees the facts alone.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set settings_current = 'templates' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set dossier_title = template ? 'Modèle ' ~ template.code : 'Nouveau modèle' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}, {combo: 'F4', verb: 'Liste des comptes'}, {combo: 'Insert', verb: 'Ajouter une ligne'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ template ? template.code ~ ' · ' ~ template.label : 'Nouveau modèle d’écriture' }}" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Modèles d’écriture', href: path('app_accounting_templates', {dossier: dossier.id})},
+        {label: template ? template.code : 'Nouveau modèle', href: template ? path('app_accounting_template', {dossier: dossier.id, code: template.code}) : path('app_accounting_template_new', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}
+                {% if template %}<twig:Px:ConfirmButton label="Supprimer le modèle" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="template-delete"/>{% endif %}
+                <twig:Px:Button type="submit" variant="primary" form="template-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_settings_tabs.html.twig') }}
+
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">Le modèle n’est pas enregistré : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% elseif fault %}
+        <twig:Px:Alert tone="warning">Ce modèle est à revoir : {{ fault }}</twig:Px:Alert>
+    {% endif %}
+
+    {% if can_edit %}
+        <form method="post" action="{{ template ? path('app_accounting_template', {dossier: dossier.id, code: template.code}) : path('app_accounting_template_new', {dossier: dossier.id}) }}" id="template-form" novalidate
+              data-controller="focus-error template-lines" data-template-lines-next-value="{{ lines|length }}" data-template-lines-counterparts-value="{{ counterparts|json_encode }}">
+            <input type="hidden" name="_token" value="{{ csrf_token(template ? 'dossier-template-' ~ template.id : 'dossier-template-new-' ~ dossier.id) }}">
+            <twig:Px:Card title="Modèle">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="code" label="Code" :required="true" hint="1 à 12 lettres ou chiffres : LOYER, VENTE20." :error="draft.error('code')">
+                        <twig:Px:Input id="code" value="{{ draft.code }}" :required="true" hint="1" :error="draft.error('code')" class="px-u-code" maxlength="12" autocomplete="off" spellcheck="false" autofocus/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="label" label="Intitulé" :required="true" :wide="true" :error="draft.error('label')">
+                        <twig:Px:Input id="label" value="{{ draft.label }}" :required="true" :error="draft.error('label')" maxlength="80" autocomplete="off"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="journal" label="Journal" :required="true" :error="draft.error('journal')">
+                        <twig:Px:Select id="journal" placeholder="Choisir le journal…" :options="journal_options" value="{{ draft.journal }}" :required="true" :error="draft.error('journal')" data-action="template-lines#journal"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="base" label="Montant demandé à l’appel" hint="Pour les lignes en HT, TVA ou TTC." :error="draft.error('base')">
+                        <twig:Px:Select id="base" placeholder="Aucun" :options="base_options" value="{{ draft.base }}" hint="1" :error="draft.error('base')"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="rate" label="Taux de TVA proposé" hint="En pourcentage : 20 ; 5,5 ; 0 sans TVA." :error="draft.error('rate')">
+                        <twig:Px:Input id="rate" value="{{ draft.rate }}" size="sm" hint="1" :error="draft.error('rate')" class="px-u-num px-tlines__rate" maxlength="7" autocomplete="off" inputmode="decimal"/>
+                    </twig:Px:Field>
+                </div>
+            </twig:Px:Card>
+
+            <twig:Px:Card title="Lignes" :flush="true" meta="Comme dans la grille de saisie : un numéro de compte, ou le code auxiliaire d’un tiers (401SCIV).">
+                {% if draft.error('lines') %}<p class="px-tlines__problem" id="lines_error" role="alert"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ draft.error('lines') }}</p>{% endif %}
+                <p class="px-tlines__counterpart" data-template-lines-target="counterpart" hidden></p>
+                <table class="px-table px-tlines" aria-label="Lignes du modèle" data-action="keydown->template-lines#keydown">
+                    <colgroup><col class="px-tlines__col-account"><col class="px-tlines__col-party"><col><col class="px-tlines__col-side"><col class="px-tlines__col-amount"><col class="px-tlines__col-fixed"><col class="px-tlines__col-remove"></colgroup>
+                    <thead>
+                        <tr>
+                            <th scope="col">Compte</th>
+                            <th scope="col">Tiers</th>
+                            <th scope="col">Libellé</th>
+                            <th scope="col">Sens</th>
+                            <th scope="col">Montant</th>
+                            <th scope="col" class="px-u-right">Montant fixe</th>
+                            <th scope="col"><span class="px-u-sr-only">Retirer</span></th>
+                        </tr>
+                    </thead>
+                    {% for line in lines %}
+                        {{ include('accounting/_template_line.html.twig', {index: loop.index0, line: line, account_label: account_labels[loop.index0] ?? null, errors: draft.errors}) }}
+                    {% endfor %}
+                    <template data-template-lines-target="prototype">
+                        {{ include('accounting/_template_line.html.twig', {index: '__N__', line: null, account_label: null, errors: {}}) }}
+                    </template>
+                </table>
+                <twig:block name="foot">
+                    <twig:Px:Button icon="plus" shortcut="Insert" data-action="template-lines#add">Ajouter une ligne</twig:Px:Button>
+                    <span class="px-u-muted px-tlines__help">« {mois} » dans un libellé devient le mois de l’écriture : « Loyer {mois} » donne « Loyer février 2026 ». Un compte collectif sans tiers (401000) le demande à l’appel.</span>
+                </twig:block>
+            </twig:Px:Card>
+        </form>
+        {% if template %}
+            <form method="post" action="{{ path('app_accounting_template_delete', {dossier: dossier.id, code: template.code}) }}" id="template-delete" hidden>
+                <input type="hidden" name="_token" value="{{ csrf_token('dossier-template-delete-' ~ template.id) }}">
+            </form>
+        {% endif %}
+    {% else %}
+        <twig:Px:Card title="Modèle">
+            <dl class="px-facts">
+                <dt>Code</dt><dd class="px-u-code">{{ template.code }}</dd>
+                <dt>Intitulé</dt><dd>{{ template.label }}</dd>
+                <dt>Journal</dt><dd><span class="px-u-code">{{ template.journal.code }}</span> {{ template.journal.label }}</dd>
+                <dt>Montant demandé</dt><dd>{% if template.asksAmount and template.base %}{{ template.base.label }} · TVA {{ template.vatRate|percent }}{% else %}aucun{% endif %}</dd>
+            </dl>
+        </twig:Px:Card>
+        <twig:Px:Card title="Lignes" :flush="true">
+            <twig:Px:Table caption="Lignes du modèle {{ template.code }}">
+                <thead><tr><th scope="col">Compte</th><th scope="col">Tiers</th><th scope="col">Libellé</th><th scope="col">Sens</th><th scope="col">Montant</th></tr></thead>
+                <tbody>
+                    {% for line in template.lines %}
+                        <tr>
+                            <td class="px-u-code">{{ line.account }}</td>
+                            <td class="px-u-code">{{ line.thirdParty }}</td>
+                            <td>{{ line.label }}</td>
+                            <td>{{ line.side.label }}</td>
+                            <td>{{ line.amount.label }}{% if line.fixed %} · <span class="px-u-num">{{ line.fixed|amount }}</span>{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}

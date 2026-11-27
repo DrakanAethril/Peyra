@@ -16,6 +16,9 @@ use App\Repository\Identity\SchoolYearRepository;
 use App\Service\Accounting\Ledger\EntryDraft;
 use App\Service\Accounting\Ledger\EntryLineDraft;
 use App\Service\Accounting\Ledger\Ledger;
+use App\Service\Accounting\Template\TemplateDraft;
+use App\Service\Accounting\Template\TemplateLineDraft;
+use App\Service\Accounting\Template\TemplateSheet;
 use App\Service\Dossier\DossierContext;
 use App\Service\Identity\SchoolClasses;
 use App\Service\Shared\Money;
@@ -176,6 +179,12 @@ final class RoleAccessSmokeTest extends WebTestCase
             $scierie->keepOn($client->getContainer()->get(AccountRepository::class)->findOneByNumber($saved, '401000'), '401SCIE');
             $client->getContainer()->get(EntityManagerInterface::class)->persist($scierie);
             $client->getContainer()->get(EntityManagerInterface::class)->flush();
+            $draft = new TemplateDraft();
+            [$draft->code, $draft->label, $draft->journal] = ['VIRSCIE', 'Virement à la Scierie', 'BQ1'];
+            $draft->lines = [new TemplateLineDraft('401SCIE', '', '', 'debit', 'typed')];
+            $sheet = $client->getContainer()->get(TemplateSheet::class);
+            $sheet->create($saved, $sheet->check($draft, $saved) ?? throw new \LogicException(implode(' ', $draft->errors)), 'test');
+            $client->getContainer()->get(EntityManagerInterface::class)->flush();
         });
         $entry = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): Entry => $client->getContainer()->get(Ledger::class)->draft($saved, new EntryDraft('BQ1', new \DateTimeImmutable('2026-01-20'), 'VIR-SCIE', 'Virement Scierie', [
             EntryLineDraft::debit('401000', Money::cents(1_000), '', 'F0001'),
@@ -193,6 +202,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/accounting/third-parties/new', '/accounting/third-parties/import', '/accounting/third-parties/export.csv',
             '/accounting/accounts/search?q=401S',
             '/accounting/entry', '/accounting/entry?journal=BQ1&period=2026-01-01', '/accounting/entries/'.$entry->getId(),
+            '/accounting/templates', '/accounting/templates/new', '/accounting/templates/VIRSCIE',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
             $actual = [];
@@ -205,6 +215,17 @@ final class RoleAccessSmokeTest extends WebTestCase
             }
             self::assertSame($holders, $actual, $url);
         }
+
+        // The guided entry: hidden from the student at the default level (« Avertissements »), open to their teacher.
+        $actual = [];
+        foreach (self::ACCOUNTS as $role => $login) {
+            self::ensureKernelShutdown();
+            $client = static::createClient();
+            $this->submitLogin($client, $login);
+            $client->request('GET', '/d/'.$dossier.'/accounting/entry/guided');
+            $actual[$role] = $client->getResponse()->getStatusCode();
+        }
+        self::assertSame(['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302], $actual, '/accounting/entry/guided');
     }
 
     /** @param array<string, int> $expected */

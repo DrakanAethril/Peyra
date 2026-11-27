@@ -1,0 +1,157 @@
+/*
+ * The lines of an entry template's fiche (Comptabilité › Paramètres comptables › Modèles
+ * d'écriture): a dense table of small fields, each line its own tbody with its faults in a
+ * full-width row below (as the entry grid's), the template's F6 panel in the grid, and the guided
+ * entry's preview. Columns: Compte 216 · Tiers 120 · Libellé the rest · Sens 112 · Montant 176 ·
+ * Montant fixe 136 · bin 44.
+ */
+@layer px.components {
+    .px-tlines {
+        table-layout: fixed;
+
+        & td {
+            vertical-align: top;
+            padding-block: var(--px-space-6);
+        }
+
+        & .px-input,
+        & .px-select,
+        & .px-accountpicker,
+        & .px-picker {
+            width: 100%;
+        }
+
+        & .px-accountpicker .px-input {
+            min-height: var(--px-control-sm);
+            height: var(--px-control-sm);
+            font-size: var(--px-fs-12);
+        }
+
+        & .px-picker__chosen {
+            margin-block-start: var(--px-space-2);
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-12);
+        }
+
+        & .px-tlines__line + .px-tlines__line > tr:first-child > td {
+            border-block-start: 1px solid var(--px-border-row);
+        }
+    }
+
+    .px-tlines__col-account { width: 216px; }
+    .px-tlines__col-party { width: 120px; }
+    .px-tlines__col-side { width: 112px; }
+    .px-tlines__col-amount { width: 176px; }
+    .px-tlines__col-fixed { width: 136px; }
+    .px-tlines__col-remove { width: 44px; }
+
+    .px-tlines__rate {
+        width: 96px;
+    }
+
+    .px-tlines__errors > td {
+        padding: var(--px-space-4) var(--px-space-10);
+        background: var(--px-danger-row);
+        color: var(--px-danger-text);
+        font-size: var(--px-fs-12);
+
+        & svg {
+            width: var(--px-icon-sm);
+            height: var(--px-icon-sm);
+            margin-inline-end: var(--px-space-6);
+            vertical-align: -2px;
+        }
+    }
+
+    .px-tlines__problem,
+    .px-tlines__counterpart {
+        margin: 0;
+        padding: var(--px-space-10) var(--px-space-16);
+        border-block-end: 1px solid var(--px-border-row);
+        font-size: var(--px-fs-13);
+    }
+
+    .px-tlines__problem {
+        display: flex;
+        gap: var(--px-space-6);
+        align-items: center;
+        background: var(--px-danger-row);
+        color: var(--px-danger-text);
+
+        & svg {
+            flex: none;
+            width: var(--px-icon-sm);
+            height: var(--px-icon-sm);
+        }
+    }
+
+    .px-tlines__counterpart {
+        background: var(--px-info-tint);
+        color: var(--px-info-text);
+    }
+
+    .px-tlines__summary {
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+    }
+
+    .px-tlines__help {
+        font-size: var(--px-fs-12);
+    }
+
+    /* F6 in the entry grid: the journal's templates, then the amount a call asks. */
+    .px-entry__templates {
+        display: grid;
+        gap: var(--px-space-8);
+        width: 420px;
+        padding: var(--px-space-10);
+
+        & > div {
+            display: grid;
+            gap: var(--px-space-8);
+        }
+
+        & .px-picker__list {
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        & .px-picker__option {
+            grid-template-columns: 92px minmax(0, 1fr) auto;
+        }
+
+        & label {
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-12);
+            font-weight: var(--px-fw-semibold);
+        }
+    }
+
+    .px-entry__templatename {
+        margin: 0;
+        color: var(--px-text);
+        font-size: var(--px-fs-13);
+    }
+
+    .px-entry__templatefields {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 120px;
+        gap: var(--px-space-10);
+
+        & > div {
+            display: grid;
+            gap: var(--px-space-4);
+        }
+    }
+
+    .px-entry__templaterate {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-6);
+        color: var(--px-text-muted);
+
+        & .px-input {
+            width: 72px;
+        }
+    }
+}

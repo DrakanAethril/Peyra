@@ -1,0 +1,79 @@
+{#
+ # Comptabilité › Saisie › guidée (design-ux.md § 3.2, gabarit F): a template of the dossier, a few
+ # fields - date, document, the third party a collective asks, the amount (HT or TTC) and the rate -,
+ # and the entry it makes shown below as it is filled (a Turbo frame, guided_entry_controller.js).
+ # F10 writes it to the brouillard, checked as the grid checks it; the page then offers the next one
+ # of the series (pièce incremented). Open at levels G and B, and to teachers.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set module_current = 'entry' %}
+{% set entry_view = 'guided' %}
+{% set dossier_title = 'Saisie guidée' %}
+{% set status_keys = template ? [{combo: 'F10', verb: 'Enregistrer au brouillard'}, {combo: 'F4', verb: 'Liste des tiers'}] : [] %}
+{# A field says its fault once F10 was refused; until then the preview lists them as the person fills the form. #}
+{% set errors = tried and preview ? preview.errors : {} %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Saisie guidée" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_entry', {dossier: dossier.id})},
+        {label: 'Saisie', href: path('app_accounting_entry', {dossier: dossier.id})},
+        {label: 'Guidée', href: path('app_accounting_guided', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if template %}<twig:Px:Button type="submit" variant="primary" form="guided-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_entry_tabs.html.twig') }}
+
+    {% if errors is not empty %}
+        <twig:Px:Alert tone="danger">L’écriture n’est pas enregistrée : {{ errors|length > 1 ? errors|length ~ ' points sont à corriger' : 'un point est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+
+    {% if offered is empty %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="copy" title="Aucun modèle pour la saisie guidée" text="La saisie guidée part d’un modèle d’écriture dont toutes les lignes se calculent : HT, TVA, TTC, montant fixe ou solde.">
+                <twig:block name="action"><twig:Px:Button href="{{ path('app_accounting_templates', {dossier: dossier.id}) }}">Modèles d’écriture</twig:Px:Button></twig:block>
+            </twig:Px:Empty>
+        </twig:Px:Card>
+    {% else %}
+        <form id="guided-pick" method="get" action="{{ path('app_accounting_guided', {dossier: dossier.id}) }}" data-turbo-action="advance"></form>
+        <form method="post" action="{{ path('app_accounting_guided_save', {dossier: dossier.id}) }}" id="guided-form" novalidate
+              data-controller="focus-error guided-entry" data-guided-entry-preview-url-value="{{ path('app_accounting_guided_preview', {dossier: dossier.id}) }}"
+              data-action="input->guided-entry#changed change->guided-entry#changed focusout->guided-entry#changed">
+            <input type="hidden" name="_token" value="{{ csrf_token('guided-entry-' ~ dossier.id) }}">
+            <input type="hidden" name="template" value="{{ template.code }}">
+            <twig:Px:Card title="Écriture">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="pick" label="Modèle" :wide="true" hint="Les modèles dont toutes les lignes se calculent ; F6 dans la grille appelle les autres.">
+                        <twig:Px:Select id="pick" name="template" form="guided-pick" :options="template_options" value="{{ template.code }}" hint="1" data-action="change->guided-entry#pick"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="date" label="Date" :required="true" :error="errors.date ?? null">
+                        <twig:Px:DateInput id="date" :reference="dossier.dossierDate" :value="input.date" :required="true" :error="errors.date ?? null"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="document" label="N° de pièce" :required="true" :error="errors.document ?? null">
+                        <twig:Px:Input id="document" value="{{ input.document }}" :required="true" :error="errors.document ?? null" class="px-u-code" maxlength="40" autocomplete="off" spellcheck="false" autofocus/>
+                    </twig:Px:Field>
+                    {% if asks_party %}
+                        <twig:Px:Field id="thirdParty" label="Tiers" :required="true" hint="Son code auxiliaire : tapez son nom, F4 pour la liste." :error="errors.thirdParty ?? null">
+                            <twig:Px:AccountPicker id="thirdParty" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" value="{{ input.thirdParty }}" hint="1" :required="true" :error="errors.thirdParty ?? null" listLabel="Tiers"/>
+                        </twig:Px:Field>
+                    {% endif %}
+                    {% if template.asksAmount %}
+                        <twig:Px:Field id="amount" label="{{ template.base.label ?? 'Montant' }}" :required="true" :error="errors.amount ?? null">
+                            <twig:Px:AmountInput id="amount" :value="input.amount" unit="€" :required="true" :error="errors.amount ?? null"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="rate" label="Taux de TVA" hint="Proposé par le modèle." :error="errors.rate ?? null">
+                            <twig:Px:Input id="rate" value="{{ input.rate }}" size="sm" hint="1" :error="errors.rate ?? null" class="px-u-num px-tlines__rate" maxlength="7" autocomplete="off" inputmode="decimal"/>
+                        </twig:Px:Field>
+                    {% endif %}
+                </div>
+            </twig:Px:Card>
+        </form>
+
+        {{ include('accounting/_guided_preview.html.twig') }}
+    {% endif %}
+{% endblock %}
