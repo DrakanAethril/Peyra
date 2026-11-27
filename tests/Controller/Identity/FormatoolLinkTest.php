@@ -17,9 +17,30 @@ final class FormatoolLinkTest extends WebTestCase
 {
     use SignsIn;
 
+    private ?string $originalEnv = null;
+    private ?string $originalServer = null;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->originalEnv = \is_string($_ENV['FORMATOOL_URL'] ?? null) ? $_ENV['FORMATOOL_URL'] : null;
+        $this->originalServer = \is_string($_SERVER['FORMATOOL_URL'] ?? null) ? $_SERVER['FORMATOOL_URL'] : null;
+    }
+
+    /**
+     * Restores the variable rather than unsetting it: `.env` declares it empty, and a test after
+     * this one in the same process would otherwise find no FORMATOOL_URL at all and fail to boot
+     * the sign-in page (« Environment variable not found »).
+     */
     protected function tearDown(): void
     {
         unset($_ENV['FORMATOOL_URL'], $_SERVER['FORMATOOL_URL']);
+        if (null !== $this->originalEnv) {
+            $_ENV['FORMATOOL_URL'] = $this->originalEnv;
+        }
+        if (null !== $this->originalServer) {
+            $_SERVER['FORMATOOL_URL'] = $this->originalServer;
+        }
         parent::tearDown();
     }
 

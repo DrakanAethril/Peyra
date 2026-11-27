@@ -27,10 +27,10 @@
         <form method="post" action="{{ path('app_admin_years_create') }}" class="px-formrow" novalidate>
             <input type="hidden" name="_token" value="{{ csrf_token('admin-years-create') }}">
             <twig:Px:Field id="starts_on" label="Début" :required="true" :error="error">
-                <twig:Px:Input id="starts_on" type="date" value="{{ starts_on }}" :required="true" :error="error"/>
+                <twig:Px:DateInput id="starts_on" :reference="today" :value="starts_on" :required="true" :error="error is not null"/>
             </twig:Px:Field>
             <twig:Px:Field id="ends_on" label="Fin" :required="true">
-                <twig:Px:Input id="ends_on" type="date" value="{{ ends_on }}" :required="true"/>
+                <twig:Px:DateInput id="ends_on" :reference="today" :value="ends_on" :required="true"/>
             </twig:Px:Field>
             {% if latest %}
                 <label class="px-check">

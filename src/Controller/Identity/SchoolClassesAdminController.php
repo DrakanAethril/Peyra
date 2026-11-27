@@ -142,7 +142,7 @@ final class SchoolClassesAdminController extends AbstractController
         }
         $name = $assignment->getTeacher()->getDisplayName();
         $classes->removeTeacher($assignment, $me, $clock->now());
-        $this->addFlash('status', \sprintf('%s retiré de %s.', $name, $class->getName()));
+        $this->addFlash('status', \sprintf('%s n’enseigne plus en %s.', $name, $class->getName()));
 
         return $this->redirectToRoute('app_admin_class', ['id' => $class->getId()], Response::HTTP_SEE_OTHER);
     }
