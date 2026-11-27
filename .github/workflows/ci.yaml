@@ -55,7 +55,10 @@ jobs:
       # infra/terraform/ (production's bucket) is run by the operator from their own machine, never
       # here: CI only checks it is formatted and valid. `init -backend=false` downloads the provider
       # the committed lock file names, nothing more; no AWS credential exists in this job. On a copy,
-      # so that nothing Terraform writes lands in the checkout.
+      # so that nothing Terraform writes lands in the checkout. `-lockfile=readonly` refuses a
+      # provider whose checksum for this runner's platform is missing from the lock file: after
+      # changing the provider, record every platform (`terraform providers lock -platform=linux_amd64
+      # -platform=linux_arm64 -platform=darwin_amd64 -platform=darwin_arm64 -platform=windows_amd64`).
       - name: Check the Terraform configuration
         run: |
           work="$(mktemp -d)"
