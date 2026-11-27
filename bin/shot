@@ -119,7 +119,7 @@ function client(socket) {
     };
 }
 
-const KEY_CODES = { Backspace: 8, Tab: 9, Enter: 13, Escape: 27, Space: 32, End: 35, Home: 36, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, F1: 112, F4: 115, F7: 118, F8: 119, F10: 121 };
+const KEY_CODES = { Backspace: 8, Tab: 9, Enter: 13, Escape: 27, Space: 32, End: 35, Home: 36, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, F1: 112, F4: 115, F5: 116, F6: 117, F7: 118, F8: 119, F10: 121, Insert: 45, Delete: 46, PageUp: 33, PageDown: 34, '+': 107 };
 
 /** One real key press (or typed text) through the DevTools protocol. */
 async function press(cdp, step) {

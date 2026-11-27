@@ -1,0 +1,29 @@
+{#
+ # Comptabilité › Saisie when there is nothing to enter in: a dossier without a journal, or without
+ # an exercise (design-ux.md § 6.4: say why it is empty and what fills it).
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set module_current = 'entry' %}
+{% set dossier_title = 'Saisie' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Saisie" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_entry', {dossier: dossier.id})},
+        {label: 'Saisie', href: path('app_accounting_entry', {dossier: dossier.id})},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card>
+        {% if no_journal %}
+            <twig:Px:Empty title="Aucun journal dans ce dossier" text="Une écriture se saisit dans un journal : créez d’abord les journaux du dossier." icon="book-text">
+                <twig:block name="action"><twig:Px:Button href="{{ path('app_accounting_journal_new', {dossier: dossier.id}) }}" variant="primary" icon="plus">Nouveau journal</twig:Px:Button></twig:block>
+            </twig:Px:Empty>
+        {% else %}
+            <twig:Px:Empty title="Aucun exercice ouvert" text="Une écriture se date dans un exercice : ouvrez d’abord l’exercice du dossier, sur la fiche de la société." icon="calendar">
+                <twig:block name="action"><twig:Px:Button href="{{ path('app_dossier_company', {dossier: dossier.id}) }}">Fiche de la société</twig:Px:Button></twig:block>
+            </twig:Px:Empty>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}

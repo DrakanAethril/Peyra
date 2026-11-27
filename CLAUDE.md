@@ -100,7 +100,7 @@ empty, and `PeyraScheduleTest` pins that list, so adding a task is a decision th
 | `app:regulatory:sync [--dry-run]` | Installs the millésime files `config/regulatory/<année>.yaml`; only ever adds rows, never over an administrator's value. **Every deploy runs it** |
 | `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
-| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
+| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, January's purchases and Banque Populaire with two drafts in each; date 31/01/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
 | `app:dev:dossiers` | **Development and test only**, until the distribution of step 1.8: gives each student enrolled this year their own Menuiserie Vasseur, built from the fixtures (the template installed first if missing). Sign the students in first: their first sign-in places them |
 | `app:test:parallel-databases` | **Test only.** Copies the migrated `peyra_test` into `peyra_test1`… for ParaTest (tests/README.md) |
 
@@ -553,10 +553,68 @@ Conception § 5, held by code in `src/Entity/Accounting/`, `src/Service/Accounti
   third party's balance at the dossier's date; the account fiche its balance; the third parties'
   list and fiche their « Encours ».
 - `fixtures/demo/entries.yaml` (`DemoEntryFile`): the demonstration's entries, written through the
-  Ledger by `DemoInstaller`; for now the opening balance (AN-2026-001, 67 lines, 459 260,31).
+  Ledger by `DemoInstaller` (drafted one by one, validated together): the opening balance
+  (AN-2026-001, 67 lines, 459 260,31), then January's ACH and BQ2 (step 1.4a; 512200 at 31/01 =
+  15 116,78 D, as the prepared data say).
 - **Deleting a dossier** by SQL fails on the intra-dossier `RESTRICT` keys (journal → account,
   line → account…): delete `entry_line`, `entry`, `third_party`, `journal` first. Step 1.8 erases a
   dossier in that order.
+
+## Keyboard entry (built at step 1.4a)
+
+Lot 1, step 1.4a (design-ux.md §§ 4.4 and 5.2, design-ui.md § 4.8), held by code in
+`src/Service/Accounting/Entry/`, `src/Controller/Accounting/EntryGridController.php`,
+`EntryController.php` and `assets/controllers/entry_grid_controller.js` (+ `assets/entry_grid/model.js`):
+
+- **Comptabilité › Saisie** (`/d/{dossier}/accounting/entry?journal=ACH&period=2026-01-01`, the
+  rail's Comptabilité): the grid of a journal and a month - Jour · Pièce · Compte · Intitulé ·
+  Libellé · Débit · Crédit · Échéance. The journal and month last entered are taken again (session,
+  per dossier); `Alt+J` / `Alt+P` focus their selects. **The browser draws the grid** from the
+  page's JSON (`grid`: the month's entries and the person's pending work; `lookup`: the plan and the
+  third parties with their balances): nothing a keystroke needs asks the server - Sage's speed.
+- **The Compte cell** takes a number (digits filter by start, the list of 8 under the cell, `Entrée`
+  takes the first) or an auxiliary code (« 401SCIE », letters search codes and names); `F4` lists the
+  whole plan by class (`←` `→`); `Alt+Inser` creates the account typed (POST `…/entry/account`,
+  `AccountSheet`). A collective typed by number (419100) turns the Intitulé cell into the third
+  party's. **`Entrée` goes to the next cell to fill** (a new entry's first line visits day and
+  document; carried day, document and label are skipped; a complete line opens the next line, a new
+  entry once balanced, pièce incremented); `Tab` visits every cell; `+` in an amount balances the
+  entry; `Ctrl+D` copies the cell above; `Inser`, `Ctrl+Suppr` insert and delete a line;
+  `Ctrl+↑ ↓` jump by entry; `Échap` closes the list, then undoes the cell, then offers to abandon the
+  entry's changes (a bar inside the grid); `Ctrl+F6` leaves the grid.
+- **What is typed is never an Entry until it balances**: each line left keeps the person's pending
+  work (`PendingEntry`, one per journal, month and author, `PendingEntries` the one door, revision
+  against stale tabs → 409) as `GridGroup`s; **F10** (`JournalGrid::save()`) writes to the
+  brouillard every group the Ledger accepts and no blocking control stops (new → `draft()`, a draft
+  changed → `update()`, a draft whose lines were all deleted → `discard()`), the rest stays pending
+  and is drawn amber (« brouillon incomplet »). Leaving the screen with an unbalanced entry asks
+  (keep it / delete it / stay). Others' pending work in the same grid is announced in a banner
+  (the teacher sees the student's). A `PendingEntry` is DossierOwned: step 1.8 decides what the
+  copier does with it.
+- **`GridDrafts`** (pure) is the grid ↔ Ledger mapping: auxiliary code → collective + third party;
+  the entry's label is its first line's; a purchase or sale line on a lettrable account naming a
+  third party without a due date gets `PaymentTerms::dueDate()`; **a bank or cash journal's
+  counterpart line is automatic** (one line on the journal's account balancing the lines typed,
+  drawn read only; `linesOf()` strips it when an entry comes back to the grid).
+- **`EntryControls`** (pure) at the dossier's assistance level (`AssistanceLevels`,
+  `WarningsByDefault` until the missions; enum `AssistanceLevel` G/B/A/0): account unusual for the
+  journal (`isUnusual()`), date outside the month or after the dossier's date, document already in
+  the journal in the exercise. A at warning, G and B blocking (F10 and the validation hold the
+  entry), 0 none. `JournalGrid::check()` runs EntryRules over an in-memory `GridContext` (one read
+  of the plan, third parties, months and documents per request).
+- **Ctrl+Entrée** (`JournalGrid::validate()`): F10, then the month's brouillard of the journal
+  validated (all or nothing), but the drafts being changed and, at G and B, those a control stops;
+  after the confirmation bar in place of the head's actions (design-ux.md § 6.2).
+- **An entry's fiche** (`/d/{dossier}/accounting/entries/{id}`, the grid's mark column links to it):
+  a draft is validated (confirmation bar, `confirm_bar_controller.js`), deleted (two steps), changed
+  in the grid (`?entry=ID` focuses it) or duplicated; a validated one is reversed at a date (the
+  dossier's by default) - « Contrepasser et ressaisir » also puts a copy in the grid - or duplicated.
+  A duplicate is a pending group of the entry's grid (`JournalGrid::append()`, `?entry=-1`).
+- JSON posts carry the CSRF token `entry-grid-<dossier>` in `X-Peyra-Token`; a closed month or
+  exercise draws the grid read only and refuses every post (404).
+- Pitfalls met: replacing the `tbody` that holds the focus fires `focusout` in Chrome - the
+  controller sets `rendering` while it redraws; `bin/shot`'s `text:` step is split at commas
+  (type « 3380.10 », not « 3380,10 »), and `+` is the key name for the plus key.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

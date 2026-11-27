@@ -139,18 +139,28 @@ final readonly class DemoInstaller
         }
     }
 
-    /** Its entries, through the Ledger like any other: one it refuses names the entry and stops the install. */
+    /**
+     * Its entries, through the Ledger like any other: drafted one by one, then those marked validated
+     * validated together (numbered by date, as a person validating the month would). One the Ledger
+     * refuses names the entry and stops the install.
+     */
     private function installEntries(Dossier $dossier, DemoEntryFile $file, string $actor): void
     {
+        $toValidate = [];
         foreach ($file->entries as $index => $entry) {
             try {
                 $written = $this->ledger->draft($dossier, $entry['draft'], $actor, $entry['origin']);
-                if ($entry['validated']) {
-                    $this->ledger->validate([$written], $actor);
-                }
             } catch (EntryRefused $refusal) {
                 throw new \InvalidArgumentException(\sprintf('entries.yaml : entries[%d] (%s) : %s', $index, $entry['draft']->document, implode(' ', $refusal->errors)), 0, $refusal);
             }
+            if ($entry['validated']) {
+                $toValidate[] = $written;
+            }
+        }
+        try {
+            $this->ledger->validate($toValidate, $actor);
+        } catch (EntryRefused $refusal) {
+            throw new \InvalidArgumentException('entries.yaml : '.implode(' ', $refusal->errors), 0, $refusal);
         }
     }
 

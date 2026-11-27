@@ -1,0 +1,430 @@
+/*
+ * The entry grid (design-ui.md § 4.8, Px:EntryGrid as entry_grid_controller.js draws it): cells
+ * without border nor background, one in edit (ring inside), the current line tinted with its left
+ * rule, a rule between entries, the totals of the current entry and of the month in the sticky
+ * foot. Columns: mark 22 · Jour 60 · Pièce 128 · Compte 104 · Intitulé and Libellé share the
+ * rest · Débit 116 · Crédit 116 · Échéance 96. Lines of 32 px.
+ */
+@layer px.components {
+    .px-entrygrid {
+        position: relative;
+        display: grid;
+        gap: var(--px-gap);
+    }
+
+    .px-entry__context {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+        gap: var(--px-space-12) var(--px-space-16);
+    }
+
+    .px-entry__pick {
+        display: grid;
+        gap: var(--px-space-4);
+
+        & > label {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--px-space-6);
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-12);
+            font-weight: var(--px-fw-semibold);
+        }
+    }
+
+    .px-entry__treasury {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--px-space-16);
+        margin: 0 0 0 auto;
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-13);
+
+        & b {
+            color: var(--px-text-strong);
+        }
+    }
+
+    .px-entry__scroll {
+        max-height: calc(100dvh - 360px);
+        min-height: 240px;
+        overflow: auto;
+    }
+
+    .px-entry__lines {
+        table-layout: fixed;
+        --px-row-default: 32px;
+
+        & thead th {
+            z-index: 2;
+        }
+
+        & tbody td {
+            padding: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        & tbody td:not(:has(> input)) {
+            padding: 0 var(--px-space-10);
+        }
+
+        & tbody td.px-entry__mark {
+            padding: 0;
+            vertical-align: top;
+            text-align: center;
+        }
+
+        & tfoot {
+            z-index: 2;
+        }
+
+        & tfoot th {
+            text-align: start;
+        }
+
+        & tfoot .is-short {
+            color: var(--px-danger-text);
+        }
+    }
+
+    .px-entry__col-mark { width: 24px; }
+    .px-entry__col-day { width: 60px; }
+    .px-entry__col-document { width: 128px; }
+    .px-entry__col-account { width: 104px; }
+    .px-entry__col-amount { width: 116px; }
+    .px-entry__col-due { width: 100px; }
+
+    /* A rule between two entries; the table's own row border is dropped on a group's last line. */
+    .px-entry__group + .px-entry__group > tr:first-child > * {
+        border-block-start: 1px solid var(--px-border-strong);
+    }
+
+    .px-entry__lines tbody.px-entry__group tr:last-child > * {
+        border-block-end: 0;
+    }
+
+    .px-entry__cell {
+        /* Scrolled into view clear of the sticky head and of the two total rows. */
+        scroll-margin-block: 40px 72px;
+        display: block;
+        width: 100%;
+        height: 31px;
+        padding: 0 var(--px-space-10);
+        background: transparent;
+        border: 0;
+        border-radius: var(--px-radius-sm);
+        color: var(--px-text);
+        font: inherit;
+        outline: none;
+
+        &.px-u-num {
+            text-align: end;
+        }
+
+        &:focus {
+            background: var(--px-surface);
+            box-shadow: var(--px-ring-inset);
+        }
+
+        &[aria-invalid="true"] {
+            box-shadow: inset 0 0 0 2px var(--px-danger);
+        }
+
+        &::placeholder {
+            color: var(--px-text-muted);
+            font-style: italic;
+        }
+    }
+
+    .px-u-code > .px-entry__cell,
+    .px-entry__cell[data-field="account"],
+    .px-entry__cell[data-field="thirdParty"],
+    .px-entry__cell[data-field="document"],
+    .px-entry__cell[data-field="day"],
+    .px-entry__cell[data-field="due"] {
+        font-family: var(--px-font-mono);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .px-entry__cell[data-field="debit"],
+    .px-entry__cell[data-field="credit"] {
+        font-family: var(--px-font-mono);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* The current line (design-ui.md § 4.8): tinted, with its left rule on the first cell after the mark. */
+    .px-entry__lines tbody tr.is-current > td:not(.px-entry__mark) {
+        background: var(--px-action-soft);
+    }
+
+    .px-entry__lines tbody tr.is-current > td[data-field="day"] {
+        box-shadow: inset 2px 0 0 var(--px-action);
+    }
+
+
+    /* The automatic counterpart of a bank or cash journal: read only, in italics. */
+    .px-entry__line.is-automatic > td {
+        color: var(--px-text-muted);
+        font-style: italic;
+    }
+
+    .px-entry__lineerror > td {
+        height: auto !important;
+        padding: var(--px-space-4) var(--px-space-10) !important;
+        background: var(--px-danger-row);
+        color: var(--px-danger-text);
+        font-size: var(--px-fs-12);
+        white-space: normal !important;
+    }
+
+    .px-entry__note {
+        color: var(--px-text-muted);
+        font-style: italic;
+    }
+
+    .px-entry__empty {
+        padding: var(--px-space-16) var(--px-space-10) !important;
+        color: var(--px-text-muted);
+        text-align: center;
+    }
+
+    /* The mark of an entry: lock (validated), sheet (brouillard), dot (new or changed), alert (incomplete, to correct). */
+    .px-entry__markin {
+        display: inline-grid;
+        place-items: center;
+        width: 22px;
+        height: 31px;
+        color: var(--px-text-muted);
+
+        & > svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring-inset);
+            border-radius: var(--px-radius-xs);
+        }
+    }
+
+    a.px-entry__markin:hover {
+        color: var(--px-action);
+    }
+
+    .px-entry__dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--px-action);
+    }
+
+    .px-entry__group.is-validated > tr > td {
+        color: var(--px-text);
+    }
+
+    .px-entry__group.is-incomplete > tr > td.px-entry__mark {
+        background: var(--px-warning-row);
+        box-shadow: inset 3px 0 0 var(--px-warning);
+    }
+
+    .px-entry__group.is-incomplete .px-entry__markin {
+        color: var(--px-warning-text);
+    }
+
+    .px-entry__group.is-error > tr > td.px-entry__mark {
+        background: var(--px-danger-row);
+        box-shadow: inset 3px 0 0 var(--px-danger);
+    }
+
+    .px-entry__group.is-error .px-entry__markin {
+        color: var(--px-danger-text);
+    }
+
+    .px-entry__lines.is-unsaved .px-entry__group.is-new .px-entry__dot,
+    .px-entry__lines.is-unsaved .px-entry__group.is-modified .px-entry__dot {
+        background: var(--px-warning);
+    }
+
+    .px-entry__abandon {
+        scroll-margin-block: 40px 72px;
+    }
+
+    .px-entry__abandon > td {
+        height: 40px !important;
+        padding: 0 var(--px-space-10) !important;
+        background: var(--px-warning-row);
+
+        & > span {
+            margin-inline-end: var(--px-space-12);
+            color: var(--px-text-strong);
+            font-weight: var(--px-fw-semibold);
+        }
+
+        & > button + button {
+            margin-inline-start: var(--px-space-6);
+        }
+    }
+
+    .px-entry__current > th,
+    .px-entry__month > th {
+        font-weight: var(--px-fw-semibold);
+
+        & .px-badge {
+            margin-inline-start: var(--px-space-8);
+        }
+    }
+
+    .px-entry__month > * {
+        color: var(--px-text-muted) !important;
+        font-weight: var(--px-fw-medium) !important;
+    }
+
+    /* The list under the Compte cell, and F4's whole plan with its classes on the left. */
+    .px-entry__picker {
+        width: 460px;
+        max-height: 340px;
+        display: grid;
+        grid-template-rows: minmax(0, 1fr) auto;
+        overflow: hidden;
+
+        & .px-picker__list {
+            overflow-y: auto;
+        }
+
+        & .px-picker__option {
+            grid-template-columns: 82px minmax(0, 1fr) auto;
+            min-height: 26px;
+        }
+
+        &.is-full {
+            width: 600px;
+            max-height: 420px;
+        }
+
+        & mark {
+            background: transparent;
+            color: var(--px-text-strong);
+            font-weight: var(--px-fw-semibold);
+        }
+    }
+
+    .px-entry__pickerbody {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        min-height: 0;
+        overflow: hidden;
+
+        & > ul {
+            min-height: 0;
+        }
+    }
+
+    .px-entry__classes {
+        margin: 0;
+        padding: var(--px-space-4) 0;
+        list-style: none;
+        border-inline-end: 1px solid var(--px-border-row);
+
+        &[hidden] {
+            display: none;
+        }
+    }
+
+    .px-entry__class {
+        padding: var(--px-space-4) var(--px-space-12);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+        white-space: nowrap;
+        cursor: pointer;
+
+        &[aria-current="true"] {
+            background: var(--px-action-soft);
+            box-shadow: inset 2px 0 0 var(--px-action);
+            color: var(--px-text-strong);
+            font-weight: var(--px-fw-semibold);
+        }
+    }
+
+    .px-entry__create {
+        display: grid;
+        gap: var(--px-space-6);
+        width: 340px;
+        padding: var(--px-space-10);
+
+        & > label {
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-12);
+            font-weight: var(--px-fw-semibold);
+        }
+    }
+
+    .px-entry__createtitle {
+        margin: 0;
+        color: var(--px-text-strong);
+        font-weight: var(--px-fw-semibold);
+    }
+
+    /* The bar that asks before a gesture (design-ux.md § 6.2): in place of the head's actions, no veil. */
+    .px-entry-actions {
+        display: flex;
+        gap: var(--px-space-8);
+    }
+
+    .px-entry-actions[hidden] {
+        display: none;
+    }
+
+    .px-confirmbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--px-space-8);
+        padding: var(--px-space-4) var(--px-space-4) var(--px-space-4) var(--px-space-12);
+        background: var(--px-warning-tint);
+        border: 1px solid var(--px-warning);
+        border-radius: var(--px-radius-md);
+
+        & > p {
+            margin: 0;
+            max-width: 62ch;
+            color: var(--px-text-strong);
+            font-size: var(--px-fs-13);
+        }
+
+        &[hidden] {
+            display: none;
+        }
+    }
+
+    #entry-balance.is-wanted:not(:disabled) {
+        background: var(--px-action-tint);
+        border-color: var(--px-action);
+    }
+}
+
+@layer px.components {
+    .px-entry-confirmable {
+        display: flex;
+        gap: var(--px-space-8);
+    }
+
+    .px-entry__facts {
+        padding: var(--px-space-12) var(--px-space-16);
+    }
+
+    .px-entry__reverse {
+        display: grid;
+        gap: var(--px-space-12);
+        justify-items: start;
+    }
+}
+
+/* Day and document carried from the entry's first line: above .px-u-code's own colour. */
+@layer px.utilities {
+    .px-entry__lines td.is-carried {
+        color: var(--px-text-disabled);
+    }
+}

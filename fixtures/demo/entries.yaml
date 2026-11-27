@@ -1,7 +1,10 @@
 # Menuiserie Vasseur SARL - its entries, installed by app:demo:install through the Ledger, each
-# checked like any other entry. For now the opening balance of the exercise 2026 (à-nouveaux of the
-# 01/01/2026, journal AN), validated: the closing balance of 2025 before the allocation of its
-# result (120000 carries the profit of 2025), 459 260,31 on each side. A line on a collective account
+# checked like any other entry. The opening balance of the exercise 2026 (à-nouveaux of the
+# 01/01/2026, journal AN), then January's purchases (ACH) and Banque Populaire (BQ2), as entered in
+# the grid (step 1.4a; operations-2026.md § 2.2, entries 4 to 78 of those two journals): validated,
+# but for the last two of each, left in the brouillard. The opening balance is the closing balance
+# of 2025 before the allocation of its result (120000 carries the profit of 2025), 459 260,31 on
+# each side. A line on a collective account
 # names its third party by code; the open invoices keep their due date (lettering, step 1.6).
 # Source: design/validated/plan/donnees/demo/ouverture-2026.yaml (prepared data, 2026-11-27).
 # Amounts are euros as text, read exactly, never as floats.
@@ -81,3 +84,408 @@ entries:
       - { account: '455100', third_party: A0001, label: "Compte courant de Bernard Vasseur", credit: '15000.00' }
       - { account: '512100', label: "Crédit Coopératif, solde rapproché au 31/12/2025 (relevé n° 12)", debit: '8216.45' }
       - { account: '512200', label: "Banque Populaire, solde rapproché au 31/12/2025", debit: '36932.78' }
+  - journal: ACH
+    date: '2026-01-01'
+    document: LOY-2026-01
+    label: "SCI Vasseur Immobilier LOY-2026-01"
+    validated: true
+    lines:
+      - { account: '613200', debit: '3200.00' }
+      - { account: '445660', debit: '640.00' }
+      - { account: '401000', third_party: F0009, credit: '3840.00' }
+  - journal: ACH
+    date: '2026-01-02'
+    document: CW-INV-260102
+    label: "CadWood Software CW-INV-260102"
+    validated: true
+    lines:
+      - { account: '651100', debit: '267.00' }
+      - { account: '445660', debit: '53.40' }
+      - { account: '445200', credit: '53.40' }
+      - { account: '401000', third_party: F0007, credit: '267.00' }
+  - journal: BQ2
+    date: '2026-01-02'
+    document: PRLV-LOY-01
+    label: "SCI Vasseur Immobilier PRLV-LOY-01"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0009, debit: '3840.00' }
+      - { account: '512200', credit: '3840.00' }
+  - journal: BQ2
+    date: '2026-01-02'
+    document: CB-CADW-01
+    label: "CadWood Software CB-CADW-01"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0007, debit: '267.00' }
+      - { account: '512200', credit: '267.00' }
+  - journal: ACH
+    date: '2026-01-03'
+    document: FT-2601-30418
+    label: "Forez Télécom FT-2601-30418"
+    validated: true
+    lines:
+      - { account: '626000', debit: '98.00' }
+      - { account: '445660', debit: '19.60' }
+      - { account: '401000', third_party: F0011, credit: '117.60' }
+  - journal: ACH
+    date: '2026-01-05'
+    document: LBE-2026-01
+    label: "Loire Bail Équipement LBE-2026-01"
+    validated: true
+    lines:
+      - { account: '612200', debit: '412.00' }
+      - { account: '445660', debit: '82.40' }
+      - { account: '401000', third_party: F0018, credit: '494.40' }
+  - journal: ACH
+    date: '2026-01-05'
+    document: DEL-2026-0004
+    label: "Cabinet Delorme et Associés DEL-2026-0004"
+    validated: true
+    lines:
+      - { account: '622600', debit: '800.00' }
+      - { account: '445660', debit: '160.00' }
+      - { account: '401000', third_party: F0013, credit: '960.00' }
+  - journal: BQ2
+    date: '2026-01-05'
+    document: VIR-SCIE-0431
+    label: "Scierie du Haut-Forez VIR-SCIE-0431"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0001, debit: '7878.00' }
+      - { account: '512200', credit: '7878.00' }
+  - journal: BQ2
+    date: '2026-01-05'
+    document: PRLV-LBE-01
+    label: "Loire Bail Équipement PRLV-LBE-01"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0018, debit: '494.40' }
+      - { account: '512200', credit: '494.40' }
+  - journal: ACH
+    date: '2026-01-07'
+    document: ELE-2512-77412
+    label: "Électricité Loire Énergies ELE-2512-77412"
+    validated: true
+    lines:
+      - { account: '606100', debit: '1550.00' }
+      - { account: '445660', debit: '310.00' }
+      - { account: '401000', third_party: F0010, credit: '1860.00' }
+  - journal: ACH
+    date: '2026-01-08'
+    document: FA-2601-0012
+    label: "Scierie du Haut-Forez FA-2601-0012"
+    validated: true
+    lines:
+      - { account: '601000', debit: '3380.10' }
+      - { account: '624100', debit: '85.00' }
+      - { account: '445660', debit: '693.02' }
+      - { account: '401000', third_party: F0001, credit: '4158.12', due: '2026-02-07' }
+  - journal: BQ2
+    date: '2026-01-08'
+    document: PRLV-TELE-01
+    label: "Forez Télécom PRLV-TELE-01"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0011, debit: '117.60' }
+      - { account: '512200', credit: '117.60' }
+  - journal: BQ2
+    date: '2026-01-10'
+    document: PRLV-DELO-01
+    label: "Cabinet Delorme et Associés PRLV-DELO-01"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0013, debit: '960.00' }
+      - { account: '512200', credit: '960.00' }
+  - journal: ACH
+    date: '2026-01-12'
+    document: BFM-26-0118
+    label: "Bureau Fournitures Montbrison BFM-26-0118"
+    validated: true
+    lines:
+      - { account: '606400', debit: '142.60' }
+      - { account: '445660', debit: '28.52' }
+      - { account: '401000', third_party: F0016, credit: '171.12', due: '2026-02-11' }
+  - journal: BQ2
+    date: '2026-01-12'
+    document: VIR-SJUS-0277
+    label: "Mairie de Saint-Just VIR-SJUS-0277"
+    validated: true
+    lines:
+      - { account: '512200', debit: '7224.00' }
+      - { account: '411000', third_party: C0063, credit: '7224.00' }
+  - journal: ACH
+    date: '2026-01-13'
+    document: PRL-26-00231
+    label: "Panneaux Rhône-Loire PRL-26-00231"
+    validated: true
+    lines:
+      - { account: '601000', debit: '2215.00' }
+      - { account: '445660', debit: '443.00' }
+      - { account: '401000', third_party: F0003, credit: '2658.00', due: '2026-03-17' }
+  - journal: BQ2
+    date: '2026-01-14'
+    document: VIR-VIEU-0284
+    label: "Hôtel-restaurant Le Vieux Forez VIR-VIEU-0284"
+    validated: true
+    lines:
+      - { account: '512200', debit: '6576.00' }
+      - { account: '411000', third_party: C0022, credit: '6576.00' }
+  - journal: BQ2
+    date: '2026-01-14'
+    document: VIR-VERN-0977
+    label: "Vernis et Lasures du Pilat VIR-VERN-0977"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0005, debit: '975.12' }
+      - { account: '512200', credit: '975.12' }
+  - journal: ACH
+    date: '2026-01-15'
+    document: FM-2026-0047
+    label: "Miroiterie Stéphanoise FM-2026-0047"
+    validated: true
+    lines:
+      - { account: '601300', debit: '1638.80' }
+      - { account: '445660', debit: '327.76' }
+      - { account: '401000', third_party: F0004, credit: '1966.56', due: '2026-02-28' }
+  - journal: BQ2
+    date: '2026-01-15'
+    document: VIR-BURO-3321
+    label: "Bureau Fournitures Montbrison VIR-BURO-3321"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0016, debit: '223.68' }
+      - { account: '512200', credit: '223.68' }
+  - journal: BQ2
+    date: '2026-01-15'
+    document: PRLV-URSSAF-12
+    label: "Sécurité sociale (Urssaf) PRLV-URSSAF-12"
+    validated: true
+    lines:
+      - { account: '431000', debit: '8756.92' }
+      - { account: '512200', credit: '8756.92' }
+  - journal: BQ2
+    date: '2026-01-15'
+    document: PRLV-RETR-12
+    label: "Retraite complémentaire PRLV-RETR-12"
+    validated: true
+    lines:
+      - { account: '437100', debit: '2014.58' }
+      - { account: '512200', credit: '2014.58' }
+  - journal: BQ2
+    date: '2026-01-15'
+    document: PRLV-MUT-12
+    label: "Complémentaire santé PRLV-MUT-12"
+    validated: true
+    lines:
+      - { account: '437200', debit: '504.00' }
+      - { account: '512200', credit: '504.00' }
+  - journal: BQ2
+    date: '2026-01-15'
+    document: PRLV-PREV-12
+    label: "Prévoyance PRLV-PREV-12"
+    validated: true
+    lines:
+      - { account: '437300', debit: '58.88' }
+      - { account: '512200', credit: '58.88' }
+  - journal: BQ2
+    date: '2026-01-15'
+    document: PRLV-PAS-12
+    label: "Prélèvement à la source PRLV-PAS-12"
+    validated: true
+    lines:
+      - { account: '442100', debit: '883.59' }
+      - { account: '512200', credit: '883.59' }
+  - journal: ACH
+    date: '2026-01-16'
+    document: F26-0042
+    label: "Quincaillerie Faure F26-0042"
+    validated: true
+    lines:
+      - { account: '601400', debit: '1482.00' }
+      - { account: '445660', debit: '296.40' }
+      - { account: '401000', third_party: F0002, credit: '1778.40', due: '2026-02-28' }
+  - journal: BQ2
+    date: '2026-01-16'
+    document: VIR-PREV-0286
+    label: "SCI du Pré Vert VIR-PREV-0286"
+    validated: true
+    lines:
+      - { account: '512200', debit: '4356.00' }
+      - { account: '411000', third_party: C0050, credit: '4356.00' }
+  - journal: BQ2
+    date: '2026-01-16'
+    document: VIR-THEV-0289
+    label: "Boulangerie Thevenon VIR-THEV-0289"
+    validated: true
+    lines:
+      - { account: '512200', debit: '2688.00' }
+      - { account: '411000', third_party: C0059, credit: '2688.00' }
+  - journal: BQ2
+    date: '2026-01-16'
+    document: VIR-SCIE-0448
+    label: "Scierie du Haut-Forez VIR-SCIE-0448"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0001, debit: '4704.00' }
+      - { account: '512200', credit: '4704.00' }
+  - journal: BQ2
+    date: '2026-01-19'
+    document: TVA-2025-12
+    label: "TVA à décaisser TVA-2025-12"
+    validated: true
+    lines:
+      - { account: '445510', debit: '10614.00' }
+      - { account: '512200', credit: '10614.00' }
+  - journal: BQ2
+    date: '2026-01-19'
+    document: VIR-GIER-0262
+    label: "Promotion Gier-Pilat VIR-GIER-0262"
+    validated: true
+    lines:
+      - { account: '512200', debit: '10680.00' }
+      - { account: '411000', third_party: C0036, credit: '10680.00' }
+  - journal: ACH
+    date: '2026-01-20'
+    document: VLP-26-0031
+    label: "Vernis et Lasures du Pilat VLP-26-0031"
+    validated: true
+    lines:
+      - { account: '602100', debit: '1138.00' }
+      - { account: '445660', debit: '227.60' }
+      - { account: '401000', third_party: F0005, credit: '1365.60', due: '2026-02-19' }
+  - journal: BQ2
+    date: '2026-01-20'
+    document: PRLV-ELEC-12
+    label: "Électricité Loire Énergies PRLV-ELEC-12"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0010, debit: '1860.00' }
+      - { account: '512200', credit: '1860.00' }
+  - journal: ACH
+    date: '2026-01-21'
+    document: TF-2026-009
+    label: "Thermolaquage Forézien TF-2026-009"
+    validated: true
+    lines:
+      - { account: '611000', debit: '640.00' }
+      - { account: '445660', debit: '128.00' }
+      - { account: '401000', third_party: F0017, credit: '768.00', due: '2026-02-28' }
+  - journal: ACH
+    date: '2026-01-22'
+    document: OPL-126034
+    label: "Outils Pro Loire OPL-126034"
+    validated: true
+    lines:
+      - { account: '602100', debit: '216.00' }
+      - { account: '606300', debit: '486.50' }
+      - { account: '445660', debit: '140.50' }
+      - { account: '401000', third_party: F0008, credit: '843.00', due: '2026-02-28' }
+  - journal: ACH
+    date: '2026-01-26'
+    document: GV-2601-118
+    label: "Garage du Vizézy GV-2601-118"
+    validated: false
+    lines:
+      - { account: '615500', debit: '412.80' }
+      - { account: '445660', debit: '82.56' }
+      - { account: '401000', third_party: F0015, credit: '495.36' }
+  - journal: ACH
+    date: '2026-01-30'
+    document: TC-26-0041
+    label: "Transports Chabanne TC-26-0041"
+    validated: false
+    lines:
+      - { account: '624200', debit: '360.00' }
+      - { account: '445660', debit: '72.00' }
+      - { account: '401000', third_party: F0014, credit: '432.00', due: '2026-02-28' }
+  - journal: BQ2
+    date: '2026-01-30'
+    document: VIR-BATI-0268
+    label: "Bâtir Loire Habitat VIR-BATI-0268"
+    validated: true
+    lines:
+      - { account: '512200', debit: '17520.00' }
+      - { account: '411000', third_party: C0003, credit: '17520.00' }
+  - journal: BQ2
+    date: '2026-01-30'
+    document: VIR-LEGN-0270
+    label: "Legno Design VIR-LEGN-0270"
+    validated: true
+    lines:
+      - { account: '512200', debit: '5850.00' }
+      - { account: '411000', third_party: C0040, credit: '5850.00' }
+  - journal: BQ2
+    date: '2026-01-30'
+    document: VIR-PRL-25-08812
+    label: "Panneaux Rhône-Loire VIR-PRL-25-08812"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0003, debit: '5174.88' }
+      - { account: '512200', credit: '5174.88' }
+  - journal: BQ2
+    date: '2026-01-30'
+    document: VIR-FM-2025-1420
+    label: "Miroiterie Stéphanoise VIR-FM-2025-1420"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0004, debit: '3583.20' }
+      - { account: '512200', credit: '3583.20' }
+  - journal: BQ2
+    date: '2026-01-30'
+    document: VIR-OPL-125566
+    label: "Outils Pro Loire VIR-OPL-125566"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0008, debit: '761.76' }
+      - { account: '512200', credit: '761.76' }
+  - journal: BQ2
+    date: '2026-01-30'
+    document: VIR-TC-25-1312
+    label: "Transports Chabanne VIR-TC-25-1312"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0014, debit: '504.00' }
+      - { account: '512200', credit: '504.00' }
+  - journal: BQ2
+    date: '2026-01-30'
+    document: VIR-TF-2025-212
+    label: "Thermolaquage Forézien VIR-TF-2025-212"
+    validated: true
+    lines:
+      - { account: '401000', third_party: F0017, debit: '1176.00' }
+      - { account: '512200', credit: '1176.00' }
+  - journal: BQ2
+    date: '2026-01-30'
+    document: VIR-SAL-01
+    label: "Personnel - rémunérations dues VIR-SAL-01"
+    validated: true
+    lines:
+      - { account: '421000', debit: '17387.92' }
+      - { account: '512200', credit: '17387.92' }
+  - journal: BQ2
+    date: '2026-01-30'
+    document: VIR-GER-01
+    label: "Rémunération du gérant VIR-GER-01"
+    validated: true
+    lines:
+      - { account: '644000', debit: '3200.00' }
+      - { account: '512200', credit: '3200.00' }
+  - journal: BQ2
+    date: '2026-01-31'
+    document: ECH-EMP1-31
+    label: "Emprunt Banque Populaire 2023 (fourgon, plaqueuse) ECH-EMP1-31"
+    validated: false
+    lines:
+      - { account: '164100', debit: '666.64' }
+      - { account: '661160', debit: '71.83' }
+      - { account: '512200', credit: '738.47' }
+  - journal: BQ2
+    date: '2026-01-31'
+    document: FRAIS-BQ2-01
+    label: "Autres frais et commissions FRAIS-BQ2-01"
+    validated: false
+    lines:
+      - { account: '627800', debit: '32.00' }
+      - { account: '512200', credit: '32.00' }
+

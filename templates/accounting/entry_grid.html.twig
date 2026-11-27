@@ -1,0 +1,164 @@
+{#
+ # Comptabilité › Saisie › par journal (design-ux.md § 3.2 gabarit G, §§ 4.4 and 5.2; design-ui.md
+ # § 4.8): the keyboard grid of a journal and a month. The table is drawn by entry_grid_controller.js
+ # from `grid` (the month's entries and the person's pending work) and looks accounts up in `lookup`
+ # without asking the server; the head's buttons answer F10 (enregistrer au brouillard), Ctrl Entrée
+ # (valider, after the confirmation bar) and « + » (équilibrer). Whoever only reads the dossier, or a
+ # closed month, gets the same grid without fields.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set module_current = 'entry' %}
+{% set dossier_title = 'Saisie ' ~ journal.code ~ ' · ' ~ period.label|lower %}
+{% set status_keys = editable ? [{combo: 'Tab', verb: 'champ suivant'}, {combo: 'Enter', verb: 'champ à remplir'}, {combo: 'F4', verb: 'chercher un compte'}, {combo: 'Escape', verb: 'abandonner'}] : [] %}
+{% set grid_url = path('app_accounting_entry', {dossier: dossier.id}) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Journal {{ journal.code }} · {{ period.label|lower }}" :trail="[
+        {label: 'Comptabilité', href: grid_url},
+        {label: 'Saisie', href: grid_url},
+        {label: 'Journal ' ~ journal.code ~ ' · ' ~ period.label|lower, href: path('app_accounting_entry', {dossier: dossier.id, journal: journal.code, period: period.startsOn|date('Y-m-d')})},
+    ]">
+        <twig:block name="badge">{% if closed_reason %} <twig:Px:Badge tone="neutral" label="Clos"/>{% endif %}</twig:block>
+        <twig:block name="actions">
+            {% if editable %}
+                <div class="px-entry-actions" id="entry-actions">
+                    <twig:Px:Button id="entry-balance" shortcut="+" disabled>Équilibrer</twig:Px:Button>
+                    <twig:Px:Button id="entry-validate" shortcut="Ctrl+Enter">Valider</twig:Px:Button>
+                    <twig:Px:Button id="entry-save" variant="primary" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+                </div>
+                <div class="px-confirmbar" id="entry-confirm" role="alertdialog" aria-labelledby="entry-confirm-text" hidden>
+                    <p id="entry-confirm-text"></p>
+                    <twig:Px:Button id="entry-confirm-cancel" variant="quiet">Annuler</twig:Px:Button>
+                    <twig:Px:Button id="entry-confirm-ok" variant="primary">Valider</twig:Px:Button>
+                </div>
+                <div class="px-confirmbar" id="entry-leave" role="alertdialog" aria-labelledby="entry-leave-text" hidden>
+                    <p id="entry-leave-text">Une écriture n’est pas équilibrée.</p>
+                    <twig:Px:Button id="entry-leave-keep">La conserver en brouillon incomplet</twig:Px:Button>
+                    <twig:Px:Button id="entry-leave-drop" variant="danger">La supprimer</twig:Px:Button>
+                    <twig:Px:Button id="entry-leave-stay" variant="primary">Rester</twig:Px:Button>
+                </div>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <div class="px-entrygrid"
+         data-controller="entry-grid"
+         data-entry-grid-grid-value="{{ grid|json_encode }}"
+         data-entry-grid-lookup-value="{{ lookup|json_encode }}"
+         data-entry-grid-editable-value="{{ editable ? 'true' : 'false' }}"
+         data-entry-grid-period-value="{{ period.startsOn|date('Y-m-d') }}"
+         data-entry-grid-revision-value="{{ grid.revision }}"
+         data-entry-grid-token-value="{{ editable ? csrf_token('entry-grid-' ~ dossier.id) : '' }}"
+         data-entry-grid-keep-url-value="{{ path('app_accounting_entry_keep', {dossier: dossier.id}) }}"
+         data-entry-grid-save-url-value="{{ path('app_accounting_entry_save', {dossier: dossier.id}) }}"
+         data-entry-grid-validate-url-value="{{ path('app_accounting_entry_validate', {dossier: dossier.id}) }}"
+         data-entry-grid-account-url-value="{{ path('app_accounting_entry_account', {dossier: dossier.id}) }}"
+         data-entry-grid-entry-url-value="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: 0})|replace({'/0': '/__ID__'}) }}">
+
+        <form class="px-entry__context" method="get" action="{{ grid_url }}" data-turbo-action="advance">
+            <div class="px-entry__pick">
+                <label for="entry-journal">Journal <twig:Px:Kbd combo="Alt+J"/></label>
+                <select id="entry-journal" name="journal" class="px-select px-select--sm" data-px-shortcut="Alt+J" data-action="change->entry-grid#switch">
+                    {% for one in journal_list %}<option value="{{ one.code }}"{% if one == journal %} selected{% endif %}>{{ one.code }} · {{ one.label }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="px-entry__pick">
+                <label for="entry-period">Période <twig:Px:Kbd combo="Alt+P"/></label>
+                <select id="entry-period" name="period" class="px-select px-select--sm" data-px-shortcut="Alt+P" data-action="change->entry-grid#switch">
+                    {% for one in period_list %}<option value="{{ one.startsOn|date('Y-m-d') }}"{% if one == period %} selected{% endif %}>{{ one.label }}{{ one.closed ? ' (close)' : '' }}</option>{% endfor %}
+                </select>
+            </div>
+            <noscript><twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button></noscript>
+            {% if grid.counterpart %}
+                <p class="px-entry__treasury">
+                    <span>Contrepartie <span class="px-u-code">{{ grid.counterpart.number }}</span> {{ grid.counterpart.label }}</span>
+                    <span>Solde fin {{ period.label|lower }} <b class="px-u-num" data-entry-grid-target="treasury"></b></span>
+                </p>
+            {% endif %}
+        </form>
+
+        {% if closed_reason %}<twig:Px:Alert tone="info">{{ closed_reason }}</twig:Px:Alert>{% endif %}
+        {% if others is not empty %}
+            <twig:Px:Alert tone="warning">
+                {% for other in others %}Saisie en attente de {{ other.name }} dans ce journal et ce mois : {{ other.count > 1 ? other.count ~ ' écritures pas encore enregistrées au brouillard' : 'une écriture pas encore enregistrée au brouillard' }}.{% if not loop.last %}<br>{% endif %}{% endfor %}
+            </twig:Px:Alert>
+        {% endif %}
+        <p class="px-alert px-alert--danger" role="alert" data-entry-grid-target="problem" hidden></p>
+
+        <section class="px-card px-card--flush px-entry" aria-label="Écritures du journal {{ journal.code }}, {{ period.label|lower }}">
+            <div class="px-entry__scroll" data-entry-grid-target="scroll">
+                <table class="px-table px-entry__lines" role="grid" aria-label="Écritures du journal {{ journal.code }}, {{ period.label|lower }}" aria-readonly="{{ editable ? 'false' : 'true' }}" data-entry-grid-target="table" data-action="keydown->entry-grid#keydown focusin->entry-grid#focusin focusout->entry-grid#focusout input->entry-grid#typing">
+                    <colgroup>
+                        <col class="px-entry__col-mark"><col class="px-entry__col-day"><col class="px-entry__col-document"><col class="px-entry__col-account"><col class="px-entry__col-title"><col class="px-entry__col-label"><col class="px-entry__col-amount"><col class="px-entry__col-amount"><col class="px-entry__col-due">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th scope="col"><span class="px-u-sr-only">État</span></th>
+                            <th scope="col">Jour</th>
+                            <th scope="col">Pièce</th>
+                            <th scope="col">Compte</th>
+                            <th scope="col">Intitulé</th>
+                            <th scope="col">Libellé</th>
+                            <th scope="col" class="px-u-right">Débit</th>
+                            <th scope="col" class="px-u-right">Crédit</th>
+                            <th scope="col">Échéance</th>
+                        </tr>
+                    </thead>
+                    <tfoot>
+                        <tr class="px-entry__current">
+                            <th scope="row" colspan="6">
+                                <span data-entry-grid-target="currentLabel">Écriture en cours</span>
+                                <span data-entry-grid-target="balance" role="status"></span>
+                            </th>
+                            <td class="px-u-num" data-entry-grid-target="currentDebit"></td>
+                            <td class="px-u-num" data-entry-grid-target="currentCredit"></td>
+                            <td></td>
+                        </tr>
+                        <tr class="px-entry__month">
+                            <th scope="row" colspan="6" data-entry-grid-target="monthLabel">Total {{ journal.code }} · {{ period.label|lower }}</th>
+                            <td class="px-u-num" data-entry-grid-target="monthDebit"></td>
+                            <td class="px-u-num" data-entry-grid-target="monthCredit"></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </section>
+
+        <section class="px-card px-entry__checks" aria-labelledby="entry-checks-title" data-entry-grid-target="checks" hidden>
+            <header class="px-card__head"><h2 id="entry-checks-title">Contrôles de l’écriture</h2><small>Assistance : {{ level.label|lower }}</small></header>
+            <ul class="px-card__body px-checks" data-entry-grid-target="checkList"></ul>
+        </section>
+
+        {# The list under the Compte cell (design-ux.md § 5.2): 8 lines, then F4 for the whole search. #}
+        <div class="px-popover px-picker__panel px-entry__picker" data-entry-grid-target="picker" hidden>
+            <div class="px-entry__pickerbody">
+                <ul class="px-entry__classes" data-entry-grid-target="classes" aria-label="Classes de comptes" hidden></ul>
+                <ul class="px-picker__list" id="entry-picker-list" role="listbox" aria-label="Comptes et tiers" data-entry-grid-target="pickerList"></ul>
+            </div>
+            <p class="px-picker__foot"><twig:Px:Kbd combo="ArrowUp"/><twig:Px:Kbd combo="ArrowDown"/> choisir <twig:Px:Kbd combo="Enter"/> prendre <twig:Px:Kbd combo="F4"/> tout le plan <twig:Px:Kbd combo="Escape"/> fermer</p>
+        </div>
+
+        {# Alt Inser: the account typed, created on the spot (design-ux.md § 4.4). #}
+        <div class="px-popover px-entry__create" role="dialog" aria-labelledby="entry-create-title" data-entry-grid-target="create" hidden>
+            <p class="px-entry__createtitle" id="entry-create-title">Créer le compte <span class="px-u-code" data-entry-grid-target="createNumber"></span></p>
+            <label for="entry-create-label">Intitulé</label>
+            <input id="entry-create-label" class="px-input" maxlength="120" autocomplete="off" data-entry-grid-target="createLabel" data-action="keydown->entry-grid#createKeydown">
+            <p class="px-field__error" data-entry-grid-target="createError" hidden></p>
+            <p class="px-picker__foot"><twig:Px:Kbd combo="Enter"/> créer <twig:Px:Kbd combo="Escape"/> renoncer</p>
+        </div>
+
+        <template data-entry-grid-target="iconLock">{{ ux_icon('lock', {'aria-hidden': 'true'}) }}</template>
+        <template data-entry-grid-target="iconDraft">{{ ux_icon('file-text', {'aria-hidden': 'true'}) }}</template>
+        <template data-entry-grid-target="iconAlert">{{ ux_icon('circle-alert', {'aria-hidden': 'true'}) }}</template>
+    </div>
+{% endblock %}
+
+{% block status %}
+    <span data-entry-message>{% for message in app.flashes('status') %}{{ message }} {% endfor %}</span>
+    <span>Brouillard · <b data-entry-drafts>{{ drafts_count }} écriture{{ drafts_count > 1 ? 's' : '' }}</b></span>
+    <span data-entry-account></span>
+{% endblock %}
