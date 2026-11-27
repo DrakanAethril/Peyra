@@ -1485,7 +1485,8 @@ export default class extends Controller {
         const keep = this.button('Continuer la saisie', 'px-btn px-btn--sm px-btn--primary', () => this.closeAbandon(true));
         td.append(text, drop, keep);
         this.abandonRow = { row, pos: { ...this.pos } };
-        keep.focus();
+        keep.focus({ preventScroll: true });
+        row.scrollIntoView({ block: 'nearest' });
     }
 
     closeAbandon(refocus) {
@@ -1809,7 +1810,8 @@ export default class extends Controller {
         }
         const sent = this.groups.filter((group) => group.dirty);
         sent.forEach((group) => { group.dirty = false; });
-        this.sending = this.post(this.keepUrlValue, this.payload());
+        const payload = this.payload();
+        this.sending = this.post(this.keepUrlValue, payload);
         const answer = await this.sending;
         this.sending = null;
         if (!answer || answer.status !== 200) {
@@ -1830,7 +1832,9 @@ export default class extends Controller {
                 }
             }
             this.refreshTotals();
-            this.say('Brouillon enregistré.');
+            if (payload.groups.length > 0) {
+                this.say('Brouillon enregistré.');
+            }
         }
         if (this.again) {
             this.again = false;

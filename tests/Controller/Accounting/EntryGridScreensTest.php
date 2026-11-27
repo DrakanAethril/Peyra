@@ -129,7 +129,7 @@ final class EntryGridScreensTest extends WebTestCase
         $id = (int) $draft->getId();
 
         $client->request('GET', $this->url($dossier, '/accounting/entries/'.$id));
-        self::assertSelectorTextContains('h1', 'Écriture Brouillard · FA-2601-0012');
+        self::assertSelectorTextContains('h1', 'Écriture FA-2601-0012');
         self::assertSelectorTextContains('#entry-validate-text', 'Valider l’écriture FA-2601-0012 ?');
         $client->submitForm('Valider l’écriture');
         self::assertResponseRedirects($this->url($dossier, '/accounting/entries/'.$id));

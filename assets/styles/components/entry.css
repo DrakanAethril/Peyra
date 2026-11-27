@@ -47,7 +47,7 @@
     }
 
     .px-entry__scroll {
-        max-height: calc(100dvh - 300px);
+        max-height: calc(100dvh - 360px);
         min-height: 240px;
         overflow: auto;
     }
@@ -107,6 +107,8 @@
     }
 
     .px-entry__cell {
+        /* Scrolled into view clear of the sticky head and of the two total rows. */
+        scroll-margin-block: 40px 72px;
         display: block;
         width: 100%;
         height: 31px;
@@ -244,6 +246,10 @@
     .px-entry__lines.is-unsaved .px-entry__group.is-new .px-entry__dot,
     .px-entry__lines.is-unsaved .px-entry__group.is-modified .px-entry__dot {
         background: var(--px-warning);
+    }
+
+    .px-entry__abandon {
+        scroll-margin-block: 40px 72px;
     }
 
     .px-entry__abandon > td {

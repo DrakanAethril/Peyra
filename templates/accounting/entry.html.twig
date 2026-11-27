@@ -10,7 +10,7 @@
 {% set module_current = 'entry' %}
 {% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
 {% set open_month = not entry.period.closed and not entry.period.exercise.closed %}
-{% set title = entry.numberLabel ?? ('Brouillard · ' ~ entry.document) %}
+{% set title = entry.numberLabel ?? entry.document %}
 {% set dossier_title = 'Écriture ' ~ (entry.numberLabel ?? entry.document) %}
 {% set grid_href = path('app_accounting_entry', {dossier: dossier.id, journal: entry.journal.code, period: entry.period.startsOn|date('Y-m-d'), entry: entry.id}) %}
 {% set status_keys = can_edit and not entry.validated ? [{combo: 'Ctrl+Enter', verb: 'Valider'}] : [] %}
@@ -60,7 +60,7 @@
         </header>
         <dl class="px-facts px-entry__facts">
             <dt>Journal</dt><dd><span class="px-u-code">{{ entry.journal.code }}</span> {{ entry.journal.label }}</dd>
-            <dt>Date</dt><dd class="px-u-num">{{ entry.entryDate|date_fr }}</dd>
+            <dt>Date</dt><dd>{{ entry.entryDate|date_fr }}</dd>
             <dt>Pièce</dt><dd class="px-u-code">{{ entry.document }}</dd>
             <dt>Numéro</dt><dd>{% if entry.numberLabel %}<span class="px-u-code">{{ entry.numberLabel }}</span>, validée le {{ entry.validatedOn|date_fr }}{% else %}au brouillard, numérotée à la validation{% endif %}</dd>
             {% if entry.reversalOf %}<dt>Contrepasse</dt><dd><a class="px-link px-u-code" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.reversalOf.id}) }}">{{ entry.reversalOf.numberLabel }}</a></dd>{% endif %}
@@ -79,7 +79,7 @@
                         <td class="px-u-code">{{ own ? party.auxiliaryCode : line.account.number }}</td>
                         <td>{{ party ? party.name ~ (own ? '' : ' · ' ~ party.code) : line.account.label }}</td>
                         <td>{{ line.label }}</td>
-                        <td class="px-u-num">{{ line.dueDate ? line.dueDate|date_fr : '' }}</td>
+                        X
                         <td class="px-u-num">{{ line.debit|amount_cell }}</td>
                         <td class="px-u-num">{{ line.credit|amount_cell }}</td>
                     </tr>
