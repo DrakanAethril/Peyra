@@ -42,6 +42,11 @@ docker compose --profile worker up -d worker           # les tâches planifiées
 docker compose down --remove-orphans                   # arrêter
 ```
 
+La galerie du système de design, <https://localhost:8143/_design> (développement seulement), montre
+chaque composant de l'interface dans chacun de ses états, dans la coquille de l'étudiant et dans
+celle de l'enseignant ; `bin/shot <adresse> <fichier.png>` en fait une capture avec Chrome sans
+écran.
+
 La pile de développement : `php` (FrankenPHP et Caddy), `database` (MariaDB, comme en
 production), `openldap` (un annuaire fictif, versionné dans `frankenphp/ldap/`), `gotenberg`
 (rendu des PDF) et, à la demande, `worker` (Symfony Scheduler).
