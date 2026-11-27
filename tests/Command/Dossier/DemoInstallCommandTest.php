@@ -8,8 +8,11 @@ use App\Entity\Accounting\Account;
 use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Exercise;
 use App\Entity\Dossier\Period;
+use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Dossier\DossierKind;
+use App\Enum\ThirdParty\PaymentMethod;
+use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Dossier\DossierRepository;
 use App\Service\Dossier\DossierContext;
 use Doctrine\ORM\EntityManagerInterface;
@@ -17,7 +20,7 @@ use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
-/** app:demo:install puts Menuiserie Vasseur SARL in the common library once, from fixtures/demo/: exercises, plan, journals. */
+/** app:demo:install puts Menuiserie Vasseur SARL in the common library once, from fixtures/demo/: exercises, plan, journals, third parties. */
 final class DemoInstallCommandTest extends KernelTestCase
 {
     public function testInstallsTheTemplateOnceWithItsExercises(): void
@@ -73,5 +76,24 @@ final class DemoInstallCommandTest extends KernelTestCase
             ['ACH Achats', 'AN À-nouveaux', 'BQ1 Crédit Coopératif 512100', 'BQ2 Banque Populaire 512200', 'OD Opérations diverses', 'VTE Ventes'],
             array_map(static fn (Journal $j): string => trim($j->getCode().' '.$j->getLabel().' '.$j->getCounterpartAccount()?->getNumber()), $journals),
         );
+
+        // Its 59 third parties (donnees/demo/tiers.yaml): customers and suppliers on their collectives.
+        $thirdParties = self::getContainer()->get(DossierContext::class)->within($vasseur, static fn (): array => $entityManager->getRepository(ThirdParty::class)->findBy([], ['code' => 'ASC']));
+        self::assertCount(59, $thirdParties);
+        $byKind = array_count_values(array_map(static fn (ThirdParty $t): string => $t->getKind()->value, $thirdParties));
+        self::assertSame(['other' => 12, 'customer' => 26, 'supplier' => 21], $byKind, 'Codes A, C, D, E, F, O dans l’ordre.');
+        $byCode = [];
+        foreach ($thirdParties as $thirdParty) {
+            $byCode[$thirdParty->getCode()] = $thirdParty;
+        }
+        $scierie = $byCode['F0001'];
+        self::assertSame(['Scierie du Haut-Forez', '401000', '401SCIE', '512904337', 'FR41512904337', '30 jours date de facture'], [$scierie->getName(), $scierie->getAccount()?->getNumber(), $scierie->getAuxiliaryCode(), $scierie->getSiren(), $scierie->getVatNumber(), $scierie->getPaymentTerms()->label()]);
+        self::assertSame(['404000', '404MBIN'], [$byCode['F0019']->getAccount()?->getNumber(), $byCode['F0019']->getAuxiliaryCode()]);
+        self::assertSame('Fin de mois + 45 jours', $byCode['C0017']->getPaymentTerms()->label());
+        self::assertSame([null, null, PaymentMethod::Card], [$byCode['F0021']->getAccount(), $byCode['F0021']->getAuxiliaryCode(), $byCode['F0021']->getPaymentMethod()], 'Station U : aucun compte, le ticket se saisit en banque.');
+        self::assertSame(['431000', null, ThirdPartyKind::Other], [$byCode['O0001']->getAccount()?->getNumber(), $byCode['O0001']->getAuxiliaryCode(), $byCode['O0001']->getKind()]);
+        self::assertSame('164100', $byCode['E0001']->getAccount()?->getNumber());
+        self::assertTrue($byCode['C0019']->isIndividual());
+        self::assertSame(['DE', 'DE999999999'], [$byCode['F0006']->getCountry(), $byCode['F0006']->getVatNumber()]);
     }
 }
