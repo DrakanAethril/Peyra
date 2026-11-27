@@ -15,7 +15,7 @@
 {% block rail %}
     <twig:Px:RailItem href="{{ path('app_dossier_dashboard', {dossier: dossier.id}) }}" icon="house" label="Tableau de bord" :current="(rail_current ?? '') == 'dashboard'"/>
     <twig:Px:RailGroup label="Comptabilité">
-        <twig:Px:RailItem href="{{ path('app_accounting_accounts', {dossier: dossier.id}) }}" icon="book-text" label="Comptabilité" :current="(rail_current ?? '') == 'accounting'"/>
+        <twig:Px:RailItem href="{{ path('app_accounting_entry', {dossier: dossier.id}) }}" icon="book-text" label="Comptabilité" :current="(rail_current ?? '') == 'accounting'"/>
     </twig:Px:RailGroup>
     <twig:Px:RailGroup label="Analyse">
         <twig:Px:RailItem href="{{ path('app_dossier_company', {dossier: dossier.id}) }}" icon="database" label="Système d’information" :current="(rail_current ?? '') == 'si'"/>

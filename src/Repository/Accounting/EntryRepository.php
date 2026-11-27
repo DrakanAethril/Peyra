@@ -79,4 +79,52 @@ final class EntryRepository extends ServiceEntityRepository
 
         return (int) $query->getQuery()->getSingleScalarResult();
     }
+
+    /**
+     * The entries of a journal in a month, as the entry grid lists them: by date, then in the order they
+     * were written. Lines are loaded with them.
+     *
+     * @return list<Entry>
+     */
+    public function findInJournalPeriod(Journal $journal, Period $period): array
+    {
+        /* @var list<Entry> */
+        return $this->createQueryBuilder('e')
+            ->addSelect('l', 'a', 't')
+            ->leftJoin('e.lines', 'l')
+            ->leftJoin('l.account', 'a')
+            ->leftJoin('l.thirdParty', 't')
+            ->andWhere('e.journal = :journal')
+            ->andWhere('e.period = :period')
+            ->setParameter('journal', $journal)
+            ->setParameter('period', $period)
+            ->orderBy('e.entryDate', 'ASC')
+            ->addOrderBy('e.id', 'ASC')
+            ->addOrderBy('l.position', 'ASC')
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * The entries of the journal in the exercise that carry this document reference, but the one
+     * given: what makes a document a possible duplicate (EntryControls).
+     *
+     * @return list<Entry>
+     */
+    public function findByDocument(Journal $journal, Exercise $exercise, string $document, ?int $except = null): array
+    {
+        $query = $this->createQueryBuilder('e')
+            ->andWhere('e.journal = :journal')
+            ->andWhere('e.exercise = :exercise')
+            ->andWhere('e.document = :document')
+            ->setParameter('journal', $journal)
+            ->setParameter('exercise', $exercise)
+            ->setParameter('document', $document)
+            ->orderBy('e.id', 'ASC');
+        if (null !== $except) {
+            $query->andWhere('e.id <> :except')->setParameter('except', $except);
+        }
+
+        /* @var list<Entry> */
+        return $query->getQuery()->getResult();
+    }
 }

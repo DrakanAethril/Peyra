@@ -29,6 +29,19 @@ enum JournalType: string
         };
     }
 
+    /** « journal d'achats », for a sentence that names the kind of journal. */
+    public function phrase(): string
+    {
+        return match ($this) {
+            self::Purchases => 'journal d’achats',
+            self::Sales => 'journal de ventes',
+            self::Bank => 'journal de banque',
+            self::Cash => 'journal de caisse',
+            self::General => 'journal d’opérations diverses',
+            self::Opening => 'journal d’à-nouveaux',
+        };
+    }
+
     /** The nature its counterpart account must have; null when the journal has none. */
     public function counterpartNature(): ?AccountNature
     {

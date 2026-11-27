@@ -1,0 +1,117 @@
+{#
+ # An entry on its own (design-ui.md § 4.8: the grid's card in read only; design-ux.md § 6.3): the
+ # journal, date, document and label, the lines with the auxiliary codes, the totals, its state.
+ # A draft: Modifier (the grid, on this entry), Dupliquer, Supprimer (two steps), Valider (the
+ # confirmation bar, Ctrl Entrée). Validated: Contrepasser at a date (the dossier's by default),
+ # Contrepasser et ressaisir, Dupliquer.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set module_current = 'entry' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set open_month = not entry.period.closed and not entry.period.exercise.closed %}
+{% set title = entry.numberLabel ?? ('Brouillard · ' ~ entry.document) %}
+{% set dossier_title = 'Écriture ' ~ (entry.numberLabel ?? entry.document) %}
+{% set grid_href = path('app_accounting_entry', {dossier: dossier.id, journal: entry.journal.code, period: entry.period.startsOn|date('Y-m-d'), entry: entry.id}) %}
+{% set status_keys = can_edit and not entry.validated ? [{combo: 'Ctrl+Enter', verb: 'Valider'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Écriture {{ title }}" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_entry', {dossier: dossier.id})},
+        {label: 'Saisie', href: path('app_accounting_entry', {dossier: dossier.id})},
+        {label: 'Journal ' ~ entry.journal.code ~ ' · ' ~ entry.period.label|lower, href: path('app_accounting_entry', {dossier: dossier.id, journal: entry.journal.code, period: entry.period.startsOn|date('Y-m-d')})},
+        {label: entry.numberLabel ?? entry.document, href: path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id})},
+    ]">
+        <twig:block name="badge"> <twig:Px:Badge :of="entry.state"/>{% if reversal %} <twig:Px:Badge tone="neutral" label="Contrepassée"/>{% elseif entry.reversalOf %} <twig:Px:Badge tone="neutral" label="Contrepassation"/>{% endif %}</twig:block>
+        <twig:block name="actions">
+            {% if can_edit and open_month %}
+                <div class="px-entry-confirmable" data-controller="confirm-bar">
+                <div class="px-entry-actions" data-confirm-bar-target="actions">
+                    <form method="post" action="{{ path('app_accounting_entry_duplicate', {dossier: dossier.id, id: entry.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('entry-duplicate-' ~ entry.id) }}">
+                        <twig:Px:Button type="submit" icon="copy">Dupliquer</twig:Px:Button>
+                    </form>
+                    {% if not entry.validated %}
+                        <twig:Px:ConfirmButton label="Supprimer le brouillon" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="entry-delete"/>
+                        <twig:Px:Button href="{{ grid_href }}" icon="pencil">Modifier</twig:Px:Button>
+                        <twig:Px:Button variant="primary" shortcut="Ctrl+Enter" data-action="confirm-bar#open">Valider</twig:Px:Button>
+                    {% endif %}
+                </div>
+                {% if not entry.validated %}
+                    <form class="px-confirmbar" method="post" action="{{ path('app_accounting_entry_validate_one', {dossier: dossier.id, id: entry.id}) }}" role="alertdialog" aria-labelledby="entry-validate-text" hidden data-confirm-bar-target="bar" data-action="keydown->confirm-bar#keydown">
+                        <input type="hidden" name="_token" value="{{ csrf_token('entry-validate-' ~ entry.id) }}">
+                        <p id="entry-validate-text">Valider l’écriture {{ entry.document }} ? Elle ne pourra plus être modifiée, seulement contrepassée.</p>
+                        <twig:Px:Button variant="quiet" data-action="confirm-bar#close">Annuler</twig:Px:Button>
+                        <twig:Px:Button type="submit" variant="primary" data-confirm-bar-target="confirm">Valider l’écriture</twig:Px:Button>
+                    </form>
+                {% endif %}
+                </div>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% set automatic = entry.journal.counterpartAccount %}
+    <section class="px-card px-card--flush" aria-labelledby="entry-card-title">
+        <header class="px-card__head">
+            <h2 id="entry-card-title">{{ entry.label }}</h2>
+            <small>{{ entry.origin.value == 'reversal' ? 'Contrepassation' : (entry.origin.value == 'opening' ? 'À-nouveaux' : (entry.origin.value == 'proposal' ? 'Proposée par un module' : 'Saisie')) }}</small>
+        </header>
+        <dl class="px-facts px-entry__facts">
+            <dt>Journal</dt><dd><span class="px-u-code">{{ entry.journal.code }}</span> {{ entry.journal.label }}</dd>
+            <dt>Date</dt><dd class="px-u-num">{{ entry.entryDate|date_fr }}</dd>
+            <dt>Pièce</dt><dd class="px-u-code">{{ entry.document }}</dd>
+            <dt>Numéro</dt><dd>{% if entry.numberLabel %}<span class="px-u-code">{{ entry.numberLabel }}</span>, validée le {{ entry.validatedOn|date_fr }}{% else %}au brouillard, numérotée à la validation{% endif %}</dd>
+            {% if entry.reversalOf %}<dt>Contrepasse</dt><dd><a class="px-link px-u-code" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.reversalOf.id}) }}">{{ entry.reversalOf.numberLabel }}</a></dd>{% endif %}
+            {% if reversal %}<dt>Contrepassée par</dt><dd><a class="px-link px-u-code" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: reversal.id}) }}">{{ reversal.numberLabel }}</a> du {{ reversal.entryDate|date_fr }}</dd>{% endif %}
+        </dl>
+        <twig:Px:Table caption="Lignes de l’écriture">
+            <thead><tr>
+                <th scope="col">Compte</th><th scope="col">Intitulé</th><th scope="col">Libellé</th><th scope="col">Échéance</th>
+                <th scope="col" class="px-u-right">Débit</th><th scope="col" class="px-u-right">Crédit</th>
+            </tr></thead>
+            <tbody>
+                {% for line in entry.lines %}
+                    {% set party = line.thirdParty %}
+                    {% set own = party and party.auxiliaryCode and party.account == line.account %}
+                    <tr{% if automatic and line.account == automatic %} class="is-dim"{% endif %}>
+                        <td class="px-u-code">{{ own ? party.auxiliaryCode : line.account.number }}</td>
+                        <td>{{ party ? party.name ~ (own ? '' : ' · ' ~ party.code) : line.account.label }}</td>
+                        <td>{{ line.label }}</td>
+                        <td class="px-u-num">{{ line.dueDate ? line.dueDate|date_fr : '' }}</td>
+                        <td class="px-u-num">{{ line.debit|amount_cell }}</td>
+                        <td class="px-u-num">{{ line.credit|amount_cell }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot><tr>
+                <th scope="row" colspan="4">Totaux <twig:Px:Badge tone="success" label="Équilibrée"/></th>
+                <td class="px-u-num">{{ entry.totalDebit|amount }}</td>
+                <td class="px-u-num">{{ entry.totalCredit|amount }}</td>
+            </tr></tfoot>
+        </twig:Px:Table>
+    </section>
+
+    {% if can_edit and open_month and not entry.validated %}
+        <form method="post" action="{{ path('app_accounting_entry_delete', {dossier: dossier.id, id: entry.id}) }}" id="entry-delete" hidden>
+            <input type="hidden" name="_token" value="{{ csrf_token('entry-delete-' ~ entry.id) }}">
+        </form>
+    {% endif %}
+
+    {% if entry.validated and can_edit and reversal is null and entry.reversalOf is null %}
+        <twig:Px:Card title="Contrepasser l’écriture">
+            <p class="px-u-muted">Une écriture validée ne se modifie plus : sa contrepassation l’annule par l’écriture inverse, datée et validée aussitôt. « Contrepasser et ressaisir » remet en plus une copie de l’écriture dans la grille, à corriger puis enregistrer.</p>
+            <form method="post" action="{{ path('app_accounting_entry_reverse', {dossier: dossier.id, id: entry.id}) }}" class="px-entry__reverse" novalidate data-controller="focus-error">
+                <input type="hidden" name="_token" value="{{ csrf_token('entry-reverse-' ~ entry.id) }}">
+                <twig:Px:Field id="date" label="Date de la contrepassation" :required="true" :error="reverse_error">
+                    <twig:Px:DateInput id="date" :value="reverse_error ? null : dossier.dossierDate" :reference="dossier.dossierDate" :error="reverse_error" :required="true"/>
+                </twig:Px:Field>
+                <div class="px-cluster">
+                    <twig:Px:Button type="submit" name="again" value="1">Contrepasser et ressaisir</twig:Px:Button>
+                    <twig:Px:ConfirmButton label="Contrepasser l’écriture" confirmLabel="Confirmer la contrepassation" icon="undo-2" type="submit"/>
+                </div>
+            </form>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
