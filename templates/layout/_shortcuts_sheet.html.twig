@@ -1,0 +1,14 @@
+{# The « Raccourcis de cet écran » drawer, opened by ? or F1 (design-ux.md § 5.3), filled by shortcuts_controller.js. #}
+<twig:Px:Drawer id="px-shortcuts" title="Raccourcis clavier">
+    <div class="px-shortcuts">
+        <section hidden>
+            <h3>Sur cet écran</h3>
+            <dl data-px-shortcut-list="screen"></dl>
+        </section>
+        <section>
+            <h3>Partout</h3>
+            <dl data-px-shortcut-list="global"></dl>
+        </section>
+        <p class="px-u-muted">Sur Mac, Ctrl se lit ⌘ pour K, S, B, Z, A et D ; les touches F demandent parfois Fn.</p>
+    </div>
+</twig:Px:Drawer>

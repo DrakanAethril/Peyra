@@ -1,0 +1,316 @@
+/* Buttons, icon buttons, two-step confirmation, links (design-ui.md § 4.4). */
+@layer px.components {
+    .px-btn {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--px-space-6);
+        min-height: var(--px-control-md);
+        padding: 0 11px;
+        border: 1px solid var(--px-border-strong);
+        border-radius: var(--px-radius-md);
+        background: var(--px-surface);
+        color: var(--px-text);
+        font-size: var(--px-fs-13);
+        font-weight: var(--px-fw-semibold);
+        line-height: 1.2;
+        white-space: nowrap;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background-color var(--px-dur-fast) var(--px-ease), border-color var(--px-dur-fast) var(--px-ease), color var(--px-dur-fast) var(--px-ease);
+
+        & > svg {
+            width: var(--px-icon);
+            height: var(--px-icon);
+            flex: none;
+        }
+
+        &:hover {
+            background: var(--px-surface-sunken);
+            border-color: var(--px-neutral);
+            color: var(--px-text);
+            text-decoration: none;
+        }
+
+        &:active {
+            background: var(--px-surface-inset);
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring);
+        }
+
+        &[aria-pressed="true"] {
+            background: var(--px-action-tint);
+            border-color: var(--px-action);
+            color: var(--px-info-text);
+        }
+    }
+
+    .px-btn--primary {
+        background: var(--px-action);
+        border-color: var(--px-action);
+        color: var(--px-text-on-action);
+        box-shadow: var(--px-shadow-action);
+
+        &:hover {
+            background: var(--px-action-hover);
+            border-color: var(--px-action-hover);
+            color: var(--px-text-on-action);
+        }
+
+        &:active {
+            background: var(--px-action-active);
+            border-color: var(--px-action-active);
+            box-shadow: none;
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring);
+        }
+
+        & kbd {
+            background: var(--px-action-hover);
+            border-color: var(--px-action-active);
+            color: var(--px-on-action-kbd);
+        }
+    }
+
+    .px-btn--quiet {
+        background: transparent;
+        border-color: transparent;
+        color: var(--px-action);
+
+        &:hover {
+            background: var(--px-action-soft);
+            border-color: transparent;
+            color: var(--px-action);
+        }
+
+        &:active {
+            background: var(--px-action-tint);
+        }
+    }
+
+    .px-btn--danger {
+        color: var(--px-danger-text);
+
+        &:hover {
+            background: var(--px-danger-tint);
+            border-color: var(--px-danger);
+            color: var(--px-danger-text);
+        }
+    }
+
+    .px-btn--sm {
+        min-height: var(--px-control-sm);
+        padding: 0 var(--px-space-8);
+        font-size: var(--px-fs-12);
+    }
+
+    .px-btn--lg {
+        min-height: var(--px-control-lg);
+        padding: 0 var(--px-space-16);
+        font-size: var(--px-fs-14);
+    }
+
+    .px-btn--block {
+        width: 100%;
+    }
+
+    .px-btn:disabled,
+    .px-btn[aria-disabled="true"] {
+        background: var(--px-surface-inset);
+        border-color: var(--px-border);
+        color: var(--px-text-disabled);
+        box-shadow: none;
+        cursor: not-allowed;
+
+        & kbd {
+            background: var(--px-surface);
+            border-color: var(--px-border);
+            color: var(--px-text-disabled);
+        }
+    }
+
+    /* Loading: the label stays, the icon becomes a spinning ring, clicks are ignored. */
+    .px-btn[aria-busy="true"] {
+        pointer-events: none;
+
+        & > svg {
+            visibility: hidden;
+        }
+
+        &::before {
+            content: "";
+            position: absolute;
+            inset-inline-start: 11px;
+            width: 14px;
+            height: 14px;
+            border: 2px solid currentColor;
+            border-inline-end-color: transparent;
+            border-radius: 50%;
+            animation: px-spin 800ms linear infinite;
+        }
+    }
+
+    .px-btn[aria-busy="true"]:not(:has(> svg)) {
+        padding-inline-start: 31px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .px-btn[aria-busy="true"]::before {
+            animation: none;
+        }
+    }
+
+    @keyframes px-spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* ---------------------------------------------------------------- Icon button */
+
+    .px-iconbtn {
+        position: relative;
+        display: inline-grid;
+        place-items: center;
+        width: var(--px-control-md);
+        height: var(--px-control-md);
+        border-radius: var(--px-radius-md);
+        color: var(--px-text-muted);
+        text-decoration: none;
+        transition: background-color var(--px-dur-fast) var(--px-ease), color var(--px-dur-fast) var(--px-ease);
+
+        & > svg {
+            width: var(--px-icon);
+            height: var(--px-icon);
+        }
+
+        &:hover {
+            background: var(--px-surface-inset);
+            color: var(--px-text-strong);
+            text-decoration: none;
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring);
+        }
+
+        &:disabled,
+        &[aria-disabled="true"] {
+            background: none;
+            color: var(--px-text-disabled);
+            cursor: not-allowed;
+        }
+
+        &[aria-pressed="true"] {
+            background: var(--px-action-tint);
+            color: var(--px-info-text);
+        }
+    }
+
+    .px-iconbtn--sm {
+        width: var(--px-control-sm);
+        height: var(--px-control-sm);
+    }
+
+    /* On the rail (night blue): its own colours and the gold focus ring. */
+    .px-rail .px-iconbtn,
+    .px-iconbtn--on-dark {
+        color: var(--px-rail-text);
+
+        &:hover {
+            background: var(--px-rail-hover);
+            color: var(--px-rail-text-active);
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring-on-dark);
+        }
+    }
+
+    /* Unread dot of the bell: amber, 8 px, ringed with white. */
+    .px-iconbtn__dot {
+        position: absolute;
+        inset-block-start: 5px;
+        inset-inline-end: 6px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--px-warning);
+        box-shadow: 0 0 0 1.5px var(--px-surface), 0 0 0 2.5px var(--px-warning-text);
+    }
+
+    /* ---------------------------------------------------------------- Two-step confirmation */
+
+    .px-confirm {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--px-space-6);
+    }
+
+    .px-confirm__main {
+        display: inline-grid;
+
+        /* Both labels share one cell: the button keeps the width of the longer one. */
+        & > span {
+            grid-area: 1 / 1;
+            text-align: center;
+        }
+    }
+
+    .px-confirm__armed {
+        visibility: hidden;
+    }
+
+    .px-confirm.is-armed {
+        & .px-confirm__rest {
+            visibility: hidden;
+        }
+
+        & .px-confirm__armed {
+            visibility: visible;
+        }
+
+        & .px-confirm__button {
+            background: var(--px-danger);
+            border-color: var(--px-danger);
+            color: var(--px-text-on-action);
+        }
+
+        & .px-confirm__button:hover {
+            background: var(--px-danger-hover);
+            border-color: var(--px-danger-hover);
+            color: var(--px-text-on-action);
+        }
+    }
+
+    /* ---------------------------------------------------------------- Link */
+
+    .px-link {
+        color: var(--px-action);
+        text-decoration: none;
+
+        &:hover,
+        &:visited:hover {
+            color: var(--px-action-hover);
+            text-decoration: underline;
+        }
+
+        &:visited {
+            color: var(--px-action);
+        }
+
+        & > svg {
+            width: 12px;
+            height: 12px;
+            margin-inline-start: 2px;
+            vertical-align: -1px;
+        }
+    }
+
+    p .px-link {
+        text-decoration: underline;
+    }
+}

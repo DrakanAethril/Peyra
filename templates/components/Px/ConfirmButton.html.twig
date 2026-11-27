@@ -1,0 +1,10 @@
+{# Px:ConfirmButton - see App\Twig\Components\Px\ConfirmButton and confirm_controller.js. #}
+<span class="px-confirm" data-controller="confirm" data-action="keydown->confirm#keydown focusout->confirm#blur">
+    <button type="button" class="px-btn px-btn--quiet{% if size %} px-btn--{{ size }}{% endif %}" data-confirm-target="cancel" data-action="confirm#cancel" hidden>Annuler</button>
+    {% set extra_action = attributes.all['data-action'] ?? '' %}
+    <button type="{{ type }}"{{ attributes.without('data-action').defaults({class: this.classes}) }}{% if form %} form="{{ form }}"{% endif %} data-confirm-target="button" data-action="confirm#click{{ extra_action ? ' ' ~ extra_action : '' }}">
+        {%- if icon %}<twig:ux:icon name="{{ icon }}" aria-hidden="true"/>{% endif -%}
+        <span class="px-confirm__main"><span class="px-confirm__rest">{{ label }}</span><span class="px-confirm__armed">{{ confirmLabel }}</span></span>
+    </button>
+    <span class="px-u-sr-only" aria-live="polite" data-confirm-target="status"></span>
+</span>

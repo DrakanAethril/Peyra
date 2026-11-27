@@ -1,0 +1,23 @@
+/*
+ * Peyra's stylesheet for the screen (design-ui.md § 3). The order of the layers is declared once,
+ * here: the layer, never the order of the files nor specificity, decides who wins. Each file opens
+ * its own layer. Linked by the base template with media="screen"; print.css with media="print".
+ */
+@layer px.reset, px.tokens, px.base, px.layout, px.components, px.utilities;
+
+@import url("tokens.css");
+@import url("fonts.css");
+@import url("reset.css");
+@import url("base.css");
+@import url("layout/shell.css");
+@import url("layout/shell-teacher.css");
+@import url("layout/shell-public.css");
+@import url("layout/page.css");
+@import url("components/button.css");
+@import url("components/badge.css");
+@import url("components/field.css");
+@import url("components/table.css");
+@import url("components/card.css");
+@import url("components/banner.css");
+@import url("components/tabs.css");
+@import url("components/overlay.css");

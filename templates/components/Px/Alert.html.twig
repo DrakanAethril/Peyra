@@ -1,0 +1,9 @@
+{# Px:Alert - see App\Twig\Components\Px\Alert. #}
+<div{{ attributes.defaults({class: 'px-alert px-alert--' ~ tone}) }} role="{{ this.role }}">
+    <twig:ux:icon name="{{ this.icon }}" aria-hidden="true"/>
+    <div class="px-alert__body">
+        {% if title %}<p class="px-alert__title">{{ title }}</p>{% endif %}
+        <div>{% block content %}{% endblock %}</div>
+    </div>
+    {% if actionLabel and actionHref %}<a class="px-link px-alert__action" href="{{ actionHref }}">{{ actionLabel }}</a>{% endif %}
+</div>

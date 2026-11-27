@@ -1,0 +1,16 @@
+{#
+ # Px:StatusBar - read only, never a button (design-ui.md § 4.1, A5): on the left at most three
+ # facts (content, announced as a status), on the right at most four keys of the screen.
+ # `keys`: list of {combo, verb}.
+ #}
+{% props keys = [] %}
+<footer{{ attributes.defaults({class: 'px-statusbar'}) }}>
+    <div class="px-statusbar__facts" role="status">{% block content %}{% endblock %}</div>
+    {% if keys is not empty %}
+        <div class="px-statusbar__keys" aria-label="Raccourcis">
+            {% for key in keys|slice(0, 4) %}
+                <span><twig:Px:Kbd :combo="key.combo"/> {{ key.verb }}</span>
+            {% endfor %}
+        </div>
+    {% endif %}
+</footer>

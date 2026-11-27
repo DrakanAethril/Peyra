@@ -1,0 +1,19 @@
+{# Px:Button - see App\Twig\Components\Px\Button. #}
+{% set reason_id = this.reasonId %}
+{% set common %}
+    {%- if id %} id="{{ id }}"{% endif -%}
+    {%- if shortcut %} data-px-shortcut="{{ shortcut }}"{% endif -%}
+    {%- if pressed is not null %} aria-pressed="{{ pressed ? 'true' : 'false' }}"{% endif -%}
+    {%- if busy %} aria-busy="true"{% endif -%}
+    {%- if reason_id %} title="{{ disabledReason }}" aria-describedby="{{ reason_id }}"{% endif -%}
+{% endset %}
+{% if href and not disabled %}
+<a href="{{ href }}"{{ attributes.defaults({class: this.classes}) }}{{ common|raw }}>
+{%- else %}
+<button type="{{ type }}"{{ attributes.defaults({class: this.classes}) }}{{ common|raw }}{% if disabled %} disabled{% endif %}>
+{%- endif -%}
+    {%- if icon %}<twig:ux:icon name="{{ icon }}" aria-hidden="true"/>{% endif -%}
+    <span>{% block content %}{% endblock %}</span>
+    {%- if this.keyLabel %}<kbd class="px-kbd">{{ this.keyLabel }}</kbd>{% endif -%}
+{% if href and not disabled %}</a>{% else %}</button>{% endif %}
+{%- if reason_id %}<span id="{{ reason_id }}" class="px-u-sr-only">{{ disabledReason }}</span>{% endif %}

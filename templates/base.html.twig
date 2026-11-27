@@ -3,11 +3,20 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="color-scheme" content="light">
+        <meta name="theme-color" content="#12344d">
         <title>{% block title %}Peyra{% endblock %}</title>
-        {% block stylesheets %}{% endblock %}
-        {% block javascripts %}{% endblock %}
+        <link rel="icon" href="{{ asset('brand/favicon.svg') }}" type="image/svg+xml">
+        <link rel="icon" href="{{ asset('brand/favicon-32.png') }}" type="image/png" sizes="32x32">
+        <link rel="apple-touch-icon" href="{{ asset('brand/apple-touch-icon-180.png') }}">
+        <link rel="preload" href="{{ asset('fonts/inter-var-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
+        {% block stylesheets %}
+            <link rel="stylesheet" href="{{ asset('styles/px.css') }}" media="screen">
+            <link rel="stylesheet" href="{{ asset('styles/print.css') }}" media="print">
+        {% endblock %}
+        {% block importmap %}{{ importmap('app') }}{% endblock %}
     </head>
-    <body>
+    <body data-shell="{% block shell %}public{% endblock %}" data-controller="shortcuts">
         {% block body %}{% endblock %}
     </body>
 </html>

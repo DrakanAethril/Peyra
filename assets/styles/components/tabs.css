@@ -1,0 +1,126 @@
+/* Tabs inside a screen, steps of a process (design-ui.md § 4.11). */
+@layer px.components {
+    .px-tabs {
+        display: flex;
+        gap: var(--px-space-4);
+        padding: 0 var(--px-space-16);
+        border-block-end: 1px solid var(--px-border);
+        overflow-x: auto;
+    }
+
+    .px-tabs__tab {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--px-space-6);
+        padding: var(--px-space-8) var(--px-space-10);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-13);
+        font-weight: var(--px-fw-semibold);
+        white-space: nowrap;
+        text-decoration: none;
+
+        &:hover {
+            color: var(--px-text);
+            text-decoration: none;
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring-inset);
+            border-radius: var(--px-radius-xs);
+        }
+
+        &[aria-current="page"] {
+            color: var(--px-action);
+            box-shadow: inset 0 -2px 0 var(--px-action);
+        }
+
+        & .px-badge {
+            font-size: var(--px-fs-11);
+        }
+    }
+
+    /* ---------------------------------------------------------------- Stepper */
+
+    .px-stepper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--px-space-4);
+        padding: 0 var(--px-space-16) var(--px-space-10);
+
+        & > li > a,
+        & > li > span {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 5px var(--px-space-12) 5px var(--px-space-6);
+            border: 1px solid var(--px-border);
+            border-radius: var(--px-radius-pill);
+            background: var(--px-surface);
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-13);
+            font-weight: var(--px-fw-semibold);
+            white-space: nowrap;
+            text-decoration: none;
+        }
+
+        & > li > a:hover {
+            border-color: var(--px-border-strong);
+            text-decoration: none;
+        }
+
+        & > li > a:focus-visible {
+            box-shadow: var(--px-ring);
+        }
+
+        & i {
+            display: inline-grid;
+            place-items: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--px-surface-inset);
+            color: var(--px-neutral-text);
+            font-size: var(--px-fs-11);
+            font-style: normal;
+        }
+
+        & > li.is-done i {
+            background: var(--px-success-tint);
+            color: var(--px-success-text);
+        }
+
+        & > li[aria-current="step"] > a,
+        & > li[aria-current="step"] > span {
+            border-color: var(--px-action);
+            background: var(--px-action-soft);
+            color: var(--px-action);
+        }
+
+        & > li[aria-current="step"] i {
+            background: var(--px-action);
+            color: var(--px-text-on-action);
+        }
+    }
+
+    .px-stepper--vertical {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        width: 220px;
+        padding: 0;
+        gap: var(--px-space-12);
+
+        & > li {
+            position: relative;
+        }
+
+        & > li + li::before {
+            content: "";
+            position: absolute;
+            inset-inline-start: 15px;
+            inset-block-end: 100%;
+            width: 1px;
+            height: var(--px-space-12);
+            background: var(--px-border-strong);
+        }
+    }
+}

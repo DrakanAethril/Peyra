@@ -1,0 +1,584 @@
+/*
+ * The application shell, shared by the student PGI and the teacher space (design-ui.md § 4.1):
+ * rail, top bar, module tabs, the scrolling main column, status bar, action foot, context bar.
+ * Only .px-main scrolls; everything around it stays in place.
+ */
+@layer px.layout {
+    .px-shell {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    /* A column whose optional bars (context, module tabs) may be absent: flex, not a fixed grid. */
+    .px-shell__col {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+
+        & > * {
+            flex: none;
+        }
+    }
+
+    .px-main {
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+        background: var(--px-bg);
+    }
+
+    /* ---------------------------------------------------------------- Rail */
+
+    .px-rail {
+        position: relative;
+        z-index: var(--px-z-rail);
+        display: flex;
+        flex-direction: column;
+        gap: var(--px-space-2);
+        width: var(--px-rail-w);
+        padding: var(--px-space-10) var(--px-space-8);
+        background: var(--px-rail-bg);
+        color: var(--px-rail-text);
+        overflow-x: hidden;
+        overflow-y: auto;
+        transition: width var(--px-dur-base) var(--px-ease);
+    }
+
+    .px-rail__brand {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: var(--px-space-4) var(--px-space-6) var(--px-space-12);
+        border-radius: var(--px-radius-sm);
+        color: var(--px-rail-text-active);
+        text-decoration: none;
+
+        & img {
+            width: 24px;
+            height: 24px;
+            flex: none;
+        }
+
+        & svg {
+            height: 9px;
+            width: auto;
+            flex: none;
+        }
+
+        &:hover {
+            color: var(--px-rail-text-active);
+            text-decoration: none;
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring-on-dark);
+        }
+    }
+
+    .px-rail__group {
+        display: flex;
+        flex-direction: column;
+        gap: var(--px-space-2);
+    }
+
+    .px-rail__label {
+        padding: var(--px-space-10) var(--px-space-8) 3px;
+        color: var(--px-rail-label);
+        font-size: var(--px-fs-11);
+        font-weight: var(--px-fw-semibold);
+        letter-spacing: var(--px-track-label);
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .px-rail__item {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-height: 30px;
+        padding: var(--px-space-6) var(--px-space-8);
+        border-radius: var(--px-radius-sm);
+        color: var(--px-rail-text);
+        text-decoration: none;
+        white-space: nowrap;
+        width: 100%;
+        transition: background-color var(--px-dur-fast) var(--px-ease), color var(--px-dur-fast) var(--px-ease);
+
+        & > svg {
+            width: var(--px-icon);
+            height: var(--px-icon);
+            flex: none;
+        }
+
+        &:hover {
+            background: var(--px-rail-hover);
+            color: var(--px-rail-text-active);
+            text-decoration: none;
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring-on-dark);
+        }
+
+        &[aria-current="page"] {
+            background: var(--px-rail-active);
+            color: var(--px-rail-text-active);
+            font-weight: var(--px-fw-semibold);
+            box-shadow: inset 2px 0 0 var(--px-rail-accent);
+        }
+
+        &[aria-current="page"]:focus-visible {
+            box-shadow: inset 2px 0 0 var(--px-rail-accent), var(--px-ring-on-dark);
+        }
+    }
+
+    .px-rail__text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .px-rail__count {
+        margin-inline-start: auto;
+        padding: 0 var(--px-space-6);
+        border-radius: var(--px-radius-pill);
+        background: var(--px-warning);
+        color: var(--px-warning-on);
+        font-size: var(--px-fs-11);
+        font-weight: var(--px-fw-bold);
+        line-height: 16px;
+    }
+
+    .px-rail__foot {
+        margin-block-start: auto;
+        padding-block-start: var(--px-space-8);
+        display: flex;
+        flex-direction: column;
+        gap: var(--px-space-2);
+    }
+
+    /* Collapsed rail (B9). Written three times, once per way of being collapsed: by the person's
+       choice (cookie → .is-collapsed), by default under 1440 px (unless .is-expanded), and always
+       between 1024 and 1279 px. Only the selector differs. */
+    .px-rail.is-collapsed {
+        width: var(--px-rail-w-mini);
+        overflow: visible;
+
+        & .px-rail__brand { justify-content: center; padding: var(--px-space-4) 0 var(--px-space-12); }
+        & .px-rail__brand svg,
+        & .px-rail__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+        & .px-rail__label { height: 1px; margin: var(--px-space-8) var(--px-space-6); padding: 0; overflow: hidden; background: var(--px-rail-rule); color: transparent; }
+        & .px-rail__item { justify-content: center; padding: var(--px-space-8) 0; }
+        & .px-rail__count { position: absolute; inset-block-start: 5px; inset-inline-end: 9px; width: 8px; height: 8px; padding: 0; overflow: hidden; color: transparent; }
+        & .px-rail__item[data-tooltip]:is(:hover, :focus-visible)::after { content: attr(data-tooltip); }
+    }
+
+    @media (min-width: 1280px) and (max-width: 1439.98px) {
+        .px-rail:not(.is-expanded) {
+            width: var(--px-rail-w-mini);
+            overflow: visible;
+
+            & .px-rail__brand { justify-content: center; padding: var(--px-space-4) 0 var(--px-space-12); }
+            & .px-rail__brand svg,
+            & .px-rail__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+            & .px-rail__label { height: 1px; margin: var(--px-space-8) var(--px-space-6); padding: 0; overflow: hidden; background: var(--px-rail-rule); color: transparent; }
+            & .px-rail__item { justify-content: center; padding: var(--px-space-8) 0; }
+            & .px-rail__count { position: absolute; inset-block-start: 5px; inset-inline-end: 9px; width: 8px; height: 8px; padding: 0; overflow: hidden; color: transparent; }
+            & .px-rail__item[data-tooltip]:is(:hover, :focus-visible)::after { content: attr(data-tooltip); }
+        }
+    }
+
+    @media (min-width: 1024px) and (max-width: 1279.98px) {
+        .px-rail {
+            width: var(--px-rail-w-mini);
+            overflow: visible;
+
+            & .px-rail__brand { justify-content: center; padding: var(--px-space-4) 0 var(--px-space-12); }
+            & .px-rail__brand svg,
+            & .px-rail__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+            & .px-rail__label { height: 1px; margin: var(--px-space-8) var(--px-space-6); padding: 0; overflow: hidden; background: var(--px-rail-rule); color: transparent; }
+            & .px-rail__item { justify-content: center; padding: var(--px-space-8) 0; }
+            & .px-rail__count { position: absolute; inset-block-start: 5px; inset-inline-end: 9px; width: 8px; height: 8px; padding: 0; overflow: hidden; color: transparent; }
+            & .px-rail__item[data-tooltip]:is(:hover, :focus-visible)::after { content: attr(data-tooltip); }
+            & .px-rail__toggle { display: none; }
+        }
+    }
+
+    /* The tooltip of a collapsed rail entry: the label, to the right, after 400 ms on hover and at
+       once on focus. It repeats the visible-to-screen-readers label, so it carries nothing new. */
+    .px-rail__item::after {
+        position: absolute;
+        inset-inline-start: calc(100% + var(--px-space-12));
+        inset-block-start: 50%;
+        transform: translateY(-50%);
+        z-index: var(--px-z-tooltip);
+        padding: 3px var(--px-space-8);
+        border-radius: var(--px-radius-sm);
+        background: var(--px-surface-inverse);
+        color: var(--px-text-on-action);
+        font-size: var(--px-fs-12);
+        font-weight: var(--px-fw-regular);
+        white-space: nowrap;
+        pointer-events: none;
+    }
+
+    .px-rail__item:hover::after {
+        animation: px-tooltip-in 0s 400ms both;
+    }
+
+    .px-rail__item:focus-visible::after {
+        animation: none;
+    }
+
+    @keyframes px-tooltip-in {
+        from { visibility: hidden; }
+        to { visibility: visible; }
+    }
+
+    /* Tablet portrait: the rail becomes a drawer opened from the top bar. */
+    @media (max-width: 1023.98px) {
+        .px-shell {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .px-rail {
+            position: fixed;
+            inset-block: 0;
+            inset-inline-start: 0;
+            z-index: var(--px-z-drawer);
+            box-shadow: var(--px-shadow-dialog);
+            transform: translateX(-100%);
+            visibility: hidden;
+            transition: transform var(--px-dur-base) var(--px-ease), visibility 0s var(--px-dur-base);
+        }
+
+        .px-rail.is-open {
+            transform: none;
+            visibility: visible;
+            transition: transform var(--px-dur-base) var(--px-ease);
+        }
+
+        .px-rail__toggle {
+            display: none;
+        }
+    }
+
+    /* ---------------------------------------------------------------- Top bar */
+
+    .px-topbar {
+        position: relative;
+        z-index: var(--px-z-topbar);
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-10);
+        min-height: var(--px-topbar-h);
+        padding: 0 14px;
+        background: var(--px-surface);
+        border-block-end: 1px solid var(--px-border);
+
+        & > * {
+            flex-shrink: 0;
+        }
+    }
+
+    .px-topbar__end {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-10);
+        min-width: 0;
+        margin-inline-start: auto;
+        flex-shrink: 1;
+
+        /* A chip gives way before the bell and the avatar do: it is cut, they are not. */
+        & > * {
+            flex-shrink: 0;
+        }
+
+        & > .px-chip {
+            min-width: 0;
+            flex-shrink: 1;
+            overflow: hidden;
+        }
+    }
+
+    .px-switcher {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--px-space-8);
+        min-height: var(--px-control-md);
+        max-width: 340px;
+        padding: 0 var(--px-space-10);
+        border: 1px solid var(--px-border);
+        border-radius: var(--px-radius-md);
+        background: var(--px-surface);
+        color: var(--px-text-strong);
+        white-space: nowrap;
+
+        &:hover {
+            border-color: var(--px-border-strong);
+        }
+
+        &[aria-expanded="true"] {
+            border-color: var(--px-action);
+            background: var(--px-action-soft);
+        }
+
+        & > svg {
+            width: var(--px-icon);
+            height: var(--px-icon);
+            color: var(--px-text-muted);
+        }
+    }
+
+    .px-switcher__name {
+        max-width: 260px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: var(--px-fw-semibold);
+    }
+
+    .px-switcher__meta {
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+    }
+
+    .px-cmdk-trigger {
+        flex: 1 1 auto;
+        flex-shrink: 1;
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-8);
+        min-width: 0;
+        max-width: 360px;
+        min-height: var(--px-control-md);
+        margin-inline: auto;
+        padding: 0 var(--px-space-10);
+        border: 1px solid var(--px-border);
+        border-radius: var(--px-radius-md);
+        background: var(--px-bg);
+        color: var(--px-text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+
+        & > svg {
+            width: var(--px-icon);
+            height: var(--px-icon);
+            flex: none;
+        }
+
+        & kbd {
+            margin-inline-start: auto;
+        }
+
+        &:hover {
+            border-color: var(--px-border-strong);
+        }
+    }
+
+    .px-topbar__end .px-cmdk-trigger {
+        margin-inline: 0;
+    }
+
+    /* ---------------------------------------------------------------- Module tabs */
+
+    .px-moduletabs {
+        display: flex;
+        align-items: stretch;
+        gap: var(--px-space-2);
+        min-height: var(--px-worktabs-h);
+        padding: 0 var(--px-space-8);
+        background: var(--px-surface);
+        border-block-end: 1px solid var(--px-border);
+        overflow-x: auto;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+
+    .px-moduletabs__tab {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--px-space-6);
+        max-width: 200px;
+        padding: 0 var(--px-space-10);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+        font-weight: var(--px-fw-medium);
+        white-space: nowrap;
+        text-decoration: none;
+
+        &:hover {
+            color: var(--px-text);
+            text-decoration: none;
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring-inset);
+        }
+
+        &[aria-current="page"] {
+            background: var(--px-bg);
+            color: var(--px-text-strong);
+            font-weight: var(--px-fw-semibold);
+            box-shadow: inset 0 -2px 0 var(--px-action);
+        }
+
+        &[aria-current="page"]:focus-visible {
+            box-shadow: inset 0 -2px 0 var(--px-action), var(--px-ring-inset);
+        }
+    }
+
+    /* ---------------------------------------------------------------- Status bar, action foot */
+
+    .px-statusbar {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-16);
+        min-height: var(--px-statusbar-h);
+        padding: 0 var(--px-space-16);
+        background: var(--px-surface);
+        border-block-start: 1px solid var(--px-border);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+        white-space: nowrap;
+        overflow: hidden;
+
+        & b {
+            color: var(--px-text-strong);
+            font-weight: var(--px-fw-semibold);
+        }
+    }
+
+    .px-statusbar__facts {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-16);
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .px-statusbar__keys {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-12);
+        margin-inline-start: auto;
+
+        & > span {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--px-space-4);
+        }
+    }
+
+    .px-statusbar__live {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--px-space-6);
+
+        &::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--px-action);
+        }
+
+        &.is-down {
+            color: var(--px-warning-text);
+        }
+
+        &.is-down::before {
+            display: none;
+        }
+    }
+
+    .px-actionfoot {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-8);
+        min-height: 46px;
+        padding: 0 var(--px-space-16);
+        background: var(--px-surface);
+        border-block-start: 1px solid var(--px-border);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+    }
+
+    .px-actionfoot__actions {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-6);
+        margin-inline-start: auto;
+    }
+
+    /* ---------------------------------------------------------------- Context bar (C4) */
+
+    .px-contextbar {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-10);
+        min-height: var(--px-statusbar-h);
+        padding: 0 var(--px-space-16);
+        background: var(--px-role-tint);
+        color: var(--px-role-text);
+        font-size: var(--px-fs-12);
+        font-weight: var(--px-fw-semibold);
+
+        & a {
+            margin-inline-start: auto;
+            color: var(--px-role-text);
+            text-decoration: underline;
+        }
+    }
+
+    /* ---------------------------------------------------------------- Small screens */
+
+    .px-smallscreen {
+        display: none;
+    }
+
+    @media (max-width: 767.98px) {
+        .px-shell {
+            display: none;
+        }
+
+        .px-smallscreen {
+            display: grid;
+            place-items: center;
+            min-height: 100dvh;
+            padding: var(--px-space-24) var(--px-space-16);
+        }
+    }
+
+    /* Turbo's progress bar: 2 px of the action blue under the top of the window. */
+    .turbo-progress-bar {
+        height: 2px;
+        background: var(--px-action);
+    }
+}
+
+/* The shell shows or hides some components by width; those rules must outrank the components' own
+   display, hence this later layer. Under 1024 px the keys leave the status bar (design-ui.md § 3.5). */
+@layer px.utilities {
+    @media (max-width: 1023.98px) {
+        .px-statusbar__keys {
+            display: none;
+        }
+    }
+
+    .px-topbar__menu {
+        display: none;
+    }
+
+    @media (max-width: 1023.98px) {
+        .px-topbar__menu {
+            display: inline-grid;
+        }
+    }
+}

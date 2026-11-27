@@ -1,0 +1,11 @@
+{# Px:SortHeader - a <th> whose whole cell sorts the list by a GET link. #}
+<th scope="col"{{ attributes.defaults({class: right ? 'px-u-right' : ''}) }}{% if this.ariaSort %} aria-sort="{{ this.ariaSort }}"{% endif %}>
+    <a class="px-table__sort" href="{{ this.url }}">
+        {{- label -}}
+        {% if this.isSorted %}
+            <twig:ux:icon name="{{ direction == 'asc' ? 'arrow-up' : 'arrow-down' }}" aria-hidden="true"/>
+        {% else %}
+            <twig:ux:icon name="arrow-up-down" class="px-table__sorthint" aria-hidden="true"/>
+        {% endif %}
+    </a>
+</th>

@@ -1,0 +1,142 @@
+/* Inside .px-main: page head, trail, page body, split views, KPI grid (design-ui.md §§ 4.3, 4.10, 4.12). */
+@layer px.layout {
+    .px-pagehead {
+        position: sticky;
+        inset-block-start: 0;
+        z-index: var(--px-z-sticky);
+        display: flex;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: var(--px-space-12);
+        padding: var(--px-space-12) var(--px-space-16) var(--px-space-10);
+        background: var(--px-bg);
+        transition: box-shadow var(--px-dur-fast) var(--px-ease);
+
+        &.is-stuck {
+            box-shadow: var(--px-shadow-sticky);
+        }
+    }
+
+    .px-pagehead__lead {
+        display: grid;
+        gap: var(--px-space-2);
+        min-width: 0;
+    }
+
+    .px-pagehead__title {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--px-space-10);
+        color: var(--px-text-strong);
+        font-family: var(--px-font-title);
+        font-size: var(--px-fs-18);
+        font-weight: var(--px-fw-semibold);
+        line-height: var(--px-lh-tight);
+        letter-spacing: var(--px-track-title);
+    }
+
+    .px-pagehead__actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--px-space-6);
+        margin-inline-start: auto;
+    }
+
+    /* Trail: the module, then its levels; never « Accueil » (the rail is always there). */
+    .px-trail {
+        font-size: var(--px-fs-12);
+        color: var(--px-text-muted);
+
+        & ol {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 0;
+            list-style: none;
+        }
+
+        & li + li::before {
+            content: "\00a0\203a\00a0";
+            color: var(--px-text-muted);
+        }
+
+        & a {
+            color: var(--px-text-muted);
+            text-decoration: none;
+        }
+
+        & a:hover,
+        & a:focus-visible {
+            color: var(--px-text);
+            text-decoration: underline;
+        }
+
+        & a[aria-current="page"] {
+            color: var(--px-text);
+            font-weight: var(--px-fw-medium);
+        }
+    }
+
+    .px-page {
+        display: grid;
+        gap: var(--px-gap);
+        align-content: start;
+        padding: 0 var(--px-page-gutter) var(--px-page-gutter);
+    }
+
+    .px-stack {
+        display: grid;
+        gap: var(--px-gap);
+        align-content: start;
+        min-width: 0;
+    }
+
+    /* A row of inline things that wraps: buttons, pills, keys. */
+    .px-cluster {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--px-space-8);
+    }
+
+    .px-split {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: var(--px-gap);
+        align-items: start;
+    }
+
+    .px-split--doc {
+        grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    }
+
+    .px-split--even {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .px-split--side {
+        grid-template-columns: 250px minmax(0, 1fr);
+    }
+
+    @media (max-width: 1023.98px) {
+        .px-split,
+        .px-split--doc,
+        .px-split--even,
+        .px-split--side {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    .px-kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--px-gap);
+    }
+
+    @media (max-width: 1023.98px) {
+        .px-kpis {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+}

@@ -1,0 +1,72 @@
+/* Minimal reset: box model, margins, form controls inherit the type, tables collapse. */
+@layer px.reset {
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+    }
+
+    html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+
+    body,
+    h1, h2, h3, h4, h5, h6,
+    p, ul, ol, dl, dd, figure, blockquote, fieldset, legend, pre {
+        margin: 0;
+    }
+
+    ul, ol, fieldset, legend {
+        padding: 0;
+    }
+
+    ul[class], ol[class] {
+        list-style: none;
+    }
+
+    fieldset {
+        border: 0;
+        min-width: 0;
+    }
+
+    button, input, select, textarea {
+        font: inherit;
+        color: inherit;
+        letter-spacing: inherit;
+    }
+
+    button {
+        background: none;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        text-align: inherit;
+    }
+
+    table {
+        border-collapse: collapse;
+        border-spacing: 0;
+    }
+
+    th {
+        text-align: start;
+        font-weight: inherit;
+    }
+
+    img, svg {
+        display: inline-block;
+        vertical-align: middle;
+        max-width: 100%;
+    }
+
+    [hidden] {
+        display: none !important;
+    }
+
+    dialog {
+        padding: 0;
+        border: 0;
+        color: inherit;
+    }
+}

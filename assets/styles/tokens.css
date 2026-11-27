@@ -1,0 +1,153 @@
+/*
+ * Design tokens: design-ui.md § 2.1, verbatim, plus the few values found missing while building
+ * (each listed at the end). A component reads tokens only - never a colour, radius or duration.
+ */
+@layer px.tokens {
+    :root {
+        color-scheme: light;
+
+        /* Surfaces */
+        --px-bg: #f4f6f8;                 /* page */
+        --px-surface: #ffffff;            /* cards, top bar, status bar, fields */
+        --px-surface-sunken: #fafbfc;     /* table head, totals row */
+        --px-surface-inset: #eef2f6;      /* neutral fills: tracks, skeleton, section rows */
+        --px-surface-viewer: #e9edf1;     /* behind a document */
+        --px-paper: #ffffff;
+        --px-overlay: rgba(15, 27, 42, .45);
+        --px-surface-inverse: #0f1b2a;    /* toast, tooltip */
+        --px-inverse-success: #7fd3b0;  --px-inverse-warning: #f5c56a;  --px-inverse-danger: #f3a59c;
+        --px-avatar-bg: #dfe7ee;
+
+        /* Text */
+        --px-text-strong: #0f1b2a;
+        --px-text: #334155;
+        --px-text-muted: #5b6b7c;
+        --px-text-disabled: #8795a5;
+        --px-text-on-action: #ffffff;
+
+        /* Borders */
+        --px-border: #e3e8ee;             /* containers */
+        --px-border-row: #eef1f5;         /* between table rows */
+        --px-border-strong: #d5dce4;      /* secondary buttons, totals rule */
+        --px-border-control: #7d8b9c;     /* inputs, checkboxes, radios (3:1) */
+
+        /* Action (institution blue) */
+        --px-action: #1b6ba8;
+        --px-action-hover: #155a8e;
+        --px-action-active: #12507e;
+        --px-action-tint: #e3eef8;        /* pressed toggle, date chip, info pill */
+        --px-action-soft: #f0f6fb;        /* current line, current step */
+        --px-focus: #1b6ba8;
+        --px-focus-on-dark: #f0cf8a;
+
+        /* States: fill (dots, bars, solid buttons) / text / tint (pill) / row (table line) */
+        --px-success: #12805c;  --px-success-text: #0f6e4f;  --px-success-tint: #e3f5ec;
+        --px-warning: #f5b83d;  --px-warning-text: #8a5200;  --px-warning-tint: #fdf0d5;  --px-warning-row: #fffaf0;
+        --px-warning-on: #3a2a02;         /* text on the amber fill (rail counter) */
+        --px-danger: #c2372b;   --px-danger-text: #b3261b;   --px-danger-tint: #fde8e5;   --px-danger-row: #fef4f2;
+        --px-danger-hover: #b3261b;
+        --px-info-text: #155a8e;          --px-info-tint: #e3eef8;
+        --px-info-border: #c4dbef;  --px-success-border: #bfe5d2;  --px-danger-border: #f5c6c0;   /* alert outlines, decorative */
+        --px-neutral: #8795a5;  --px-neutral-text: #4b5a6b;  --px-neutral-tint: #eef2f6;
+        --px-role-text: #4b3aa8;          --px-role-tint: #ede9fb;   /* profile chip, teacher-in-dossier ribbon */
+
+        /* Mission banner */
+        --px-mission-bg: #fff8e6;  --px-mission-border: #f3dfa6;
+        --px-mission-text: #6a4a05;  --px-mission-strong: #4a3303;  --px-mission-track: #eedfae;
+
+        /* Rail (night blue) */
+        --px-rail-bg: #12344d;
+        --px-rail-hover: #1a4262;
+        --px-rail-active: #1f4d70;
+        --px-rail-text: #c6d6e4;
+        --px-rail-text-active: #ffffff;
+        --px-rail-label: #8fa9bf;
+        --px-rail-accent: #c9a04e;        /* gold: active entry only */
+
+        /* Code (SQL editor) */
+        --px-code-bg: #12344d;  --px-code-text: #dbe6ec;  --px-code-gutter: #8fa9bf;
+        --px-code-keyword: #9fcdf0;  --px-code-string: #f5c56a;
+
+        /* Data-viz: at most four series, in this order */
+        --px-viz-1: #1b6ba8;  --px-viz-2: #12344d;  --px-viz-3: #a8813a;  --px-viz-4: #7d8b9c;
+        --px-viz-grid: #e3e8ee;  --px-viz-axis: #5b6b7c;
+        --px-viz-positive: #12805c;  --px-viz-negative: #c2372b;
+
+        /* Brand (logo files only; never a UI colour) */
+        --px-brand-blue: #1b6ba8;  --px-brand-night: #12344d;  --px-brand-gold: #c9a04e;
+
+        /* Type families */
+        --px-font-ui: "Inter", system-ui, "Segoe UI", sans-serif;
+        --px-font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+        --px-font-serif: "Spectral", Georgia, serif;
+        --px-font-title: var(--px-font-ui);          /* the teacher shell sets it to the serif */
+
+        /* Type scale (rem on a 16 px root) */
+        --px-fs-11: .6875rem;   /* column heads, rail labels, kbd */
+        --px-fs-12: .75rem;     /* meta, pills, status bar, mono figures */
+        --px-fs-13: .8125rem;   /* body, cells, buttons, fields */
+        --px-fs-14: .875rem;    /* card title in a dialog, document title on paper */
+        --px-fs-18: 1.125rem;   /* page title */
+        --px-fs-20: 1.25rem;    /* KPI value, teacher page title */
+        --px-fs-24: 1.5rem;     /* login, empty state of a whole page */
+        --px-lh-tight: 1.25;  --px-lh-base: 1.4;  --px-lh-code: 1.65;
+        --px-fw-regular: 400;  --px-fw-medium: 500;  --px-fw-semibold: 600;  --px-fw-bold: 700;
+        --px-track-caps: .05em;       /* uppercase column heads */
+        --px-track-label: .09em;      /* uppercase rail labels */
+        --px-track-title: -.015em;
+        --px-track-wordmark: .16em;
+
+        /* Spacing: the name is the pixel value */
+        --px-space-2: 2px;  --px-space-4: 4px;  --px-space-6: 6px;  --px-space-8: 8px;
+        --px-space-10: 10px;  --px-space-12: 12px;  --px-space-16: 16px;  --px-space-20: 20px;
+        --px-space-24: 24px;  --px-space-32: 32px;  --px-space-40: 40px;  --px-space-48: 48px;
+
+        /* Sizes */
+        --px-control-sm: 24px;  --px-control-md: 30px;  --px-control-lg: 36px;
+        --px-row-compact: 28px;  --px-row-regular: 32px;  --px-row-comfortable: 40px;
+        --px-rail-w: 200px;  --px-rail-w-mini: 52px;
+        --px-topbar-h: 44px;  --px-worktabs-h: 34px;  --px-statusbar-h: 30px;
+        --px-icon: 16px;  --px-icon-sm: 14px;  --px-icon-lg: 20px;
+        --px-page-gutter: 16px;  --px-gap: 12px;
+
+        /* Radii */
+        --px-radius-xs: 4px;  --px-radius-sm: 6px;  --px-radius-md: 8px;  --px-radius-lg: 10px;
+        --px-radius-pill: 999px;
+
+        /* Shadows */
+        --px-shadow-action: 0 1px 2px rgba(27, 107, 168, .35);    /* primary button */
+        --px-shadow-paper: 0 2px 10px rgba(15, 27, 42, .14);       /* document in the viewer */
+        --px-shadow-pop: 0 6px 20px rgba(15, 27, 42, .14), 0 0 0 1px rgba(15, 27, 42, .06);  /* menu, popover, toast */
+        --px-shadow-dialog: 0 20px 48px rgba(15, 27, 42, .22);
+        --px-shadow-sticky: 0 1px 0 var(--px-border), 0 4px 8px -6px rgba(15, 27, 42, .18);
+
+        /* Focus ring */
+        --px-ring: 0 0 0 2px var(--px-surface), 0 0 0 4px var(--px-focus);
+        --px-ring-inset: inset 0 0 0 2px var(--px-focus);          /* grid cells, rows */
+        --px-ring-on-dark: 0 0 0 2px var(--px-focus-on-dark);
+
+        /* Layers */
+        --px-z-sticky: 10;  --px-z-rail: 20;  --px-z-topbar: 30;  --px-z-popover: 40;
+        --px-z-drawer: 50;  --px-z-dialog: 60;  --px-z-toast: 70;  --px-z-tooltip: 80;
+
+        /* Motion */
+        --px-dur-fast: 120ms;   /* hover, press */
+        --px-dur-base: 180ms;   /* menu, popover, drawer, rail */
+        --px-dur-slow: 240ms;   /* dialog, toast */
+        --px-dur-flash: 600ms;  /* a row that just changed on the live board */
+        --px-ease: cubic-bezier(.2, 0, 0, 1);
+
+        /* Added while building (design-ui.md § 2.1, rule 1: a missing value is added here) */
+        --px-row-default: var(--px-row-regular);    /* set per shell and per data-density */
+        --px-on-action-kbd: #cfe2f2;                /* key inside the primary button (5,48:1 on #155a8e) */
+        --px-rail-rule: rgba(255, 255, 255, .12);   /* collapsed rail: group label becomes a rule */
+        --px-skeleton-sheen: rgba(255, 255, 255, .65);
+        --px-code-line: rgba(255, 255, 255, .06);
+        --px-code-selection: rgba(159, 205, 240, .3);
+        --px-pagehead-h: 64px;                      /* sticky offset of a split view under the page head */
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        :root { --px-dur-fast: 0ms; --px-dur-base: 0ms; --px-dur-slow: 0ms; --px-dur-flash: 0ms; }
+    }
+}

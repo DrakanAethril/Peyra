@@ -1,0 +1,241 @@
+/* Cards, KPIs, check lists, empty states, skeletons (design-ui.md §§ 4.10, 4.13). */
+@layer px.components {
+    .px-card {
+        display: grid;
+        min-width: 0;
+        overflow: hidden;
+        background: var(--px-surface);
+        border: 1px solid var(--px-border);
+        border-radius: var(--px-radius-lg);
+    }
+
+    .px-card__head {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-8);
+        min-height: 36px;
+        padding: var(--px-space-8) var(--px-space-12);
+        border-block-end: 1px solid var(--px-border-row);
+
+        & > h2,
+        & > h3 {
+            color: var(--px-text-strong);
+            font-size: var(--px-fs-13);
+            font-weight: var(--px-fw-semibold);
+        }
+
+        & > small {
+            margin-inline-start: auto;
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-12);
+            white-space: nowrap;
+        }
+    }
+
+    .px-card__actions {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-6);
+        margin-inline-start: auto;
+    }
+
+    .px-card__head > small + .px-card__actions {
+        margin-inline-start: var(--px-space-8);
+    }
+
+    .px-card__body {
+        display: grid;
+        gap: var(--px-space-8);
+        padding: var(--px-space-10) var(--px-space-12);
+    }
+
+    .px-card--flush > .px-card__body {
+        padding: 0;
+        gap: 0;
+    }
+
+    .px-card__foot {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-8);
+        padding: 7px var(--px-space-12);
+        border-block-start: 1px solid var(--px-border-row);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+    }
+
+    .px-card[data-density="compact"] { --px-row-default: var(--px-row-compact); }
+    .px-card[data-density="regular"] { --px-row-default: var(--px-row-regular); }
+    .px-card[data-density="comfortable"] { --px-row-default: var(--px-row-comfortable); }
+
+    /* ---------------------------------------------------------------- KPI */
+
+    .px-kpi {
+        display: grid;
+        gap: 1px;
+        align-content: start;
+        padding: 9px var(--px-space-12);
+        background: var(--px-surface);
+        border: 1px solid var(--px-border);
+        border-radius: var(--px-radius-lg);
+        color: inherit;
+        text-decoration: none;
+    }
+
+    a.px-kpi {
+        &:hover {
+            border-color: var(--px-border-strong);
+            text-decoration: none;
+            color: inherit;
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring);
+        }
+    }
+
+    .px-kpi__label {
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+        font-weight: var(--px-fw-medium);
+    }
+
+    .px-kpi__value {
+        color: var(--px-text-strong);
+        font-size: var(--px-fs-20);
+        font-weight: var(--px-fw-semibold);
+        line-height: 1.2;
+        letter-spacing: -.02em;
+    }
+
+    .px-kpi__value--ok {
+        color: var(--px-success-text);
+    }
+
+    .px-kpi__value--alert {
+        color: var(--px-danger-text);
+    }
+
+    .px-kpi__note {
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+    }
+
+    /* ---------------------------------------------------------------- Check list */
+
+    .px-checks {
+        display: grid;
+        gap: var(--px-space-6);
+    }
+
+    .px-checks__item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--px-space-8);
+    }
+
+    .px-checks__mark {
+        flex: none;
+        display: inline-grid;
+        place-items: center;
+        width: 16px;
+        height: 16px;
+        margin-block-start: 1px;
+        border-radius: 50%;
+        background: var(--px-success-tint);
+        color: var(--px-success-text);
+        font-size: .625rem;
+        font-weight: var(--px-fw-bold);
+        line-height: 1;
+    }
+
+    .px-checks__item.is-warning .px-checks__mark {
+        background: var(--px-warning-tint);
+        color: var(--px-warning-text);
+    }
+
+    .px-checks__item.is-blocking .px-checks__mark {
+        background: var(--px-danger-tint);
+        color: var(--px-danger-text);
+    }
+
+    /* ---------------------------------------------------------------- Empty state */
+
+    .px-empty {
+        display: grid;
+        justify-items: center;
+        gap: var(--px-space-6);
+        padding: var(--px-space-32) var(--px-space-16);
+        text-align: center;
+
+        & > svg {
+            width: var(--px-icon-lg);
+            height: var(--px-icon-lg);
+            color: var(--px-text-disabled);
+        }
+    }
+
+    .px-empty__title {
+        color: var(--px-text-strong);
+        font-size: var(--px-fs-13);
+        font-weight: var(--px-fw-semibold);
+    }
+
+    .px-empty__text {
+        max-width: 44ch;
+        color: var(--px-text-muted);
+    }
+
+    .px-empty__action {
+        margin-block-start: var(--px-space-6);
+    }
+
+    .px-empty--page {
+        & .px-empty__title {
+            font-size: var(--px-fs-24);
+            line-height: var(--px-lh-tight);
+        }
+    }
+
+    /* ---------------------------------------------------------------- Skeleton */
+
+    .px-skeleton {
+        display: grid;
+        gap: 0;
+    }
+
+    .px-skeleton__row {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-16);
+        height: var(--px-row-default);
+        padding: 0 var(--px-space-10);
+        border-block-end: 1px solid var(--px-border-row);
+
+        & > i {
+            display: block;
+            height: 10px;
+            border-radius: var(--px-radius-xs);
+            background: var(--px-surface-inset) linear-gradient(90deg, transparent, var(--px-skeleton-sheen), transparent) no-repeat;
+            background-size: 50% 100%;
+            animation: px-sheen 1.2s linear infinite;
+        }
+
+        & > i:nth-child(1) { width: 40%; }
+        & > i:nth-child(2) { width: 25%; }
+        & > i:nth-child(3) { width: 15%; margin-inline-start: auto; }
+    }
+
+    .px-skeleton__row:nth-child(even) > i:nth-child(1) { width: 65%; }
+
+    @keyframes px-sheen {
+        from { background-position: -50% 0; }
+        to { background-position: 150% 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .px-skeleton__row > i {
+            animation: none;
+        }
+    }
+}

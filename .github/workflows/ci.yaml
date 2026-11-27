@@ -74,6 +74,12 @@ jobs:
           COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ github.token }}"}}'
         run: docker compose up --wait --no-build
 
+      # The browser libraries (Stimulus, Turbo) are downloaded into the gitignored assets/vendor by
+      # composer's auto-scripts; run it again explicitly, or every page dies on « vendor asset is
+      # missing » should that first install have been cut short (Formatool met it).
+      - name: Install the import map's vendor files
+        run: docker compose exec -T php bin/console importmap:install
+
       # The stack answering at all is itself a check: it catches a service that no longer boots.
       - name: Check HTTP reachability
         run: curl --insecure --fail-with-body https://localhost:8143/health

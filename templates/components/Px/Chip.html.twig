@@ -1,0 +1,5 @@
+{# Px:Chip - a context (profile, « Espace enseignant »), never a state. #}
+<span{{ attributes.defaults({class: this.classes}) }}>
+    {%- if icon %}<twig:ux:icon name="{{ icon }}" aria-hidden="true"/>{% endif -%}
+    {% block content %}{% endblock %}
+</span>

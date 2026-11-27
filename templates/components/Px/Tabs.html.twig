@@ -1,0 +1,13 @@
+{#
+ # Px:Tabs - tabs inside a screen (a third party's, an employee's file). A tab is an address, never
+ # a hidden panel (design-ui.md § 4.11). `tabs`: list of {label, href, current?, count?}.
+ #}
+{% props tabs, label = 'Onglets' %}
+<nav{{ attributes.defaults({class: 'px-tabs'}) }} aria-label="{{ label }}">
+    {% for tab in tabs %}
+        <a class="px-tabs__tab" href="{{ tab.href }}"{% if tab.current ?? false %} aria-current="page"{% endif %}>
+            {{- tab.label -}}
+            {% if tab.count is defined and tab.count is not null %}<twig:Px:Badge tone="neutral" :dot="false" :label="tab.count ~ ''"/>{% endif %}
+        </a>
+    {% endfor %}
+</nav>

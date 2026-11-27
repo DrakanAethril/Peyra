@@ -1,0 +1,7 @@
+{# Px:Kpi - see App\Twig\Components\Px\Kpi. #}
+{% set tag = href ? 'a' : 'div' %}
+<{{ tag }}{{ attributes.defaults({class: 'px-kpi'}) }}{% if href %} href="{{ href }}"{% endif %}>
+    <span class="px-kpi__label">{{ label }}</span>
+    <b class="px-kpi__value{% if state %} px-kpi__value--{{ state }}{% endif %}">{{ value }}</b>
+    {% if note %}<small class="px-kpi__note">{{ note }}</small>{% endif %}
+</{{ tag }}>

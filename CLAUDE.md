@@ -69,7 +69,16 @@ docker compose --profile worker up -d worker  # the scheduler's worker, opt-in i
 docker compose exec php composer cs-check          # coding standard (cs-fix applies it)
 docker compose exec php bin/console cache:warmup   # PHPStan reads the compiled dev container
 docker compose exec php composer phpstan           # static analysis, level 5 + checkExplicitMixed
+
+bin/shot /_design shot.png [width] [height]        # capture a page with headless Chrome (on the host)
 ```
+
+`bin/shot` is a dependency-free Node script (host Node ≥ 22) that drives Chrome over the DevTools
+protocol: it waits for the fonts, captures the viewport (height `0` = the whole document, for the
+public pages), and signs in with `PEYRA_SHOT_COOKIE="name=value"` or, once step 0.4 adds the dev
+route, `PEYRA_SHOT_LOGIN=<login>` (`/_dev/login-as/<login>`); `PEYRA_SHOT_RAIL=collapsed` sets the
+rail cookie. The design gallery is <https://localhost:8143/_design> (with `/_design/teacher` and
+`/_design/public`), development and test only: every Px component in every state, in both shells.
 
 The test database (`peyra_test`, and `peyra_test1`… for ParaTest through
 `app:test:parallel-databases`) is described in `tests/README.md`, with the sequence CI replays.
@@ -105,6 +114,47 @@ Gotchas met while building it:
   sourcing it, and a script written to be sourced dies with « bad interpreter ».
 - Until the first migration exists, `doctrine:migrations:migrate` fails without
   `--allow-no-migration`; CI passes it, and it is a no-op afterwards.
+
+## Design system (design-ui.md, built at step 0.3)
+
+- **Stylesheet**: native CSS served by AssetMapper, no framework. `assets/styles/px.css` declares
+  the layer order once (`px.reset, px.tokens, px.base, px.layout, px.components, px.utilities`) and
+  `@import url(...)`s one file per family; `print.css` is linked apart (`media="print"`). The layer
+  decides who wins: a layout rule that must hide a component (the top bar's menu button, the status
+  bar's keys under 1024 px) sits in `px.utilities`, or the component's own `display` beats it.
+- **Tokens only**: `assets/styles/tokens.css` is design-ui.md § 2.1 verbatim plus the values found
+  missing (listed at its end). No colour in `components/` or `layout/` — `DesignTokensTest` refuses
+  one, checks every `var(--px-…)` is declared, and recomputes the contrast pairs of § 2.3 from the
+  file.
+- **Components** `Px:*`: class in `src/Twig/Components/Px/` when there is a rule to hold (refused
+  variant or tone, a count without its words, a trail starting with « Accueil »…), template in
+  `templates/components/Px/`. Screens use the component, never the raw classes; the layout classes
+  (`px-page`, `px-split`, `px-stack`, `px-cluster`, `px-kpis`) are the exception. A state's colour
+  is on its enum (`App\Enum\Shared\HasBadge` + `BadgeTone`, `<twig:Px:Badge :of="…"/>`).
+  `PxComponentsTest` pins their markup. Write `<tag{{ attributes }}>` with no space before:
+  the attribute bag brings its own leading space.
+- **Shells**: `layout/pgi.html.twig` (student), `layout/teacher.html.twig`, `layout/public.html.twig`.
+  The first two capture their blocks (`{% set x %}{{ block('x') }}{% endset %}`) and include
+  `layout/_shell.html.twig`: a child template's block placed inside a `<twig:…>` tag would belong
+  to the component, not to the page. A screen sets `rail_home` and `status_keys` outside any block.
+  The rail's folded state is the `px_rail` cookie, read by the server; error pages
+  (`templates/bundles/TwigBundle/Exception/error.html.twig`) are in the public shell.
+- **Keyboard**: one registry, `assets/shortcuts/registry.js` (canonical names such as `Ctrl+Enter`,
+  `Alt+1`, `F10`), read by `shortcuts_controller.js` on `<body>`. An element answers a combination
+  by declaring it, `data-px-shortcut="F10 Ctrl+S"` (`Px:Button`'s `shortcut` prop does it and
+  prints the key); `[data-px-open="id"]` opens a dialog or drawer. `App\Twig\Shortcut` is the
+  server's half of the French key labels (`Ctrl ↵`, `Échap`), tested against the JS table.
+  Never name a Stimulus controller method `scope`, `data`, `element`… — they are the base class's.
+- **Icons**: Lucide SVG files in `assets/icons/` (stroke 1.75), `px-*` ones drawn on the same grid;
+  Iconify is off. `IconNamesTest` checks every name a template uses and the drawing rules.
+- **Fonts** in `assets/fonts/` (`NOTICE`): Inter and Spectral are subsets made with fontTools; IBM
+  Plex Mono is IBM's own split files, unmodified, because « Plex » is a reserved font name. Its Pi
+  file carries U+202F, so amounts may use the narrow no-break space everywhere.
+- **Brand** in `assets/brand/`: the P and the word PEYRA are vectorised (no Spectral Bold nor
+  Manrope loaded); inline the wordmark with `{{ source('@brand/wordmark.svg') }}` so it takes the
+  text colour.
+- AssetMapper's import-map polyfill is off (`importmap_polyfill: false`): nothing is fetched from a
+  CDN.
 
 ## Domain rules the code must hold
 

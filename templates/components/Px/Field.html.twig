@@ -1,0 +1,12 @@
+{#
+ # Px:Field - label above, the control (content), hint and error below (design-ui.md § 4.5).
+ # The control gets id, aria-describedby and aria-invalid from the caller: Px:Input does it when
+ # given the same id, hint and error.
+ #}
+{% props id, label, required = false, hint = null, error = null, wide = false %}
+<div{{ attributes.defaults({class: 'px-field' ~ (wide ? ' px-field--wide' : '')}) }}>
+    <label class="px-field__label" for="{{ id }}">{{ label }}{% if required %} <span class="px-field__required" aria-hidden="true">*</span><span class="px-u-sr-only"> (obligatoire)</span>{% endif %}</label>
+    {% block content %}{% endblock %}
+    {% if hint %}<p class="px-field__hint" id="{{ id }}_hint">{{ hint }}</p>{% endif %}
+    {% if error %}<p class="px-field__error" id="{{ id }}_error"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ error }}</p>{% endif %}
+</div>

@@ -1,0 +1,83 @@
+/* The public shell: sign-in, error pages, « À propos » (design-ui.md § 6, « Connexion »). */
+@layer px.layout {
+    .px-public {
+        display: grid;
+        place-items: center;
+        min-height: 100dvh;
+        padding: var(--px-space-32) var(--px-space-16);
+        background: var(--px-bg);
+    }
+
+    .px-public__card {
+        display: grid;
+        gap: var(--px-space-20);
+        width: min(380px, 100%);
+        padding: var(--px-space-32);
+        background: var(--px-surface);
+        border: 1px solid var(--px-border);
+        border-radius: var(--px-radius-lg);
+    }
+
+    .px-public__card--wide {
+        width: min(560px, 100%);
+    }
+
+    .px-public__brand {
+        display: grid;
+        justify-items: center;
+        gap: var(--px-space-10);
+        color: var(--px-action);
+        text-align: center;
+
+        & img {
+            width: 72px;
+            height: 72px;
+        }
+
+        & svg {
+            height: 22px;
+            width: auto;
+        }
+    }
+
+    .px-public__brand--sm {
+        & img {
+            width: 48px;
+            height: 48px;
+        }
+
+        & svg {
+            height: 14px;
+        }
+    }
+
+    .px-public__tagline {
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+        font-weight: var(--px-fw-semibold);
+        letter-spacing: var(--px-track-wordmark);
+        text-transform: uppercase;
+    }
+
+    .px-public__title {
+        color: var(--px-text-strong);
+        font-size: var(--px-fs-24);
+        font-weight: var(--px-fw-semibold);
+        line-height: var(--px-lh-tight);
+        letter-spacing: var(--px-track-title);
+        text-align: center;
+    }
+
+    .px-public__body {
+        display: grid;
+        gap: var(--px-space-12);
+    }
+
+    .px-public__foot {
+        display: flex;
+        justify-content: center;
+        gap: var(--px-space-16);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+    }
+}

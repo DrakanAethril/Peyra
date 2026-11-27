@@ -1,0 +1,235 @@
+/* Dialogs, drawers, popovers, menus, tooltips (design-ui.md §§ 4.6, 4.14). */
+@layer px.components {
+    .px-dialog {
+        width: min(480px, calc(100vw - 32px));
+        max-height: 85dvh;
+        margin: auto;
+        overflow: hidden;
+        background: var(--px-surface);
+        border-radius: var(--px-radius-lg);
+        box-shadow: var(--px-shadow-dialog);
+
+        &[open] {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            animation: px-dialog-in var(--px-dur-slow) var(--px-ease);
+        }
+
+        &::backdrop {
+            background: var(--px-overlay);
+        }
+    }
+
+    .px-dialog--lg {
+        width: min(640px, calc(100vw - 32px));
+    }
+
+    .px-dialog--xl {
+        width: min(880px, calc(100vw - 32px));
+    }
+
+    @keyframes px-dialog-in {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+    }
+
+    .px-dialog__head,
+    .px-drawer__head {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-8);
+        padding: 14px var(--px-space-16) var(--px-space-10);
+
+        & > h2 {
+            color: var(--px-text-strong);
+            font-size: var(--px-fs-14);
+            font-weight: var(--px-fw-semibold);
+        }
+
+        & > .px-iconbtn {
+            margin-inline-start: auto;
+        }
+    }
+
+    /* The title takes the focus at opening so that it is read; it needs no ring. */
+    .px-drawer__head > h2:focus {
+        box-shadow: none;
+    }
+
+    .px-dialog__body,
+    .px-drawer__body {
+        display: grid;
+        align-content: start;
+        gap: var(--px-space-12);
+        padding: 0 var(--px-space-16) var(--px-space-16);
+        overflow: auto;
+    }
+
+    .px-dialog__body[aria-busy="true"] {
+        opacity: .6;
+    }
+
+    .px-dialog__foot,
+    .px-drawer__foot {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: var(--px-space-6);
+        padding: var(--px-space-10) var(--px-space-16);
+        border-block-start: 1px solid var(--px-border-row);
+    }
+
+    /* A fragment fetched into the body brings its own foot: it reaches the dialog's edges. */
+    .px-dialog__body .px-dialog__foot {
+        margin: var(--px-space-4) calc(-1 * var(--px-space-16)) calc(-1 * var(--px-space-16));
+    }
+
+    /* ---------------------------------------------------------------- Drawer */
+
+    .px-drawer {
+        position: fixed;
+        inset-block: var(--px-topbar-h) 0;
+        inset-inline: auto 0;
+        z-index: var(--px-z-drawer);
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        width: min(420px, 100vw);
+        height: auto;
+        max-height: none;
+        margin: 0;
+        background: var(--px-surface);
+        border-inline-start: 1px solid var(--px-border);
+        box-shadow: var(--px-shadow-dialog);
+        transform: translateX(100%);
+        visibility: hidden;
+        transition: transform var(--px-dur-base) var(--px-ease), visibility 0s var(--px-dur-base);
+
+        &.is-open {
+            transform: none;
+            visibility: visible;
+            transition: transform var(--px-dur-base) var(--px-ease);
+        }
+    }
+
+    .px-drawer--lg {
+        width: min(560px, 100vw);
+    }
+
+    /* ---------------------------------------------------------------- Popover, menu */
+
+    .px-popover {
+        position: absolute;
+        z-index: var(--px-z-popover);
+        min-width: 180px;
+        padding: var(--px-space-4);
+        background: var(--px-surface);
+        border-radius: var(--px-radius-lg);
+        box-shadow: var(--px-shadow-pop);
+    }
+
+    .px-menu {
+        display: grid;
+        gap: 1px;
+    }
+
+    .px-menu__item {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-8);
+        min-height: 28px;
+        padding: 0 var(--px-space-8);
+        border-radius: var(--px-radius-sm);
+        color: var(--px-text);
+        white-space: nowrap;
+        text-decoration: none;
+        width: 100%;
+
+        & > svg {
+            width: var(--px-icon);
+            height: var(--px-icon);
+            color: var(--px-text-muted);
+        }
+
+        & > kbd {
+            margin-inline-start: auto;
+        }
+
+        &:hover,
+        &:focus-visible {
+            background: var(--px-surface-inset);
+            color: var(--px-text-strong);
+            text-decoration: none;
+            box-shadow: none;
+        }
+    }
+
+    .px-menu__item--danger {
+        color: var(--px-danger-text);
+
+        & > svg {
+            color: currentColor;
+        }
+
+        &:hover,
+        &:focus-visible {
+            color: var(--px-danger-text);
+        }
+    }
+
+    .px-menu__sep {
+        height: 1px;
+        margin: var(--px-space-4) 0;
+        background: var(--px-border-row);
+    }
+
+    .px-menu__head {
+        padding: var(--px-space-6) var(--px-space-8);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+    }
+
+    /* ---------------------------------------------------------------- Tooltip */
+
+    .px-tooltip {
+        position: absolute;
+        z-index: var(--px-z-tooltip);
+        padding: 3px var(--px-space-8);
+        border-radius: var(--px-radius-sm);
+        background: var(--px-surface-inverse);
+        color: var(--px-text-on-action);
+        font-size: var(--px-fs-12);
+        white-space: nowrap;
+        pointer-events: none;
+    }
+
+    /* ---------------------------------------------------------------- Shortcut sheet (? or F1) */
+
+    .px-shortcuts {
+        display: grid;
+        gap: var(--px-space-16);
+
+        & h3 {
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-11);
+            font-weight: var(--px-fw-semibold);
+            letter-spacing: var(--px-track-caps);
+            text-transform: uppercase;
+            margin-block-end: var(--px-space-6);
+        }
+
+        & dl {
+            display: grid;
+            grid-template-columns: max-content minmax(0, 1fr);
+            gap: var(--px-space-6) var(--px-space-12);
+            align-items: baseline;
+        }
+
+        & dt {
+            display: flex;
+            gap: var(--px-space-4);
+            flex-wrap: wrap;
+        }
+    }
+}

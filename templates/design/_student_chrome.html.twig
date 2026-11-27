@@ -1,0 +1,51 @@
+{#
+ # The student shell's rail and top bar as the mock-ups draw them (design-ux.md § 2.1), for the
+ # gallery. The dossier switcher, the search trigger and the date chip are drawn with their classes
+ # here: their components come with the dossier (1.1) and the command palette (1.5).
+ #}
+{% block rail %}
+    <twig:Px:RailItem href="#main" icon="house" label="Tableau de bord"/>
+    <twig:Px:RailItem href="#main" icon="inbox" label="Pièces" :count="3" countLabel="3 pièces à traiter"/>
+    <twig:Px:RailGroup label="Gestion">
+        <twig:Px:RailItem href="#main" icon="tag" label="Ventes"/>
+        <twig:Px:RailItem href="#main" icon="package" label="Achats et stocks"/>
+    </twig:Px:RailGroup>
+    <twig:Px:RailGroup label="Comptabilité">
+        <twig:Px:RailItem href="#main" icon="book-text" label="Comptabilité" :current="true"/>
+        <twig:Px:RailItem href="#main" icon="landmark" label="Banque"/>
+        <twig:Px:RailItem href="#main" icon="building-2" label="Immobilisations et clôture"/>
+        <twig:Px:RailItem href="#main" icon="percent" label="Fiscalité"/>
+        <twig:Px:RailItem href="#main" icon="users" label="Paie et social"/>
+    </twig:Px:RailGroup>
+    <twig:Px:RailGroup label="Analyse">
+        <twig:Px:RailItem href="#main" icon="chart-column" label="Pilotage"/>
+        <twig:Px:RailItem href="#main" icon="database" label="Système d’information"/>
+    </twig:Px:RailGroup>
+{% endblock %}
+
+{% block rail_foot %}
+    <twig:Px:RailItem href="#main" icon="circle-help" label="Aide" :numbered="false"/>
+{% endblock %}
+
+{% block topbar_start %}
+    <button type="button" class="px-switcher" aria-haspopup="listbox" aria-expanded="false">
+        <b class="px-switcher__name">Menuiserie Vasseur SARL</b>
+        <small class="px-switcher__meta">Exercice 2026</small>
+        <twig:ux:icon name="chevron-down" aria-hidden="true"/>
+    </button>
+{% endblock %}
+
+{% block topbar_search %}
+    <button type="button" class="px-cmdk-trigger">
+        <twig:ux:icon name="search" aria-hidden="true"/>
+        <span>Compte, pièce, tiers, écran…</span>
+        <twig:Px:Kbd combo="Ctrl+K"/>
+    </button>
+{% endblock %}
+
+{% block topbar_end %}
+    <button type="button" class="px-chip px-chip--info"><twig:ux:icon name="calendar" aria-hidden="true"/>Date du dossier · 30 nov. 2026</button>
+    <twig:Px:Chip tone="role">Comptable fournisseurs</twig:Px:Chip>
+    <twig:Px:IconButton icon="bell" label="Notifications" :dot="true" dotLabel="du nouveau"/>
+    <twig:Px:Avatar name="Inès Moreau" :me="true" :decorative="false"/>
+{% endblock %}

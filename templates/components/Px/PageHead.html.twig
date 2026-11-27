@@ -1,0 +1,13 @@
+{#
+ # Px:PageHead - trail, title and its pill, actions on the right with the primary one last
+ # (design-ui.md § 4.3). Sticky at the top of .px-main; it takes its shadow once the page scrolls.
+ # Blocks: `badge` (after the title), `actions`.
+ #}
+{% props title, trail = [] %}
+<div{{ attributes.defaults({class: 'px-pagehead'}) }} data-scroll-shadow-target="head">
+    <div class="px-pagehead__lead">
+        {% if trail is not empty %}{{ component('Px:Trail', {segments: trail}) }}{% endif %}
+        <h1 class="px-pagehead__title">{{ title }}{% block badge %}{% endblock %}</h1>
+    </div>
+    <div class="px-pagehead__actions">{% block actions %}{% endblock %}</div>
+</div>

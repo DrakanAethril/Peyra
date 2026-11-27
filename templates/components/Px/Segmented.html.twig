@@ -1,0 +1,18 @@
+{#
+ # Px:Segmented - one choice among a few, side by side (assistance level, positioning), radios
+ # under the hood so the arrows change the choice (design-ui.md § 4.5). The hint says where a
+ # proposed value comes from.
+ #}
+{% props legend, name, options, value = null, hint = null, legendHidden = false %}
+<fieldset{{ attributes.defaults({class: 'px-segmented'}) }}{% if hint %} aria-describedby="{{ name }}_hint"{% endif %}>
+    <legend{% if legendHidden %} class="px-u-sr-only"{% endif %}>{{ legend }}</legend>
+    <div class="px-segmented__options">
+        {% for option in options %}
+            <label class="px-segmented__option">
+                <input type="radio" name="{{ name }}" value="{{ option.value }}"{% if value is not null and value ~ '' == option.value ~ '' %} checked{% endif %}>
+                <span>{{ option.label }}</span>
+            </label>
+        {% endfor %}
+    </div>
+    {% if hint %}<p class="px-segmented__hint" id="{{ name }}_hint">{{ hint }}</p>{% endif %}
+</fieldset>

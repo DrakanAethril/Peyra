@@ -1,0 +1,56 @@
+/*
+ * Self-hosted fonts (design-ui.md § 2.2), all SIL OFL 1.1, listed in NOTICE. IBM Plex Mono comes as
+ * IBM's own split files, unmodified ("Plex" is a reserved font name): Latin1 carries the digits,
+ * Pi the narrow no-break space U+202F every amount uses as thousands separator.
+ */
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url("../fonts/inter-var-latin.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "IBM Plex Mono";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/IBMPlexMono-Regular-Latin1.woff2") format("woff2");
+    unicode-range: U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030, U+2039-203A, U+2044, U+20AC, U+2122, U+2212, U+FB01-FB02;
+}
+
+@font-face {
+    font-family: "IBM Plex Mono";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/IBMPlexMono-Regular-Pi.woff2") format("woff2");
+    unicode-range: U+2000-200D, U+2010-2012, U+2015, U+2028-2029, U+202F, U+2032-2033, U+205F, U+2190-2199;
+}
+
+@font-face {
+    font-family: "IBM Plex Mono";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("../fonts/IBMPlexMono-SemiBold-Latin1.woff2") format("woff2");
+    unicode-range: U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030, U+2039-203A, U+2044, U+20AC, U+2122, U+2212, U+FB01-FB02;
+}
+
+@font-face {
+    font-family: "IBM Plex Mono";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("../fonts/IBMPlexMono-SemiBold-Pi.woff2") format("woff2");
+    unicode-range: U+2000-200D, U+2010-2012, U+2015, U+2028-2029, U+202F, U+2032-2033, U+205F, U+2190-2199;
+}
+
+@font-face {
+    font-family: "Spectral";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("../fonts/spectral-600-latin.woff2") format("woff2");
+}

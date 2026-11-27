@@ -1,0 +1,8 @@
+{# Px:Badge - see App\Twig\Components\Px\Badge. #}
+<span{{ attributes.defaults({class: this.classes}) }}{% if full %} title="{{ full }}"{% endif %}>
+    {%- if full -%}
+        <span aria-hidden="true">{{ text ?? block('content') }}</span><span class="px-u-sr-only">{{ full }}</span>
+    {%- else -%}
+        {{ text ?? block('content') }}
+    {%- endif -%}
+</span>

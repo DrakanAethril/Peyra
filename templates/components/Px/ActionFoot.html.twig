@@ -1,0 +1,8 @@
+{#
+ # Px:ActionFoot - the action foot of a teacher's run through a series (correction copy by copy):
+ # progress on the left (content), buttons on the right with the primary last (block `actions`).
+ #}
+<footer{{ attributes.defaults({class: 'px-actionfoot'}) }}>
+    <span role="status">{% block content %}{% endblock %}</span>
+    <div class="px-actionfoot__actions">{% block actions %}{% endblock %}</div>
+</footer>

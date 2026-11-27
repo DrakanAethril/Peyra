@@ -1,0 +1,9 @@
+{#
+ # Px:ContextBar - the violet ribbon under the top bar when a teacher acts in a student's dossier
+ # (design-ui.md C4): who is acting, and the way back.
+ #}
+{% props backLabel, backHref %}
+<div{{ attributes.defaults({class: 'px-contextbar'}) }} role="note">
+    <span>{% block content %}{% endblock %}</span>
+    <a href="{{ backHref }}">{{ backLabel }}</a>
+</div>

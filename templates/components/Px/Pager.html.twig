@@ -1,0 +1,25 @@
+{# Px:Pager - see App\Twig\Components\Px\Pager. #}
+<nav{{ attributes.defaults({class: 'px-pager'}) }} aria-label="Pagination">
+    <span>{% if total == 0 %}Aucune ligne{% else %}{{ this.first }} à {{ this.last }} sur {{ total }}{% endif %}</span>
+    {% if this.pageCount > 1 %}
+        <span class="px-pager__pages">
+            {% if page > 1 %}
+                <a class="px-pager__page" href="{{ this.url(page - 1) }}" aria-label="Page précédente" data-px-shortcut="PageUp"><twig:ux:icon name="chevron-left" aria-hidden="true"/></a>
+            {% else %}
+                <span class="px-pager__page" aria-disabled="true"><twig:ux:icon name="chevron-left" aria-hidden="true"/><span class="px-u-sr-only">Page précédente</span></span>
+            {% endif %}
+            {% for n in this.window %}
+                {% if n is null %}
+                    <span class="px-pager__gap" aria-hidden="true">…</span>
+                {% else %}
+                    <a class="px-pager__page" href="{{ this.url(n) }}"{% if n == page %} aria-current="page"{% endif %} aria-label="Page {{ n }}">{{ n }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if page < this.pageCount %}
+                <a class="px-pager__page" href="{{ this.url(page + 1) }}" aria-label="Page suivante" data-px-shortcut="PageDown"><twig:ux:icon name="chevron-right" aria-hidden="true"/></a>
+            {% else %}
+                <span class="px-pager__page" aria-disabled="true"><twig:ux:icon name="chevron-right" aria-hidden="true"/><span class="px-u-sr-only">Page suivante</span></span>
+            {% endif %}
+        </span>
+    {% endif %}
+</nav>

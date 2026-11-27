@@ -1,0 +1,11 @@
+{#
+ # Px:ModuleTabs - the bar of a module's sections under the top bar (design-ux.md A1: one bar per
+ # module, no tabs of open documents). Ctrl Alt ← → go to the neighbouring section.
+ # `tabs`: list of {label, href, current?, icon?}.
+ #}
+{% props tabs, label %}
+<nav{{ attributes.defaults({class: 'px-moduletabs'}) }} aria-label="{{ label }}">
+    {% for tab in tabs %}
+        <a class="px-moduletabs__tab" href="{{ tab.href }}"{% if tab.current ?? false %} aria-current="page"{% endif %}>{{ tab.label }}</a>
+    {% endfor %}
+</nav>

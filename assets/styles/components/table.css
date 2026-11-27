@@ -1,0 +1,339 @@
+/* Dense data table, filter bar, pager (design-ui.md § 4.7). */
+@layer px.components {
+    .px-table-wrap {
+        overflow: auto;
+        max-width: 100%;
+    }
+
+    .px-table {
+        width: 100%;
+        font-size: var(--px-fs-13);
+        color: var(--px-text);
+
+        &[data-density="compact"] { --px-row-default: var(--px-row-compact); }
+        &[data-density="regular"] { --px-row-default: var(--px-row-regular); }
+        &[data-density="comfortable"] { --px-row-default: var(--px-row-comfortable); }
+
+        & caption {
+            padding: var(--px-space-8) var(--px-space-12);
+            color: var(--px-text-strong);
+            font-weight: var(--px-fw-semibold);
+            text-align: start;
+        }
+
+        & thead th {
+            position: sticky;
+            inset-block-start: 0;
+            z-index: 1;
+            padding: var(--px-space-6) var(--px-space-10);
+            background: var(--px-surface-sunken);
+            border-block-end: 1px solid var(--px-border);
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-11);
+            font-weight: var(--px-fw-semibold);
+            letter-spacing: var(--px-track-caps);
+            text-transform: uppercase;
+            white-space: nowrap;
+            vertical-align: bottom;
+        }
+
+        & tbody td,
+        & tbody th {
+            height: var(--px-row-default);
+            padding: 0 var(--px-space-10);
+            border-block-end: 1px solid var(--px-border-row);
+            vertical-align: middle;
+        }
+
+        & tbody tr:last-child > * {
+            border-block-end: 0;
+        }
+
+        & tbody th[scope="row"] {
+            color: var(--px-text-strong);
+            font-weight: var(--px-fw-semibold);
+        }
+
+        & tbody[aria-busy="true"] {
+            opacity: .5;
+        }
+    }
+
+    .px-table__sort {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--px-space-4);
+        width: 100%;
+        color: inherit;
+        font: inherit;
+        letter-spacing: inherit;
+        text-transform: inherit;
+        text-decoration: none;
+
+        & > svg {
+            width: 12px;
+            height: 12px;
+            flex: none;
+        }
+
+        & > .px-table__sorthint {
+            visibility: hidden;
+            color: var(--px-text-disabled);
+        }
+
+        &:hover {
+            color: var(--px-text);
+            text-decoration: none;
+        }
+
+        &:hover > .px-table__sorthint,
+        &:focus-visible > .px-table__sorthint {
+            visibility: visible;
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring-inset);
+            border-radius: var(--px-radius-xs);
+        }
+    }
+
+    .px-u-right > .px-table__sort {
+        justify-content: flex-end;
+    }
+
+    /* Row states (design-ui.md § 4.7): a tinted row always keeps a pill or a word for its state. */
+    .px-table tbody tr {
+        &.is-clickable:hover > * {
+            background: var(--px-surface-sunken);
+            cursor: pointer;
+        }
+
+        &.is-current > *,
+        &[aria-selected="true"] > * {
+            background: var(--px-action-soft);
+        }
+
+        &.is-current > :first-child,
+        &[aria-selected="true"] > :first-child {
+            box-shadow: inset 2px 0 0 var(--px-action);
+        }
+
+        &.is-todo > * {
+            background: var(--px-warning-row);
+        }
+
+        &.is-error > * {
+            background: var(--px-danger-row);
+        }
+
+        &.is-dim > *,
+        &.is-dim > .px-u-num,
+        &.is-dim > .px-u-code {
+            color: var(--px-text-muted);
+        }
+
+        &.is-flash > * {
+            animation: px-flash var(--px-dur-flash) var(--px-ease);
+        }
+
+        &[tabindex]:focus-visible {
+            box-shadow: none;
+        }
+
+        &[tabindex]:focus-visible > * {
+            box-shadow: inset 0 2px 0 var(--px-focus), inset 0 -2px 0 var(--px-focus);
+        }
+
+        &[tabindex]:focus-visible > :first-child {
+            box-shadow: inset 2px 2px 0 var(--px-focus), inset 0 -2px 0 var(--px-focus);
+        }
+
+        &[tabindex]:focus-visible > :last-child {
+            box-shadow: inset -2px 2px 0 var(--px-focus), inset 0 -2px 0 var(--px-focus);
+        }
+    }
+
+    @keyframes px-flash {
+        from { background: var(--px-action-tint); }
+    }
+
+    .px-table__section > * {
+        height: 24px !important;
+        background: var(--px-surface-inset);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-11);
+        font-weight: var(--px-fw-semibold);
+        letter-spacing: var(--px-track-caps);
+        text-transform: uppercase;
+    }
+
+    .px-table__subtotal > * {
+        color: var(--px-text-strong);
+        font-weight: var(--px-fw-semibold);
+    }
+
+    .px-table tfoot,
+    .px-table__total {
+        & > *,
+        & td,
+        & th {
+            height: var(--px-row-default);
+            padding: 0 var(--px-space-10);
+            background: var(--px-surface-sunken);
+            border-block-start: 1px solid var(--px-border-strong);
+            color: var(--px-text-strong);
+            font-weight: var(--px-fw-semibold);
+        }
+    }
+
+    .px-table tfoot {
+        position: sticky;
+        inset-block-end: 0;
+    }
+
+    .px-table .px-u-num {
+        font-weight: inherit;
+    }
+
+    /* Raw result of a query: column names as they are, in mono, no capitals. */
+    .px-table--raw thead th {
+        font-family: var(--px-font-mono);
+        font-size: var(--px-fs-12);
+        letter-spacing: 0;
+        text-transform: none;
+    }
+
+    /* Plain: no head, label first, amount last (a statement inside a card). */
+    .px-table--plain tbody td,
+    .px-table--plain tbody th {
+        height: var(--px-row-compact);
+    }
+
+    /* Horizontal scroll: the first column stays, with a rule on its right. */
+    .px-table--sticky-first :is(th, td):first-child {
+        position: sticky;
+        inset-inline-start: 0;
+        z-index: 1;
+        background: var(--px-surface);
+        box-shadow: inset -1px 0 0 var(--px-border);
+    }
+
+    .px-table--sticky-first thead th:first-child {
+        z-index: 2;
+        background: var(--px-surface-sunken);
+    }
+
+    /* ---------------------------------------------------------------- Filter bar */
+
+    .px-filters {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--px-space-6);
+        padding: var(--px-space-8) var(--px-space-12);
+        border-block-end: 1px solid var(--px-border-row);
+    }
+
+    .px-filters__chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: var(--px-control-sm);
+        padding: 0 var(--px-space-10);
+        border: 1px solid var(--px-border);
+        border-radius: var(--px-radius-pill);
+        background: var(--px-surface);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+        font-weight: var(--px-fw-semibold);
+        white-space: nowrap;
+        text-decoration: none;
+
+        &:hover {
+            border-color: var(--px-border-strong);
+            color: var(--px-text);
+            text-decoration: none;
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring);
+        }
+
+        &[aria-current="true"] {
+            background: var(--px-rail-bg);
+            border-color: var(--px-rail-bg);
+            color: var(--px-text-on-action);
+        }
+    }
+
+    .px-filters > .px-select {
+        width: auto;
+    }
+
+    .px-filters__search {
+        margin-inline-start: auto;
+        min-width: 190px;
+    }
+
+    /* ---------------------------------------------------------------- Pager */
+
+    .px-pager {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-10);
+        padding: 7px var(--px-space-12);
+        border-block-start: 1px solid var(--px-border-row);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+    }
+
+    .px-pager__pages {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-4);
+        margin-inline-start: auto;
+    }
+
+    .px-pager__page {
+        display: inline-grid;
+        place-items: center;
+        min-width: 24px;
+        min-height: 24px;
+        padding: 0 var(--px-space-6);
+        border: 1px solid var(--px-border);
+        border-radius: var(--px-radius-sm);
+        color: var(--px-text);
+        font-family: var(--px-font-mono);
+        font-size: var(--px-fs-12);
+        text-decoration: none;
+
+        & > svg {
+            width: var(--px-icon-sm);
+            height: var(--px-icon-sm);
+        }
+
+        &:hover {
+            background: var(--px-surface-sunken);
+            color: var(--px-text-strong);
+            text-decoration: none;
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring);
+        }
+
+        &[aria-current="page"] {
+            border-color: var(--px-border-strong);
+            color: var(--px-text-strong);
+            font-weight: var(--px-fw-semibold);
+        }
+
+        &[aria-disabled="true"] {
+            color: var(--px-text-disabled);
+            pointer-events: none;
+        }
+    }
+
+    .px-pager__gap {
+        padding: 0 var(--px-space-2);
+    }
+}

@@ -1,0 +1,14 @@
+{# Px:IconButton - see App\Twig\Components\Px\IconButton. The label is the name and the tooltip. #}
+{% set classes = 'px-iconbtn' ~ (size ? ' px-iconbtn--' ~ size : '') %}
+{% set common %}
+    {%- if shortcut %} data-px-shortcut="{{ shortcut }}"{% endif -%}
+    {%- if pressed is not null %} aria-pressed="{{ pressed ? 'true' : 'false' }}"{% endif -%}
+{% endset %}
+{% if href and not disabled %}
+<a href="{{ href }}" aria-label="{{ this.accessibleName }}" title="{{ label }}"{{ attributes.defaults({class: classes}) }}{{ common|raw }}>
+{%- else %}
+<button type="{{ type }}" aria-label="{{ this.accessibleName }}" title="{{ label }}"{{ attributes.defaults({class: classes}) }}{{ common|raw }}{% if disabled %} disabled{% endif %}>
+{%- endif -%}
+    <twig:ux:icon name="{{ icon }}" aria-hidden="true"/>
+    {%- if dot %}<span class="px-iconbtn__dot" aria-hidden="true"></span>{% endif -%}
+{% if href and not disabled %}</a>{% else %}</button>{% endif %}

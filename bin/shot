@@ -1,0 +1,155 @@
+#!/usr/bin/env node
+/*
+ * bin/shot <url> <file.png> [width] [height]
+ *
+ * Captures a page of the development application with headless Chrome, on the host (there is no
+ * Chrome in the containers). A path ("/_design") is read against https://localhost:8143. The
+ * capture waits for the fonts, then takes the viewport: in the shells only the page scrolls, so the
+ * viewport is what a person sees. Height 0 takes the whole document instead (public pages).
+ *
+ * Signing in, for the screens that need it:
+ *   PEYRA_SHOT_COOKIE="name=value"  sets that cookie (a session cookie copied from a browser);
+ *   PEYRA_SHOT_LOGIN=prof.martin    visits /_dev/login-as/<login> first (development route,
+ *                                   from step 0.4 onwards).
+ * Other knobs: PEYRA_SHOT_BASE (another origin), PEYRA_SHOT_CHROME (the browser binary),
+ * PEYRA_SHOT_RAIL=collapsed|expanded (the rail cookie), PEYRA_SHOT_WAIT (extra milliseconds).
+ *
+ * Plain Node (22 or later, global WebSocket) speaking the DevTools protocol: no dependency.
+ */
+import { spawn } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+
+const [, , target, output, widthArg = '1440', heightArg = '900'] = process.argv;
+if (!target || !output) {
+    console.error('Usage: bin/shot <url> <file.png> [width] [height]');
+    process.exit(2);
+}
+
+const base = process.env.PEYRA_SHOT_BASE ?? 'https://localhost:8143';
+const url = /^https?:\/\//.test(target) ? target : base + (target.startsWith('/') ? target : `/${target}`);
+const width = Number(widthArg);
+const height = Number(heightArg);
+const chrome = process.env.PEYRA_SHOT_CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const profile = mkdtempSync(join(tmpdir(), 'peyra-shot-'));
+const port = 9300 + Math.floor(Math.random() * 600);
+
+const browser = spawn(chrome, [
+    '--headless=new',
+    '--ignore-certificate-errors',
+    '--disable-gpu',
+    '--hide-scrollbars',
+    '--no-first-run',
+    '--no-default-browser-check',
+    `--user-data-dir=${profile}`,
+    `--remote-debugging-port=${port}`,
+    `--window-size=${width},${height || 900}`,
+    'about:blank',
+], { stdio: 'ignore' });
+
+const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+
+async function pageSocket() {
+    for (let attempt = 0; attempt < 50; attempt++) {
+        try {
+            const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+            const page = targets.find((t) => t.type === 'page');
+            if (page) {
+                return page.webSocketDebuggerUrl;
+            }
+        } catch {
+            // Chrome is still starting.
+        }
+        await sleep(100);
+    }
+    throw new Error('Chrome did not open its DevTools port.');
+}
+
+function client(socket) {
+    let next = 0;
+    const pending = new Map();
+    const waiters = [];
+    socket.addEventListener('message', ({ data }) => {
+        const message = JSON.parse(data);
+        if (message.id && pending.has(message.id)) {
+            const { resolve: done, reject } = pending.get(message.id);
+            pending.delete(message.id);
+            message.error ? reject(new Error(message.error.message)) : done(message.result);
+        } else if (message.method) {
+            for (const waiter of waiters.filter((w) => w.method === message.method)) {
+                waiters.splice(waiters.indexOf(waiter), 1);
+                waiter.done(message.params);
+            }
+        }
+    });
+
+    return {
+        send(method, params = {}) {
+            const id = ++next;
+            socket.send(JSON.stringify({ id, method, params }));
+
+            return new Promise((done, reject) => pending.set(id, { resolve: done, reject }));
+        },
+        once(method, timeout = 15000) {
+            return Promise.race([
+                new Promise((done) => waiters.push({ method, done })),
+                sleep(timeout).then(() => {
+                    throw new Error(`Timed out waiting for ${method}.`);
+                }),
+            ]);
+        },
+    };
+}
+
+async function visit(cdp, address) {
+    const loaded = cdp.once('Page.loadEventFired');
+    await cdp.send('Page.navigate', { url: address });
+    await loaded;
+}
+
+try {
+    const socket = new WebSocket(await pageSocket());
+    await new Promise((done) => socket.addEventListener('open', done, { once: true }));
+    const cdp = client(socket);
+    await cdp.send('Page.enable');
+    await cdp.send('Network.enable');
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width, height: height || 900, deviceScaleFactor: 1, mobile: false });
+
+    const origin = new URL(url).origin;
+    const cookies = [];
+    if (process.env.PEYRA_SHOT_COOKIE) {
+        const [name, ...rest] = process.env.PEYRA_SHOT_COOKIE.split('=');
+        cookies.push({ name, value: rest.join('='), url: origin });
+    }
+    if (process.env.PEYRA_SHOT_RAIL) {
+        cookies.push({ name: 'px_rail', value: process.env.PEYRA_SHOT_RAIL, url: origin });
+    }
+    if (cookies.length > 0) {
+        await cdp.send('Network.setCookies', { cookies });
+    }
+    if (process.env.PEYRA_SHOT_LOGIN) {
+        await visit(cdp, `${origin}/_dev/login-as/${encodeURIComponent(process.env.PEYRA_SHOT_LOGIN)}`);
+    }
+
+    await visit(cdp, url);
+    await cdp.send('Runtime.evaluate', { expression: 'document.fonts.ready.then(() => true)', awaitPromise: true });
+    await sleep(Number(process.env.PEYRA_SHOT_WAIT ?? 300));
+
+    let clip;
+    if (height === 0) {
+        const { contentSize } = await cdp.send('Page.getLayoutMetrics');
+        clip = { x: 0, y: 0, width, height: Math.ceil(contentSize.height), scale: 1 };
+    }
+    const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: height === 0, ...(clip ? { clip } : {}) });
+    writeFileSync(resolve(output), Buffer.from(shot.data, 'base64'));
+    console.log(resolve(output));
+    socket.close();
+} catch (error) {
+    console.error(`bin/shot: ${error.message}`);
+    process.exitCode = 1;
+} finally {
+    browser.kill();
+    await sleep(200);
+    rmSync(profile, { recursive: true, force: true });
+}

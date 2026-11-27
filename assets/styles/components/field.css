@@ -1,0 +1,335 @@
+/* Fields: label, control, hint, error; inputs, selects, check groups, segmented choice (design-ui.md § 4.5). */
+@layer px.components {
+    .px-field {
+        display: grid;
+        align-content: start;
+        gap: var(--px-space-2);
+        min-width: 0;
+    }
+
+    .px-field--wide {
+        grid-column: span 2;
+    }
+
+    .px-field__label {
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-11);
+        font-weight: var(--px-fw-semibold);
+        letter-spacing: .02em;
+    }
+
+    .px-field__required {
+        color: var(--px-danger-text);
+    }
+
+    .px-field__hint,
+    .px-field__error {
+        font-size: var(--px-fs-12);
+        margin-block-start: var(--px-space-2);
+    }
+
+    .px-field__hint {
+        color: var(--px-text-muted);
+    }
+
+    .px-field__error {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--px-space-4);
+        color: var(--px-danger-text);
+
+        & > svg {
+            width: var(--px-icon-sm);
+            height: var(--px-icon-sm);
+            flex: none;
+            margin-block-start: 1px;
+        }
+    }
+
+    .px-fieldrow {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: var(--px-space-8);
+    }
+
+    .px-form {
+        display: grid;
+        gap: var(--px-space-12);
+    }
+
+    /* ---------------------------------------------------------------- Input, select */
+
+    .px-input,
+    .px-select {
+        width: 100%;
+        min-height: var(--px-control-md);
+        padding: 0 var(--px-space-8);
+        border: 1px solid var(--px-border-control);
+        border-radius: var(--px-radius-md);
+        background-color: var(--px-surface);
+        color: var(--px-text-strong);
+        font-size: var(--px-fs-13);
+        transition: border-color var(--px-dur-fast) var(--px-ease), box-shadow var(--px-dur-fast) var(--px-ease);
+
+        &::placeholder {
+            color: var(--px-text-muted);
+            opacity: 1;
+        }
+
+        &:hover {
+            border-color: var(--px-text-muted);
+        }
+
+        &:focus,
+        &:focus-visible {
+            border-color: var(--px-action);
+            box-shadow: var(--px-ring);
+        }
+
+        &[aria-invalid="true"] {
+            border-color: var(--px-danger);
+        }
+
+        &[aria-invalid="true"]:focus,
+        &[aria-invalid="true"]:focus-visible {
+            box-shadow: 0 0 0 2px var(--px-surface), 0 0 0 4px var(--px-danger);
+        }
+
+        &[readonly] {
+            background-color: var(--px-surface-sunken);
+            border-color: var(--px-border-strong);
+        }
+
+        &:disabled {
+            background-color: var(--px-surface-inset);
+            border-color: var(--px-border);
+            color: var(--px-text-disabled);
+            cursor: not-allowed;
+        }
+    }
+
+    .px-input--sm,
+    .px-select--sm {
+        min-height: var(--px-control-sm);
+        font-size: var(--px-fs-12);
+    }
+
+    .px-input--lg {
+        min-height: var(--px-control-lg);
+        font-size: var(--px-fs-14);
+    }
+
+    .px-input--area {
+        min-height: 60px;
+        padding: 7px var(--px-space-10);
+        resize: vertical;
+        line-height: var(--px-lh-base);
+    }
+
+    .px-select {
+        appearance: none;
+        padding-inline-end: 28px;
+        background-image: url("../images/select-chevron.svg");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        background-size: 16px 16px;
+        cursor: pointer;
+    }
+
+    /* An input with a leading icon (the search of a filter bar). */
+    .px-inputicon {
+        position: relative;
+        display: flex;
+        align-items: center;
+
+        & > svg {
+            position: absolute;
+            inset-inline-start: var(--px-space-8);
+            width: var(--px-icon-sm);
+            height: var(--px-icon-sm);
+            color: var(--px-text-muted);
+            pointer-events: none;
+        }
+
+        & > .px-input {
+            padding-inline-start: 28px;
+        }
+    }
+
+    /* ---------------------------------------------------------------- Check group */
+
+    .px-checkgroup {
+        display: grid;
+        gap: var(--px-space-6);
+
+        & > legend {
+            margin-block-end: var(--px-space-4);
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-11);
+            font-weight: var(--px-fw-semibold);
+            letter-spacing: .02em;
+        }
+    }
+
+    .px-checkgroup--inline .px-checkgroup__options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--px-space-4) var(--px-space-16);
+    }
+
+    .px-checkgroup__options {
+        display: grid;
+        gap: var(--px-space-6);
+    }
+
+    .px-check {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-8);
+        min-height: 24px;
+        color: var(--px-text);
+        cursor: pointer;
+
+        &:has(input:disabled) {
+            color: var(--px-text-disabled);
+            cursor: not-allowed;
+        }
+    }
+
+    .px-check input {
+        appearance: none;
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        border: 1.5px solid var(--px-border-control);
+        border-radius: var(--px-radius-xs);
+        background: var(--px-surface);
+        cursor: inherit;
+
+        &::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            background: var(--px-text-on-action);
+            mask: url("../images/check-mask.svg") center / 12px 12px no-repeat;
+            transform: scale(0);
+        }
+
+        &:checked,
+        &:indeterminate {
+            background: var(--px-action);
+            border-color: var(--px-action);
+        }
+
+        &:checked::before {
+            transform: scale(1);
+        }
+
+        &:indeterminate::before {
+            height: 2px;
+            mask: none;
+            transform: scale(1);
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring);
+        }
+
+        &[aria-invalid="true"] {
+            border-color: var(--px-danger);
+        }
+
+        &:disabled {
+            background: var(--px-surface-inset);
+            border-color: var(--px-border);
+        }
+    }
+
+    .px-check input[type="radio"] {
+        border-radius: 50%;
+
+        &::before {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            mask: none;
+        }
+    }
+
+    /* ---------------------------------------------------------------- Segmented choice */
+
+    .px-segmented {
+        display: grid;
+        gap: var(--px-space-6);
+
+        & > legend {
+            margin-block-end: var(--px-space-4);
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-11);
+            font-weight: var(--px-fw-semibold);
+            letter-spacing: .02em;
+        }
+    }
+
+    .px-segmented__options {
+        display: grid;
+        grid-auto-columns: minmax(0, 1fr);
+        grid-auto-flow: column;
+        border: 1px solid var(--px-border-strong);
+        border-radius: var(--px-radius-md);
+        overflow: hidden;
+    }
+
+    .px-segmented__option {
+        position: relative;
+        display: block;
+        cursor: pointer;
+
+        & + & {
+            border-inline-start: 1px solid var(--px-border-strong);
+        }
+
+        & input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        & span {
+            display: block;
+            padding: var(--px-space-6) var(--px-space-4);
+            color: var(--px-text-muted);
+            font-weight: var(--px-fw-semibold);
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        &:hover span {
+            background: var(--px-surface-sunken);
+        }
+
+        & input:checked + span {
+            background: var(--px-action);
+            color: var(--px-text-on-action);
+        }
+
+        & input:focus-visible + span {
+            box-shadow: inset 0 0 0 2px var(--px-focus), inset 0 0 0 4px var(--px-surface);
+        }
+
+        & input:disabled + span {
+            color: var(--px-text-disabled);
+            cursor: not-allowed;
+        }
+    }
+
+    .px-segmented__hint {
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+    }
+}
