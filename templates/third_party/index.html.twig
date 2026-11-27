@@ -70,12 +70,12 @@
                         {% for third_party in third_party_rows %}
                             <tr data-rows-target="row">
                                 <td class="px-u-code"><a class="px-link" href="{{ path('app_third_party', {dossier: dossier.id, code: third_party.code}) }}">{{ third_party.code }}</a></td>
-                                <td class="px-u-truncate" title="{{ third_party.name }}">{{ third_party.name }}</td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ third_party.name }}">{{ third_party.name }}</td>
                                 <td><twig:Px:Badge :of="third_party.kind"/></td>
                                 <td class="px-u-code">{{ third_party.account ? third_party.account.number : '' }}</td>
                                 <td class="px-u-code">{{ third_party.auxiliaryCode }}</td>
-                                <td class="px-u-truncate" title="{{ third_party.city }}">{{ third_party.city }}{% if third_party.country != 'FR' %} ({{ third_party.country }}){% endif %}</td>
-                                <td class="px-u-truncate" title="{{ third_party.paymentTerms.label }} · {{ third_party.paymentMethod.label }}">{{ third_party.paymentTerms.label }} · {{ third_party.paymentMethod.label|lower }}</td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ third_party.city }}">{{ third_party.city }}{% if third_party.country != 'FR' %} ({{ third_party.country }}){% endif %}</td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ third_party.paymentTerms.label }} · {{ third_party.paymentMethod.label }}">{{ third_party.paymentTerms.label }} · {{ third_party.paymentMethod.label|lower }}</td>
                                 {% set owed = outstanding[third_party.id] ?? null %}
                                 <td class="px-u-num">{{ owed is null or owed.isZero ? '' : owed.balance|balance }}</td>
                             </tr>
