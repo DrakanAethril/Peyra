@@ -34,3 +34,18 @@
 /deploy-prod.sh
 /certs/
 ###< peyra/production ###
+
+###> peyra/terraform ###
+# infra/terraform/ runs from the operator's machine (docs/production.md). Its state holds the IAM
+# user's secret key, its variables name the real bucket and profile: none of them is committed.
+# The provider lock file (.terraform.lock.hcl) is, as Terraform asks.
+/infra/terraform/.terraform/
+/infra/terraform/*.tfstate
+/infra/terraform/*.tfstate.*
+/infra/terraform/.terraform.tfstate.lock.info
+/infra/terraform/*.tfvars
+!/infra/terraform/terraform.tfvars.example
+/infra/terraform/*.tfplan
+/infra/terraform/crash.log
+/infra/terraform/crash.*.log
+###< peyra/terraform ###

@@ -30,3 +30,5 @@ vendor/
 # The server's own files, next to compose.yaml: never baked into the image.
 certs/
 deploy-prod.sh
+# The operator's Terraform (its local state holds a secret key): never in an image.
+infra/

@@ -1,0 +1,17 @@
+# Copy to terraform.tfvars (gitignored) and fill in: cp terraform.tfvars.example terraform.tfvars
+# docs/production.md, « Le compartiment S3 (Terraform) ».
+
+# The AWS profile of your machine (~/.aws/config) that may create buckets, IAM users and keys.
+aws_profile = "mon-profil"
+
+# Paris. The bucket's region, and S3_REGION.
+aws_region = "eu-west-3"
+
+# Unique across all of AWS: refused as long as it is this example.
+bucket_name = "exemple-peyra-documents"
+
+# Optional, with their default values:
+# prefix                  = ""              # S3_PREFIX: empty, the bucket is Peyra's own
+# iam_user_name           = "peyra-storage"
+# noncurrent_version_days = 90              # a deleted file stays recoverable this long
+# incomplete_upload_days  = 7

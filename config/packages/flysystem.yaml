@@ -13,12 +13,16 @@ flysystem:
 
         # Production's bucket. The client is built by App\Service\Shared\Storage\S3ClientFactory.
         # S3_PREFIX scopes an environment inside a bucket shared with something else; empty otherwise.
+        # The bucket is infra/terraform/'s, with ACLs disabled: a copy does not read the source's ACL
+        # (`retain_visibility: false`, else GetObjectAcl on every file of a copied dossier) and the
+        # client sends none (S3ClientFactory). S3BucketPolicyTest holds both against the IAM policy.
         documents.s3:
             adapter: 'aws'
             options:
                 client: 'peyra.s3_client'
                 bucket: '%env(S3_BUCKET)%'
                 prefix: '%env(S3_PREFIX)%'
+            retain_visibility: false
 
         documents.storage:
             adapter: 'lazy'

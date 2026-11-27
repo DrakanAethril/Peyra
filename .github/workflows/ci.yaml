@@ -52,6 +52,19 @@ jobs:
           PUBLIC_URL=https://pgi.example.org docker compose -f compose.yaml -f compose.prod.yaml config --quiet
           rm .env.prod.local
 
+      # infra/terraform/ (production's bucket) is run by the operator from their own machine, never
+      # here: CI only checks it is formatted and valid. `init -backend=false` downloads the provider
+      # the committed lock file names, nothing more; no AWS credential exists in this job. On a copy,
+      # so that nothing Terraform writes lands in the checkout.
+      - name: Check the Terraform configuration
+        run: |
+          work="$(mktemp -d)"
+          cp -R infra/terraform/. "$work"
+          terraform() { docker run --rm -v "$work":/work -w /work hashicorp/terraform:1.17.2 "$@"; }
+          terraform fmt -check -diff -recursive
+          terraform init -backend=false -input=false -lockfile=readonly -no-color
+          terraform validate -no-color
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 

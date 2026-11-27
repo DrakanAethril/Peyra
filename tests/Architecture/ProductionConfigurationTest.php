@@ -129,10 +129,12 @@ final class ProductionConfigurationTest extends TestCase
         $gitignore = (string) file_get_contents(self::ROOT.'/.gitignore');
         $dockerignore = (string) file_get_contents(self::ROOT.'/.dockerignore');
 
-        foreach (['/deploy-prod.sh', '/certs/', '/.env.*.local'] as $pattern) {
+        // The operator's Terraform: its state holds the IAM user's secret key, its variables the
+        // real bucket and profile (docs/production.md).
+        foreach (['/deploy-prod.sh', '/certs/', '/.env.*.local', '/infra/terraform/*.tfstate', '/infra/terraform/*.tfstate.*', '/infra/terraform/*.tfvars', '/infra/terraform/*.tfplan', '/infra/terraform/.terraform/'] as $pattern) {
             self::assertStringContainsString($pattern."\n", $gitignore);
         }
-        foreach (['deploy-prod.sh', 'certs/', '.env.*.local'] as $pattern) {
+        foreach (['deploy-prod.sh', 'certs/', '.env.*.local', 'infra/'] as $pattern) {
             self::assertStringContainsString("\n".$pattern."\n", $dockerignore);
         }
     }
