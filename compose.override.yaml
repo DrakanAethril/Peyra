@@ -115,9 +115,10 @@ services:
       APP_ENV: "${APP_ENV:-dev}"
       XDEBUG_MODE: "${XDEBUG_MODE:-develop}"
       TZ: Europe/Paris
-      DEFAULT_URI: https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}
+      # As `php` in compose.yaml: keep the two in step.
+      DEFAULT_URI: ${PUBLIC_URL:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}}
       MERCURE_URL: ${CADDY_MERCURE_URL:-http://php/.well-known/mercure}
-      MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}/.well-known/mercure}
+      MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-${PUBLIC_URL:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}}/.well-known/mercure}
       GOTENBERG_URL: http://gotenberg:3000
       LOCK_DSN: flock:///app/var/lock
     extra_hosts:

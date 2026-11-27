@@ -60,6 +60,13 @@ La pile de développement : `php` (FrankenPHP et Caddy), `database` (MariaDB, co
 production), `openldap` (un annuaire fictif, versionné dans `frankenphp/ldap/`), `gotenberg`
 (rendu des PDF) et, à la demande, `worker` (Symfony Scheduler).
 
+## En production
+
+Peyra se déploie avec `compose.yaml` et `compose.prod.yaml`, derrière un reverse proxy qui termine
+TLS. `docs/production.md` décrit les prérequis, les fichiers propres au serveur (dont un gabarit
+versionné, `.env.prod.local.example`), le premier déploiement, la mise à jour, le retour en arrière,
+la sauvegarde et les diagnostics (`/health`, `bin/console app:ldap:check`).
+
 ## Licence
 
 Peyra est un logiciel libre, sous licence **GNU Affero General Public License v3.0 ou

@@ -8,9 +8,12 @@ services:
       TZ: Europe/Paris
       # `php:80` lets the application publish to the Mercure hub over the internal network.
       SERVER_NAME: ${SERVER_NAME:-localhost}, php:80
-      DEFAULT_URI: https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}
+      # The address people type. In development it is deduced from the server name and the HTTPS
+      # port; behind a reverse proxy (production) the ports are the container's own and say nothing
+      # of it, so PUBLIC_URL gives it whole (compose.prod.yaml requires it).
+      DEFAULT_URI: ${PUBLIC_URL:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}}
       MERCURE_URL: ${CADDY_MERCURE_URL:-http://php/.well-known/mercure}
-      MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}/.well-known/mercure}
+      MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-${PUBLIC_URL:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}}/.well-known/mercure}
       # An internal hostname, defined by the `gotenberg` service below: not a secret.
       GOTENBERG_URL: http://gotenberg:3000
       # DATABASE_URL, the LDAP credentials and the Mercure keys are credential-shaped: never

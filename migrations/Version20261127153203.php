@@ -47,6 +47,11 @@ final class Version20261127153203 extends AbstractMigration
         $this->addSql('CREATE INDEX IDX_253B48AECB1AB4DA ON user_account (departed_by_id)');
     }
 
+    public function isTransactional(): bool
+    {
+        return false;
+    }
+
     public function down(Schema $schema): void
     {
         $this->addSql('ALTER TABLE directory_group_mapping DROP FOREIGN KEY FK_777619D7D2EECC3F');

@@ -1,8 +1,14 @@
----
 # Production overlay, named explicitly and after compose.yaml:
 #   docker compose -f compose.yaml -f compose.prod.yaml up --wait
-# Not deployed by the build agents (plan, lot 7): the database and the directory are the
-# establishment's, outside this stack.
+# deploy-prod.sh (on the server, never in git) runs it; docs/production.md says how.
+#
+# Peyra sits behind the establishment's nginx, on another machine, which terminates TLS and owns
+# the public name. The container therefore serves plain HTTP on one port, for every Host, and knows
+# its public address only from PUBLIC_URL. No database service: the database is the MariaDB server
+# Formatool uses, with a base and a user of Peyra's own (DATABASE_URL in .env.prod.local).
+#
+# Exported by deploy-prod.sh before Compose reads this file (Compose substitutes ${…} from the
+# shell, never from .env.prod.local): PUBLIC_URL, HTTP_PORT, PEYRA_VERSION.
 services:
   php:
     image: ${IMAGES_PREFIX:-}peyra-php-prod
@@ -15,6 +21,19 @@ services:
       # Hardcoded, never `${APP_ENV:-prod}`: a stray APP_ENV=dev in the invoking shell would load
       # dev-only bundles this image never installed.
       APP_ENV: prod
+      # Every Host, in HTTP, on port 80: nginx sends the public name, the deploy script's own probe
+      # sends 127.0.0.1, and the application publishes to Mercure as `php`. A host name here would
+      # make Caddy listen on 443 even with automatic HTTPS off (checked with `frankenphp adapt`),
+      # and nothing would answer nginx on 80.
+      SERVER_NAME: ':80'
+      # No certificate, no redirection to HTTPS, no HTTP/3: TLS is nginx's.
+      CADDY_GLOBAL_OPTIONS: auto_https off
+      # The browser only ever talks HTTPS to nginx: tell it to keep doing so.
+      CADDY_SERVER_EXTRA_DIRECTIVES: header ?Strict-Transport-Security "max-age=31536000"
+      DEFAULT_URI: ${PUBLIC_URL:?PUBLIC_URL, l'adresse publique (https://…), doit être exportée}
+      MERCURE_PUBLIC_URL: ${PUBLIC_URL:?PUBLIC_URL, l'adresse publique (https://…), doit être exportée}/.well-known/mercure
+      # Shown on « À propos »: the commit deployed.
+      PEYRA_VERSION: ${PEYRA_VERSION:-}
       # Bounded thread pool: FrankenPHP's default (2 x cores + 1) times the memory limit can exceed
       # the host's memory. Kept here rather than in .env, which dev shares.
       FRANKENPHP_CONFIG: num_threads 4
@@ -22,10 +41,32 @@ services:
       # Every lock lives on a volume `worker` mounts too, so a screen, a manual run and a scheduled
       # task see the same locks.
       LOCK_DSN: flock:///app/var/lock
+    # HTTP only. The port is published on the machine (nginx is elsewhere) and closed by the
+    # firewall to everything but nginx: reaching it directly would bypass TRUSTED_PROXIES.
+    ports: !override
+      - name: http
+        target: 80
+        published: ${HTTP_PORT:-8080}
+        protocol: tcp
     volumes:
       # Sessions survive a rebuild of the container.
       - php_sessions:/app/var/sessions
       - app_locks:/app/var/lock
+      # The directory's CA certificate (LDAPS): `certs/ldap-ca.pem` next to this file, never in
+      # git; LDAP_TLS_CA_CERT_PATH=/etc/peyra/certs/ldap-ca.pem. An absent folder mounts empty.
+      - ./certs:/etc/peyra/certs:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+
+  gotenberg:
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
 
   # Every recurring task (Symfony Scheduler). Same image and environment as `php`: keep them in
   # step. It bypasses the entrypoint (which migrates: `php` does that, and two containers migrating
@@ -47,13 +88,15 @@ services:
     environment:
       APP_ENV: prod
       TZ: Europe/Paris
-      DEFAULT_URI: https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}
+      DEFAULT_URI: ${PUBLIC_URL:?PUBLIC_URL, l'adresse publique (https://…), doit être exportée}
       MERCURE_URL: ${CADDY_MERCURE_URL:-http://php/.well-known/mercure}
-      MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}/.well-known/mercure}
+      MERCURE_PUBLIC_URL: ${PUBLIC_URL:?PUBLIC_URL, l'adresse publique (https://…), doit être exportée}/.well-known/mercure
       GOTENBERG_URL: http://gotenberg:3000
+      PEYRA_VERSION: ${PEYRA_VERSION:-}
       LOCK_DSN: flock:///app/var/lock
     volumes:
       - app_locks:/app/var/lock
+      - ./certs:/etc/peyra/certs:ro
     logging:
       driver: json-file
       options:

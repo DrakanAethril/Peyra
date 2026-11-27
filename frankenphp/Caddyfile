@@ -48,6 +48,15 @@
 	# Disable Topics tracking if not enabled explicitly: https://github.com/jkarlin/topics
 	header ?Permissions-Policy "browsing-topics=()"
 
+	# Base security headers, on every answer (pages, assets, the hub). `?` leaves a response that
+	# sets its own alone. HSTS is production's (compose.prod.yaml): on localhost it would stick.
+	header {
+		?X-Content-Type-Options nosniff
+		?X-Frame-Options SAMEORIGIN
+		?Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
 	# AssetMapper content-hashes what it compiles into public/assets, so those bytes never change
 	# under a given URL. `?` keeps the dev server's own decision (no public/assets there).
 	@immutableAssets path /assets/*

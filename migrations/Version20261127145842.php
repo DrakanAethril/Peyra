@@ -30,6 +30,11 @@ final class Version20261127145842 extends AbstractMigration
         $this->addSql('ALTER TABLE user_account ADD CONSTRAINT FK_253B48AE63D2700C FOREIGN KEY (administrator_designated_by_id) REFERENCES user_account (id) ON DELETE SET NULL');
     }
 
+    public function isTransactional(): bool
+    {
+        return false;
+    }
+
     public function down(Schema $schema): void
     {
         $this->addSql('ALTER TABLE administration_event DROP FOREIGN KEY FK_84F23CF510DAF24A');
