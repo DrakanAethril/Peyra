@@ -1,7 +1,36 @@
-# Read the documentation at https://github.com/thephpleague/flysystem-bundle/blob/master/docs/1-getting-started.md
+# Where uploaded and generated documents live (README of the plan, § 8): App\Service\Shared\Storage\
+# DossierFiles is the one door, and it writes to `documents.storage`, which stands for one of the
+# two storages below, chosen at runtime by PEYRA_STORAGE (`local` or `s3`). Nothing else in the
+# application writes a file.
 flysystem:
     storages:
-        default.storage:
+        # A directory: development and test, never a bucket - nobody needs AWS keys to develop.
+        # In the containers it is a volume shared by `php` and `worker` (compose files).
+        documents.local:
             adapter: 'local'
             options:
-                directory: '%kernel.project_dir%/var/storage/default'
+                directory: '%kernel.project_dir%/var/storage'
+
+        # Production's bucket. The client is built by App\Service\Shared\Storage\S3ClientFactory.
+        # S3_PREFIX scopes an environment inside a bucket shared with something else; empty otherwise.
+        documents.s3:
+            adapter: 'aws'
+            options:
+                client: 'peyra.s3_client'
+                bucket: '%env(S3_BUCKET)%'
+                prefix: '%env(S3_PREFIX)%'
+
+        documents.storage:
+            adapter: 'lazy'
+            options:
+                source: 'documents.%env(PEYRA_STORAGE)%'
+
+# A directory under the cache instead: each test run, and each ParaTest process's cache, starts
+# from nothing, and a test never reaches the development volume.
+when@test:
+    flysystem:
+        storages:
+            documents.local:
+                adapter: 'local'
+                options:
+                    directory: '%kernel.cache_dir%/storage'
