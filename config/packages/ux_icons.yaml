@@ -1,0 +1,20 @@
+# Peyra's icons are the SVG files of assets/icons/ (design-ui.md § 5): Lucide, copied one by one,
+# stroke 1.75 on a 24 grid, plus the px-* ones drawn on the same grid. The file carries the
+# viewBox and the stroke; the call gives the size (16 px by default, CSS sets it in a component).
+# Iconify is switched off: an icon that is not in the folder is an error, never a download -
+# tests/Functional/IconNamesTest.php checks every name a template uses.
+ux_icons:
+    icon_dir: '%kernel.project_dir%/assets/icons'
+    default_icon_attributes:
+        width: 16
+        height: 16
+
+    iconify:
+        enabled: false
+
+    ignore_not_found: false
+
+when@prod:
+    ux_icons:
+        # A missing icon renders nothing rather than failing the page; the test is the guard.
+        ignore_not_found: true

@@ -1,5 +1,9 @@
 twig:
     file_name_pattern: '*.twig'
+    paths:
+        # The brand files (assets/brand/*.svg) are inlined where their colour must follow the text
+        # (the wordmark is fill="currentColor"): {{ source('@brand/wordmark.svg') }}.
+        '%kernel.project_dir%/assets/brand': brand
 
 when@test:
     twig:
