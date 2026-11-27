@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Entity\Identity\User;
+use App\Tests\Support\BuildsSchool;
 use App\Tests\Support\SignsIn;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -16,6 +18,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  */
 final class RoleAccessSmokeTest extends WebTestCase
 {
+    use BuildsSchool;
     use SignsIn;
 
     /** login per role; `refused` is an account the entry rule turns away */
@@ -40,6 +43,61 @@ final class RoleAccessSmokeTest extends WebTestCase
         yield 'Candidats administrateurs' => ['/teacher/admin/administrators/candidates?q=pr', ['student' => 404, 'teacher' => 404, 'admin' => 200, 'refused' => 302]];
         yield 'Journal des connexions' => ['/teacher/admin/logins', ['student' => 404, 'teacher' => 404, 'admin' => 200, 'refused' => 302]];
         yield 'Journal d’administration' => ['/teacher/admin/journal', ['student' => 404, 'teacher' => 404, 'admin' => 200, 'refused' => 302]];
+        $teachers = ['student' => 404, 'teacher' => 200, 'admin' => 200, 'refused' => 302];
+        $admins = ['student' => 404, 'teacher' => 404, 'admin' => 200, 'refused' => 302];
+        yield 'Classes de l’année' => ['/teacher/classes', $teachers];
+        yield 'À placer' => ['/teacher/classes/unplaced', $teachers];
+        yield 'Sortis de la filière' => ['/teacher/classes/unplaced?show=departed', $teachers];
+        yield 'Passage de classe' => ['/teacher/classes/promotion', $teachers];
+        yield 'Années précédentes' => ['/teacher/classes/past', $teachers];
+        yield 'Recherche d’étudiants' => ['/teacher/students/search?q=mo', $teachers];
+        yield 'Années scolaires' => ['/teacher/admin/years', $admins];
+        yield 'Classes (administration)' => ['/teacher/admin/classes', $admins];
+        yield 'Correspondance avec l’annuaire' => ['/teacher/admin/directory', $admins];
+        yield 'Recherche d’enseignants' => ['/teacher/admin/classes/teachers/search?q=pr', $admins];
+    }
+
+    /**
+     * The screens of a class, a student and a passage, on a school built for the test: last year's
+     * CG1 names this year's CG2 as its next class, and ines.morel is in CG1 this year.
+     */
+    public function testTheScreensOfAClassAndOfAStudent(): void
+    {
+        $client = static::createClient();
+        $client->disableReboot();
+        $this->submitLogin($client, self::ACCOUNTS['admin']);
+        $martin = $this->account($client, self::ACCOUNTS['admin']);
+        \assert($martin instanceof User);
+        [, $lastCg1] = $this->buildYear($client, $martin, 2025, false);
+        [, $cg1, $cg2] = $this->buildYear($client, $martin, 2026, true);
+        $lastCg1->setNextClass($cg2);
+        $client->getContainer()->get('doctrine')->getManager()->flush();
+        $this->signOut($client);
+        $this->submitLogin($client, self::ACCOUNTS['student']);
+        $ines = (int) $this->account($client, self::ACCOUNTS['student'])?->getId();
+
+        $teachers = ['student' => 404, 'teacher' => 200, 'admin' => 200, 'refused' => 302];
+        $admins = ['student' => 404, 'teacher' => 404, 'admin' => 200, 'refused' => 302];
+        $screens = [
+            '/teacher/classes/'.$cg1->getId() => $teachers,
+            '/teacher/classes/'.$lastCg1->getId() => $teachers,
+            '/teacher/students/'.$ines => $teachers,
+            '/teacher/classes/promotion/'.$lastCg1->getId() => $teachers,
+            '/teacher/classes/promotion/'.$lastCg1->getId().'/summary?step=2' => $teachers,
+            '/teacher/classes/promotion/'.$cg1->getId() => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
+            '/teacher/admin/classes/'.$cg1->getId() => $admins,
+        ];
+        foreach ($screens as $url => $expected) {
+            $actual = [];
+            foreach (self::ACCOUNTS as $role => $login) {
+                self::ensureKernelShutdown();
+                $client = static::createClient();
+                $this->submitLogin($client, $login);
+                $client->request('GET', $url);
+                $actual[$role] = $client->getResponse()->getStatusCode();
+            }
+            self::assertSame($expected, $actual, $url);
+        }
     }
 
     /** @param array<string, int> $expected */

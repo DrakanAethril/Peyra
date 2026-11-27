@@ -11,6 +11,7 @@
 
 {% block page_head %}
     <twig:Px:PageHead title="{{ class.name }}" :trail="[
+        {label: 'Paramètres', href: path('app_admin_years')},
         {label: 'Administration', href: path('app_admin_years')},
         {label: 'Classes ' ~ class.schoolYear.label, href: path('app_admin_classes', {year: class.schoolYear.id})},
     ]">
@@ -32,8 +33,8 @@
                 <twig:Px:Field id="level" label="Année du BTS" :required="true">
                     <twig:Px:Select id="level" :required="true" value="{{ form.level ? form.level.value : '' }}" placeholder="Choisir…" :options="levels|map(l => {value: l.value, label: l.label})"/>
                 </twig:Px:Field>
-                <twig:Px:Field id="next" label="Classe suivante" hint="Celle où passent ses étudiants l’année d’après ; aucune pour une classe de fin de BTS.">
-                    <twig:Px:Select id="next" value="{{ form.next ? form.next.id : '' }}" placeholder="Aucune" :options="later|map(c => {value: c.id, label: c.label})" hint="1"/>
+                <twig:Px:Field id="next" label="Classe suivante" hint="Celle où passent ses étudiants l’année d’après ; aucune pour une classe de fin de BTS." :error="next_error">
+                    <twig:Px:Select id="next" value="{{ form.next ? form.next.id : '' }}" placeholder="Aucune" :options="later|map(c => {value: c.id, label: c.label})" hint="1" :error="next_error"/>
                 </twig:Px:Field>
                 <div class="px-cluster">
                     <twig:Px:Button type="submit" variant="primary" icon="save" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>

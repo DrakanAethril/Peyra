@@ -67,12 +67,10 @@
                 </form>
             {% endif %}
             <twig:block name="foot">
-                <div class="px-cluster">
-                    <span class="px-u-muted">Un étudiant non placé apparaît dans « À placer » ; ses dossiers restent.</span>
+                                    <span class="px-u-muted">Un étudiant non placé apparaît dans « À placer » ; ses dossiers restent.</span>
                     {% if plan.lines is not empty %}
                         <twig:Px:Button type="submit" form="promotion-form" variant="primary" icon="arrow-right" class="px-u-push">Voir le récapitulatif</twig:Px:Button>
                     {% endif %}
-                </div>
             </twig:block>
         </twig:Px:Card>
     </div>

@@ -74,7 +74,7 @@
                                 {% if not row.year.current %}
                                     <form method="post" action="{{ path('app_admin_years_current', {id: row.year.id}) }}">
                                         <input type="hidden" name="_token" value="{{ csrf_token('admin-years-current-' ~ row.year.id) }}">
-                                        <twig:Px:ConfirmButton label="Rendre courante" confirmLabel="Confirmer : {{ row.year.label }} courante" variant="secondary" size="sm" aria-describedby="current-note"/>
+                                        <twig:Px:ConfirmButton label="Rendre courante" confirmLabel="Confirmer" variant="secondary" size="sm" aria-describedby="current-note"/>
                                     </form>
                                 {% endif %}
                             </td>

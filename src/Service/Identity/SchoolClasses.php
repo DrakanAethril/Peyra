@@ -57,8 +57,9 @@ final readonly class SchoolClasses
             return $refusal;
         }
         \assert(null !== $level);
-        if (null !== $next && $next->getSchoolYear()->getStartsOn() <= $class->getSchoolYear()->getStartsOn()) {
-            return 'La classe suivante appartient à une année qui commence après celle-ci.';
+        $nextRefusal = $this->nextClassRefusal($class, $next);
+        if (null !== $nextRefusal) {
+            return $nextRefusal;
         }
 
         $changes = [];
@@ -77,6 +78,14 @@ final readonly class SchoolClasses
         $this->entityManager->flush();
 
         return null;
+    }
+
+    /** A next class belongs to a later year. */
+    public function nextClassRefusal(SchoolClass $class, ?SchoolClass $next): ?string
+    {
+        return null !== $next && $next->getSchoolYear()->getStartsOn() <= $class->getSchoolYear()->getStartsOn()
+            ? 'La classe suivante appartient à une année qui commence après celle-ci.'
+            : null;
     }
 
     /** Whether a class may be deleted: it never had a student (its enrolments are the history). */

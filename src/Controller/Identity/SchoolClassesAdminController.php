@@ -75,9 +75,14 @@ final class SchoolClassesAdminController extends AbstractController
         $level = ClassLevel::tryFrom((int) PostValue::nullableInt($request, 'level'));
         $nextId = PostValue::nullableInt($request, 'next');
         $next = null === $nextId ? null : $classRepository->find($nextId);
+        $form = ['name' => $name, 'level' => $level, 'next' => $next];
+        $nextRefusal = $classes->nextClassRefusal($class, $next);
+        if (null !== $nextRefusal) {
+            return $this->sheet($class, $classRepository, $teachers, $classes, $form, nextError: $nextRefusal, status: Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
         $refusal = $classes->update($class, $name, $level, $next, $me, $clock->now());
         if (null !== $refusal) {
-            return $this->sheet($class, $classRepository, $teachers, $classes, ['name' => $name, 'level' => $level, 'next' => $next], $refusal, status: Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->sheet($class, $classRepository, $teachers, $classes, $form, $refusal, status: Response::HTTP_UNPROCESSABLE_ENTITY);
         }
         $this->addFlash('status', \sprintf('Classe %s enregistrée.', $class->getLabel()));
 
@@ -166,7 +171,7 @@ final class SchoolClassesAdminController extends AbstractController
     }
 
     /** @param array{name: string, level: ?ClassLevel, next: ?SchoolClass}|null $form */
-    private function sheet(SchoolClass $class, SchoolClassRepository $classRepository, TeacherClassRepository $teachers, SchoolClasses $classes, ?array $form = null, ?string $error = null, ?string $sheetError = null, ?string $teacherError = null, string $teacherLabel = '', int $status = Response::HTTP_OK): Response
+    private function sheet(SchoolClass $class, SchoolClassRepository $classRepository, TeacherClassRepository $teachers, SchoolClasses $classes, ?array $form = null, ?string $error = null, ?string $sheetError = null, ?string $teacherError = null, string $teacherLabel = '', ?string $nextError = null, int $status = Response::HTTP_OK): Response
     {
         $later = [];
         foreach ($classRepository->findAll() as $candidate) {
@@ -185,6 +190,7 @@ final class SchoolClassesAdminController extends AbstractController
             'error' => $error,
             'sheet_error' => $sheetError,
             'teacher_error' => $teacherError,
+            'next_error' => $nextError,
             'teacher_label' => $teacherLabel,
             'levels' => ClassLevel::cases(),
         ], new Response(status: $status));

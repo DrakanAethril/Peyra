@@ -30,6 +30,11 @@
         gap: var(--px-space-10);
         color: var(--px-text-strong);
         font-family: var(--px-font-title);
+
+        /* The pills after a title keep the interface's face, even under the teacher's serif titles. */
+        & > * {
+            font-family: var(--px-font-ui);
+        }
         font-size: var(--px-fs-18);
         font-weight: var(--px-fw-semibold);
         line-height: var(--px-lh-tight);

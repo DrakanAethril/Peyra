@@ -86,6 +86,7 @@ final readonly class PromotionPlan
         if ([] === $parts) {
             return 'Aucun changement : tous les étudiants sont déjà inscrits dans l’année.';
         }
+
         return implode(', ', $parts).'.';
     }
 

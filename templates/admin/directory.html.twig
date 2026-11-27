@@ -54,10 +54,8 @@
             {% endif %}
             <twig:block name="foot">
                 {% if year_classes is not empty %}
-                    <div class="px-cluster">
-                        <span class="px-u-muted">Lue une seule fois, à la création du compte d’un étudiant. Un étudiant de deux groupes qui désignent deux classes, ou d’aucun, attend dans « À placer ».</span>
+                                            <span class="px-u-muted">Lue une seule fois, à la création du compte d’un étudiant. Un étudiant de deux groupes qui désignent deux classes, ou d’aucun, attend dans « À placer ».</span>
                         <twig:Px:Button type="submit" form="directory-form" variant="primary" icon="save" shortcut="F10 Ctrl+S" class="px-u-push">Enregistrer</twig:Px:Button>
-                    </div>
                 {% endif %}
             </twig:block>
         </twig:Px:Card>

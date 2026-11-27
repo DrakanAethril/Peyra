@@ -69,6 +69,11 @@
         font-size: var(--px-fs-12);
     }
 
+    /* A form in a foot holds its buttons: it takes the width, so that px-u-push reaches the right edge. */
+    .px-card__foot > form {
+        flex: 1;
+    }
+
     .px-card[data-density="compact"] { --px-row-default: var(--px-row-compact); }
     .px-card[data-density="regular"] { --px-row-default: var(--px-row-regular); }
     .px-card[data-density="comfortable"] { --px-row-default: var(--px-row-comfortable); }
