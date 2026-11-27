@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Entity\Accounting\Entry;
 use App\Entity\Accounting\Journal;
 use App\Entity\Identity\User;
 use App\Entity\ThirdParty\ThirdParty;
@@ -12,8 +13,12 @@ use App\Enum\Dossier\DossierKind;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Identity\SchoolYearRepository;
+use App\Service\Accounting\Ledger\EntryDraft;
+use App\Service\Accounting\Ledger\EntryLineDraft;
+use App\Service\Accounting\Ledger\Ledger;
 use App\Service\Dossier\DossierContext;
 use App\Service\Identity\SchoolClasses;
+use App\Service\Shared\Money;
 use App\Tests\Support\BuildsSchool;
 use App\Tests\Support\RegulatoryFixtures;
 use App\Tests\Support\SavesDossiers;
@@ -172,6 +177,10 @@ final class RoleAccessSmokeTest extends WebTestCase
             $client->getContainer()->get(EntityManagerInterface::class)->persist($scierie);
             $client->getContainer()->get(EntityManagerInterface::class)->flush();
         });
+        $entry = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): Entry => $client->getContainer()->get(Ledger::class)->draft($saved, new EntryDraft('BQ1', new \DateTimeImmutable('2026-01-20'), 'VIR-SCIE', 'Virement Scierie', [
+            EntryLineDraft::debit('401000', Money::cents(1_000), '', 'F0001'),
+            EntryLineDraft::credit('512100', Money::cents(1_000)),
+        ]), 'test'));
         $dossier = (int) $saved->getId();
 
         $holders = ['student' => 200, 'teacher' => 200, 'admin' => 404, 'refused' => 302];
@@ -183,6 +192,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/accounting/third-parties', '/accounting/third-parties?kind=supplier&q=scie', '/accounting/third-parties/F0001',
             '/accounting/third-parties/new', '/accounting/third-parties/import', '/accounting/third-parties/export.csv',
             '/accounting/accounts/search?q=401S',
+            '/accounting/entry', '/accounting/entry?journal=BQ1&period=2026-01-01', '/accounting/entries/'.$entry->getId(),
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
             $actual = [];

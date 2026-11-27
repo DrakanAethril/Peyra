@@ -38,10 +38,13 @@ final readonly class GridLine
         );
     }
 
-    /** Nothing typed on it: the grid's empty last line. */
+    /**
+     * Nothing typed on it - the grid's empty last line, whose label is only the one carried from
+     * the line above.
+     */
     public function isBlank(): bool
     {
-        return '' === $this->account && '' === $this->thirdParty && '' === trim($this->label) && 0 === $this->debit && 0 === $this->credit && null === $this->due;
+        return '' === $this->account && '' === $this->thirdParty && 0 === $this->debit && 0 === $this->credit && null === $this->due;
     }
 
     /** @return array{account: string, thirdParty: string, label: string, debit: int, credit: int, due: ?string} */

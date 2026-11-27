@@ -102,8 +102,9 @@ export function blankLine(label = '') {
     return { account: '', thirdParty: '', label, debit: 0, credit: 0, due: null };
 }
 
+/** Nothing typed on the line but, perhaps, the label it carries from the line above. */
 export function isBlank(line) {
-    return !line.account && !line.thirdParty && !(line.label ?? '').trim() && !line.debit && !line.credit && !line.due;
+    return !line.account && !line.thirdParty && !line.debit && !line.credit && !line.due;
 }
 
 /** Debit and credit of the lines typed (blank ones count for nothing). */

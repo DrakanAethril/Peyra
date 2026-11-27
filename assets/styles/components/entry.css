@@ -297,12 +297,23 @@
             width: 600px;
             max-height: 420px;
         }
+
+        & mark {
+            background: transparent;
+            color: var(--px-text-strong);
+            font-weight: var(--px-fw-semibold);
+        }
     }
 
     .px-entry__pickerbody {
         display: grid;
         grid-template-columns: auto minmax(0, 1fr);
         min-height: 0;
+        overflow: hidden;
+
+        & > ul {
+            min-height: 0;
+        }
     }
 
     .px-entry__classes {

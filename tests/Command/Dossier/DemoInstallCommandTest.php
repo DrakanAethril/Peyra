@@ -41,7 +41,7 @@ final class DemoInstallCommandTest extends KernelTestCase
         $vasseur = $templates[0];
         self::assertSame(DossierKind::Template, $vasseur->getKind());
         self::assertNull($vasseur->getOwner());
-        self::assertSame('2026-01-01', $vasseur->getDossierDate()->format('Y-m-d'));
+        self::assertSame('2026-01-31', $vasseur->getDossierDate()->format('Y-m-d'), 'La fin de janvier, dont les achats et la banque sont saisis.');
         self::assertSame('99941273600018', $vasseur->getCompany()->getSiret());
         self::assertSame(8_000_000, $vasseur->getCompany()->getCapital()->cents);
 
@@ -102,8 +102,8 @@ final class DemoInstallCommandTest extends KernelTestCase
 
         // Its opening balance: one validated entry of AN, balanced at 459 260,31 (ouverture-2026.yaml).
         $context = self::getContainer()->get(DossierContext::class);
-        $entries = $context->within($vasseur, static fn (): array => self::getContainer()->get(EntryRepository::class)->findAll());
-        self::assertCount(1, $entries);
+        $entries = $context->within($vasseur, static fn (): array => self::getContainer()->get(EntryRepository::class)->findBy([], ['id' => 'ASC']));
+        self::assertCount(49, $entries, 'Les à-nouveaux, 16 achats et 32 mouvements de la Banque Populaire de janvier.');
         $opening = $entries[0];
         self::assertSame(['AN-2026-00001', 'AN-2026-001', '2026-01-01', EntryOrigin::Opening, 67], [$opening->getNumberLabel(), $opening->getDocument(), $opening->getEntryDate()->format('Y-m-d'), $opening->getOrigin(), \count($opening->getLines())]);
         self::assertSame([45_926_031, 45_926_031], [$opening->totalDebit()->cents, $opening->totalCredit()->cents]);
@@ -116,10 +116,26 @@ final class DemoInstallCommandTest extends KernelTestCase
         $context->within($vasseur, static function () use ($balance, $owed): void {
             self::assertSame(821_645, $balance('512100'), 'Crédit Coopératif, relevé n° 12.');
             self::assertSame(10_531_800, $balance('411000'), 'Clients : 105 318,00, les 13 factures ouvertes.');
-            self::assertSame(-2_719_644, $balance('401000'), 'Fournisseurs : 27 196,44, les 10 factures ouvertes.');
+            self::assertSame(-2_719_644 - 384_000, $balance('401000'), 'Fournisseurs : 27 196,44, les 10 factures ouvertes, plus le loyer de janvier (3 840,00) saisi le 01/01.');
             self::assertSame(684_000, $owed('C0031'), 'Bâti-Confort : 6 840,00 en 416000.');
             self::assertSame(-286_200, $owed('C0019'), 'Girard : l’acompte de 2 862,00 reçu en 419100.');
             self::assertSame(-1_500_000, $owed('A0001'), 'Compte courant de Bernard Vasseur, 455100.');
+        });
+
+        // January's purchases and Banque Populaire: validated by date, the last two of each left in the brouillard.
+        $states = [];
+        foreach ($entries as $entry) {
+            $key = $entry->getJournal()->getCode().' '.($entry->isValidated() ? 'validée' : 'brouillard');
+            $states[$key] = ($states[$key] ?? 0) + 1;
+        }
+        self::assertSame(['AN validée' => 1, 'ACH validée' => 14, 'BQ2 validée' => 30, 'ACH brouillard' => 2, 'BQ2 brouillard' => 2], $states, 'États par journal.');
+        $purchase = array_values(array_filter($entries, static fn ($entry): bool => 'FA-2601-0012' === $entry->getDocument()))[0];
+        self::assertSame(['601000', '624100', '445660', '401000'], array_map(static fn ($line): string => $line->getAccount()->getNumber(), $purchase->getLines()));
+        self::assertSame([415_812, '2026-02-07'], [$purchase->totalCredit()->cents, $purchase->getLines()[3]->getDueDate()?->format('Y-m-d')]);
+        $end = new \DateTimeImmutable('2026-01-31');
+        $context->within($vasseur, static function () use ($reader, $account, $end): void {
+            $bank = $reader->accountBalance($account('512200') ?? throw new \LogicException(), new \DateTimeImmutable('2026-01-01'), $end, EntryScope::WithDrafts)->balance()->cents;
+            self::assertSame(1_511_678, $bank, 'Banque Populaire au 31/01/2026 : 15 116,78 D (operations-2026.md § 2.5).');
         });
     }
 }

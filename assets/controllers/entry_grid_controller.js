@@ -377,6 +377,10 @@ export default class extends Controller {
                 }
             });
         }
+        const mark = body.querySelector('.px-entry__mark');
+        if (mark) {
+            mark.rowSpan = body.rows.length;
+        }
 
         return body;
     }
@@ -1001,6 +1005,7 @@ export default class extends Controller {
         const ok = !group.local[key];
         if (!ok) {
             input.setAttribute('aria-invalid', 'true');
+            this.closePicker();
             this.renderGroup(group);
             this.focusCell(group.key, index, field);
             this.inputAt()?.setSelectionRange(text.length, text.length);
@@ -1599,13 +1604,21 @@ export default class extends Controller {
             }));
         }
         this.pickerListTarget.replaceChildren(...items);
-        const cellBox = input.closest('td').getBoundingClientRect();
-        const box = this.element.getBoundingClientRect();
-        panel.style.insetBlockStart = `${cellBox.bottom - box.top + 2}px`;
-        panel.style.insetInlineStart = `${cellBox.left - box.left}px`;
         panel.hidden = false;
+        this.anchor(panel, input);
         input.setAttribute('aria-expanded', 'true');
         this.highlight();
+    }
+
+    /** A panel under its cell, or above it when the window has no room below. */
+    anchor(panel, input) {
+        const cellBox = input.closest('td').getBoundingClientRect();
+        const box = this.element.getBoundingClientRect();
+        const height = panel.offsetHeight;
+        const below = window.innerHeight - cellBox.bottom - 36;
+        const top = below < height && cellBox.top - height > 80 ? cellBox.top - box.top - height - 2 : cellBox.bottom - box.top + 2;
+        panel.style.insetBlockStart = `${top}px`;
+        panel.style.insetInlineStart = `${Math.min(cellBox.left - box.left, box.width - panel.offsetWidth)}px`;
     }
 
     movePicker(step) {
@@ -1672,11 +1685,8 @@ export default class extends Controller {
         this.createNumberTarget.textContent = typed;
         this.createLabelTarget.value = '';
         this.createErrorTarget.hidden = true;
-        const cellBox = this.inputAt().closest('td').getBoundingClientRect();
-        const box = this.element.getBoundingClientRect();
-        this.createTarget.style.insetBlockStart = `${cellBox.bottom - box.top + 2}px`;
-        this.createTarget.style.insetInlineStart = `${cellBox.left - box.left}px`;
         this.createTarget.hidden = false;
+        this.anchor(this.createTarget, this.inputAt());
         this.createLabelTarget.focus();
     }
 

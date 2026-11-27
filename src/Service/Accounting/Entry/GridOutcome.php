@@ -31,9 +31,9 @@ final class GridOutcome
         if (null !== $this->fault) {
             return;
         }
-        $first = reset($check->errors);
-        if (false !== $first) {
-            $this->fault = $first;
+        $errors = array_values($check->errors);
+        if ([] !== $errors) {
+            $this->fault = $errors[0];
 
             return;
         }

@@ -89,7 +89,7 @@ final class EntryController extends AbstractController
         if (null !== $on) {
             try {
                 $reversal = $ledger->reverse($entry, $on, $me);
-                if (PostValue::trimmed($request, 'again') === '1') {
+                if ('1' === PostValue::trimmed($request, 'again')) {
                     $this->copyToGrid($grid, $entry, $me, $clock);
                     $this->addFlash('status', \sprintf('Écriture %s contrepassée par %s ; sa copie attend dans la grille.', $entry->getNumberLabel(), $reversal->getNumberLabel()));
 
