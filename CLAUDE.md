@@ -661,6 +661,39 @@ Lot 1, step 1.4b (design-ux.md § 3.2, « Modèles d'écriture », « Saisie gui
 - A Twig variable `{% set %}` outside a component's `<twig:block>` is not seen inside it: set it in
   the block (`_guided_preview.html.twig`).
 
+## Subscriptions (built at step 1.4c)
+
+Lot 1, step 1.4c, held by code in `src/Entity/Accounting/EntrySubscription.php`,
+`src/Service/Accounting/Subscription/` and `SubscriptionsController`:
+
+- **`EntrySubscription`** (DossierOwned): label, template (FK `RESTRICT`: `TemplateSheet::deletionRefusal()`
+  names the subscriptions that call it), the call's amount and rate (when the template asks an
+  amount) and third party (when a collective line asks one, as the grid types it), day of the month
+  (1 to 31, a day the month lacks is its last), first month, number of occurrences (1 to 120),
+  document pattern (`{AAAA}`, `{MM}`, `{N}` the rank; `{MM}` or `{N}` required, 40 characters once
+  filled), target (`SubscriptionTarget`: the grid's pending work or the brouillard) and the count of
+  occurrences generated (column `generated_count`: `generated` is a MariaDB keyword).
+- **`SubscriptionSchedule`** (pure) is when and what: `dateOf()`, `documentOf()`, `occurrences()`,
+  `dueUntil()`, `next()`. **`SubscriptionRules::check()`** (pure, four lookups) the one reading; the
+  brouillard asks a template whose every line is computed (`GuidedEntry::offers()`); once an
+  occurrence is generated the first month is fixed and the count never drops below it.
+  **`SubscriptionSheet`** the one door (audit trail, `faultOf()` « À revoir »).
+- **`SubscriptionRun::generate(dossier, until, actor, now)`**: `until` is the dossier's date, never
+  the clock. Each occurrence is `TemplateCall::lines()` then `JournalGrid::append()` (pending work,
+  a person's own: a command generates into the brouillard only) or `JournalGrid::check()` +
+  `Ledger::draft()`; one transaction per occurrence with the subscription's row locked, the counter
+  moving with the entry (two tabs never make one twice). A refused occurrence (closed month, outside
+  the exercises, a rule, a blocking control) stops its subscription there and says why
+  (`SubscriptionOutcome::$faults`, shown as alerts above the list).
+- **Screens**: Paramètres comptables › Abonnements (`/d/{dossier}/accounting/subscriptions`, next
+  occurrence, « n à générer »; « Générer jusqu'au » the dossier's date, Ctrl Entrée after the
+  confirmation bar that counts the entries by target), the fiche (`…/{id}`, F10; the call's fields
+  follow the template chosen, `subscription_form_controller.js`; every occurrence listed with its
+  state), `…/new`, `…/{id}/delete` (the entries it made stay).
+- `fixtures/demo/subscriptions.yaml` (`DemoSubscriptionFile`): the rent (11 from February) and the
+  leasing (31 from February), into the brouillard, generated up to the dossier's date at install -
+  nothing on 31/01/2026.
+
 ## Cross-cutting building blocks (built at step 0.6a)
 
 Reach for these rather than re-implement them; each has its test.

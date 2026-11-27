@@ -12,10 +12,13 @@ use App\Enum\Accounting\JournalType;
 use App\Enum\Dossier\DossierKind;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
+use App\Repository\Accounting\EntrySubscriptionRepository;
 use App\Repository\Identity\SchoolYearRepository;
 use App\Service\Accounting\Ledger\EntryDraft;
 use App\Service\Accounting\Ledger\EntryLineDraft;
 use App\Service\Accounting\Ledger\Ledger;
+use App\Service\Accounting\Subscription\SubscriptionDraft;
+use App\Service\Accounting\Subscription\SubscriptionSheet;
 use App\Service\Accounting\Template\TemplateDraft;
 use App\Service\Accounting\Template\TemplateLineDraft;
 use App\Service\Accounting\Template\TemplateSheet;
@@ -185,7 +188,13 @@ final class RoleAccessSmokeTest extends WebTestCase
             $sheet = $client->getContainer()->get(TemplateSheet::class);
             $sheet->create($saved, $sheet->check($draft, $saved) ?? throw new \LogicException(implode(' ', $draft->errors)), 'test');
             $client->getContainer()->get(EntityManagerInterface::class)->flush();
+            $subscription = new SubscriptionDraft();
+            [$subscription->label, $subscription->template, $subscription->day, $subscription->firstMonth, $subscription->occurrences, $subscription->pattern, $subscription->target] = ['Virement mensuel', 'VIRSCIE', '10', '2026-02-01', '6', 'VIR-{MM}', 'pending'];
+            $subscriptions = $client->getContainer()->get(SubscriptionSheet::class);
+            $subscriptions->create($saved, $subscriptions->check($subscription, $saved) ?? throw new \LogicException(implode(' ', $subscription->errors)), 'test');
+            $client->getContainer()->get(EntityManagerInterface::class)->flush();
         });
+        $subscriptionId = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): ?int => $client->getContainer()->get(EntrySubscriptionRepository::class)->findByDossier($saved)[0]->getId());
         $entry = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): Entry => $client->getContainer()->get(Ledger::class)->draft($saved, new EntryDraft('BQ1', new \DateTimeImmutable('2026-01-20'), 'VIR-SCIE', 'Virement Scierie', [
             EntryLineDraft::debit('401000', Money::cents(1_000), '', 'F0001'),
             EntryLineDraft::credit('512100', Money::cents(1_000)),
@@ -203,6 +212,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/accounting/accounts/search?q=401S',
             '/accounting/entry', '/accounting/entry?journal=BQ1&period=2026-01-01', '/accounting/entries/'.$entry->getId(),
             '/accounting/templates', '/accounting/templates/new', '/accounting/templates/VIRSCIE',
+            '/accounting/subscriptions', '/accounting/subscriptions/new', '/accounting/subscriptions/'.$subscriptionId,
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
             $actual = [];

@@ -155,3 +155,15 @@
         }
     }
 }
+
+/* A subscription's fiche (Paramètres comptables › Abonnements): where its entries go, below the calendar. */
+@layer px.components {
+    .px-subscription__target {
+        margin-block-start: var(--px-space-16);
+    }
+
+    .px-subscription__hint {
+        margin: var(--px-space-8) 0 0;
+        font-size: var(--px-fs-12);
+    }
+}

@@ -104,8 +104,10 @@ final class TemplatesController extends AbstractController
         } else {
             $fault = $sheet->faultOf($template);
         }
+        $view = $this->view($dossier, $draft, $template, $journals, $accounts, $thirdParties, $fault);
+        $view['deletion_refusal'] = $sheet->deletionRefusal($template);
 
-        return $this->render('accounting/template.html.twig', $this->view($dossier, $draft, $template, $journals, $accounts, $thirdParties, $fault), new Response(status: $status));
+        return $this->render('accounting/template.html.twig', $view, new Response(status: $status));
     }
 
     #[Route('/{code}/delete', name: 'app_accounting_template_delete', requirements: ['code' => '[A-Z0-9]{1,12}'], methods: ['POST'])]
@@ -114,6 +116,12 @@ final class TemplatesController extends AbstractController
         $template = $templates->findOneByCode($dossier, $code) ?? throw new NotFoundHttpException('No such template.');
         if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !$this->isCsrfTokenValid('dossier-template-delete-'.$template->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
+        }
+        $refusal = $sheet->deletionRefusal($template);
+        if (null !== $refusal) {
+            $this->addFlash('status', $refusal);
+
+            return $this->redirectToRoute('app_accounting_template', ['dossier' => $dossier->getId(), 'code' => $code], Response::HTTP_SEE_OTHER);
         }
         $sheet->delete($template, $me);
         $entityManager->flush();
@@ -154,6 +162,7 @@ final class TemplatesController extends AbstractController
             'lines' => $lines,
             'account_labels' => $labels,
             'fault' => $fault,
+            'deletion_refusal' => null,
             'journal_options' => $journalOptions,
             'counterparts' => $counterparts,
             'base_options' => array_map(static fn (TemplateBase $base): array => ['value' => $base->value, 'label' => $base->label()], TemplateBase::cases()),

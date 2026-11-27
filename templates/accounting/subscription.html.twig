@@ -1,0 +1,123 @@
+{#
+ # The fiche of a subscription (gabarit F): its label and the template it calls - with the amount
+ # (HT or TTC) and the rate of the call when the template asks one, the third party when one of its
+ # collective lines asks one (subscription_form_controller.js shows those fields for the template
+ # chosen) -, then its calendar: day of the month (31: the last), first month, number of
+ # occurrences, document pattern, and where the entries go. Below, every occurrence with its date
+ # and its document, generated or not. F10 saves; whoever only reads sees the facts alone.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set settings_current = 'subscriptions' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set dossier_title = subscription ? subscription.label : 'Nouvel abonnement' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+{% set today = dossier.dossierDate %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ subscription ? subscription.label : 'Nouvel abonnement' }}" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Abonnements', href: path('app_accounting_subscriptions', {dossier: dossier.id})},
+        {label: subscription ? subscription.label : 'Nouvel abonnement', href: subscription ? path('app_accounting_subscription', {dossier: dossier.id, id: subscription.id}) : path('app_accounting_subscription_new', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}
+                {% if subscription %}<twig:Px:ConfirmButton label="Supprimer l’abonnement" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="subscription-delete"/>{% endif %}
+                <twig:Px:Button type="submit" variant="primary" form="subscription-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_settings_tabs.html.twig') }}
+
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">L’abonnement n’est pas enregistré : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% elseif fault %}
+        <twig:Px:Alert tone="warning">Cet abonnement est à revoir : {{ fault }}</twig:Px:Alert>
+    {% endif %}
+
+    {% if can_edit %}
+        <form method="post" action="{{ subscription ? path('app_accounting_subscription', {dossier: dossier.id, id: subscription.id}) : path('app_accounting_subscription_new', {dossier: dossier.id}) }}" id="subscription-form" novalidate
+              data-controller="focus-error subscription-form" data-subscription-form-calls-value="{{ calls|json_encode }}">
+            <input type="hidden" name="_token" value="{{ csrf_token(subscription ? 'dossier-subscription-' ~ subscription.id : 'dossier-subscription-new-' ~ dossier.id) }}">
+            <twig:Px:Card title="Abonnement">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="label" label="Intitulé" :required="true" :wide="true" :error="draft.error('label')">
+                        <twig:Px:Input id="label" value="{{ draft.label }}" :required="true" :error="draft.error('label')" maxlength="80" autocomplete="off" autofocus/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="template" label="Modèle d’écriture" :required="true" :wide="true" hint="Appelé à chaque échéance, comme F6 dans la grille." :error="draft.error('template')">
+                        <twig:Px:Select id="template" placeholder="Choisir le modèle…" :options="template_options" value="{{ draft.template }}" hint="1" :required="true" :error="draft.error('template')" data-subscription-form-target="template" data-action="subscription-form#template"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="thirdParty" label="Tiers" :required="true" hint="Le modèle le demande : son code auxiliaire, F4 pour la liste." :error="draft.error('thirdParty')" data-subscription-form-target="party" :hidden="not (chosen and chosen.party)">
+                        <twig:Px:AccountPicker id="thirdParty" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" value="{{ draft.thirdParty }}" hint="1" :error="draft.error('thirdParty')" listLabel="Tiers"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="amount" label="{{ chosen ? chosen.base : 'Montant' }}" :required="true" :error="draft.error('amount')" data-subscription-form-target="amount" :hidden="not (chosen and chosen.amount)">
+                        <twig:Px:AmountInput id="amount" :value="draft.amount" unit="€" :required="true" :error="draft.error('amount')"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="rate" label="Taux de TVA" hint="Proposé par le modèle." :error="draft.error('rate')" data-subscription-form-target="rateField" :hidden="not (chosen and chosen.amount)">
+                        <twig:Px:Input id="rate" value="{{ draft.rate }}" size="sm" hint="1" :error="draft.error('rate')" class="px-u-num px-tlines__rate" maxlength="7" autocomplete="off" inputmode="decimal" data-subscription-form-target="rate"/>
+                    </twig:Px:Field>
+                </div>
+            </twig:Px:Card>
+
+            <twig:Px:Card title="Calendrier">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="day" label="Jour du mois" :required="true" hint="De 1 à 31 ; 31 : le dernier jour du mois." :error="draft.error('day')">
+                        <twig:Px:Input id="day" value="{{ draft.day }}" size="sm" hint="1" :required="true" :error="draft.error('day')" class="px-u-num px-tlines__rate" maxlength="2" autocomplete="off" inputmode="numeric"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="firstMonth" label="Premier mois" :required="true" hint="{{ subscription and subscription.generated > 0 ? 'Fixé : des écritures sont déjà générées.' : 'Un mois des exercices du dossier.' }}" :error="draft.error('firstMonth')">
+                        <twig:Px:Select id="firstMonth" placeholder="Choisir le mois…" :options="month_options" value="{{ draft.firstMonth }}" hint="1" :required="true" :error="draft.error('firstMonth')"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="occurrences" label="Nombre d’échéances" :required="true" hint="De 1 à 120." :error="draft.error('occurrences')">
+                        <twig:Px:Input id="occurrences" value="{{ draft.occurrences }}" size="sm" hint="1" :required="true" :error="draft.error('occurrences')" class="px-u-num px-tlines__rate" maxlength="3" autocomplete="off" inputmode="numeric"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="pattern" label="Pièce" :required="true" :wide="true" hint="{AAAA} l’année, {MM} le mois, {N} le rang de l’échéance : LOY-{AAAA}-{MM} donne LOY-2026-02." :error="draft.error('pattern')">
+                        <twig:Px:Input id="pattern" value="{{ draft.pattern }}" hint="1" :required="true" :error="draft.error('pattern')" class="px-u-code" maxlength="60" autocomplete="off" spellcheck="false"/>
+                    </twig:Px:Field>
+                </div>
+                <twig:Px:CheckGroup class="px-subscription__target" legend="Les écritures vont" name="target" type="radio" :inline="true" :options="target_options" :error="draft.error('target')"/>
+                <p class="px-u-muted px-subscription__hint">En saisie en attente, chaque écriture attend dans la grille de son journal et de son mois : F10 l’enregistre au brouillard. Au brouillard, elle est enregistrée aussitôt, à valider avec les autres.</p>
+            </twig:Px:Card>
+        </form>
+        {% if subscription %}
+            <form method="post" action="{{ path('app_accounting_subscription_delete', {dossier: dossier.id, id: subscription.id}) }}" id="subscription-delete" hidden>
+                <input type="hidden" name="_token" value="{{ csrf_token('dossier-subscription-delete-' ~ subscription.id) }}">
+            </form>
+        {% endif %}
+    {% else %}
+        <twig:Px:Card title="Abonnement">
+            <dl class="px-facts">
+                <dt>Modèle</dt><dd><span class="px-u-code">{{ subscription.template.code }}</span> {{ subscription.template.label }}</dd>
+                {% if subscription.amount %}<dt>Montant</dt><dd class="px-u-num">{{ subscription.amount|amount_eur }} · TVA {{ subscription.vatRate|percent }}</dd>{% endif %}
+                {% if subscription.thirdParty %}<dt>Tiers</dt><dd class="px-u-code">{{ subscription.thirdParty }}</dd>{% endif %}
+                <dt>Jour du mois</dt><dd>{{ subscription.dayOfMonth == 31 ? 'le dernier' : subscription.dayOfMonth }}</dd>
+                <dt>Pièce</dt><dd class="px-u-code">{{ subscription.documentPattern }}</dd>
+                <dt>Les écritures vont</dt><dd>{{ subscription.target.label }}</dd>
+            </dl>
+        </twig:Px:Card>
+    {% endif %}
+
+    {% if subscription %}
+        <twig:Px:Card title="Échéances" :flush="true" meta="{{ subscription.generated }} générée{{ subscription.generated > 1 ? 's' }} sur {{ subscription.occurrences }}">
+            <twig:Px:Table caption="Échéances de l’abonnement {{ subscription.label }}">
+                <thead><tr><th scope="col" class="px-u-right">Rang</th><th scope="col">Date</th><th scope="col">Pièce</th><th scope="col">État</th></tr></thead>
+                <tbody>
+                    {% for one in occurrences %}
+                        <tr>
+                            <td class="px-u-num">{{ one.rank }}</td>
+                            <td class="px-u-code">{{ one.date|date_fr }}</td>
+                            <td class="px-u-code">{{ one.document }}</td>
+                            <td>
+                                {% if one.rank <= subscription.generated %}<twig:Px:Badge tone="success" label="Générée"/>
+                                {% elseif one.date <= today %}<twig:Px:Badge tone="info" label="À générer"/>
+                                {% else %}<span class="px-u-muted">À venir</span>{% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
