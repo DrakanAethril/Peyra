@@ -27,3 +27,10 @@
 /public/assets/
 /assets/vendor/
 ###< symfony/asset-mapper ###
+
+###> peyra/production ###
+# The server's own files, next to compose.yaml (docs/production.md): the deploy script, its
+# secrets (.env.prod.local, ignored above) and the directory's CA certificate.
+/deploy-prod.sh
+/certs/
+###< peyra/production ###

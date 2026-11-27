@@ -2,6 +2,15 @@
 framework:
     secret: '%env(APP_SECRET)%'
 
+    # In production Peyra answers behind the establishment's nginx (README of the plan, § 9), which
+    # says who the client is and that they came in HTTPS through the X-Forwarded-* headers. Those
+    # headers are believed only from the addresses listed here: the nginx machine (or REMOTE_ADDR
+    # when the port is closed to everybody else). Empty in development: the headers are ignored.
+    # Without it, the sign-in journal and the limiters see nginx's address, links say `http` and
+    # the session cookie loses `secure`.
+    trusted_proxies: '%env(TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host', 'x-forwarded-port']
+
     # Tokens kept in the session (the sign-in form, the sign-out link, every POST of a screen).
     csrf_protection: true
 
@@ -14,6 +23,10 @@ framework:
         save_path: '%kernel.project_dir%/var/sessions/%kernel.environment%'
         cookie_lifetime: 0
         gc_maxlifetime: 28800
+        # `auto`: secure when the request is (directly, or as a trusted proxy says). Production
+        # forces it below. Lax keeps the cookie off cross-site posts.
+        cookie_secure: auto
+        cookie_samesite: lax
 
     # Sign-in attempts (App\Security\LdapAuthenticator): per address, generous enough for a class
     # behind the school's single NAT address; per login, low enough to stop a guess at a password
@@ -44,3 +57,10 @@ when@test:
                 storage_service: test.rate_limiter_storage
             login_name:
                 storage_service: test.rate_limiter_storage
+
+when@prod:
+    framework:
+        # People only ever reach production in HTTPS (nginx): the cookie never travels in clear,
+        # whatever a misconfigured proxy list makes the request look like.
+        session:
+            cookie_secure: true
