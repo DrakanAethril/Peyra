@@ -26,7 +26,7 @@ final class LoginEventRepository extends ServiceEntityRepository
      */
     public function findPage(?bool $refused, string $search, int $page, int $perPage): array
     {
-        /** @var list<LoginEvent> */
+        /* @var list<LoginEvent> */
         return $this->filtered($refused, $search)
             ->orderBy('e.occurredAt', 'DESC')
             ->addOrderBy('e.id', 'DESC')

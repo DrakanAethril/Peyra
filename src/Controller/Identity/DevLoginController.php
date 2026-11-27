@@ -28,7 +28,9 @@ final class DevLoginController extends AbstractController
         try {
             $user = $signIn->withoutPassword($login, $request->getClientIp());
         } catch (CustomUserMessageAuthenticationException $exception) {
-            throw new NotFoundHttpException($exception->getMessageKey(), $exception);
+            // No `previous`: the firewall would read an authentication exception in the chain and
+            // send the person to the sign-in page instead of the 404.
+            throw new NotFoundHttpException($exception->getMessageKey());
         }
         $security->login($user, LdapAuthenticator::class, 'main');
 

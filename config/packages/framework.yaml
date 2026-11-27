@@ -36,9 +36,11 @@ when@test:
         test: true
         session:
             storage_factory_id: session.storage.factory.mock_file
-        # The suite signs in hundreds of times from 127.0.0.1: counters live in memory, one kernel at
-        # a time (a test of the limit keeps its kernel, KernelBrowser::disableReboot()).
-        cache:
-            pools:
-                cache.rate_limiter:
-                    adapter: cache.adapter.array
+        # The suite signs in hundreds of times from 127.0.0.1: counters live in memory, one kernel
+        # at a time. Not in an array cache pool: the services resetter empties those between two
+        # requests of a client whose kernel is kept (KernelBrowser::disableReboot()).
+        rate_limiter:
+            login_ip:
+                storage_service: test.rate_limiter_storage
+            login_name:
+                storage_service: test.rate_limiter_storage

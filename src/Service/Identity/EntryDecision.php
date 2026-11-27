@@ -31,6 +31,7 @@ final readonly class EntryDecision
     /**
      * @phpstan-assert-if-true !null $this->kind
      * @phpstan-assert-if-true !null $this->basis
+     *
      * @phpstan-assert-if-false !null $this->refusal
      */
     public function isAdmitted(): bool

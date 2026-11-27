@@ -11,11 +11,11 @@
 {% block page %}
     <twig:Px:Card>
         <twig:Px:Empty :page="true" icon="graduation-cap" title="Rien à suivre pour l’instant" text="Vos classes, les missions en cours et les copies à corriger s’afficheront ici.">
-            {% if is_granted('ROLE_ADMIN') %}
-                <twig:block name="action">
+            <twig:block name="action">
+                {% if is_granted('ROLE_ADMIN') %}
                     <twig:Px:Button variant="primary" href="{{ path('app_admin_teachers') }}" icon="settings">Administration</twig:Px:Button>
-                </twig:block>
-            {% endif %}
+                {% endif %}
+            </twig:block>
         </twig:Px:Empty>
     </twig:Px:Card>
 {% endblock %}

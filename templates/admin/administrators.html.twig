@@ -21,7 +21,7 @@
             <input type="hidden" name="_token" value="{{ csrf_token('admin-administrators-designate') }}">
             <twig:Px:Field id="designate" label="Enseignant" :required="true" :error="error" hint="Tapez deux lettres du nom ou de l’identifiant.">
                 <div class="px-picker" data-controller="user-picker" data-user-picker-url-value="{{ path('app_admin_administrators_candidates') }}">
-                    <input type="text" id="designate" name="user_label" value="{{ label }}" class="px-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="designate-list"
+                    <input type="text" id="designate" name="user_label" value="{{ designate_label }}" class="px-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="designate-list"
                            aria-describedby="designate_hint{{ error ? ' designate_error' }}"{% if error %} aria-invalid="true" autofocus{% endif %} autocomplete="off" required
                            data-user-picker-target="input" data-action="input->user-picker#search keydown->user-picker#keydown">
                     <input type="hidden" name="user" value="" data-user-picker-target="value">
@@ -39,7 +39,7 @@
         <twig:Px:Alert tone="danger">{{ list_error }}</twig:Px:Alert>
     {% endif %}
 
-    <twig:Px:Card title="Administrateurs" meta="{{ rows|length }} {{ rows|length > 1 ? 'administrateurs' : 'administrateur' }}" :flush="true">
+    <twig:Px:Card title="Administrateurs" meta="{{ entries|length }} {{ entries|length > 1 ? 'administrateurs' : 'administrateur' }}" :flush="true">
         <twig:Px:Table caption="Administrateurs de Peyra">
             <thead>
                 <tr>
@@ -51,7 +51,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for row in rows %}
+                {% for row in entries %}
                     <tr>
                         <td>{{ row.user.displayName }}{% if row.user == app.user %} <span class="px-u-muted">(vous)</span>{% endif %}</td>
                         <td class="px-u-code">{{ row.user.login }}</td>
@@ -82,4 +82,4 @@
     </twig:Px:Card>
 {% endblock %}
 
-{% block facts %}<b>{{ rows|length }}</b> administrateur{{ rows|length > 1 ? 's' }}{% endblock %}
+{% block facts %}<b>{{ entries|length }}</b> administrateur{{ entries|length > 1 ? 's' }}{% endblock %}

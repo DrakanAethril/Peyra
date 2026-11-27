@@ -55,3 +55,7 @@ when@test:
             public: true
 
         App\Service\Identity\Directory: '@App\Tests\Support\InMemoryDirectory'
+
+        # The sign-in limiters' counters (config/packages/framework.yaml, when@test).
+        test.rate_limiter_storage:
+            class: Symfony\Component\RateLimiter\Storage\InMemoryStorage

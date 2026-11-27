@@ -66,7 +66,7 @@ final class FieldTeachersController extends AbstractController
     private function page(FieldTeachers $fieldTeachers, string $login = '', ?string $error = null, int $status = Response::HTTP_OK): Response
     {
         return $this->render('admin/teachers.html.twig', [
-            'rows' => $fieldTeachers->rows(),
+            'entries' => $fieldTeachers->rows(),
             'login' => $login,
             'error' => $error,
         ], new Response(status: $status));

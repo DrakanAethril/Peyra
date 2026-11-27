@@ -29,7 +29,7 @@ final class AuthorizedTeacherRepository extends ServiceEntityRepository
     /** @return list<AuthorizedTeacher> the teachers authorised today, by name */
     public function findActive(): array
     {
-        /** @var list<AuthorizedTeacher> */
+        /* @var list<AuthorizedTeacher> */
         return $this->createQueryBuilder('a')
             ->andWhere('a.revokedAt IS NULL')
             ->orderBy('a.displayName', 'ASC')

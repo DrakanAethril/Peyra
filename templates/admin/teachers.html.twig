@@ -26,8 +26,8 @@
         </form>
     </twig:Px:Card>
 
-    <twig:Px:Card title="Qui entre comme enseignant" meta="{{ rows|length }} {{ rows|length > 1 ? 'personnes' : 'personne' }}" :flush="true">
-        {% if rows is empty %}
+    <twig:Px:Card title="Qui entre comme enseignant" meta="{{ entries|length }} {{ entries|length > 1 ? 'personnes' : 'personne' }}" :flush="true">
+        {% if entries is empty %}
             <twig:Px:Empty title="Personne pour l’instant" text="Les enseignants des groupes CG entrent d’eux-mêmes ; ajoutez ici ceux qui n’y sont pas."/>
         {% else %}
             <twig:Px:Table caption="Enseignants admis à entrer dans Peyra">
@@ -42,7 +42,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for row in rows %}
+                    {% for row in entries %}
                         <tr>
                             <td>{{ row.displayName ?? '—' }}</td>
                             <td class="px-u-code">{{ row.login }}</td>
@@ -77,4 +77,4 @@
     </twig:Px:Card>
 {% endblock %}
 
-{% block facts %}<b>{{ rows|filter(r => r.removable)|length }}</b> autorisé{{ rows|filter(r => r.removable)|length > 1 ? 's' }} nommément{% endblock %}
+{% block facts %}<b>{{ entries|filter(r => r.removable)|length }}</b> autorisé{{ entries|filter(r => r.removable)|length > 1 ? 's' }} nommément{% endblock %}

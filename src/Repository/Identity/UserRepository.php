@@ -25,7 +25,7 @@ final class UserRepository extends ServiceEntityRepository
     /** @return list<User> administrators, oldest first */
     public function findAdministrators(): array
     {
-        /** @var list<User> */
+        /* @var list<User> */
         return $this->createQueryBuilder('u')
             ->andWhere('u.administrator = true')
             ->andWhere('u.kind = :teacher')
@@ -50,7 +50,7 @@ final class UserRepository extends ServiceEntityRepository
     /** @return list<User> every teacher account, by name */
     public function findTeachers(): array
     {
-        /** @var list<User> */
+        /* @var list<User> */
         return $this->createQueryBuilder('u')
             ->andWhere('u.kind = :teacher')
             ->setParameter('teacher', AccountKind::Teacher)
@@ -69,7 +69,7 @@ final class UserRepository extends ServiceEntityRepository
     {
         $like = '%'.addcslashes(mb_strtolower($text), '%_\\').'%';
 
-        /** @var list<User> */
+        /* @var list<User> */
         return $this->createQueryBuilder('u')
             ->andWhere('u.kind = :teacher')
             ->andWhere('u.administrator = false')

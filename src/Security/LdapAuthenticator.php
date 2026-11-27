@@ -63,7 +63,7 @@ final class LdapAuthenticator extends AbstractLoginFormAuthenticator
         return new SelfValidatingPassport(new UserBadge($user->getUserIdentifier(), static fn (): User => $user));
     }
 
-    public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
+    public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): Response
     {
         $target = $this->getTargetPath($request->getSession(), $firewallName);
 

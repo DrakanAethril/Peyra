@@ -19,7 +19,7 @@ final class AdministrationEventRepository extends ServiceEntityRepository
     /** @return list<AdministrationEvent> newest first */
     public function findPage(int $page, int $perPage): array
     {
-        /** @var list<AdministrationEvent> */
+        /* @var list<AdministrationEvent> */
         return $this->createQueryBuilder('e')
             ->addSelect('a')
             ->join('e.actor', 'a')

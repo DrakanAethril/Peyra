@@ -91,9 +91,9 @@ final class AdministratorsController extends AbstractController
         }
 
         return $this->render('admin/administrators.html.twig', [
-            'rows' => $rows,
+            'entries' => $rows,
             'error' => $error,
-            'label' => $label,
+            'designate_label' => $label,
             'list_error' => $listError,
         ], new Response(status: $status));
     }
