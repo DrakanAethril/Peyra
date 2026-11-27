@@ -1,5 +1,6 @@
-{# The views of Paramètres comptables (design-ux.md § 2.5): plan de comptes, journaux. #}
+{# The views of Paramètres comptables (design-ux.md § 2.5): plan de comptes, journaux, tiers. #}
 <twig:Px:Tabs label="Paramètres comptables" :tabs="[
     {label: 'Plan de comptes', href: path('app_accounting_accounts', {dossier: dossier.id}), current: settings_current == 'accounts'},
     {label: 'Journaux', href: path('app_accounting_journals', {dossier: dossier.id}), current: settings_current == 'journals'},
+    {label: 'Tiers', href: path('app_third_parties', {dossier: dossier.id}), current: settings_current == 'third_parties'},
 ]"/>

@@ -35,7 +35,7 @@
     {% endif %}
 
     {% if can_edit %}
-        <form method="post" action="{{ journal ? path('app_accounting_journal', {dossier: dossier.id, code: journal.code}) : path('app_accounting_journal_new', {dossier: dossier.id}) }}" id="journal-form" novalidate>
+        <form method="post" action="{{ journal ? path('app_accounting_journal', {dossier: dossier.id, code: journal.code}) : path('app_accounting_journal_new', {dossier: dossier.id}) }}" id="journal-form" novalidate data-controller="focus-error">
             <input type="hidden" name="_token" value="{{ csrf_token(journal ? 'dossier-journal-' ~ journal.id : 'dossier-journal-new-' ~ dossier.id) }}">
             <twig:Px:Card title="Journal">
                 <div class="px-fieldgrid">

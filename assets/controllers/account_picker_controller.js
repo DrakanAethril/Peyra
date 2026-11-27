@@ -1,7 +1,8 @@
 import { Controller } from '@hotwired/stimulus';
 
 /*
- * The account picker (design-ui.md § 4.6, Px:AccountPicker): the field holds an account number. From
+ * The account picker (design-ui.md § 4.6, Px:AccountPicker): the field holds an account number, or a
+ * third party's auxiliary code (« 401SCIE ») where the search lists third parties. From
  * the second character typed, or at once on F4, the dossier's accounts that start with the digits
  * (or whose label holds the words) are listed under the field, grouped under their heading, the
  * typed part in <mark>. ↑ ↓ choose, Entrée takes the line and moves to the next field, Échap closes
@@ -107,10 +108,10 @@ export default class extends Controller {
         item.setAttribute('role', 'option');
         const number = document.createElement('span');
         number.className = 'px-u-code';
-        const typed = text.replace(/\s+/g, '');
-        if (/^\d+$/.test(typed) && option.value.startsWith(typed)) {
+        const typed = text.replace(/\s+/g, '').toUpperCase();
+        if (/^[0-9A-Z]+$/.test(typed) && option.value.startsWith(typed)) {
             const mark = document.createElement('mark');
-            mark.textContent = typed;
+            mark.textContent = option.value.slice(0, typed.length);
             number.append(mark, option.value.slice(typed.length));
         } else {
             number.textContent = option.value;

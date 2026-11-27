@@ -1,0 +1,88 @@
+{#
+ # Comptabilité › Paramètres comptables › Tiers (gabarit L): the dossier's third parties by code,
+ # with their nature, the account they are kept on and its auxiliary code, their town and payment
+ # terms; filtered by nature (and by account from an account's fiche), searched by code, auxiliary
+ # code or name. Filters in GET, kept in the address.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set settings_current = 'third_parties' %}
+{% set dossier_title = 'Tiers' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouveau tiers'}, {combo: '/', verb: 'Rechercher'}] : [{combo: '/', verb: 'Rechercher'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Tiers" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Paramètres comptables', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Tiers', href: path('app_third_parties', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if total > 0 %}<twig:Px:Button href="{{ path('app_third_parties_export', {dossier: dossier.id}) }}" icon="download" data-turbo="false">Exporter</twig:Px:Button>{% endif %}
+            {% if can_edit %}
+                <twig:Px:Button href="{{ path('app_third_parties_import', {dossier: dossier.id}) }}" icon="upload">Importer</twig:Px:Button>
+                <twig:Px:Button href="{{ path('app_third_party_new', {dossier: dossier.id, kind: kind ? kind.value : null}) }}" variant="primary" icon="plus" shortcut="N">Nouveau tiers</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_settings_tabs.html.twig') }}
+
+    {% if total == 0 %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="users" title="Aucun tiers" text="Les clients, les fournisseurs et les autres tiers du dossier, chacun avec son compte : un client sur le collectif 411000 et son code auxiliaire (411DUMA), un organisme sur son compte (431000). Créez-les un à un, ou importez-les d’un fichier CSV."/>
+        </twig:Px:Card>
+    {% else %}
+        {% set keep = {kind: kind ? kind.value : null, q: search ?: null, account: account ? account.number : null} %}
+        {% if account %}
+            <twig:Px:Alert tone="info">Tiers tenus sur le compte <span class="px-u-code">{{ account.number }}</span> {{ account.label }}. <a class="px-link" href="{{ path('app_third_parties', {dossier: dossier.id}|merge(keep)|merge({account: null})) }}">Voir tous les tiers</a></twig:Px:Alert>
+        {% endif %}
+        <twig:Px:Card :flush="true">
+            <twig:Px:Filters action="{{ path('app_third_parties', {dossier: dossier.id}) }}" search="{{ search }}" searchLabel="Code ou nom" resetHref="{{ kind or search ? path('app_third_parties', {dossier: dossier.id, account: keep.account}) : null }}">
+                <twig:Px:FilterChip label="Tous" href="{{ path('app_third_parties', {dossier: dossier.id}|merge(keep)|merge({kind: null})) }}" :count="counts['']" :current="kind is null"/>
+                {% for case in kinds %}
+                    {% if counts[case.value] > 0 or kind == case %}
+                        <twig:Px:FilterChip label="{{ case.plural }}" href="{{ path('app_third_parties', {dossier: dossier.id}|merge(keep)|merge({kind: case.value})) }}" :count="counts[case.value]" :current="kind == case"/>
+                    {% endif %}
+                {% endfor %}
+                {% if kind %}<input type="hidden" name="kind" value="{{ kind.value }}">{% endif %}
+                {% if account %}<input type="hidden" name="account" value="{{ account.number }}">{% endif %}
+            </twig:Px:Filters>
+            {% if third_party_rows is empty %}
+                <twig:Px:Empty icon="search" title="Aucun tiers" text="{{ search ? 'Aucun tiers de ce filtre ne correspond à « ' ~ search ~ ' ».' : 'Aucun tiers de cette nature.' }}"/>
+            {% else %}
+                <twig:Px:Table caption="Tiers de {{ dossier.name }}" :rows="true">
+                    <thead>
+                        <tr>
+                            <th scope="col">Code</th>
+                            <th scope="col">Nom</th>
+                            <th scope="col">Nature</th>
+                            <th scope="col">Compte</th>
+                            <th scope="col">Auxiliaire</th>
+                            <th scope="col">Ville</th>
+                            <th scope="col">Règlement</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for third_party in third_party_rows %}
+                            <tr data-rows-target="row">
+                                <td class="px-u-code"><a class="px-link" href="{{ path('app_third_party', {dossier: dossier.id, code: third_party.code}) }}">{{ third_party.code }}</a></td>
+                                <td class="px-u-truncate" title="{{ third_party.name }}">{{ third_party.name }}</td>
+                                <td><twig:Px:Badge :of="third_party.kind"/></td>
+                                <td class="px-u-code">{{ third_party.account ? third_party.account.number : '' }}</td>
+                                <td class="px-u-code">{{ third_party.auxiliaryCode }}</td>
+                                <td class="px-u-truncate" title="{{ third_party.city }}">{{ third_party.city }}{% if third_party.country != 'FR' %} ({{ third_party.country }}){% endif %}</td>
+                                <td class="px-u-truncate" title="{{ third_party.paymentTerms.label }} · {{ third_party.paymentMethod.label }}">{{ third_party.paymentTerms.label }} · {{ third_party.paymentMethod.label|lower }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+            <twig:Px:Pager :total="shown_total" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>Tiers · <b>{{ total }}</b></span>{% endblock %}

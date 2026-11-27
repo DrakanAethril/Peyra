@@ -10,6 +10,7 @@ use App\Entity\Identity\User;
 use App\Enum\Accounting\AccountNature;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\JournalRepository;
+use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Security\Voter\DossierVoter;
 use App\Service\Accounting\Chart\AccountDraft;
 use App\Service\Accounting\Chart\AccountNumber;
@@ -64,7 +65,7 @@ final class AccountController extends AbstractController
     }
 
     #[Route('/{number}', name: 'app_accounting_account', requirements: ['number' => '\d{6,8}'], methods: ['GET', 'POST'])]
-    public function edit(Dossier $dossier, string $number, Request $request, AccountRepository $accounts, AccountSheet $sheet, ReferenceCharts $charts, JournalRepository $journals, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
+    public function edit(Dossier $dossier, string $number, Request $request, AccountRepository $accounts, AccountSheet $sheet, ReferenceCharts $charts, JournalRepository $journals, ThirdPartyRepository $thirdParties, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $account = $accounts->findOneByNumber($dossier, $number) ?? throw new NotFoundHttpException('No such account.');
         $draft = AccountDraft::of($account);
@@ -86,7 +87,7 @@ final class AccountController extends AbstractController
             $draft->warning = $sheet->outsideChart($dossier, $account->getNumber());
         }
 
-        return $this->render('accounting/account.html.twig', $this->view($dossier, $charts, $draft, $account, $sheet->deletionRefusal($account), $journals->findByCounterpart($account)), new Response(status: $status));
+        return $this->render('accounting/account.html.twig', $this->view($dossier, $charts, $draft, $account, $sheet->deletionRefusal($account), $journals->findByCounterpart($account), \count($thirdParties->findByAccount($account))), new Response(status: $status));
     }
 
     #[Route('/{number}/delete', name: 'app_accounting_account_delete', requirements: ['number' => '\d{6,8}'], methods: ['POST'])]
@@ -125,7 +126,7 @@ final class AccountController extends AbstractController
      *
      * @return array<string, mixed>
      */
-    private function view(Dossier $dossier, ReferenceCharts $charts, AccountDraft $draft, ?Account $account, ?string $deletionRefusal, array $counterpartOf = []): array
+    private function view(Dossier $dossier, ReferenceCharts $charts, AccountDraft $draft, ?Account $account, ?string $deletionRefusal, array $counterpartOf = [], int $thirdPartyCount = 0): array
     {
         $chart = null === $dossier->getChartCode() ? null : $charts->get($dossier->getChartCode());
         $number = null === AccountNumber::fault($draft->number) ? $draft->number : ($account?->getNumber() ?? '');
@@ -141,6 +142,7 @@ final class AccountController extends AbstractController
             'class_label' => '' === $number ? null : $chart?->classLabel((int) $number[0]),
             'deletion_refusal' => $deletionRefusal,
             'counterpart_of' => $counterpartOf,
+            'third_party_count' => $thirdPartyCount,
         ];
     }
 }
