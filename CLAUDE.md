@@ -63,8 +63,16 @@ docker compose down --remove-orphans          # stop — only ever from this dir
 docker compose exec php bin/console <cmd>
 docker compose exec php composer <cmd>
 docker compose exec -e APP_ENV=test php bin/phpunit
+docker compose exec -e APP_ENV=test php vendor/bin/paratest --processes=4   # setup: tests/README.md
 docker compose --profile worker up -d worker  # the scheduler's worker, opt-in in dev
+
+docker compose exec php composer cs-check          # coding standard (cs-fix applies it)
+docker compose exec php bin/console cache:warmup   # PHPStan reads the compiled dev container
+docker compose exec php composer phpstan           # static analysis, level 5 + checkExplicitMixed
 ```
+
+The test database (`peyra_test`, and `peyra_test1`… for ParaTest through
+`app:test:parallel-databases`) is described in `tests/README.md`, with the sequence CI replays.
 
 Production needs both files, in this order (not deployed by the build agents):
 
@@ -91,6 +99,12 @@ Gotchas met while building it:
   for the whole project, in the `Dockerfile`.
 - The scheduler's recipe creates `src/Schedule.php`; Peyra's schedule is
   `App\Scheduler\PeyraSchedule` (`default`), and two providers for one name break the container.
+- `frankenphp/mariadb/10-test-databases.sh` (grants the application user its `peyra_test…`
+  databases, on an empty volume only) is **executable** on purpose: Docker Desktop reports a
+  bind-mounted file as executable whatever its mode, so the MariaDB image runs it instead of
+  sourcing it, and a script written to be sourced dies with « bad interpreter ».
+- Until the first migration exists, `doctrine:migrations:migrate` fails without
+  `--allow-no-migration`; CI passes it, and it is a no-op afterwards.
 
 ## Domain rules the code must hold
 

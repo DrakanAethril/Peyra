@@ -35,7 +35,9 @@ machine.
 
 ```console
 docker compose exec php bin/console about              # la console Symfony
-docker compose exec -e APP_ENV=test php bin/phpunit    # les tests
+docker compose exec -e APP_ENV=test php bin/phpunit    # les tests (base de test : tests/README.md)
+docker compose exec php composer cs-check              # la norme de code
+docker compose exec php composer phpstan               # l'analyse statique
 docker compose --profile worker up -d worker           # les tâches planifiées (facultatif en dev)
 docker compose down --remove-orphans                   # arrêter
 ```

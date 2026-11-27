@@ -1,0 +1,137 @@
+---
+# The gate between a commit and staging, and later between staging and main. Everything runs
+# against the dev compose stack - the one a developer runs - because Peyra has no host-side PHP:
+# every check is a `docker compose exec php ...`, exactly as documented in CLAUDE.md.
+#
+# Needs no repository secret. The stack is self-contained (MariaDB, the fictitious OpenLDAP
+# directory, Gotenberg, the Mercure hub bundled in Caddy), and the one file git does not carry,
+# .env.dev.local, is copied from its tracked template, whose values are all throwaway ones.
+name: CI
+
+on:
+  push:
+    branches:
+      - staging
+    # On the push trigger only, never on pull_request: a required status check that is *skipped*
+    # never reports, and a pull request waiting on it could never be merged.
+    paths-ignore:
+      - '**.md'
+  pull_request: ~
+  workflow_dispatch: ~
+
+permissions:
+  contents: read
+
+# github.head_ref only exists on a pull request; on a push the fallback groups the runs by branch,
+# so a newer push cancels the run of a commit it has already superseded.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Gitignored because it is credential-shaped; the tracked template is already filled with
+      # fictitious values, so a copy is the whole setup (DECISIONS.md, 0.1).
+      - name: Write .env.dev.local
+        run: cp .env.dev.local.example .env.dev.local
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build Docker images
+        uses: docker/bake-action@v7
+        with:
+          pull: true
+          load: true
+          source: .
+          files: |
+            compose.yaml
+            compose.override.yaml
+          set: |
+            *.cache-from=type=gha,scope=${{github.ref}}
+            *.cache-from=type=gha,scope=refs/heads/staging
+            *.cache-to=type=gha,scope=${{github.ref}},mode=max
+
+      # vendor/ is gitignored, so the checkout has none: the entrypoint runs `composer install`
+      # itself when it finds the directory empty, and `--wait` returns with dependencies in place.
+      # The `worker` service sits behind a profile and is not started.
+      #
+      # COMPOSER_AUTH authenticates that install's downloads, which otherwise hit api.github.com
+      # anonymously under a rate limit shared by every runner on the same IP. It is not a
+      # repository secret: GITHUB_TOKEN is minted per run, and `contents: read` is all a public
+      # zipball needs.
+      - name: Start services
+        env:
+          COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ github.token }}"}}'
+        run: docker compose up --wait --no-build
+
+      # The stack answering at all is itself a check: it catches a service that no longer boots.
+      - name: Check HTTP reachability
+        run: curl --insecure --fail-with-body https://localhost:8143/health
+
+      # --- Checks that need no database ------------------------------------------------------
+
+      - name: Coding standard
+        run: docker compose exec -T php composer cs-check
+
+      - name: Lint YAML
+        run: docker compose exec -T php bin/console lint:yaml config
+
+      - name: Lint Twig
+        run: docker compose exec -T php bin/console lint:twig templates
+
+      # Catches a service that is declared but cannot be built: a wrong argument type, a removed
+      # class still referenced, an environment variable nothing provides.
+      - name: Lint the service container
+        run: docker compose exec -T php bin/console lint:container
+
+      # PHPStan reads the compiled dev container to resolve service ids.
+      - name: Warm the dev cache
+        run: docker compose exec -T php bin/console cache:warmup
+
+      - name: Static analysis
+        run: docker compose exec -T php composer phpstan
+
+      # --- Checks that need a database -------------------------------------------------------
+
+      # TEST_TOKEN=ci lands everything in `peyra_testci`, so a developer replaying this sequence
+      # locally to debug a red run leaves their own `peyra_test` alone (tests/README.md). The
+      # application user may create it: frankenphp/mariadb/10-test-databases.sh granted it on the
+      # fresh volume.
+      - name: Create the test database
+        run: docker compose exec -T -e APP_ENV=test -e TEST_TOKEN=ci php bin/console doctrine:database:create --if-not-exists
+
+      # The whole history replayed onto an empty database rather than doctrine:schema:create: the
+      # migrations are what production runs, and nobody exercises them by hand.
+      # --allow-no-migration only matters until the first migration exists.
+      - name: Run migrations from scratch
+        run: docker compose exec -T -e APP_ENV=test -e TEST_TOKEN=ci php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+
+      # And the schema those migrations produce is the one the entities expect: a migration
+      # somebody forgot to write fails here.
+      - name: Validate the schema against the mapping
+        run: docker compose exec -T -e APP_ENV=test -e TEST_TOKEN=ci php bin/console doctrine:schema:validate
+
+      # One database per ParaTest process (`peyra_test1`…), copied from the one the migrations were
+      # just replayed into, rows included. The test cache is warmed first, or the processes would
+      # all compile the container into the same directory at once.
+      - name: Prepare the parallel test databases
+        run: |
+          docker compose exec -T -e APP_ENV=test -e TEST_TOKEN=ci php bin/console cache:warmup
+          docker compose exec -T -e APP_ENV=test -e TEST_TOKEN=ci php bin/console app:test:parallel-databases --processes=4
+
+      - name: Run the test suite
+        run: docker compose exec -T -e APP_ENV=test php vendor/bin/paratest --processes=4
+
+      - name: Dump service logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
