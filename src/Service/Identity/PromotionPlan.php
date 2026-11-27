@@ -83,6 +83,9 @@ final readonly class PromotionPlan
         if ($departed > 0) {
             $parts[] = \sprintf('%d %s de la filière', $departed, 1 === $departed ? 'sort' : 'sortent');
         }
+        if ([] === $this->lines) {
+            return 'Personne dans cette classe : aucun étudiant à faire passer.';
+        }
         if ([] === $parts) {
             return 'Aucun changement : tous les étudiants sont déjà inscrits dans l’année.';
         }
