@@ -44,6 +44,7 @@ export default class extends Controller {
         'table', 'scroll', 'balance', 'currentLabel', 'currentDebit', 'currentCredit', 'monthLabel', 'monthDebit', 'monthCredit',
         'checks', 'checkList', 'picker', 'pickerList', 'classes', 'create', 'createNumber', 'createLabel', 'createError',
         'treasury', 'problem', 'iconLock', 'iconDraft', 'iconAlert',
+        'templates', 'templateChoose', 'templateFilter', 'templateList', 'templateAsk', 'templateName', 'templateBase', 'templateAmount', 'templateRate', 'templateError',
     ];
 
     static values = {
@@ -58,6 +59,8 @@ export default class extends Controller {
         validateUrl: String,
         accountUrl: String,
         entryUrl: String,
+        templateUrl: String,
+        templatesHref: String,
     };
 
     connect() {
@@ -76,8 +79,11 @@ export default class extends Controller {
         this.again = false;
         this.failed = false;
         this.confirming = null;
+        this.templates = grid.templates ?? [];
+        this.calling = null;
 
         this.head = {
+            template: document.getElementById('entry-template'),
             save: document.getElementById('entry-save'),
             validate: document.getElementById('entry-validate'),
             balance: document.getElementById('entry-balance'),
@@ -97,6 +103,7 @@ export default class extends Controller {
             account: document.querySelector('[data-entry-account]'),
         };
         this.listeners = [];
+        this.listen(this.head.template, 'click', () => this.openTemplates());
         this.listen(this.head.save, 'click', () => this.save());
         this.listen(this.head.validate, 'click', () => this.askValidation());
         this.listen(this.head.balance, 'click', () => this.balanceCurrent());
@@ -112,6 +119,9 @@ export default class extends Controller {
         this.listen(document, 'pointerdown', (event) => {
             if (this.picker && !this.pickerTarget.contains(event.target) && event.target !== this.inputAt()) {
                 this.closePicker();
+            }
+            if (this.calling && !this.templatesTarget.contains(event.target) && event.target !== this.head.template) {
+                this.closeTemplates(false);
             }
         });
 
@@ -830,7 +840,7 @@ export default class extends Controller {
         if (this.rendering || !input.isConnected || !(input instanceof HTMLInputElement) || !input.classList.contains('px-entry__cell')) {
             return;
         }
-        if (!this.tableTarget.contains(event.relatedTarget) && !this.pickerTarget.contains(event.relatedTarget) && !this.createTarget.contains(event.relatedTarget)) {
+        if (!this.tableTarget.contains(event.relatedTarget) && !this.pickerTarget.contains(event.relatedTarget) && !this.createTarget.contains(event.relatedTarget) && !this.templatesTarget.contains(event.relatedTarget)) {
             // Leaving the grid (a click outside, Ctrl F6): the cell is committed, the line left.
             if (this.commit(input, false)) {
                 const left = this.pos;
@@ -1751,6 +1761,280 @@ export default class extends Controller {
         this.creating = null;
         if (pos) {
             this.focusCell(pos.key, pos.line, pos.field);
+        }
+    }
+
+    /* -------------------------------------------- Entry templates (F6, design-ux.md § 5.1) */
+
+    /**
+     * F6: the journal's templates listed by the current cell; the one chosen asks the amount and
+     * the rate when its lines are in HT, TVA or TTC, then the server computes its lines, laid in the
+     * current entry (an entry that cannot change: the new one at the end).
+     */
+    openTemplates() {
+        if (!this.editableValue) {
+            return;
+        }
+        if (this.calling) {
+            (this.templateAskTarget.hidden ? this.templateFilterTarget : this.templateAmountTarget).focus();
+
+            return;
+        }
+        if (this.templates.length === 0) {
+            this.say(`Le journal ${this.journal.code} n’a pas de modèle d’écriture : Paramètres comptables › Modèles d’écriture pour en créer un.`);
+
+            return;
+        }
+        if (this.pos && !this.commit()) {
+            return;
+        }
+        this.closePicker();
+        let group = this.currentGroup();
+        if (!group || !this.editable(group)) {
+            group = this.groups.at(-1);
+        }
+        if (!group || !this.editable(group)) {
+            return;
+        }
+        this.calling = { key: group.key, back: this.pos ? { ...this.pos } : { key: group.key, line: 0, field: 'account' }, template: null, index: 0 };
+        this.templateFilterTarget.value = '';
+        this.templateAskTarget.hidden = true;
+        this.templateChooseTarget.hidden = false;
+        this.listTemplates();
+        this.templatesTarget.hidden = false;
+        const input = this.inputAt() ?? this.tableTarget.querySelector(`tbody[data-key="${CSS.escape(group.key)}"] input.px-entry__cell`);
+        if (input) {
+            this.anchor(this.templatesTarget, input);
+        }
+        this.templateFilterTarget.focus();
+    }
+
+    filterTemplates() {
+        this.calling.index = 0;
+        this.listTemplates();
+    }
+
+    /** The templates whose code or label holds the words typed, without accents nor case. */
+    shownTemplates() {
+        const fold = (text) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const words = fold(this.templateFilterTarget.value).split(/\s+/).filter(Boolean);
+
+        return this.templates.filter((template) => words.every((word) => fold(`${template.code} ${template.label}`).includes(word)));
+    }
+
+    listTemplates() {
+        const shown = this.shownTemplates();
+        this.calling.index = Math.min(this.calling.index, Math.max(0, shown.length - 1));
+        const items = shown.map((template, index) => {
+            const item = document.createElement('li');
+            item.className = 'px-picker__option';
+            item.id = `entry-template-${index}`;
+            item.setAttribute('role', 'option');
+            item.setAttribute('aria-selected', String(index === this.calling.index));
+            const code = document.createElement('span');
+            code.className = 'px-u-code';
+            code.textContent = template.code;
+            const label = document.createElement('span');
+            label.className = 'px-picker__label';
+            label.textContent = template.label;
+            const hint = document.createElement('span');
+            hint.className = 'px-picker__balance';
+            hint.textContent = template.asks ? `${template.base.replace('Montant ', '')} · ${template.rate} %` : '';
+            item.append(code, label, hint);
+            item.addEventListener('pointerdown', (event) => {
+                event.preventDefault();
+                this.chooseTemplate(template);
+            });
+
+            return item;
+        });
+        if (items.length === 0) {
+            const empty = document.createElement('li');
+            empty.className = 'px-picker__empty';
+            empty.textContent = 'Aucun modèle ne correspond.';
+            items.push(empty);
+        }
+        this.templateListTarget.replaceChildren(...items);
+        this.templateFilterTarget.setAttribute('aria-activedescendant', shown.length > 0 ? `entry-template-${this.calling.index}` : '');
+    }
+
+    templateKeydown(event) {
+        const key = event.key;
+        if (key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!this.templateAskTarget.hidden && this.templates.length > 1) {
+                // Back to the list.
+                this.templateAskTarget.hidden = true;
+                this.templateChooseTarget.hidden = false;
+                this.templateFilterTarget.focus();
+            } else {
+                this.closeTemplates(true);
+            }
+
+            return;
+        }
+        if (key === 'F10' || ((event.ctrlKey || event.metaKey) && key === 'Enter')) {
+            // The grid's keys stay the grid's: nothing is saved while the panel is open.
+            event.preventDefault();
+            event.stopPropagation();
+
+            return;
+        }
+        if (!this.templateChooseTarget.hidden) {
+            const shown = this.shownTemplates();
+            if (key === 'ArrowDown' || key === 'ArrowUp') {
+                event.preventDefault();
+                if (shown.length > 0) {
+                    this.calling.index = (this.calling.index + (key === 'ArrowDown' ? 1 : -1) + shown.length) % shown.length;
+                    this.listTemplates();
+                }
+            } else if (key === 'Enter') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (shown[this.calling.index]) {
+                    this.chooseTemplate(shown[this.calling.index]);
+                }
+            }
+
+            return;
+        }
+        if (key === 'Enter') {
+            event.preventDefault();
+            event.stopPropagation();
+            if (event.target === this.templateAmountTarget && this.templateRateTarget.value.trim() === '') {
+                this.templateRateTarget.focus();
+
+                return;
+            }
+            this.callTemplate();
+        }
+    }
+
+    chooseTemplate(template) {
+        this.calling.template = template;
+        if (!template.asks) {
+            this.callTemplate();
+
+            return;
+        }
+        this.templateChooseTarget.hidden = true;
+        this.templateAskTarget.hidden = false;
+        this.templateNameTarget.textContent = `${template.code} · ${template.label}`;
+        this.templateBaseTarget.textContent = template.base;
+        this.templateAmountTarget.value = '';
+        this.templateRateTarget.value = template.rate;
+        this.templateErrorTarget.hidden = true;
+        this.templateAmountTarget.focus();
+    }
+
+    async callTemplate() {
+        const { template, key } = this.calling;
+        const group = this.groups.find((one) => one.key === key);
+        if (!template || !group) {
+            this.closeTemplates(true);
+
+            return;
+        }
+        let cents = null;
+        if (template.asks) {
+            cents = parseAmount(this.templateAmountTarget.value);
+            if (cents === null || cents <= 0) {
+                this.templateError({ amount: `Indiquez le ${template.base.toLowerCase()} : « 3200 », « 3 840,00 ».` });
+                this.templateAmountTarget.focus();
+
+                return;
+            }
+        }
+        const answer = await this.post(this.templateUrlValue, {
+            journal: this.journal.code,
+            period: this.periodValue,
+            template: template.code,
+            date: group.date ?? this.period.start,
+            amount: cents,
+            rate: this.templateRateTarget.value,
+        });
+        if (!answer) {
+            this.templateError({ network: 'Le serveur ne répond pas : rien n’est posé, réessayez.' });
+
+            return;
+        }
+        if (answer.status === 422) {
+            this.templateError(answer.body.errors ?? {});
+            (answer.body.errors?.rate ? this.templateRateTarget : this.templateAmountTarget).focus();
+
+            return;
+        }
+        if (answer.status !== 200) {
+            this.templateError({ refused: 'Le modèle n’a pas pu être appelé : rechargez la page.' });
+
+            return;
+        }
+        this.layTemplate(group, answer.body.lines ?? []);
+        this.say(answer.body.message);
+    }
+
+    templateError(errors) {
+        this.templateErrorTarget.textContent = Object.values(errors).join(' ');
+        this.templateErrorTarget.hidden = false;
+        if (this.templateAskTarget.hidden) {
+            this.say(this.templateErrorTarget.textContent);
+        }
+    }
+
+    /**
+     * The template's lines in the entry: after the lines already typed (its empty lines dropped),
+     * then the focus on the first cell still to fill - the third party a collective asks, an
+     * amount to type -, or on the next entry when it balances.
+     */
+    layTemplate(group, lines) {
+        this.closeTemplates(false);
+        while (group.lines.length > 0 && isBlank(group.lines.at(-1))) {
+            group.lines.pop();
+        }
+        const first = group.lines.length;
+        for (const line of lines) {
+            group.lines.push({ account: line.account, thirdParty: line.thirdParty, label: line.label, debit: line.debit, credit: line.credit, due: null });
+        }
+        group.dirty = true;
+        group.modified = true;
+        if (!this.isBalanced(group)) {
+            group.lines.push(blankLine(group.lines.at(-1)?.label ?? ''));
+        }
+        this.ensureTail();
+        this.render();
+        for (let index = first; index < group.lines.length; index++) {
+            const line = group.lines[index];
+            for (const field of ['thirdParty', 'debit']) {
+                if (field === 'debit' && isBlank(line)) {
+                    continue;
+                }
+                if (this.toFill(group, index, field, null)) {
+                    this.focusCell(group.key, index, field);
+                    this.scheduleKeep(0);
+
+                    return;
+                }
+            }
+        }
+        if (this.isBalanced(group)) {
+            this.focusCell(group.key, group.lines.length - 1, 'debit');
+            this.nextEntry(group);
+        } else {
+            this.focusCell(group.key, group.lines.length - 1, 'account');
+        }
+        this.scheduleKeep(0);
+    }
+
+    closeTemplates(refocus) {
+        if (!this.calling) {
+            return;
+        }
+        const back = this.calling.back;
+        this.calling = null;
+        this.templatesTarget.hidden = true;
+        if (refocus && back) {
+            this.focusCell(back.key, back.line, back.field);
         }
     }
 

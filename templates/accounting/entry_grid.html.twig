@@ -3,14 +3,16 @@
  # § 4.8): the keyboard grid of a journal and a month. The table is drawn by entry_grid_controller.js
  # from `grid` (the month's entries and the person's pending work) and looks accounts up in `lookup`
  # without asking the server; the head's buttons answer F10 (enregistrer au brouillard), Ctrl Entrée
- # (valider, after the confirmation bar) and « + » (équilibrer). Whoever only reads the dossier, or a
+ # (valider, after the confirmation bar), « + » (équilibrer) and F6 (appeler un modèle d'écriture
+ # of the journal: its lines laid in the current entry, HT, TVA and TTC from the amount typed). Whoever only reads the dossier, or a
  # closed month, gets the same grid without fields.
  #}
 {% extends 'accounting/_layout.html.twig' %}
 
 {% set module_current = 'entry' %}
+{% set entry_view = 'journal' %}
 {% set dossier_title = 'Saisie ' ~ journal.code ~ ' · ' ~ period.label|lower %}
-{% set status_keys = editable ? [{combo: 'Tab', verb: 'champ suivant'}, {combo: 'Enter', verb: 'champ à remplir'}, {combo: 'F4', verb: 'chercher un compte'}, {combo: 'Escape', verb: 'abandonner'}] : [] %}
+{% set status_keys = editable ? [{combo: 'Tab', verb: 'champ suivant'}, {combo: 'Enter', verb: 'champ à remplir'}, {combo: 'F4', verb: 'chercher un compte'}, {combo: 'F6', verb: 'modèle'}, {combo: 'Escape', verb: 'abandonner'}] : [] %}
 {% set grid_url = path('app_accounting_entry', {dossier: dossier.id}) %}
 
 {% block page_head %}
@@ -23,6 +25,7 @@
         <twig:block name="actions">
             {% if editable %}
                 <div class="px-entry-actions" id="entry-actions">
+                    <twig:Px:Button id="entry-template" shortcut="F6">Modèle</twig:Px:Button>
                     <twig:Px:Button id="entry-balance" shortcut="+" disabled>Équilibrer</twig:Px:Button>
                     <twig:Px:Button id="entry-validate" shortcut="Ctrl+Enter">Valider</twig:Px:Button>
                     <twig:Px:Button id="entry-save" variant="primary" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
@@ -44,6 +47,7 @@
 {% endblock %}
 
 {% block page %}
+    {{ include('accounting/_entry_tabs.html.twig') }}
     <div class="px-entrygrid"
          data-controller="entry-grid"
          data-entry-grid-grid-value="{{ grid|json_encode }}"
@@ -56,6 +60,8 @@
          data-entry-grid-save-url-value="{{ path('app_accounting_entry_save', {dossier: dossier.id}) }}"
          data-entry-grid-validate-url-value="{{ path('app_accounting_entry_validate', {dossier: dossier.id}) }}"
          data-entry-grid-account-url-value="{{ path('app_accounting_entry_account', {dossier: dossier.id}) }}"
+         data-entry-grid-template-url-value="{{ path('app_accounting_entry_template', {dossier: dossier.id}) }}"
+         data-entry-grid-templates-href-value="{{ path('app_accounting_templates', {dossier: dossier.id}) }}"
          data-entry-grid-entry-url-value="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: 0})|replace({'/0': '/__ID__'}) }}">
 
         <form class="px-entry__context" method="get" action="{{ grid_url }}" data-turbo-action="advance">
@@ -149,6 +155,32 @@
             <input id="entry-create-label" class="px-input" maxlength="120" autocomplete="off" data-entry-grid-target="createLabel" data-action="keydown->entry-grid#createKeydown">
             <p class="px-field__error" data-entry-grid-target="createError" hidden></p>
             <p class="px-picker__foot"><twig:Px:Kbd combo="Enter"/> créer <twig:Px:Kbd combo="Escape"/> renoncer</p>
+        </div>
+
+        {# F6: the journal's entry templates, then the amount a call asks (design-ux.md § 5.1). #}
+        <div class="px-popover px-entry__templates" role="dialog" aria-labelledby="entry-templates-title" data-entry-grid-target="templates" hidden>
+            <p class="px-entry__createtitle" id="entry-templates-title">Modèles du journal {{ journal.code }}</p>
+            <div data-entry-grid-target="templateChoose">
+                <label class="px-u-sr-only" for="entry-templates-filter">Chercher un modèle</label>
+                <input id="entry-templates-filter" class="px-input px-input--sm" placeholder="Code ou intitulé" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="entry-templates-list" data-entry-grid-target="templateFilter" data-action="input->entry-grid#filterTemplates keydown->entry-grid#templateKeydown">
+                <ul class="px-picker__list" id="entry-templates-list" role="listbox" aria-label="Modèles d’écriture" data-entry-grid-target="templateList"></ul>
+                <p class="px-picker__foot"><twig:Px:Kbd combo="ArrowUp"/><twig:Px:Kbd combo="ArrowDown"/> choisir <twig:Px:Kbd combo="Enter"/> appeler <twig:Px:Kbd combo="Escape"/> fermer</p>
+            </div>
+            <div class="px-entry__templateform" data-entry-grid-target="templateAsk" hidden>
+                <p class="px-entry__templatename" data-entry-grid-target="templateName"></p>
+                <div class="px-entry__templatefields">
+                    <div>
+                        <label for="entry-template-amount" data-entry-grid-target="templateBase">Montant</label>
+                        <input id="entry-template-amount" class="px-input px-input--sm px-u-num" inputmode="decimal" autocomplete="off" data-entry-grid-target="templateAmount" data-action="keydown->entry-grid#templateKeydown">
+                    </div>
+                    <div>
+                        <label for="entry-template-rate">Taux de TVA</label>
+                        <span class="px-entry__templaterate"><input id="entry-template-rate" class="px-input px-input--sm px-u-num" inputmode="decimal" autocomplete="off" data-entry-grid-target="templateRate" data-action="keydown->entry-grid#templateKeydown"> %</span>
+                    </div>
+                </div>
+                <p class="px-field__error" role="alert" data-entry-grid-target="templateError" hidden></p>
+                <p class="px-picker__foot"><twig:Px:Kbd combo="Enter"/> poser les lignes <twig:Px:Kbd combo="Escape"/> revenir</p>
+            </div>
         </div>
 
         <template data-entry-grid-target="iconLock">{{ ux_icon('lock', {'aria-hidden': 'true'}) }}</template>

@@ -92,6 +92,35 @@ final class PostValue
     }
 
     /**
+     * Repeated rows of fields (`lines[0][account]=601000&lines[0][side]=debit&lines[7][account]=…`),
+     * in the order the form sent them, each row's scalar values trimmed; anything else dropped.
+     *
+     * @return list<array<string, string>>
+     */
+    public static function rows(Request $request, string $key): array
+    {
+        $value = self::raw($request, $key);
+        if (!\is_array($value)) {
+            return [];
+        }
+        $rows = [];
+        foreach ($value as $row) {
+            if (!\is_array($row)) {
+                continue;
+            }
+            $fields = [];
+            foreach ($row as $name => $entry) {
+                if (\is_string($name) && \is_scalar($entry)) {
+                    $fields[$name] = trim((string) $entry);
+                }
+            }
+            $rows[] = $fields;
+        }
+
+        return $rows;
+    }
+
+    /**
      * The same reading off the query string, for the GET forms that carry a table of choices.
      *
      * @return array<int, string>

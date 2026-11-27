@@ -20,6 +20,7 @@ use App\Service\Accounting\Chart\ChartInstaller;
 use App\Service\Accounting\Chart\ReferenceCharts;
 use App\Service\Accounting\Ledger\EntryRefused;
 use App\Service\Accounting\Ledger\Ledger;
+use App\Service\Accounting\Template\TemplateSheet;
 use App\Service\Audit\AuditTrail;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Exercises;
@@ -49,6 +50,7 @@ final readonly class DemoInstaller
         private AccountRepository $accounts,
         private DossierContext $context,
         private Ledger $ledger,
+        private TemplateSheet $templateSheet,
         #[Autowire('%kernel.project_dir%/fixtures/demo')]
         private string $directory,
     ) {
@@ -81,6 +83,7 @@ final readonly class DemoInstaller
         $chartFile = DemoChartFile::read($this->directory);
         $thirdPartyFile = DemoThirdPartyFile::read($this->directory.'/third_parties.yaml');
         $entryFile = DemoEntryFile::read($this->directory.'/entries.yaml');
+        $templateFile = DemoTemplateFile::read($this->directory.'/templates.yaml');
         $dossier = new Dossier($kind, $file->company, $file->dossierDate, $owner, $year, $at, null);
         $dossier->comesFrom($template, null);
         $this->entityManager->persist($dossier);
@@ -101,6 +104,7 @@ final readonly class DemoInstaller
         $this->context->within($dossier, fn () => $this->installThirdParties($dossier, $thirdPartyFile));
         $this->entityManager->flush();
         $this->context->within($dossier, fn () => $this->installEntries($dossier, $entryFile, $actor));
+        $this->context->within($dossier, fn () => $this->installTemplates($dossier, $templateFile, $actor));
         $this->auditTrail->record(
             AuditAction::DossierCreated,
             $actor,
@@ -161,6 +165,20 @@ final readonly class DemoInstaller
             $this->ledger->validate($toValidate, $actor);
         } catch (EntryRefused $refusal) {
             throw new \InvalidArgumentException('entries.yaml : '.implode(' ', $refusal->errors), 0, $refusal);
+        }
+    }
+
+    /** Its entry templates, each checked as the fiche checks it: a fault names the code and installs nothing. */
+    private function installTemplates(Dossier $dossier, DemoTemplateFile $file, string $actor): void
+    {
+        foreach ($file->drafts as $draft) {
+            $fields = $this->templateSheet->check($draft, $dossier);
+            if (null === $fields) {
+                throw new \InvalidArgumentException(\sprintf('templates.yaml : %s : %s', $draft->code, implode(' ', $draft->errors)));
+            }
+            $this->templateSheet->create($dossier, $fields, $actor);
+            // Flushed one by one: the next one's code is checked against the database.
+            $this->entityManager->flush();
         }
     }
 

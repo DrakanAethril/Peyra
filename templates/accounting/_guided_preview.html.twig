@@ -1,0 +1,59 @@
+{#
+ # The entry the guided entry would write (GuidedEntryPreview), in a Turbo frame the form refreshes
+ # as it is filled (guided_entry_controller.js): its lines - the journal's counterpart in italics -,
+ # the totals and the balance, the faults of each line under it, then the controls of the
+ # assistance level. `shown` is false while the amount the template asks is not typed yet.
+ #}
+<turbo-frame id="guided-preview">
+    <twig:Px:Card title="Écriture générée" :flush="true" meta="Journal {{ template.journal.code }} · {{ template.journal.label }}">
+        {% if not shown %}
+            <twig:Px:Empty icon="file-text" title="L’écriture se calcule à mesure" text="Tapez {{ template.base ? template.base.phrase : 'le montant' }} : les lignes du modèle {{ template.code }} s’affichent ici, HT, TVA et TTC calculés."/>
+        {% elseif preview.lines is empty %}
+            <twig:Px:Empty icon="circle-alert" title="Pas encore d’écriture" text="{{ preview.errors|first ?: 'Complétez les champs du modèle.' }}"/>
+        {% else %}
+            <twig:Px:Table caption="Lignes de l’écriture générée" class="px-guided__lines">
+                <thead>
+                    <tr>
+                        <th scope="col">Compte</th>
+                        <th scope="col">Intitulé</th>
+                        <th scope="col">Libellé</th>
+                        <th scope="col" class="px-u-right">Débit</th>
+                        <th scope="col" class="px-u-right">Crédit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in preview.lines %}
+                        {% set fault = preview.lineErrors(loop.index0) %}
+                        <tr{% if line.automatic %} class="px-guided__automatic"{% endif %}{% if fault %} aria-invalid="true"{% endif %}>
+                            <td class="px-u-code">{{ line.account }}</td>
+                            <td>{{ line.thirdParty ?: line.title }}{% if line.automatic %} <span class="px-u-muted">· contrepartie automatique</span>{% endif %}</td>
+                            <td>{{ line.label }}</td>
+                            <td class="px-u-num">{{ line.debit|amount_cell }}</td>
+                            <td class="px-u-num">{{ line.credit|amount_cell }}</td>
+                        </tr>
+                        {% if fault %}<tr class="px-tlines__errors"><td colspan="5"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ fault }}</td></tr>{% endif %}
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="px-table__total">
+                        <th scope="row" colspan="3">Totaux
+                            {% if preview.balanced %}<twig:Px:Badge tone="success" label="Équilibrée"/>{% else %}<twig:Px:Badge tone="danger" label="Non équilibrée"/>{% endif %}
+                        </th>
+                        <td class="px-u-num">{{ preview.debit|amount }}</td>
+                        <td class="px-u-num">{{ preview.credit|amount }}</td>
+                    </tr>
+                </tfoot>
+            </twig:Px:Table>
+        {% endif %}
+        <twig:block name="foot">
+            {% if shown and preview.lines is not empty %}
+                {% set check_items = preview.entryErrors|map(message => {state: 'blocking', text: message})|merge(preview.controls|map(c => {state: c.blocking ? 'blocking' : 'warning', text: c.message})) %}
+                {% if check_items is empty %}
+                    <twig:Px:Checks :items="[{state: 'passed', text: 'Écriture équilibrée, comptes et tiers reconnus : F10 l’enregistre au brouillard.'}]"/>
+                {% else %}
+                    <twig:Px:Checks :items="check_items"/>
+                {% endif %}
+            {% endif %}
+        </twig:block>
+    </twig:Px:Card>
+</turbo-frame>

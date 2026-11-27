@@ -1,0 +1,29 @@
+{#
+ # One line of an entry template's fiche, in its own tbody: the row of fields, then its faults in a
+ # full-width row. `index` is the line's rank, « __N__ » in the prototype template_lines_controller.js
+ # clones; `line` is a TemplateLineDraft, or null for an empty line.
+ #}
+{% set base_id = 'line-' ~ index %}
+{% set at = 'line.' ~ index ~ '.' %}
+{% set amount_value = line ? line.amount : 'typed' %}
+{% set line_errors = [errors[at ~ 'account'] ?? null, errors[at ~ 'thirdParty'] ?? null, errors[at ~ 'label'] ?? null, errors[at ~ 'side'] ?? null, errors[at ~ 'amount'] ?? null, errors[at ~ 'fixed'] ?? null]|filter(e => e is not null) %}
+<tbody class="px-tlines__line" data-template-lines-target="line">
+    <tr>
+        <td>
+            <twig:Px:AccountPicker id="{{ base_id }}-account" name="lines[{{ index }}][account]" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" value="{{ line ? line.account : '' }}" accountLabel="{{ account_label ?? '' }}" :error="errors[at ~ 'account'] ?? null" listLabel="Comptes et tiers" aria-label="Compte"/>
+        </td>
+        <td><twig:Px:Input id="{{ base_id }}-party" name="lines[{{ index }}][thirdParty]" value="{{ line ? line.thirdParty : '' }}" size="sm" :error="errors[at ~ 'thirdParty'] ?? null" class="px-u-code" maxlength="17" autocomplete="off" spellcheck="false" aria-label="Tiers"/></td>
+        <td><twig:Px:Input id="{{ base_id }}-label" name="lines[{{ index }}][label]" value="{{ line ? line.label : '' }}" size="sm" :error="errors[at ~ 'label'] ?? null" maxlength="250" autocomplete="off" placeholder="Intitulé du modèle" aria-label="Libellé"/></td>
+        <td><twig:Px:Select id="{{ base_id }}-side" name="lines[{{ index }}][side]" :options="side_options" value="{{ line ? line.side : 'debit' }}" size="sm" :error="errors[at ~ 'side'] ?? null" aria-label="Sens"/></td>
+        <td><twig:Px:Select id="{{ base_id }}-amount" name="lines[{{ index }}][amount]" :options="amount_options" value="{{ amount_value }}" size="sm" :error="errors[at ~ 'amount'] ?? null" aria-label="Montant" data-action="template-lines#amount"/></td>
+        <td class="px-u-right">
+            <span class="px-tlines__fixed" data-template-lines-target="fixed"{% if amount_value != 'fixed' %} hidden{% endif %}>
+                <twig:Px:AmountInput id="{{ base_id }}-fixed" name="lines[{{ index }}][fixed]" :value="line ? line.fixed : null" :grid="true" :error="errors[at ~ 'fixed'] ?? null" aria-label="Montant fixe"/>
+            </span>
+        </td>
+        <td><twig:Px:IconButton icon="trash-2" label="Retirer la ligne" size="sm" data-action="template-lines#remove"/></td>
+    </tr>
+    {% if line_errors is not empty %}
+        <tr class="px-tlines__errors"><td colspan="7"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ line_errors|join(' ') }}</td></tr>
+    {% endif %}
+</tbody>

@@ -13,6 +13,7 @@ use App\Enum\Accounting\JournalType;
 use App\Enum\Audit\AuditAction;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntryRepository;
+use App\Repository\Accounting\EntryTemplateRepository;
 use App\Repository\Accounting\JournalRepository;
 use App\Service\Accounting\Chart\AccountNumber;
 use App\Service\Audit\AuditTrail;
@@ -23,7 +24,7 @@ use Doctrine\ORM\EntityManagerInterface;
  * journal as typed, names every fault under its field, creates, changes and deletes - each gesture
  * in the audit trail. A bank journal's counterpart is a bank account (51…), a cash journal's a cash
  * account (53…), and no other journal has one; a dossier has one à-nouveaux journal at most.
- * A journal that carries entries keeps its type and stays; once one of them is validated, its code
+ * A journal that carries entries or entry templates stays, and one with entries keeps its type; once one of them is validated, its code
  * no longer changes either (the entries' numbers name it: « ACH-2026-00012 »).
  * Runs inside the dossier's context; the caller checks DossierVoter::EDIT and flushes.
  */
@@ -35,6 +36,7 @@ final readonly class JournalSheet
         private AccountRepository $accounts,
         private AuditTrail $auditTrail,
         private EntryRepository $entries,
+        private EntryTemplateRepository $templates,
     ) {
     }
 
@@ -143,7 +145,9 @@ final readonly class JournalSheet
     {
         $count = $this->entries->countInJournal($journal);
         if (0 === $count) {
-            return null;
+            $templates = $this->templates->countInJournal($journal);
+
+            return 0 === $templates ? null : \sprintf('Ce journal porte %s : supprimez-%s ou placez-%s dans un autre journal d’abord.', 1 === $templates ? 'un modèle d’écriture' : $templates.' modèles d’écriture', 1 === $templates ? 'le' : 'les', 1 === $templates ? 'le' : 'les');
         }
 
         return $this->entries->countInJournal($journal, true) > 0

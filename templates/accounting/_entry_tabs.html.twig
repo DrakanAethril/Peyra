@@ -1,0 +1,7 @@
+{# The views of Comptabilité › Saisie (design-ux.md § 2.5): par journal, guidée - drawn only when the guided entry is open (GuidedEntry::isOpen). #}
+{% if guided_open ?? false %}
+    <twig:Px:Tabs label="Saisie" :tabs="[
+        {label: 'Par journal', href: path('app_accounting_entry', {dossier: dossier.id}), current: entry_view == 'journal'},
+        {label: 'Guidée', href: path('app_accounting_guided', {dossier: dossier.id}), current: entry_view == 'guided'},
+    ]"/>
+{% endif %}
