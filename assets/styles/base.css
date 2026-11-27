@@ -1,0 +1,151 @@
+/* Body, links, selection, focus, kbd and the closed list of px-u-* utilities (design-ui.md § 3.2). */
+@layer px.base {
+    html {
+        font-size: 100%;
+        background: var(--px-bg);
+    }
+
+    body {
+        min-height: 100dvh;
+        background: var(--px-bg);
+        color: var(--px-text);
+        font-family: var(--px-font-ui);
+        font-size: var(--px-fs-13);
+        line-height: var(--px-lh-base);
+        font-variant-numeric: tabular-nums;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    b, strong {
+        font-weight: var(--px-fw-semibold);
+        color: var(--px-text-strong);
+    }
+
+    a {
+        color: var(--px-action);
+        text-decoration: none;
+    }
+
+    a:hover {
+        color: var(--px-action-hover);
+        text-decoration: underline;
+    }
+
+    p a, li > a:only-child:not([class]) {
+        text-decoration: underline;
+    }
+
+    ::selection {
+        background: var(--px-action-tint);
+        color: var(--px-text-strong);
+    }
+
+    :focus {
+        outline: none;
+    }
+
+    :focus-visible {
+        outline: none;
+        box-shadow: var(--px-ring);
+    }
+
+    kbd {
+        display: inline-block;
+        font-family: var(--px-font-ui);
+        font-size: var(--px-fs-11);
+        font-weight: var(--px-fw-semibold);
+        line-height: 16px;
+        color: var(--px-text-muted);
+        background: var(--px-surface);
+        border: 1px solid var(--px-border-strong);
+        border-bottom-width: 2px;
+        border-radius: var(--px-radius-xs);
+        padding: 0 4px;
+        white-space: nowrap;
+    }
+
+    abbr[title] {
+        text-decoration: underline dotted;
+        cursor: help;
+    }
+
+    /* Skip link: hidden until focused, first stop of the tab order. */
+    .px-skip {
+        position: fixed;
+        inset-block-start: var(--px-space-8);
+        inset-inline-start: var(--px-space-8);
+        z-index: var(--px-z-tooltip);
+        padding: var(--px-space-6) var(--px-space-12);
+        border-radius: var(--px-radius-md);
+        background: var(--px-surface);
+        color: var(--px-action);
+        font-weight: var(--px-fw-semibold);
+        transform: translateY(-200%);
+    }
+
+    .px-skip:focus-visible {
+        transform: none;
+    }
+}
+
+@layer px.utilities {
+    .px-u-num {
+        font-family: var(--px-font-mono);
+        font-size: var(--px-fs-12);
+        color: var(--px-text-strong);
+        text-align: end;
+        white-space: nowrap;
+    }
+
+    .px-u-code {
+        font-family: var(--px-font-mono);
+        font-size: var(--px-fs-12);
+        color: var(--px-text-strong);
+        text-align: start;
+        white-space: nowrap;
+    }
+
+    .px-u-right {
+        text-align: end;
+    }
+
+    .px-u-center {
+        text-align: center;
+    }
+
+    .px-u-muted {
+        color: var(--px-text-muted);
+    }
+
+    .px-u-strong {
+        color: var(--px-text-strong);
+        font-weight: var(--px-fw-semibold);
+    }
+
+    .px-u-truncate {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+    }
+
+    .px-u-nowrap {
+        white-space: nowrap;
+    }
+
+    .px-u-push {
+        margin-inline-start: auto;
+    }
+
+    .px-u-sr-only {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+    }
+}

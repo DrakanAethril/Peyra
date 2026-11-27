@@ -36,6 +36,34 @@ free to keep, modify and redistribute the code that references them.
 Third-party components
 --------------------------------------------------------------------------------
 
-This project will incorporate or bundle third-party works, each under its own
+This project incorporates or bundles third-party works, each under its own
 licence. Those licences are unchanged by this project's own licensing, and their
 notices are listed here as each component is added.
+
+Inter (assets/fonts/inter-var-latin.woff2)
+    Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter).
+    SIL Open Font License 1.1, full text in assets/fonts/OFL-Inter.txt.
+    Subset of Inter[opsz,wght] (latin and latin extended, weights 400 to 700,
+    optical size fixed at 14) made with fontTools.
+
+IBM Plex Mono (assets/fonts/IBMPlexMono-*-Latin1.woff2, IBMPlexMono-*-Pi.woff2)
+    Copyright 2017 IBM Corp., with Reserved Font Name "Plex".
+    SIL Open Font License 1.1, full text in assets/fonts/OFL-IBMPlexMono.txt.
+    IBM's own split files from the @ibm/plex-mono package, unmodified.
+
+Spectral (assets/fonts/spectral-600-latin.woff2)
+    Copyright 2017 The Spectral Project Authors
+    (https://github.com/productiontype/Spectral).
+    SIL Open Font License 1.1, full text in assets/fonts/OFL-Spectral.txt.
+    Subset of Spectral SemiBold (latin and latin extended) made with fontTools.
+
+Lucide icons (assets/icons/*.svg, except the files prefixed px-)
+    Copyright (c) Lucide Icons and Contributors; parts derived from Feather,
+    Copyright (c) 2013-2023 Cole Bemis.
+    ISC License (Feather: MIT), full text in assets/icons/LICENSE-lucide.txt.
+    Copied one by one from lucide-static 1.82.0, stroke width set to 1.75.
+
+Peyra's own brand files (assets/brand/) are part of this program and under the
+AGPL. Their letters were vectorised from Spectral Bold (the P of the seal) and
+Manrope ExtraBold (the word PEYRA, Copyright 2019 The Manrope Project Authors,
+SIL Open Font License 1.1); no font file of either is bundled.

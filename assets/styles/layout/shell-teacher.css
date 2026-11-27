@@ -1,0 +1,20 @@
+/* What the teacher space changes (design-ui.md § 3.4), and nothing else. */
+@layer px.layout {
+    body[data-shell="teacher"] {
+        --px-font-title: var(--px-font-serif);
+        --px-row-default: var(--px-row-comfortable);
+
+        & .px-pagehead__title {
+            font-size: var(--px-fs-20);
+            letter-spacing: 0;
+        }
+
+        & .px-statusbar__keys {
+            display: none;
+        }
+
+        & .px-page {
+            max-width: 1440px;
+        }
+    }
+}

@@ -1,0 +1,70 @@
+/* Inline alerts (design-ui.md § 4.13). The mission banner and the toast come with their steps. */
+@layer px.components {
+    .px-alert {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--px-space-10);
+        padding: var(--px-space-8) var(--px-space-12);
+        border: 1px solid;
+        border-radius: var(--px-radius-lg);
+        color: var(--px-text);
+        font-size: var(--px-fs-13);
+
+        & > svg {
+            flex: none;
+            width: var(--px-icon);
+            height: var(--px-icon);
+            margin-block-start: 1px;
+        }
+
+        & ul {
+            margin-block-start: var(--px-space-4);
+            padding-inline-start: var(--px-space-16);
+            list-style: disc;
+        }
+    }
+
+    .px-alert__body {
+        display: grid;
+        gap: var(--px-space-2);
+        min-width: 0;
+    }
+
+    .px-alert__title {
+        color: var(--px-text-strong);
+        font-weight: var(--px-fw-semibold);
+    }
+
+    .px-alert__action {
+        margin-inline-start: auto;
+        white-space: nowrap;
+    }
+
+    .px-alert--info {
+        background: var(--px-info-tint);
+        border-color: var(--px-info-border);
+
+        & > svg { color: var(--px-info-text); }
+    }
+
+    .px-alert--success {
+        background: var(--px-success-tint);
+        border-color: var(--px-success-border);
+
+        & > svg { color: var(--px-success-text); }
+    }
+
+    .px-alert--warning {
+        background: var(--px-warning-tint);
+        border-color: var(--px-mission-border);
+
+        & > svg { color: var(--px-warning-text); }
+    }
+
+    .px-alert--danger {
+        background: var(--px-danger-tint);
+        border-color: var(--px-danger-border);
+
+        & > svg { color: var(--px-danger-text); }
+    }
+}

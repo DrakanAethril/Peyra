@@ -1,0 +1,110 @@
+/* Pills (states), chips (contexts), keys, avatars (design-ui.md §§ 4.2, 4.9, 4.15). */
+@layer px.components {
+    .px-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 1px var(--px-space-8);
+        border-radius: var(--px-radius-pill);
+        font-family: var(--px-font-ui);
+        font-size: var(--px-fs-12);
+        font-weight: var(--px-fw-semibold);
+        line-height: var(--px-lh-base);
+        letter-spacing: 0;
+        text-transform: none;
+        white-space: nowrap;
+        vertical-align: middle;
+
+        &.px-badge--dot::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+            flex: none;
+        }
+    }
+
+    .px-badge--success { background: var(--px-success-tint); color: var(--px-success-text); }
+    .px-badge--warning { background: var(--px-warning-tint); color: var(--px-warning-text); }
+    .px-badge--danger { background: var(--px-danger-tint); color: var(--px-danger-text); }
+    .px-badge--info { background: var(--px-info-tint); color: var(--px-info-text); }
+    .px-badge--neutral { background: var(--px-neutral-tint); color: var(--px-neutral-text); }
+
+    /* ---------------------------------------------------------------- Chip */
+
+    .px-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--px-space-6);
+        padding: 3px var(--px-space-10);
+        border-radius: var(--px-radius-pill);
+        background: var(--px-neutral-tint);
+        color: var(--px-neutral-text);
+        font-size: var(--px-fs-12);
+        font-weight: var(--px-fw-semibold);
+        white-space: nowrap;
+
+        & > svg {
+            width: var(--px-icon-sm);
+            height: var(--px-icon-sm);
+            flex: none;
+        }
+    }
+
+    .px-chip--role { background: var(--px-role-tint); color: var(--px-role-text); }
+    .px-chip--info { background: var(--px-info-tint); color: var(--px-info-text); }
+
+    button.px-chip {
+        min-height: var(--px-control-sm);
+        cursor: pointer;
+
+        &:hover {
+            filter: brightness(.97);
+        }
+    }
+
+    /* ---------------------------------------------------------------- Key */
+
+    .px-kbd {
+        font-family: var(--px-font-ui);
+        font-size: var(--px-fs-11);
+        font-weight: var(--px-fw-semibold);
+        line-height: 16px;
+    }
+
+    /* ---------------------------------------------------------------- Avatar */
+
+    .px-avatar {
+        display: inline-grid;
+        place-items: center;
+        flex: none;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--px-avatar-bg);
+        color: var(--px-text);
+        font-size: var(--px-fs-11);
+        font-weight: var(--px-fw-bold);
+        line-height: 1;
+        text-transform: uppercase;
+        user-select: none;
+    }
+
+    .px-avatar--me {
+        background: var(--px-action);
+        color: var(--px-text-on-action);
+    }
+
+    .px-avatar--sm {
+        width: 22px;
+        height: 22px;
+        font-size: .625rem;
+    }
+
+    .px-avatar--lg {
+        width: 40px;
+        height: 40px;
+        font-size: var(--px-fs-14);
+    }
+}
