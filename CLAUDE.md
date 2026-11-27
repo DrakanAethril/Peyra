@@ -100,7 +100,7 @@ empty, and `PeyraScheduleTest` pins that list, so adding a task is a decision th
 | `app:regulatory:sync [--dry-run]` | Installs the millésime files `config/regulatory/<année>.yaml`; only ever adds rows, never over an administrator's value. **Every deploy runs it** |
 | `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
-| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
+| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
 | `app:dev:dossiers` | **Development and test only**, until the distribution of step 1.8: gives each student enrolled this year their own Menuiserie Vasseur, built from the fixtures (the template installed first if missing). Sign the students in first: their first sign-in places them |
 | `app:test:parallel-databases` | **Test only.** Copies the migrated `peyra_test` into `peyra_test1`… for ParaTest (tests/README.md) |
 
@@ -445,7 +445,7 @@ and `src/Entity/Accounting/`:
   gesture in the audit trail (subject: the dossier). A number that subdivides no account of ≥ 2
   digits of the dossier's reference chart is **signalled, never refused** until the assistance
   levels (step 2.8). An account a journal names as counterpart is not deleted and stays of its
-  nature. **Step 1.3 adds the guards of an account, a journal or a third party that carries entries.**
+  nature. Once it carries entries, see « Accounting engine » below for what it keeps.
 - **`Journal`** (DossierOwned, `JournalSheet` the one door): code of 1 to 6 capitals or digits, type
   (`JournalType`), a counterpart account for bank (a bank account) and cash (a cash account) journals
   only, one à-nouveaux journal at most. A cash journal needs a 53… account the dossier creates (the
@@ -505,6 +505,58 @@ Lot 1, step 1.2b, held by code in `src/Entity/ThirdParty/`, `src/Service/ThirdPa
   nothing). Ventes › Clients and Achats › Fournisseurs (lot 2) will read the same entity.
 - A form refused (422) focuses its first field in error (`focus_error_controller.js`, design-ux.md
   § 6.1), on the fiches of a third party, an account, a journal and the company.
+
+## Accounting engine (built at step 1.3)
+
+Conception § 5, held by code in `src/Entity/Accounting/`, `src/Service/Accounting/Ledger/`,
+`src/Service/Accounting/Gateway/` and `App\Doctrine\LedgerGuard`:
+
+- **`Entry`** (journal, exercise and period of its date, date, `document` - the « pièce », the FEC's
+  PieceRef -, label, `EntryState` draft/validated, `number` at validation, `validatedOn` = the
+  dossier's date then, `EntryOrigin`, `source` module, `reversalOf`) and **`EntryLine`** (account,
+  third party, label, `debit`/`credit` in cents, due date, lettering `letter` for step 1.6). Both
+  DossierOwned.
+- **`Ledger` is the one door** (`LedgerDoorTest`: nothing else does `new Entry`/`new EntryLine` nor
+  calls the entry's `ledger…` methods): `draft()`, `update()`, `discard()` (brouillard only),
+  `validate(list)` / `validateDrafts(?journal, ?period)` (all or nothing), `reverse(entry, on)`.
+  Each gesture is checked whole by **`EntryRules::check()`** (pure, four callables: journal, period
+  at a date, account, third party; faults under `journal`, `date`, `document`, `label`, `lines`,
+  `line.<i>.<field>`), recorded in the audit trail and **flushed by the Ledger itself** in one
+  transaction; a refusal is `EntryRefused` (`errors` by key) and writes nothing.
+- **An entry is balanced or does not exist**, drafts included (two lines at least, one positive
+  side per line). A closed period or exercise refuses a draft, a validation and a reversal date.
+- **Numbering**: at validation, per journal and per exercise, after `MAX(number)` read under a
+  pessimistic lock on the journal row (journals locked in id order), in date then draft order;
+  `UNIQUE(journal, exercise, number)`. Shown « ACH-2026-00012 » (`getNumberLabel()`).
+- **Validated is final**: `LedgerGuard` (onFlush) refuses any change or deletion of a validated
+  entry and of its lines (except `EntryLine::MUTABLE_WHEN_VALIDATED`, the letter), and any entry
+  flushed unbalanced - whoever wrote it. A reversal is the mirror entry (same journal, document,
+  lines swapped), validated at once, `reversalOf` set; once per entry, never of a reversal.
+- **Third parties on lines**: a collective account's line names a third party with an auxiliary
+  code whose kind accepts the account's nature (its own collective, or 416000/419100 for a
+  customer); a general account's line may name only the third party kept on it (455100). A due
+  date only on a lettrable account.
+- **`LedgerReader`**: every figure is an aggregate query over the lines - `accountTotals()`,
+  `accountBalance()`, `thirdPartyTotals()`, `thirdPartyBalance()`, `movements()` (running balance),
+  `trialBalance()`, `generalLedger()` - over a window of days and an `EntryScope` (validated only,
+  or with the brouillard). The screens pass the start of the exercise (`exerciseStart()`): an
+  exercise opens on its own à-nouveaux. No column holds a balance (`NoStoredBalanceTest`).
+  `Totals::balance()` is debit minus credit; the `balance` Twig filter writes « D »/« C ».
+- **`AccountingGateway::submit(dossier, EntryProposal)`** is the modules' door (`ModulesDoNotPostTest`:
+  only `Service/Accounting/`, `Controller/Accounting/` and the demonstration name the Ledger). It
+  applies `AccountingBehaviours` (Propose, LetEnter, Post); `ProposeByDefault` answers until the
+  missions (2.9).
+- **What carries entries keeps its shape**: an account with validated lines keeps its number and
+  stays, with any line keeps its « collectif » box (the plan's import too); a journal with entries
+  keeps its type and stays, with validated ones its code; a third party named on a line keeps its
+  account and auxiliary code and stays (its import too). The F4 picker shows each account's and
+  third party's balance at the dossier's date; the account fiche its balance; the third parties'
+  list and fiche their « Encours ».
+- `fixtures/demo/entries.yaml` (`DemoEntryFile`): the demonstration's entries, written through the
+  Ledger by `DemoInstaller`; for now the opening balance (AN-2026-001, 67 lines, 459 260,31).
+- **Deleting a dossier** by SQL fails on the intra-dossier `RESTRICT` keys (journal → account,
+  line → account…): delete `entry_line`, `entry`, `third_party`, `journal` first. Step 1.8 erases a
+  dossier in that order.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

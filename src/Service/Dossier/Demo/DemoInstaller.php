@@ -18,6 +18,8 @@ use App\Repository\Dossier\DossierRepository;
 use App\Service\Accounting\Chart\AccountNumber;
 use App\Service\Accounting\Chart\ChartInstaller;
 use App\Service\Accounting\Chart\ReferenceCharts;
+use App\Service\Accounting\Ledger\EntryRefused;
+use App\Service\Accounting\Ledger\Ledger;
 use App\Service\Audit\AuditTrail;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Exercises;
@@ -46,6 +48,7 @@ final readonly class DemoInstaller
         private ChartInstaller $chartInstaller,
         private AccountRepository $accounts,
         private DossierContext $context,
+        private Ledger $ledger,
         #[Autowire('%kernel.project_dir%/fixtures/demo')]
         private string $directory,
     ) {
@@ -77,6 +80,7 @@ final readonly class DemoInstaller
         $file = DemoCompanyFile::read($this->directory.'/company.yaml');
         $chartFile = DemoChartFile::read($this->directory);
         $thirdPartyFile = DemoThirdPartyFile::read($this->directory.'/third_parties.yaml');
+        $entryFile = DemoEntryFile::read($this->directory.'/entries.yaml');
         $dossier = new Dossier($kind, $file->company, $file->dossierDate, $owner, $year, $at, null);
         $dossier->comesFrom($template, null);
         $this->entityManager->persist($dossier);
@@ -95,6 +99,8 @@ final readonly class DemoInstaller
         $this->context->within($dossier, fn () => $this->installChart($dossier, $chartFile));
         $this->entityManager->flush();
         $this->context->within($dossier, fn () => $this->installThirdParties($dossier, $thirdPartyFile));
+        $this->entityManager->flush();
+        $this->context->within($dossier, fn () => $this->installEntries($dossier, $entryFile, $actor));
         $this->auditTrail->record(
             AuditAction::DossierCreated,
             $actor,
@@ -130,6 +136,21 @@ final readonly class DemoInstaller
             $thirdParty = new ThirdParty($dossier, $draft->code, $fields->kind, $draft->name);
             ThirdPartySheet::write($thirdParty, $draft, $fields);
             $this->entityManager->persist($thirdParty);
+        }
+    }
+
+    /** Its entries, through the Ledger like any other: one it refuses names the entry and stops the install. */
+    private function installEntries(Dossier $dossier, DemoEntryFile $file, string $actor): void
+    {
+        foreach ($file->entries as $index => $entry) {
+            try {
+                $written = $this->ledger->draft($dossier, $entry['draft'], $actor, $entry['origin']);
+                if ($entry['validated']) {
+                    $this->ledger->validate([$written], $actor);
+                }
+            } catch (EntryRefused $refusal) {
+                throw new \InvalidArgumentException(\sprintf('entries.yaml : entries[%d] (%s) : %s', $index, $entry['draft']->document, implode(' ', $refusal->errors)), 0, $refusal);
+            }
         }
     }
 

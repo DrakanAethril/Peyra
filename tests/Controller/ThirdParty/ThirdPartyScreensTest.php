@@ -70,7 +70,7 @@ final class ThirdPartyScreensTest extends WebTestCase
 
         $crawler = $client->request('GET', $this->url($dossier, '/accounting/third-parties?kind=supplier&q=scie'));
         self::assertSelectorTextContains('.px-filters__chip[aria-current="true"]', 'Fournisseurs');
-        self::assertSame(['F0001', 'Scierie du Haut-Forez', 'Fournisseur', '401000', '401SCIE', 'Montbrison', '30 jours date de facture · virement'], $crawler->filter('tbody tr td')->each(static fn ($cell): string => trim($cell->text())));
+        self::assertSame(['F0001', 'Scierie du Haut-Forez', 'Fournisseur', '401000', '401SCIE', 'Montbrison', '30 jours date de facture · virement', ''], $crawler->filter('tbody tr td')->each(static fn ($cell): string => trim($cell->text())));
         $client->request('GET', $this->url($dossier, '/accounting/third-parties?q=dumas'));
         self::assertSelectorTextContains('.px-empty', 'Aucun tiers de ce filtre ne correspond à « dumas ».');
 
@@ -100,7 +100,7 @@ final class ThirdPartyScreensTest extends WebTestCase
 
         foreach (['401S', 'scierie', 'F00'] as $query) {
             $groups = $this->json($client, $this->url($dossier, '/accounting/accounts/search?q='.$query))['groups'] ?? null;
-            self::assertSame([['label' => 'Tiers', 'options' => [['value' => '401SCIE', 'label' => 'Scierie du Haut-Forez · 401000']]]], $groups, $query);
+            self::assertSame([['label' => 'Tiers', 'options' => [['value' => '401SCIE', 'label' => 'Scierie du Haut-Forez · 401000', 'balance' => '']]]], $groups, $query);
         }
         self::assertNotContains('Tiers', $this->groupLabels($client, $this->url($dossier, '/accounting/accounts/search?q=urssaf')), 'Un tiers sur un compte général se saisit par son compte.');
         self::assertSame([], $this->groupLabels($client, $this->url($dossier, '/accounting/accounts/search?q=scierie&nature=supplier')));

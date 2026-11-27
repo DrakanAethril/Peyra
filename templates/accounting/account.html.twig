@@ -79,6 +79,9 @@
                     {% if third_party_count > 0 %}
                         <dt>Tiers</dt><dd><a class="px-link" href="{{ path('app_third_parties', {dossier: dossier.id, account: account.number}) }}">{{ third_party_count }} {{ third_party_count > 1 ? 'tiers tenus' : 'tiers tenu' }} sur ce compte</a></dd>
                     {% endif %}
+                    {% if balance is defined %}
+                        <dt>Solde</dt><dd><span class="px-u-num">{{ balance.balance|balance }}</span> <span class="px-u-muted">au {{ dossier.dossierDate|date_fr }}, depuis l’ouverture de l’exercice, brouillard compris</span></dd>
+                    {% endif %}
                     {% if counterpart_of is not empty %}
                         <dt>Contrepartie de</dt><dd>{% for journal in counterpart_of %}<a class="px-link px-u-code" href="{{ path('app_accounting_journal', {dossier: dossier.id, code: journal.code}) }}">{{ journal.code }}</a> {{ journal.label }}{{ not loop.last ? ', ' : '' }}{% endfor %}</dd>
                     {% endif %}

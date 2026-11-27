@@ -9,6 +9,8 @@ use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
+use App\Service\Accounting\Ledger\EntryScope;
+use App\Service\Accounting\Ledger\LedgerReader;
 use App\Service\Shared\ListPage;
 use App\Service\Shared\QueryValue;
 use App\Service\ThirdParty\ThirdPartyCsv;
@@ -24,13 +26,14 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
  * Comptabilité › Paramètres comptables › Tiers (gabarit L): the dossier's third parties by code,
  * filtered by nature (and by account, from an account's fiche), searched by code, auxiliary code
  * or name like the account picker (F4); its export as CSV. A third party opens its fiche
- * (ThirdPartyController); the import has its screen (ThirdPartyImportController).
+ * (ThirdPartyController); the import has its screen (ThirdPartyImportController). « Encours » is
+ * each third party's balance at the dossier's date, brouillard included (LedgerReader).
  */
 #[Route('/d/{dossier}/accounting/third-parties', requirements: ['dossier' => '\d+'])]
 final class ThirdPartiesController extends AbstractController
 {
     #[Route('', name: 'app_third_parties', methods: ['GET'])]
-    public function index(Dossier $dossier, Request $request, ThirdPartyRepository $thirdParties, AccountRepository $accounts): Response
+    public function index(Dossier $dossier, Request $request, ThirdPartyRepository $thirdParties, AccountRepository $accounts, LedgerReader $ledger): Response
     {
         $all = $thirdParties->findByDossier($dossier);
         $search = QueryValue::trimmed($request, 'q');
@@ -62,6 +65,7 @@ final class ThirdPartiesController extends AbstractController
             'kind' => $kind,
             'search' => $search,
             'account' => $account,
+            'outstanding' => $ledger->thirdPartyTotals($dossier, $ledger->exerciseStart($dossier, $dossier->getDossierDate()), $dossier->getDossierDate(), EntryScope::WithDrafts),
         ]);
     }
 

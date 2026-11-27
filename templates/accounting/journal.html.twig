@@ -20,7 +20,7 @@
     ]">
         <twig:block name="actions">
             {% if can_edit %}
-                {% if journal %}<twig:Px:ConfirmButton label="Supprimer le journal" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="journal-delete"/>{% endif %}
+                {% if journal and deletion_refusal is null %}<twig:Px:ConfirmButton label="Supprimer le journal" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="journal-delete"/>{% endif %}
                 <twig:Px:Button type="submit" variant="primary" form="journal-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
             {% endif %}
         </twig:block>
@@ -52,9 +52,10 @@
                         <twig:Px:AccountPicker id="counterpart" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" nature="bank,cash" value="{{ draft.counterpart }}" accountLabel="{{ counterpart_label ?? '' }}" hint="1" :error="draft.error('counterpart')" listLabel="Comptes de banque et de caisse"/>
                     </twig:Px:Field>
                 </div>
+                {% if journal and deletion_refusal %}<p class="px-u-muted">{{ deletion_refusal }}</p>{% endif %}
             </twig:Px:Card>
         </form>
-        {% if journal %}
+        {% if journal and deletion_refusal is null %}
             <form method="post" action="{{ path('app_accounting_journal_delete', {dossier: dossier.id, code: journal.code}) }}" id="journal-delete" hidden>
                 <input type="hidden" name="_token" value="{{ csrf_token('dossier-journal-delete-' ~ journal.id) }}">
             </form>

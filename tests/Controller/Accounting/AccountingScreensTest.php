@@ -136,7 +136,7 @@ final class AccountingScreensTest extends WebTestCase
         $result = $this->json($client, $this->url($dossier, '/accounting/accounts/search?q=512&nature=bank'));
         $first = \is_array($result['groups'] ?? null) && \is_array($result['groups'][0] ?? null) ? $result['groups'][0] : [];
         self::assertSame('51 · Banques, établissements financiers et assimilés', $first['label'] ?? null);
-        self::assertSame(['value' => '512000', 'label' => 'Banques'], \is_array($first['options'] ?? null) ? ($first['options'][0] ?? null) : null);
+        self::assertSame(['value' => '512000', 'label' => 'Banques', 'balance' => ''], \is_array($first['options'] ?? null) ? ($first['options'][0] ?? null) : null);
 
         self::assertSame([], $this->json($client, $this->url($dossier, '/accounting/accounts/search?q=valeurs encaissement&nature=bank,cash'))['groups'] ?? null, '511 n’est pas une banque.');
         self::assertSame('Aucun compte ne commence par 609999.', $this->json($client, $this->url($dossier, '/accounting/accounts/search?q=609999'))['empty'] ?? null);

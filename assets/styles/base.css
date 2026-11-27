@@ -129,6 +129,11 @@
         min-width: 0;
     }
 
+    /* A table cell cut at 14rem: a secondary column that must leave room for the figures. */
+    .px-u-truncate-short {
+        max-width: 14rem;
+    }
+
     .px-u-nowrap {
         white-space: nowrap;
     }

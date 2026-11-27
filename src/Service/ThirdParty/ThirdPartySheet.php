@@ -10,6 +10,7 @@ use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Audit\AuditAction;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
+use App\Repository\Accounting\EntryLineRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Audit\AuditTrail;
 use Doctrine\ORM\EntityManagerInterface;
@@ -17,8 +18,9 @@ use Doctrine\ORM\EntityManagerInterface;
 /**
  * The one door to a dossier's third parties by hand (Comptabilité › Paramètres comptables › Tiers):
  * checks a third party as typed (ThirdPartyRules), creates, changes and deletes - each gesture in
- * the audit trail. Runs inside the dossier's context; the caller checks DossierVoter::EDIT and
- * flushes.
+ * the audit trail. A third party named on an entry line keeps its account and its auxiliary code,
+ * and stays (usageFaults(), deletionRefusal()). Runs inside the dossier's context; the caller
+ * checks DossierVoter::EDIT and flushes.
  */
 final readonly class ThirdPartySheet
 {
@@ -27,13 +29,14 @@ final readonly class ThirdPartySheet
         private ThirdPartyRepository $thirdParties,
         private AccountRepository $accounts,
         private AuditTrail $auditTrail,
+        private EntryLineRepository $lines,
     ) {
     }
 
     /** What may be saved, or null with the draft's errors filled. */
     public function check(ThirdPartyDraft $draft, Dossier $dossier, ?ThirdParty $thirdParty = null): ?ThirdPartyFields
     {
-        return ThirdPartyRules::check(
+        $fields = ThirdPartyRules::check(
             $draft,
             fn (string $number) => $this->accounts->findOneByNumber($dossier, $number),
             function (string $code) use ($dossier, $thirdParty): ?string {
@@ -47,6 +50,46 @@ final readonly class ThirdPartySheet
                 return null === $holder || $holder === $thirdParty ? null : $holder->getName();
             },
         );
+        if (null === $fields || null === $thirdParty || 0 === $this->lines->countOnThirdParty($thirdParty)) {
+            return $fields;
+        }
+        $draft->errors = self::usageFaults($thirdParty, $fields);
+
+        return [] === $draft->errors ? $fields : null;
+    }
+
+    /**
+     * What a third party named on entry lines may not change: its account and its auxiliary code,
+     * which those lines are entered on (ThirdPartyImport asks the same).
+     *
+     * @return array<string, string> by field
+     */
+    public static function usageFaults(ThirdParty $thirdParty, ThirdPartyFields $fields): array
+    {
+        $faults = [];
+        if ($fields->account !== $thirdParty->getAccount()) {
+            $faults['account'] = null === $thirdParty->getAccount()
+                ? 'Ce tiers est nommé sur des écritures : il reste sans compte.'
+                : \sprintf('Ce tiers est nommé sur des écritures : il reste sur le compte %s.', $thirdParty->getAccount()->getNumber());
+        }
+        if ($fields->auxiliaryCode !== $thirdParty->getAuxiliaryCode()) {
+            $faults['auxiliaryCode'] = null === $thirdParty->getAuxiliaryCode()
+                ? 'Ce tiers est nommé sur des écritures : il reste sans code auxiliaire.'
+                : \sprintf('Ce tiers est nommé sur des écritures : son code auxiliaire reste %s.', $thirdParty->getAuxiliaryCode());
+        }
+
+        return $faults;
+    }
+
+    /** Why the third party may not be deleted, or null when it may. */
+    public function deletionRefusal(ThirdParty $thirdParty): ?string
+    {
+        $count = $this->lines->countOnThirdParty($thirdParty);
+        if (0 === $count) {
+            return null;
+        }
+
+        return \sprintf('Ce tiers est nommé sur %s : il reste au dossier.', 1 === $count ? 'une ligne d’écriture' : $count.' lignes d’écriture');
     }
 
     /** A draft for a new third party of that kind: the next code, its usual account when the plan holds it. */
@@ -106,6 +149,9 @@ final readonly class ThirdPartySheet
 
     public function delete(ThirdParty $thirdParty, User $by): void
     {
+        if (null !== $this->deletionRefusal($thirdParty)) {
+            throw new \LogicException('This third party is named on entry lines.');
+        }
         $this->auditTrail->record(
             AuditAction::ThirdPartyDeleted,
             $by,

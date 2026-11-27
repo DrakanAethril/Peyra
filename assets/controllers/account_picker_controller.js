@@ -6,8 +6,10 @@ import { Controller } from '@hotwired/stimulus';
  * the second character typed, or at once on F4, the dossier's accounts that start with the digits
  * (or whose label holds the words) are listed under the field, grouped under their heading, the
  * typed part in <mark>. ↑ ↓ choose, Entrée takes the line and moves to the next field, Échap closes
- * without changing the value. `url` answers ?q=… with {groups: [{label, options: [{value, label}]}],
- * more, empty}; `nature` narrows the search (a bank journal's counterpart).
+ * without changing the value. `url` answers ?q=… with {groups: [{label, options: [{value, label,
+ * balance}]}], more, empty} - `balance` is the account's or third party's balance at the dossier's
+ * date (« 3 248,40 C »), empty when nothing moved it; `nature` narrows the search (a bank
+ * journal's counterpart).
  */
 export default class extends Controller {
     static targets = ['input', 'panel', 'list', 'chosen'];
@@ -120,7 +122,10 @@ export default class extends Controller {
         label.className = 'px-picker__label';
         label.textContent = option.label;
         label.title = option.label;
-        item.append(number, label);
+        const balance = document.createElement('span');
+        balance.className = 'px-picker__balance';
+        balance.textContent = option.balance ?? '';
+        item.append(number, label, balance);
         item.addEventListener('pointerdown', (event) => {
             event.preventDefault();
             this.choose(index);

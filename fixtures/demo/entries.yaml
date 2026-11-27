@@ -1,0 +1,83 @@
+# Menuiserie Vasseur SARL - its entries, installed by app:demo:install through the Ledger, each
+# checked like any other entry. For now the opening balance of the exercise 2026 (à-nouveaux of the
+# 01/01/2026, journal AN), validated: the closing balance of 2025 before the allocation of its
+# result (120000 carries the profit of 2025), 459 260,31 on each side. A line on a collective account
+# names its third party by code; the open invoices keep their due date (lettering, step 1.6).
+# Source: design/validated/plan/donnees/demo/ouverture-2026.yaml (prepared data, 2026-11-27).
+# Amounts are euros as text, read exactly, never as floats.
+
+entries:
+  - journal: AN
+    date: '2026-01-01'
+    document: AN-2026-001
+    label: "À-nouveaux au 01/01/2026"
+    origin: opening
+    validated: true
+    lines:
+      - { account: '205000', label: "Logiciels", debit: '6800.00' }
+      - { account: '207000', label: "Fonds commercial", debit: '38000.00' }
+      - { account: '215400', label: "Matériel industriel", debit: '66700.00' }
+      - { account: '218100', label: "Installations générales, agencements, aménagements divers", debit: '42000.00' }
+      - { account: '218200', label: "Matériel de transport", debit: '55500.00' }
+      - { account: '218300', label: "Matériel de bureau et matériel informatique", debit: '4200.00' }
+      - { account: '218400', label: "Mobilier", debit: '5600.00' }
+      - { account: '275100', label: "Dépôts versés", debit: '6400.00' }
+      - { account: '280500', label: "Amortissements des logiciels", credit: '6422.23' }
+      - { account: '281540', label: "Amortissements du matériel industriel", credit: '43014.96' }
+      - { account: '281810', label: "Amortissements des agencements", credit: '27650.00' }
+      - { account: '281820', label: "Amortissements du matériel de transport", credit: '33841.67' }
+      - { account: '281830', label: "Amortissements du matériel informatique", credit: '2745.56' }
+      - { account: '281840', label: "Amortissements du mobilier", credit: '3360.00' }
+      - { account: '101300', label: "Capital souscrit - appelé, versé", credit: '80000.00' }
+      - { account: '106100', label: "Réserve légale", credit: '8000.00' }
+      - { account: '106800', label: "Autres réserves", credit: '91500.00' }
+      - { account: '110000', label: "Report à nouveau - solde créditeur", credit: '3870.35' }
+      - { account: '120000', label: "Résultat de l'exercice - bénéfice", credit: '36425.00' }
+      - { account: '145000', label: "Amortissements dérogatoires", credit: '592.84' }
+      - { account: '164100', label: "Emprunt Banque Populaire 2023 (fourgon, plaqueuse)", credit: '21022.29' }
+      - { account: '310000', label: "Matières premières et fournitures", debit: '41352.18' }
+      - { account: '321000', label: "Matières consommables", debit: '4953.10' }
+      - { account: '331000', label: "Produits en cours", debit: '11940.00' }
+      - { account: '355000', label: "Produits finis", debit: '7847.80' }
+      - { account: '391000', label: "Dépréciations des matières premières et fournitures", credit: '1150.00' }
+      - { account: '411000', third_party: C0003, label: "FV-2025-0268 du 2025-11-28", debit: '17520.00', due: '2026-01-14' }
+      - { account: '411000', third_party: C0008, label: "FV-2025-0281 du 2025-12-12", debit: '4620.00', due: '2026-01-11' }
+      - { account: '411000', third_party: C0017, label: "FV-2025-0274 du 2025-12-05", debit: '11040.00', due: '2026-02-14' }
+      - { account: '411000', third_party: C0017, label: "FV-2025-0290 du 2025-12-19", debit: '7380.00', due: '2026-02-14' }
+      - { account: '411000', third_party: C0022, label: "FV-2025-0284 du 2025-12-15", debit: '6576.00', due: '2026-01-14' }
+      - { account: '411000', third_party: C0036, label: "FV-2025-0262 du 2025-11-20", debit: '10680.00', due: '2026-01-19' }
+      - { account: '411000', third_party: C0042, label: "FV-2025-0255 du 2025-11-14", debit: '4920.00', due: '2025-12-31' }
+      - { account: '411000', third_party: C0042, label: "FV-2025-0279 du 2025-12-10", debit: '8808.00', due: '2026-01-31' }
+      - { account: '411000', third_party: C0050, label: "FV-2025-0286 du 2025-12-17", debit: '4356.00', due: '2026-01-16' }
+      - { account: '411000', third_party: C0063, label: "FV-2025-0277 du 2025-12-08", debit: '7224.00', due: '2026-01-07' }
+      - { account: '411000', third_party: C0064, label: "FV-2025-0292 du 2025-12-22", debit: '13656.00', due: '2026-02-14' }
+      - { account: '411000', third_party: C0040, label: "FV-2025-0270 du 2025-12-01", debit: '5850.00', due: '2026-01-30' }
+      - { account: '411000', third_party: C0059, label: "FV-2025-0289 du 2025-12-18", debit: '2688.00', due: '2026-01-17' }
+      - { account: '416000', third_party: C0031, label: "Bâti-Confort Forézien - FV-2025-0198 du 2025-08-26, client douteux", debit: '6840.00', due: '2025-09-30' }
+      - { account: '491000', label: "Dépréciation Bâti-Confort Forézien (50 % de 5 700,00 HT)", credit: '2850.00' }
+      - { account: '419100', third_party: C0019, label: "Acompte Girard du 15/12/2025 (30 % de 9 540,00 TTC), chèque remis le 16/12/2025", credit: '2862.00' }
+      - { account: '401000', third_party: F0001, label: "FA-2512-0431 du 2025-12-04", credit: '7878.00', due: '2026-01-03' }
+      - { account: '401000', third_party: F0001, label: "FA-2512-0448 du 2025-12-17", credit: '4704.00', due: '2026-01-16' }
+      - { account: '401000', third_party: F0002, label: "F25-1187 du 2025-12-11", credit: '2215.80', due: '2026-01-31' }
+      - { account: '401000', third_party: F0003, label: "PRL-25-08812 du 2025-12-02", credit: '5174.88', due: '2026-02-14' }
+      - { account: '401000', third_party: F0004, label: "FM-2025-1420 du 2025-12-09", credit: '3583.20', due: '2026-01-31' }
+      - { account: '401000', third_party: F0005, label: "VLP-25-0977 du 2025-12-15", credit: '975.12', due: '2026-01-14' }
+      - { account: '401000', third_party: F0008, label: "OPL-125566 du 2025-12-19", credit: '761.76', due: '2026-01-31' }
+      - { account: '401000', third_party: F0014, label: "TC-25-1312 du 2025-12-22", credit: '504.00', due: '2026-01-31' }
+      - { account: '401000', third_party: F0017, label: "TF-2025-212 du 2025-12-12", credit: '1176.00', due: '2026-01-31' }
+      - { account: '401000', third_party: F0016, label: "BFM-25-3321 du 2025-12-16", credit: '223.68', due: '2026-01-15' }
+      - { account: '408100', label: "Électricité de décembre 2025, facture non parvenue (1 550,00 HT)", credit: '1860.00' }
+      - { account: '445860', label: "TVA sur factures non parvenues", debit: '310.00' }
+      - { account: '431000', label: "Urssaf, DSN de décembre 2025 (exigible le 15/01/2026)", credit: '8756.92' }
+      - { account: '437100', label: "Retraite complémentaire, décembre 2025", credit: '2014.58' }
+      - { account: '437200', label: "Complémentaire santé, décembre 2025", credit: '504.00' }
+      - { account: '437300', label: "Prévoyance cadres, décembre 2025", credit: '58.88' }
+      - { account: '442100', label: "Prélèvement à la source, décembre 2025", credit: '883.59' }
+      - { account: '428200', label: "Congés payés acquis et non pris au 31/12/2025", credit: '18420.00' }
+      - { account: '438200', label: "Charges sociales sur congés payés (43 %)", credit: '7920.00' }
+      - { account: '445510', label: "TVA de décembre 2025 à décaisser (CA3 déposée avant le 19/01/2026)", credit: '10614.00' }
+      - { account: '444000', label: "Solde d'IS 2025 (6 525,00 - 4 acomptes de 1 450,00), payable le 15/05/2026", credit: '725.00' }
+      - { account: '486000', label: "Assurances : 9/12 de la prime 13 800,00 du 01/10/2025 au 30/09/2026", debit: '10350.00' }
+      - { account: '455100', third_party: A0001, label: "Compte courant de Bernard Vasseur", credit: '15000.00' }
+      - { account: '512100', label: "Crédit Coopératif, solde rapproché au 31/12/2025 (relevé n° 12)", debit: '8216.45' }
+      - { account: '512200', label: "Banque Populaire, solde rapproché au 31/12/2025", debit: '36932.78' }

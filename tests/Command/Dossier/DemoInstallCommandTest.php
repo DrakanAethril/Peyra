@@ -10,10 +10,14 @@ use App\Entity\Dossier\Exercise;
 use App\Entity\Dossier\Period;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\AccountOrigin;
+use App\Enum\Accounting\EntryOrigin;
 use App\Enum\Dossier\DossierKind;
 use App\Enum\ThirdParty\PaymentMethod;
 use App\Enum\ThirdParty\ThirdPartyKind;
+use App\Repository\Accounting\EntryRepository;
 use App\Repository\Dossier\DossierRepository;
+use App\Service\Accounting\Ledger\EntryScope;
+use App\Service\Accounting\Ledger\LedgerReader;
 use App\Service\Dossier\DossierContext;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -95,5 +99,27 @@ final class DemoInstallCommandTest extends KernelTestCase
         self::assertSame('164100', $byCode['E0001']->getAccount()?->getNumber());
         self::assertTrue($byCode['C0019']->isIndividual());
         self::assertSame(['DE', 'DE999999999'], [$byCode['F0006']->getCountry(), $byCode['F0006']->getVatNumber()]);
+
+        // Its opening balance: one validated entry of AN, balanced at 459 260,31 (ouverture-2026.yaml).
+        $context = self::getContainer()->get(DossierContext::class);
+        $entries = $context->within($vasseur, static fn (): array => self::getContainer()->get(EntryRepository::class)->findAll());
+        self::assertCount(1, $entries);
+        $opening = $entries[0];
+        self::assertSame(['AN-2026-00001', 'AN-2026-001', '2026-01-01', EntryOrigin::Opening, 67], [$opening->getNumberLabel(), $opening->getDocument(), $opening->getEntryDate()->format('Y-m-d'), $opening->getOrigin(), \count($opening->getLines())]);
+        self::assertSame([45_926_031, 45_926_031], [$opening->totalDebit()->cents, $opening->totalCredit()->cents]);
+
+        // Its balances, read at the 01/01/2026 against the prepared data's controls.
+        $reader = self::getContainer()->get(LedgerReader::class);
+        $day = new \DateTimeImmutable('2026-01-01');
+        $balance = static fn (string $number): int => $reader->accountBalance($account($number) ?? throw new \LogicException($number), $day, $day, EntryScope::Validated)->balance()->cents;
+        $owed = static fn (string $code): int => $reader->thirdPartyBalance($byCode[$code], $day, $day, EntryScope::Validated)->balance()->cents;
+        $context->within($vasseur, static function () use ($balance, $owed): void {
+            self::assertSame(821_645, $balance('512100'), 'Crédit Coopératif, relevé n° 12.');
+            self::assertSame(10_531_800, $balance('411000'), 'Clients : 105 318,00, les 13 factures ouvertes.');
+            self::assertSame(-2_719_644, $balance('401000'), 'Fournisseurs : 27 196,44, les 10 factures ouvertes.');
+            self::assertSame(684_000, $owed('C0031'), 'Bâti-Confort : 6 840,00 en 416000.');
+            self::assertSame(-286_200, $owed('C0019'), 'Girard : l’acompte de 2 862,00 reçu en 419100.');
+            self::assertSame(-1_500_000, $owed('A0001'), 'Compte courant de Bernard Vasseur, 455100.');
+        });
     }
 }

@@ -1,0 +1,17 @@
+{#
+ # A third party's outstanding amount at the dossier's date: the balance of the lines that name it
+ # since the exercise opened, brouillard included (LedgerReader). A customer's is a debit, what it
+ # owes; a supplier's a credit, what the company owes it. Then why it may not be deleted.
+ #}
+<dl class="px-facts">
+    <dt>Encours</dt>
+    <dd>
+        {% if outstanding is null or outstanding.isZero %}
+            <span class="px-u-muted">aucune écriture ne le nomme au {{ dossier.dossierDate|date_fr }}</span>
+        {% else %}
+            <span class="px-u-num">{{ outstanding.balance|balance }}</span>
+            <span class="px-u-muted">au {{ dossier.dossierDate|date_fr }}, depuis l’ouverture de l’exercice, brouillard compris</span>
+        {% endif %}
+    </dd>
+</dl>
+{% if deletion_refusal %}<p class="px-u-muted">{{ deletion_refusal }}</p>{% endif %}

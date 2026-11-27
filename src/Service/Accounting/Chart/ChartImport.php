@@ -10,6 +10,7 @@ use App\Entity\Identity\User;
 use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Audit\AuditAction;
 use App\Repository\Accounting\AccountRepository;
+use App\Repository\Accounting\EntryLineRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Audit\AuditTrail;
 use App\Service\Shared\Csv\CsvRefused;
@@ -43,6 +44,7 @@ final readonly class ChartImport
         private AccountSheet $sheet,
         private AuditTrail $auditTrail,
         private ThirdPartyRepository $thirdParties,
+        private EntryLineRepository $entryLines,
     ) {
     }
 
@@ -61,6 +63,7 @@ final readonly class ChartImport
             $existing[$account->getNumber()] = $account;
         }
         $carried = $this->thirdParties->countByAccount($dossier);
+        $withLines = $this->entryLines->countByAccount($dossier);
         $seen = [];
         $lines = [];
         foreach ($rows as $row) {
@@ -86,6 +89,10 @@ final readonly class ChartImport
             $carries = $carried[(int) $account->getId()] ?? 0;
             if ($updateExisting && null !== $collective && $collective !== $account->isCollective() && $carries > 0) {
                 $lines[] = new ChartImportLine($row['line'], $number, $row['label'], $row['lettrable'], $collective, ChartImportLine::REFUSED, AccountSheet::collectiveRefusal($account->isCollective(), $carries));
+                continue;
+            }
+            if ($updateExisting && null !== $collective && $collective !== $account->isCollective() && ($withLines[(int) $account->getId()] ?? 0) > 0) {
+                $lines[] = new ChartImportLine($row['line'], $number, $row['label'], $row['lettrable'], $collective, ChartImportLine::REFUSED, AccountSheet::entriesCollectiveRefusal($account->isCollective()));
                 continue;
             }
             $changes = $updateExisting && (

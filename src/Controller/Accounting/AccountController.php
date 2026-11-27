@@ -16,6 +16,8 @@ use App\Service\Accounting\Chart\AccountDraft;
 use App\Service\Accounting\Chart\AccountNumber;
 use App\Service\Accounting\Chart\AccountSheet;
 use App\Service\Accounting\Chart\ReferenceCharts;
+use App\Service\Accounting\Ledger\EntryScope;
+use App\Service\Accounting\Ledger\LedgerReader;
 use App\Service\Shared\PostValue;
 use App\Service\Shared\QueryValue;
 use Doctrine\ORM\EntityManagerInterface;
@@ -65,7 +67,7 @@ final class AccountController extends AbstractController
     }
 
     #[Route('/{number}', name: 'app_accounting_account', requirements: ['number' => '\d{6,8}'], methods: ['GET', 'POST'])]
-    public function edit(Dossier $dossier, string $number, Request $request, AccountRepository $accounts, AccountSheet $sheet, ReferenceCharts $charts, JournalRepository $journals, ThirdPartyRepository $thirdParties, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
+    public function edit(Dossier $dossier, string $number, Request $request, AccountRepository $accounts, AccountSheet $sheet, ReferenceCharts $charts, JournalRepository $journals, ThirdPartyRepository $thirdParties, LedgerReader $ledger, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $account = $accounts->findOneByNumber($dossier, $number) ?? throw new NotFoundHttpException('No such account.');
         $draft = AccountDraft::of($account);
@@ -87,7 +89,11 @@ final class AccountController extends AbstractController
             $draft->warning = $sheet->outsideChart($dossier, $account->getNumber());
         }
 
-        return $this->render('accounting/account.html.twig', $this->view($dossier, $charts, $draft, $account, $sheet->deletionRefusal($account), $journals->findByCounterpart($account), \count($thirdParties->findByAccount($account))), new Response(status: $status));
+        $today = $dossier->getDossierDate();
+        $view = $this->view($dossier, $charts, $draft, $account, $sheet->deletionRefusal($account), $journals->findByCounterpart($account), \count($thirdParties->findByAccount($account)));
+        $view['balance'] = $ledger->accountBalance($account, $ledger->exerciseStart($dossier, $today), $today, EntryScope::WithDrafts);
+
+        return $this->render('accounting/account.html.twig', $view, new Response(status: $status));
     }
 
     #[Route('/{number}/delete', name: 'app_accounting_account_delete', requirements: ['number' => '\d{6,8}'], methods: ['POST'])]
