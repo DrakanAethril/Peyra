@@ -39,7 +39,7 @@ final class LivePublisherTest extends KernelTestCase
 
             public function log($level, \Stringable|string $message, array $context = []): void
             {
-                $this->lines[] = $level.' '.$message;
+                $this->lines[] = (\is_string($level) ? $level : '').' '.$message;
             }
         };
         $hub = new MockHub('http://php/.well-known/mercure', new StaticTokenProvider('t'), static fn (Update $update): string => throw new \RuntimeException('hub down'));
@@ -50,9 +50,6 @@ final class LivePublisherTest extends KernelTestCase
 
     public function testTheHubOfTheStackTakesAnUpdate(): void
     {
-        $publisher = self::getContainer()->get(LivePublisher::class);
-        self::assertInstanceOf(LivePublisher::class, $publisher);
-
-        self::assertTrue($publisher->publish('peyra/test/live-publisher', ['ok' => true]), 'The hub of the container accepts the publisher key.');
+        self::assertTrue(self::getContainer()->get(LivePublisher::class)->publish('peyra/test/live-publisher', ['ok' => true]), 'The hub of the container accepts the publisher key.');
     }
 }

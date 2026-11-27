@@ -88,7 +88,6 @@ final class DossierFilesTest extends KernelTestCase
     {
         self::bootKernel();
         $files = self::getContainer()->get(DossierFiles::class);
-        self::assertInstanceOf(DossierFiles::class, $files);
 
         $path = tempnam(sys_get_temp_dir(), 'peyra');
         self::assertIsString($path);

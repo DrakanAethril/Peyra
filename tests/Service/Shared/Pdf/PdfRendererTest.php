@@ -20,10 +20,7 @@ final class PdfRendererTest extends KernelTestCase
 {
     private function renderer(): PdfRenderer
     {
-        $renderer = self::getContainer()->get(PdfRenderer::class);
-        self::assertInstanceOf(PdfRenderer::class, $renderer);
-
-        return $renderer;
+        return self::getContainer()->get(PdfRenderer::class);
     }
 
     public function testAnHtmlDocumentBecomesAPdfOfItsPages(): void

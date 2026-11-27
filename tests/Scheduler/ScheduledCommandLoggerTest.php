@@ -23,7 +23,7 @@ final class ScheduledCommandLoggerTest extends TestCase
 
             public function log($level, \Stringable|string $message, array $context = []): void
             {
-                $this->lines[] = [(string) $level, (string) $message, $context];
+                $this->lines[] = [\is_string($level) ? $level : '', (string) $message, $context];
             }
         };
         $listener = new ScheduledCommandLogger($logger);
