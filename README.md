@@ -58,9 +58,12 @@ liste complète est dans `CLAUDE.md`. Seuls les étudiants et les enseignants du
 aucun mot de passe n'est conservé par Peyra. `app:dev:school` crée les années 2025-2026 et
 2026-2027 (courante), les classes « BTS CG 1 » et « BTS CG 2 » et leur correspondance avec les
 groupes `cg-1` et `cg-2` : un étudiant est placé dans sa classe à sa première connexion.
-`app:demo:install` installe Menuiserie Vasseur SARL comme dossier modèle de la bibliothèque commune ;
-`app:dev:dossiers` en donne une copie à chaque étudiant placé (en attendant la distribution), qu'il
-ouvre depuis « Mes dossiers » et que les enseignants de sa classe ouvrent depuis sa fiche.
+`app:demo:install` installe Menuiserie Vasseur SARL comme dossier modèle de la bibliothèque commune,
+avec son plan de comptes (le PCG 2026 de l'ANC, complété de ses comptes propres) et ses six
+journaux ; `app:dev:dossiers` en donne une copie à chaque étudiant placé (en attendant la
+distribution), qu'il ouvre depuis « Mes dossiers » et que les enseignants de sa classe ouvrent
+depuis sa fiche. Les plans comptables de référence (PCG 2026, PCG 2025, PCG antérieur), lus dans
+les textes de l'ANC, sont dans `fixtures/pcg/`.
 
 La pile de développement : `php` (FrankenPHP et Caddy), `database` (MariaDB, comme en
 production), `openldap` (un annuaire fictif, versionné dans `frankenphp/ldap/`), `gotenberg`
