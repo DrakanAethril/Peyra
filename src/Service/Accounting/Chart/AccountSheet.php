@@ -67,7 +67,7 @@ final readonly class AccountSheet
             $draft->errors['label'] = 'Un intitulé tient en 200 caractères.';
         }
 
-        if ($draft->collective && !isset($draft->errors['number']) && !AccountNumber::mayBeCollective($draft->number)) {
+        if ($draft->collective && null === $fault && !AccountNumber::mayBeCollective($draft->number)) {
             $draft->errors['collective'] = 'Seul un compte de tiers (classe 4) est collectif.';
         }
 

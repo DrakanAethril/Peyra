@@ -8,6 +8,8 @@ use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\SchoolYear;
 use App\Entity\Identity\User;
 use App\Enum\Dossier\DossierKind;
+use App\Service\Accounting\Chart\ChartInstaller;
+use App\Service\Accounting\Chart\ReferenceCharts;
 use App\Service\Dossier\Exercises;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -28,5 +30,14 @@ trait SavesDossiers
         $entityManager->flush();
 
         return $dossier;
+    }
+
+    /** The PCG 2026 copied into the dossier's plan, as a dossier made for 2026 receives it. */
+    private function installPlan(Dossier $dossier): void
+    {
+        $chart = static::getContainer()->get(ReferenceCharts::class)->get('pcg-2026');
+        \assert(null !== $chart);
+        static::getContainer()->get(ChartInstaller::class)->install($dossier, $chart, 'test');
+        static::getContainer()->get(EntityManagerInterface::class)->flush();
     }
 }

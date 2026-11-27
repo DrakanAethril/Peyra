@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Entity\Accounting\Journal;
 use App\Entity\Identity\User;
+use App\Enum\Accounting\JournalType;
 use App\Enum\Dossier\DossierKind;
+use App\Repository\Accounting\AccountRepository;
 use App\Repository\Identity\SchoolYearRepository;
+use App\Service\Dossier\DossierContext;
 use App\Service\Identity\SchoolClasses;
 use App\Tests\Support\BuildsSchool;
 use App\Tests\Support\RegulatoryFixtures;
@@ -134,9 +138,9 @@ final class RoleAccessSmokeTest extends WebTestCase
     }
 
     /**
-     * A student's dossier (lot 1, step 1.1): ines.morel holds it, prof.durand teaches her class this
-     * year, prof.martin - an administrator - does not: no administrator enters a student's dossier
-     * outside their classes.
+     * A student's dossier (lot 1, steps 1.1 and 1.2a): ines.morel holds it, prof.durand teaches her
+     * class this year, prof.martin - an administrator - does not: no administrator enters a
+     * student's dossier outside their classes. Its plan of accounts and its journals included.
      */
     public function testTheScreensOfADossier(): void
     {
@@ -156,10 +160,23 @@ final class RoleAccessSmokeTest extends WebTestCase
         $this->submitLogin($client, self::ACCOUNTS['student']);
         $ines = $this->account($client, self::ACCOUNTS['student']);
         \assert($ines instanceof User);
-        $dossier = (int) $this->savedDossier(DossierKind::Student, $ines, $client->getContainer()->get(SchoolYearRepository::class)->findCurrent())->getId();
+        $saved = $this->savedDossier(DossierKind::Student, $ines, $client->getContainer()->get(SchoolYearRepository::class)->findCurrent());
+        $this->installPlan($saved);
+        $client->getContainer()->get(DossierContext::class)->within($saved, static function () use ($client, $saved): void {
+            $bank = $client->getContainer()->get(AccountRepository::class)->findOneByNumber($saved, '512100');
+            $client->getContainer()->get(EntityManagerInterface::class)->persist(new Journal($saved, 'BQ1', 'Crédit Coopératif', JournalType::Bank, $bank));
+            $client->getContainer()->get(EntityManagerInterface::class)->flush();
+        });
+        $dossier = (int) $saved->getId();
 
         $holders = ['student' => 200, 'teacher' => 200, 'admin' => 404, 'refused' => 302];
-        foreach (['/d/'.$dossier, '/d/'.$dossier.'/company'] as $url) {
+        $screens = [
+            '', '/company',
+            '/accounting/accounts', '/accounting/accounts?class=6&q=achats', '/accounting/accounts/601000',
+            '/accounting/accounts/new', '/accounting/accounts/import', '/accounting/accounts/export.csv',
+            '/accounting/accounts/search?q=51', '/accounting/journals', '/accounting/journals/new', '/accounting/journals/BQ1',
+        ];
+        foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
             $actual = [];
             foreach (self::ACCOUNTS as $role => $login) {
                 self::ensureKernelShutdown();
