@@ -1,0 +1,72 @@
+{#
+ # The fiche of a journal (design-ux.md § 3.2, « Journaux », gabarit F): code, label, type, and the
+ # counterpart account of a bank or a cash journal, picked with F4 among the dossier's banks or cash
+ # accounts. F10 saves; whoever only reads sees the facts alone. Entries are numbered without a gap
+ # per journal and per exercise.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set settings_current = 'journals' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set dossier_title = journal ? 'Journal ' ~ journal.code : 'Nouveau journal' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}, {combo: 'F4', verb: 'Liste des comptes'}] : [] %}
+{% set type_options = types|map(t => {value: t.value, label: t.label}) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ journal ? journal.code ~ ' · ' ~ journal.label : 'Nouveau journal' }}" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Journaux', href: path('app_accounting_journals', {dossier: dossier.id})},
+        {label: journal ? journal.code : 'Nouveau journal', href: journal ? path('app_accounting_journal', {dossier: dossier.id, code: journal.code}) : path('app_accounting_journal_new', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}
+                {% if journal %}<twig:Px:ConfirmButton label="Supprimer le journal" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="journal-delete"/>{% endif %}
+                <twig:Px:Button type="submit" variant="primary" form="journal-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_settings_tabs.html.twig') }}
+
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">Le journal n’est pas enregistré : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+
+    {% if can_edit %}
+        <form method="post" action="{{ journal ? path('app_accounting_journal', {dossier: dossier.id, code: journal.code}) : path('app_accounting_journal_new', {dossier: dossier.id}) }}" id="journal-form" novalidate>
+            <input type="hidden" name="_token" value="{{ csrf_token(journal ? 'dossier-journal-' ~ journal.id : 'dossier-journal-new-' ~ dossier.id) }}">
+            <twig:Px:Card title="Journal">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="code" label="Code" :required="true" hint="1 à 6 lettres ou chiffres : ACH, VTE, BQ1." :error="draft.error('code')">
+                        <twig:Px:Input id="code" value="{{ draft.code }}" :required="true" hint="1" :error="draft.error('code')" class="px-u-code" maxlength="6" autocomplete="off" spellcheck="false" autofocus/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="label" label="Intitulé" :required="true" :wide="true" :error="draft.error('label')">
+                        <twig:Px:Input id="label" value="{{ draft.label }}" :required="true" :error="draft.error('label')" maxlength="80" autocomplete="off"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="type" label="Type" :required="true" :error="draft.error('type')">
+                        <twig:Px:Select id="type" placeholder="Choisir le type…" :options="type_options" value="{{ draft.type }}" :required="true" :error="draft.error('type')"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="counterpart" label="Compte de contrepartie" hint="Banque (512…) ou caisse (53…) ; F4 ouvre la liste." :error="draft.error('counterpart')">
+                        <twig:Px:AccountPicker id="counterpart" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" nature="bank,cash" value="{{ draft.counterpart }}" accountLabel="{{ counterpart_label ?? '' }}" hint="1" :error="draft.error('counterpart')" listLabel="Comptes de banque et de caisse"/>
+                    </twig:Px:Field>
+                </div>
+            </twig:Px:Card>
+        </form>
+        {% if journal %}
+            <form method="post" action="{{ path('app_accounting_journal_delete', {dossier: dossier.id, code: journal.code}) }}" id="journal-delete" hidden>
+                <input type="hidden" name="_token" value="{{ csrf_token('dossier-journal-delete-' ~ journal.id) }}">
+            </form>
+        {% endif %}
+    {% else %}
+        <twig:Px:Card title="Journal">
+            <dl class="px-facts">
+                <dt>Code</dt><dd class="px-u-code">{{ journal.code }}</dd>
+                <dt>Intitulé</dt><dd>{{ journal.label }}</dd>
+                <dt>Type</dt><dd>{{ journal.type.label }}</dd>
+                <dt>Compte de contrepartie</dt><dd>{% if journal.counterpartAccount %}<span class="px-u-code">{{ journal.counterpartAccount.number }}</span> {{ journal.counterpartAccount.label }}{% else %}—{% endif %}</dd>
+            </dl>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}

@@ -100,7 +100,7 @@ empty, and `PeyraScheduleTest` pins that list, so adding a task is a decision th
 | `app:regulatory:sync [--dry-run]` | Installs the millésime files `config/regulatory/<année>.yaml`; only ever adds rows, never over an administrator's value. **Every deploy runs it** |
 | `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
-| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
+| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
 | `app:dev:dossiers` | **Development and test only**, until the distribution of step 1.8: gives each student enrolled this year their own Menuiserie Vasseur, built from the fixtures (the template installed first if missing). Sign the students in first: their first sign-in places them |
 | `app:test:parallel-databases` | **Test only.** Copies the migrated `peyra_test` into `peyra_test1`… for ParaTest (tests/README.md) |
 
@@ -217,7 +217,8 @@ Gotchas met while building it:
   is on its enum (`App\Enum\Shared\HasBadge` + `BadgeTone`, `<twig:Px:Badge :of="…"/>`).
   `PxComponentsTest` pins their markup. Write `<tag{{ attributes }}>` with no space before:
   the attribute bag brings its own leading space.
-  Inside a component's block, a prop of the component hides the page's variable of the same name
+  A `<twig:block>` cannot sit inside a `{% if %}` (the lint reads an unexpected `endblock`): put the
+  `if` inside the block. Inside a component's block, a prop of the component hides the page's variable of the same name
   (`rows` in a `Px:Table`, `label` or `error` in a `Px:Field`), and so does a variable the
   component's template sets (`classes` in `Px:Table`, a string there): name the page's variables
   apart (`class_rows`, `year_classes`). A selection of rows is `selection_controller.js` (boxes in
@@ -417,6 +418,56 @@ Conception §§ 3 bis and 4, held by code in `src/Entity/Dossier/`, `src/Service
   templates set `rail_current` and `dossier_title`; the shell's `view` exists only inside blocks.
 - `fixtures/demo/company.yaml` is the demonstration dossier's first file (`DemoCompanyFile` checks
   it whole); the dossier grows there with the steps.
+
+## Plan of accounts and journals (built at step 1.2a)
+
+Lot 1, step 1.2a, held by code in `src/Service/Accounting/Chart/`, `src/Service/Accounting/Journal/`
+and `src/Entity/Accounting/`:
+
+- **Reference charts are data, `fixtures/pcg/`**: `charts.yaml` names each chart (code, regulation,
+  `applies_from`, source, date read, `verified`) and its CSV (`numero;intitule;classe;niveau;verifie`),
+  read whole by `ReferenceCharts` (a fault names its file and line). Three: **PCG 2026** (règlement
+  ANC 2014-03 consolidated at 1 January 2026, i.e. 2025 plus regulation 2024-07: 1673, 16711, 16712,
+  1682 created, 1675 and 16718/16748/16758 gone, ten labels changed - checked on the ANC's PDF),
+  **PCG 2025** and **PCG antérieur**. `forExerciseStartingOn()` is the latest whose date has come.
+- **A dossier's plan is a copy** (`ChartInstaller`, into an empty plan only): every reference account
+  of three digits and more, **padded to six digits** (« 601 » → « 601000 »; no two collide), with
+  `Dossier::$chartCode`. The one- and two-digit levels stay headings (`ReferenceChart::groupOf()`,
+  « 60 · Achats (sauf 603) »), never accounts. A plan still empty offers « Installer le PCG 2026 ».
+- **`Account`** (DossierOwned): number of **6 to 8 digits**, class 1 to 8 (`AccountNumber::fault()`),
+  label, `lettrable`, `collective`, origin (reference, created, imported). **Its class and its nature
+  are read from the number, never typed** (`AccountNature::of()`: 512/514-517 are banks, 53 cash, 28,
+  29, 39, 49, 59 depreciation…); lettrable and collective have defaults read from the number
+  (`AccountNumber::isLettrableByDefault()`, `isCollectiveByDefault()`), only a class-4 account is
+  collective. **A third party is not an account**: « 401SCIE » is a third party's code on a
+  collective account (step 1.2b) - the account picker refuses letters in an account number.
+- **`AccountSheet` is the one door by hand** (check field by field, create, update, delete), every
+  gesture in the audit trail (subject: the dossier). A number that subdivides no account of ≥ 2
+  digits of the dossier's reference chart is **signalled, never refused** until the assistance
+  levels (step 2.8). An account a journal names as counterpart is not deleted and stays of its
+  nature. **Step 1.3 adds the guards of an account or a journal that carries entries.**
+- **`Journal`** (DossierOwned, `JournalSheet` the one door): code of 1 to 6 capitals or digits, type
+  (`JournalType`), a counterpart account for bank (a bank account) and cash (a cash account) journals
+  only, one à-nouveaux journal at most. A cash journal needs a 53… account the dossier creates (the
+  PCG has 53 at two digits only).
+- **The account picker** (`Px:AccountPicker`, `account_picker_controller.js`, design-ui § 4.6): a
+  text field holding the number; from the second character, or on **F4**, the list
+  (`AccountSearchController`, 50 at most, `nature=` narrows) grouped under the headings, typed digits
+  in `<mark>`, ↑ ↓ Entrée Échap; Entrée moves to the next field. The search is `AccountSearch`:
+  digits = start of the number, words = label without accents nor case - the plan's list uses it too.
+- **Addresses**: `/d/{dossier}/accounting/accounts[/{number}]`, `…/journals[/{code}]`, `…/accounts/
+  search`, `…/accounts/export.csv`, `…/accounts/import`. Screens under Comptabilité › Paramètres
+  comptables (module tab), its views as `Px:Tabs` (`accounting/_settings_tabs.html.twig`).
+- **CSV both ways** (`App\Service\Shared\Csv\CsvText`): written UTF-8 with a BOM, `;`, CRLF, `oui`/
+  `non`; read with or without BOM, Windows-1252 recognised, separator guessed (`;`, tab, `,`), blank
+  lines skipped, a header optional. `ChartImport` adds what is missing, updates existing accounts
+  only when asked, and **writes nothing when one line is refused** (the report names each line).
+  The import form posts outside Turbo (`data-turbo="false"`): the report is the answer to the post.
+- The demonstration's own accounts and journals: `fixtures/demo/accounts.yaml`, `journals.yaml`
+  (`DemoChartFile`); a demonstration account over a reference one keeps its origin under its label.
+- **An account number used as an array key becomes an integer** (« 512100 » is a numeric string):
+  `$map['512100']` then reads, but PHPStan and `array_keys()` see ints and a strict comparison with
+  the number fails. Look an account up by its number through the repository or a loop.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

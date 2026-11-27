@@ -1,0 +1,77 @@
+{#
+ # Plan de comptes › Importer (design-ux.md § 3.2, « Imports »): one CSV file, read whole. A file
+ # with a refused line writes nothing and lists every line with its reason; an accepted file is
+ # written and its report shown. Posted outside Turbo: the report answers the post.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set settings_current = 'accounts' %}
+{% set dossier_title = 'Importer un plan de comptes' %}
+{% set status_keys = [{combo: 'Ctrl+Enter', verb: 'Importer'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Importer un plan de comptes" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Plan de comptes', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Importer', href: path('app_accounting_accounts_import', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ path('app_accounting_accounts', {dossier: dossier.id}) }}">Revenir au plan</twig:Px:Button>
+            <twig:Px:Button type="submit" variant="primary" form="import-form" icon="upload" shortcut="Ctrl+Enter">Importer</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_settings_tabs.html.twig') }}
+
+    {% if report %}
+        {% if report.fileRefusal %}
+            <twig:Px:Alert tone="danger" title="Rien n’est importé">{{ report.fileRefusal }}</twig:Px:Alert>
+        {% elseif not report.applicable %}
+            <twig:Px:Alert tone="danger" title="Rien n’est importé">{{ report.refusedLines|length > 1 ? report.refusedLines|length ~ ' lignes sont refusées' : 'Une ligne est refusée' }} : corrigez le fichier, puis importez-le de nouveau. Un fichier n’est importé qu’en entier.</twig:Px:Alert>
+        {% else %}
+            <twig:Px:Alert tone="success" title="Plan importé de {{ file_name }}">{{ report.count('create') }} {{ report.count('create') > 1 ? 'comptes ajoutés' : 'compte ajouté' }}, {{ report.count('update') }} {{ report.count('update') > 1 ? 'modifiés' : 'modifié' }}, {{ report.count('same') }} déjà dans le plan sans changement.</twig:Px:Alert>
+        {% endif %}
+    {% endif %}
+
+    <form method="post" action="{{ path('app_accounting_accounts_import', {dossier: dossier.id}) }}" enctype="multipart/form-data" id="import-form" data-turbo="false" novalidate>
+        <input type="hidden" name="_token" value="{{ csrf_token('accounting-import-' ~ dossier.id) }}">
+        <twig:Px:Card title="Fichier">
+            <div class="px-stack">
+                <twig:Px:Field id="file" label="Fichier CSV" :required="true" hint="Une ligne par compte : numéro ; intitulé, puis, si vous voulez, lettrable et collectif (oui ou non). Une première ligne d’en-tête est reconnue ; le séparateur peut être ; , ou une tabulation. C’est le format de « Exporter ».">
+                    <input type="file" id="file" name="file" class="px-input" accept="{{ accept }}" aria-describedby="file_hint" required>
+                </twig:Px:Field>
+                <label class="px-check"><input type="checkbox" name="update" value="1"{% if update_existing %} checked{% endif %}> <span>Mettre à jour l’intitulé et les cases des comptes déjà dans le plan (sinon, ils restent tels quels)</span></label>
+            </div>
+        </twig:Px:Card>
+    </form>
+
+    {% if report and report.lines is not empty %}
+        {% set shown = report.applicable ? report.notedLines : report.refusedLines %}
+        {% if shown is not empty %}
+            <twig:Px:Card :flush="true" title="{{ report.applicable ? 'Comptes ajoutés hors du plan de référence' : 'Lignes refusées' }}" meta="{{ shown|length }}">
+                <twig:Px:Table caption="{{ report.applicable ? 'Comptes ajoutés avec une remarque' : 'Lignes refusées du fichier' }}">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="px-u-right">Ligne</th>
+                            <th scope="col">Numéro</th>
+                            <th scope="col">Intitulé</th>
+                            <th scope="col">{{ report.applicable ? 'Remarque' : 'Motif' }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for line in shown %}
+                            <tr class="{{ report.applicable ? 'is-todo' : 'is-error' }}">
+                                <td class="px-u-num">{{ line.line }}</td>
+                                <td class="px-u-code">{{ line.number }}</td>
+                                <td class="px-u-truncate" title="{{ line.label }}">{{ line.label }}</td>
+                                <td>{{ line.message }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            </twig:Px:Card>
+        {% endif %}
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,56 @@
+{#
+ # Comptabilité › Paramètres comptables › Journaux (design-ux.md § 3.2, gabarit L): the dossier's
+ # journals by code, their type and the counterpart of the bank and cash ones. A row opens the
+ # journal's fiche; N creates one.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set settings_current = 'journals' %}
+{% set dossier_title = 'Journaux' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouveau journal'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Journaux" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Paramètres comptables', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Journaux', href: path('app_accounting_journals', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button href="{{ path('app_accounting_journal_new', {dossier: dossier.id}) }}" variant="primary" icon="plus" shortcut="N">Nouveau journal</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_settings_tabs.html.twig') }}
+
+    <twig:Px:Card :flush="true">
+        {% if journal_rows is empty %}
+            <twig:Px:Empty icon="book-text" title="Aucun journal" text="Un journal regroupe les écritures d’une même nature : achats, ventes, une banque, les opérations diverses. Le dossier en compte d’ordinaire cinq ou six."/>
+        {% else %}
+            <twig:Px:Table caption="Journaux de {{ dossier.name }}" :rows="true">
+                <thead>
+                    <tr>
+                        <th scope="col">Code</th>
+                        <th scope="col">Intitulé</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Compte de contrepartie</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for journal in journal_rows %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-code"><a class="px-link" href="{{ path('app_accounting_journal', {dossier: dossier.id, code: journal.code}) }}">{{ journal.code }}</a></td>
+                            <td>{{ journal.label }}</td>
+                            <td>{{ journal.type.label }}</td>
+                            <td>{% if journal.counterpartAccount %}<span class="px-u-code">{{ journal.counterpartAccount.number }}</span> {{ journal.counterpartAccount.label }}{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>Journaux · <b>{{ journal_rows|length }}</b></span>{% endblock %}

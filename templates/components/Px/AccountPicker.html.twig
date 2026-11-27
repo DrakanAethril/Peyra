@@ -1,0 +1,21 @@
+{#
+ # Px:AccountPicker - an account field with its search (design-ui.md § 4.6, « Sélecteur de compte »):
+ # the field holds the account's number as typed; from the second character, or on F4, the list of
+ # the dossier's accounts opens under it (number, label, grouped under their heading), ↑ ↓ choose,
+ # Entrée takes the line, Échap closes. `url` answers ?q= (AccountSearchController); `nature`
+ # narrows it (« bank »). The chosen account's label is written under the field.
+ #}
+{% props id, url, name = null, value = null, accountLabel = null, nature = null, hint = null, error = null, required = false, listLabel = 'Comptes' %}
+{% set described = [hint ? id ~ '_hint' : null, error ? id ~ '_error' : null, id ~ '_account']|filter(v => v is not null)|join(' ') %}
+<div{{ attributes.defaults({class: 'px-accountpicker'}) }} data-controller="account-picker" data-account-picker-url-value="{{ url }}"{% if nature %} data-account-picker-nature-value="{{ nature }}"{% endif %}>
+    <div class="px-picker px-picker--account">
+        <input type="text" id="{{ id }}" name="{{ name ?? id }}" value="{{ value }}" class="px-input px-u-code" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="{{ id }}_list"
+               aria-describedby="{{ described }}"{% if error %} aria-invalid="true"{% endif %}{% if required %} required{% endif %} autocomplete="off" spellcheck="false" maxlength="8"
+               data-account-picker-target="input" data-action="focus->account-picker#select input->account-picker#search keydown->account-picker#keydown">
+        <div class="px-popover px-picker__panel" data-account-picker-target="panel" hidden>
+            <ul class="px-picker__list" id="{{ id }}_list" role="listbox" aria-label="{{ listLabel }}" data-account-picker-target="list"></ul>
+            <p class="px-picker__foot"><twig:Px:Kbd combo="ArrowUp"/><twig:Px:Kbd combo="ArrowDown"/> choisir <twig:Px:Kbd combo="Enter"/> valider <twig:Px:Kbd combo="Escape"/> fermer</p>
+        </div>
+    </div>
+    <p class="px-picker__chosen" id="{{ id }}_account" data-account-picker-target="chosen" aria-live="polite">{{ accountLabel }}</p>
+</div>

@@ -4,13 +4,21 @@ declare(strict_types=1);
 
 namespace App\Service\Dossier\Demo;
 
+use App\Entity\Accounting\Account;
+use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\SchoolYear;
 use App\Entity\Identity\User;
+use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Audit\AuditAction;
 use App\Enum\Dossier\DossierKind;
+use App\Repository\Accounting\AccountRepository;
 use App\Repository\Dossier\DossierRepository;
+use App\Service\Accounting\Chart\AccountNumber;
+use App\Service\Accounting\Chart\ChartInstaller;
+use App\Service\Accounting\Chart\ReferenceCharts;
 use App\Service\Audit\AuditTrail;
+use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Exercises;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -31,6 +39,10 @@ final readonly class DemoInstaller
         private DossierRepository $dossiers,
         private Exercises $exercises,
         private AuditTrail $auditTrail,
+        private ReferenceCharts $charts,
+        private ChartInstaller $chartInstaller,
+        private AccountRepository $accounts,
+        private DossierContext $context,
         #[Autowire('%kernel.project_dir%/fixtures/demo')]
         private string $directory,
     ) {
@@ -60,14 +72,23 @@ final readonly class DemoInstaller
     private function build(DossierKind $kind, ?User $owner, ?SchoolYear $year, string $actor, \DateTimeImmutable $at, ?Dossier $template): Dossier
     {
         $file = DemoCompanyFile::read($this->directory.'/company.yaml');
+        $chartFile = DemoChartFile::read($this->directory);
         $dossier = new Dossier($kind, $file->company, $file->dossierDate, $owner, $year, $at, null);
         $dossier->comesFrom($template, null);
         $this->entityManager->persist($dossier);
         // An id first: the exercises enter the dossier's context.
         $this->entityManager->flush();
+        $current = null;
         foreach ($file->exercises as $exercise) {
             $this->exercises->open($dossier, $exercise['code'], $exercise['start'], $exercise['end'], $exercise['closed']);
+            if ($exercise['start'] <= $file->dossierDate && $file->dossierDate <= $exercise['end']) {
+                $current = $exercise['start'];
+            }
         }
+        // The plan of the exercise the dossier starts in (PCG 2026 for an exercise opened in 2026).
+        $this->chartInstaller->install($dossier, $this->charts->forExerciseStartingOn($current ?? $file->dossierDate), $actor);
+        $this->entityManager->flush();
+        $this->context->within($dossier, fn () => $this->installChart($dossier, $chartFile));
         $this->auditTrail->record(
             AuditAction::DossierCreated,
             $actor,
@@ -79,5 +100,29 @@ final readonly class DemoInstaller
         $this->entityManager->flush();
 
         return $dossier;
+    }
+
+    /** The demonstration's own accounts over the reference copy, then its journals. */
+    private function installChart(Dossier $dossier, DemoChartFile $file): void
+    {
+        $byNumber = [];
+        foreach ($file->accounts as $entry) {
+            $account = $this->accounts->findOneByNumber($dossier, $entry['number']);
+            if (null === $account) {
+                $account = new Account($dossier, $entry['number'], $entry['label'], AccountNumber::isLettrableByDefault($entry['number']), AccountNumber::isCollectiveByDefault($entry['number']), AccountOrigin::Created);
+                $this->entityManager->persist($account);
+            } else {
+                $account->describe($entry['number'], $entry['label'], $account->isLettrable(), $account->isCollective());
+            }
+            $byNumber[$entry['number']] = $account;
+        }
+        foreach ($file->journals as $entry) {
+            $counterpart = null;
+            if (null !== $entry['counterpart']) {
+                $counterpart = $byNumber[$entry['counterpart']] ?? $this->accounts->findOneByNumber($dossier, $entry['counterpart'])
+                    ?? throw new \InvalidArgumentException(\sprintf('journals.yaml : %s : le compte %s n’est pas dans le plan.', $entry['code'], $entry['counterpart']));
+            }
+            $this->entityManager->persist(new Journal($dossier, $entry['code'], $entry['label'], $entry['type'], $counterpart));
+        }
     }
 }

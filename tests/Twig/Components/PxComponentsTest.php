@@ -23,6 +23,17 @@ final class PxComponentsTest extends KernelTestCase
 {
     use InteractsWithTwigComponents;
 
+    public function testAccountPickerIsAComboboxThatSaysWhichAccountIsChosen(): void
+    {
+        $html = $this->renderTwigComponent('Px:AccountPicker', ['id' => 'counterpart', 'url' => '/d/1/accounting/accounts/search', 'nature' => 'bank,cash', 'value' => '512100', 'accountLabel' => 'Crédit Coopératif', 'error' => 'Choisissez un compte.'])->toString();
+
+        self::assertStringContainsString('data-controller="account-picker" data-account-picker-url-value="/d/1/accounting/accounts/search" data-account-picker-nature-value="bank,cash"', $html);
+        self::assertStringContainsString('<input type="text" id="counterpart" name="counterpart" value="512100" class="px-input px-u-code" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="counterpart_list"', $html);
+        self::assertStringContainsString('aria-describedby="counterpart_error counterpart_account" aria-invalid="true"', $html);
+        self::assertStringContainsString('<ul class="px-picker__list" id="counterpart_list" role="listbox" aria-label="Comptes"', $html);
+        self::assertStringContainsString('<p class="px-picker__chosen" id="counterpart_account" data-account-picker-target="chosen" aria-live="polite">Crédit Coopératif</p>', $html);
+    }
+
     public function testButtonIsAButtonThatNeverSubmitsByAccident(): void
     {
         $html = $this->renderTwigComponent('Px:Button', [], 'Enregistrer')->toString();

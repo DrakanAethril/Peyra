@@ -1,0 +1,25 @@
+# Menuiserie Vasseur SARL - the accounts its plan adds to the reference chart (PCG 2026, copied at
+# six digits by app:demo:install), and the reference accounts it names in its own words. Everything
+# else of the plan is the reference chart's. Fictitious, like the whole dossier.
+# Source: design/validated/plan/donnees/demo/ (ouverture-2026.yaml, operations-2026.md,
+# immobilisations.yaml, articles.yaml, tiers.yaml), prepared data of 2026-11-27.
+# `lettrable` and `collective` default to the number's (AccountNature, AccountNumber).
+
+accounts:
+  - { number: '164100', label: "Emprunt Banque Populaire 2023 (fourgon, plaqueuse)" }
+  - { number: '164200', label: "Emprunt Banque Populaire 2026 (centre d'usinage)" }
+  - { number: '281540', label: "Amortissements du matériel industriel" }
+  - { number: '281810', label: "Amortissements des agencements" }
+  - { number: '281820', label: "Amortissements du matériel de transport" }
+  - { number: '281830', label: "Amortissements du matériel informatique" }
+  - { number: '281840', label: "Amortissements du mobilier" }
+  - { number: '310000', label: "Matières premières et fournitures" }
+  - { number: '437100', label: "Retraite complémentaire" }
+  - { number: '437200', label: "Complémentaire santé" }
+  - { number: '437300', label: "Prévoyance" }
+  - { number: '512100', label: "Crédit Coopératif" }
+  - { number: '512200', label: "Banque Populaire" }
+  - { number: '580000', label: "Virements internes" }
+  - { number: '601300', label: "Achats de vitrages" }
+  - { number: '601400', label: "Achats de quincaillerie" }
+  - { number: '606110', label: "Carburants" }
