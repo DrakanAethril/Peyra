@@ -100,7 +100,7 @@ empty, and `PeyraScheduleTest` pins that list, so adding a task is a decision th
 | `app:regulatory:sync [--dry-run]` | Installs the millésime files `config/regulatory/<année>.yaml`; only ever adds rows, never over an administrator's value. **Every deploy runs it** |
 | `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
-| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, January's purchases and Banque Populaire with two drafts in each; date 31/01/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
+| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, January's purchases and Banque Populaire with two drafts in each, seven entry templates; date 31/01/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
 | `app:dev:dossiers` | **Development and test only**, until the distribution of step 1.8: gives each student enrolled this year their own Menuiserie Vasseur, built from the fixtures (the template installed first if missing). Sign the students in first: their first sign-in places them |
 | `app:test:parallel-databases` | **Test only.** Copies the migrated `peyra_test` into `peyra_test1`… for ParaTest (tests/README.md) |
 
@@ -615,6 +615,51 @@ Lot 1, step 1.4a (design-ux.md §§ 4.4 and 5.2, design-ui.md § 4.8), held by c
 - Pitfalls met: replacing the `tbody` that holds the focus fires `focusout` in Chrome - the
   controller sets `rendering` while it redraws; `bin/shot`'s `text:` step is split at commas
   (type « 3380.10 », not « 3380,10 »), and `+` is the key name for the plus key.
+
+## Entry templates and guided entry (built at step 1.4b)
+
+Lot 1, step 1.4b (design-ux.md § 3.2, « Modèles d'écriture », « Saisie guidée »), held by code in
+`src/Entity/Accounting/EntryTemplate*.php`, `src/Service/Accounting/Template/`,
+`TemplatesController`, `GuidedEntryController` and the F6 half of `entry_grid_controller.js`:
+
+- **`EntryTemplate`** (DossierOwned): code (1 to 12 capitals or digits, unique), label, journal (FK
+  `RESTRICT`: `JournalSheet::deletionRefusal()` names the templates), `base` (`TemplateBase`: the
+  call asks the amount HT or TTC), `vatRate` (percent as exact decimal text, « 20 », « 5.5 » -
+  `VatRate`; the template's author writes it, no rate in the code). **`EntryTemplateLine`**: the
+  Compte and Tiers cells **as the grid types them** (text, not keys: an account number or an
+  auxiliary code, looked up at each call - `TemplateSheet::faultOf()` says « À revoir » when one no
+  longer resolves), label (`{mois}` becomes the entry's month), side (`EntrySide`), amount
+  (`TemplateAmount`: HT, TVA, TTC, fixed, balance, to type), fixed amount.
+- **`TemplateRules::check()`** (pure, four lookups) is the one reading: fiche, demonstration file;
+  faults under `code`, `label`, `journal`, `base`, `rate`, `lines`, `line.<i>.<field>`. Two lines
+  at least, one in a bank or cash journal, whose counterpart is never a line (the grid adds it);
+  at most one balance line; a VAT line needs a rate above 0; the lines must balance, tried on
+  1 000,00 at the template's rate, unless a line is to type or a balance line or the counterpart
+  closes them. **`TemplateSheet`** is the one door (audit trail: `EntryTemplate*` actions).
+- **`TemplateComputation`** (pure) is the one place HT, TVA and TTC are computed: from HT, TVA = HT ×
+  rate / 100 rounded to the cent half up, TTC = HT + TVA; from TTC, TVA = TTC × rate / (100 + rate)
+  half up, HT = TTC − TVA; a balance line takes what balances the others on the side that does it.
+  **`TemplateCall::lines()`** turns a template into `GridLine`s for a date, an amount, a rate and the
+  third party a collective typed by number asks (`asksThirdParty()`).
+- **F6 in the grid** (and the head's « Modèle F6 »): the journal's templates (`grid.templates` in the
+  page), filtered, Entrée; the amount and the rate when the template asks them; POST
+  `…/entry/template` answers the lines, laid after the current entry's typed lines (a validated
+  entry's call goes to the new entry at the end); the focus goes to the first cell still to fill
+  (the third party of a collective, an amount to type), or to the next entry when it balances;
+  nothing is written before the line is left (pending work, then F10). Échap goes back to the list,
+  then closes.
+- **Saisie guidée** (`/d/{dossier}/accounting/entry/guided`, gabarit F, the view « Guidée » next to
+  « Par journal », `accounting/_entry_tabs.html.twig`): templates whose every line is computed
+  (`GuidedEntry::offers()`), date, document, third party, amount, rate; the entry previewed in the
+  Turbo frame `guided-preview` (`…/guided/preview`, refreshed by `guided_entry_controller.js` as the
+  form changes), checked by `JournalGrid::check()` like the grid; F10 drafts it through the Ledger,
+  then the page offers the next document. **Open at levels G and B, and always to a teacher**
+  (`GuidedEntry::isOpen()`); a student at A or 0 gets a 404 and no tab, until a mission's setting
+  (step 2.9). For whoever may EDIT the dossier.
+- `fixtures/demo/templates.yaml` (`DemoTemplateFile`): LOYER, CBAIL, HONOR, ACHAT20, VENTE20,
+  FRAISBQ2, REGLFOUR, installed by `DemoInstaller` through `TemplateSheet`.
+- A Twig variable `{% set %}` outside a component's `<twig:block>` is not seen inside it: set it in
+  the block (`_guided_preview.html.twig`).
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

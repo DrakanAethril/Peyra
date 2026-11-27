@@ -18,6 +18,7 @@ use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Security\Voter\DossierVoter;
 use App\Service\Accounting\Template\TemplateDraft;
 use App\Service\Accounting\Template\TemplateLineDraft;
+use App\Service\Accounting\Template\TemplateRules;
 use App\Service\Accounting\Template\TemplateSheet;
 use App\Service\Shared\PostValue;
 use App\Service\Shared\QueryValue;
@@ -39,7 +40,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 #[Route('/d/{dossier}/accounting/templates', requirements: ['dossier' => '\d+'])]
 final class TemplatesController extends AbstractController
 {
-    /** Spare empty lines a fiche offers below the template's own. */
+    /** Spare empty lines a fiche offers below the template's own (two lines at least). */
     private const int SPARE_LINES = 1;
 
     #[Route('', name: 'app_accounting_templates', methods: ['GET'])]
@@ -141,7 +142,8 @@ final class TemplatesController extends AbstractController
                 : ('' === $line->account ? null : $thirdParties->findOneByAuxiliaryCode($dossier, strtoupper($line->account))?->getName());
         }
         $lines = $draft->lines;
-        for ($i = 0; $i < self::SPARE_LINES && \count($lines) < 30; ++$i) {
+        $shown = min(TemplateRules::MAX_LINES, max(2, \count($lines) + self::SPARE_LINES));
+        while (\count($lines) < $shown) {
             $lines[] = new TemplateLineDraft(side: EntrySide::Debit->value, amount: TemplateAmount::Typed->value);
         }
 
