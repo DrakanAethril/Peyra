@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Controller\Identity;
 
 use App\Entity\Identity\User;
+use App\Repository\Dossier\DossierRepository;
 use App\Repository\Identity\EnrolmentRepository;
 use App\Repository\Identity\SchoolClassRepository;
 use App\Repository\Identity\UserRepository;
 use App\Security\Voter\SchoolClassVoter;
 use App\Security\Voter\StudentVoter;
+use App\Service\Dossier\DossierListing;
 use App\Service\Identity\ClassBoard;
 use App\Service\Identity\Enrolments;
 use App\Service\Shared\PostValue;
@@ -27,8 +29,9 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 /**
  * The student's record (design-ux.md § 3.3, « Fiche étudiant »): their enrolments year by year,
  * what the directory said when their account was created, and « Changer de classe » for the
- * current year (design-ux.md § 4.1, step 5) - the dossiers do not move. Dossiers, missions and
- * positioning join it with their lots. Every teacher of the field (StudentVoter).
+ * current year (design-ux.md § 4.1, step 5) - the dossiers do not move -, and their dossiers of every
+ * year, each opened in a new tab for whoever DossierVoter lets in. Missions and positioning join it
+ * with their lots. Every teacher of the field (StudentVoter).
  */
 #[Route('/teacher/students')]
 final class StudentRecordController extends AbstractController
@@ -49,7 +52,7 @@ final class StudentRecordController extends AbstractController
     }
 
     #[Route('/{id}', name: 'app_teacher_student', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function show(#[MapEntity] User $student, ClassBoard $board, EnrolmentRepository $enrolments): Response
+    public function show(#[MapEntity] User $student, ClassBoard $board, EnrolmentRepository $enrolments, DossierRepository $dossiers, DossierListing $listing): Response
     {
         $this->denyAccessUnlessGranted(StudentVoter::VIEW, $student);
         $year = $board->currentYear();
@@ -67,6 +70,7 @@ final class StudentRecordController extends AbstractController
             'history' => $history,
             'current' => $current,
             'classes' => null === $year ? [] : $board->rows($year),
+            'dossier_groups' => $listing->byYear($dossiers->findForStudent($student)),
         ]);
     }
 

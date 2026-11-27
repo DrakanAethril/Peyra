@@ -129,6 +129,17 @@
         box-shadow: var(--px-shadow-pop);
     }
 
+    /* The date chip's panel (design-ui.md § 4.2): text and a small form, not a menu. */
+    .px-datechip__panel {
+        inset-block-start: calc(100% + var(--px-space-6));
+        inset-inline-end: 0;
+        width: 340px;
+        max-width: calc(100vw - 2 * var(--px-space-16));
+        padding: var(--px-space-12) var(--px-space-16);
+        display: grid;
+        gap: var(--px-space-10);
+    }
+
     .px-menu {
         display: grid;
         gap: 1px;

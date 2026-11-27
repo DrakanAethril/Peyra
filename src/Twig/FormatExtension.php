@@ -84,6 +84,18 @@ final class FormatExtension
         return null === $date ? '' : FrenchFormat::chipDate($date);
     }
 
+    #[AsTwigFilter('date_long')]
+    public static function longDate(?\DateTimeInterface $date): string
+    {
+        return null === $date ? '' : FrenchFormat::longDate($date);
+    }
+
+    #[AsTwigFilter('siret')]
+    public static function siret(?string $siret): string
+    {
+        return null === $siret ? '' : FrenchFormat::siret($siret);
+    }
+
     #[AsTwigFilter('period')]
     public static function period(?\DateTimeInterface $date): string
     {

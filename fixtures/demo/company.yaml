@@ -1,0 +1,32 @@
+# Menuiserie Vasseur SARL, the demonstration dossier (plan README § 11), installed by
+# `app:demo:install` as a template of the common library. Everything here is fictitious: the SIREN
+# 999 412 736 and the SIRET 999 412 736 00018 fail the Luhn check, the VAT key 36 is computed on
+# that invalid SIREN so that the format check passes.
+# Source: design/validated/plan/donnees/demo/societe.yaml (prepared data, 2026-11-27).
+# The other files of the dossier (chart of accounts, journals, third parties, opening balance,
+# entries…) join this folder with their steps.
+
+company:
+  denomination: Menuiserie Vasseur
+  legal_form: sarl
+  capital: '80000.00'
+  siret: '99941273600018'
+  vat_number: FR36999412736
+  naf_code: 16.23Z
+  activity: >-
+    Fabrication de menuiseries bois sur mesure (fenêtres, portes, volets, escaliers, agencements)
+    dans son atelier de Montbrison ; pose chez les particuliers et sur les chantiers des
+    professionnels du bâtiment (Loire, Haute-Loire, Rhône).
+  street: ZA des Plaines
+  street2: 18 rue des Charpentiers
+  postal_code: '42600'
+  city: Montbrison
+  vat_regime: real_normal_monthly
+  profit_tax_regime: is_real_normal
+
+# 2025 exists only through its opening balance and its comparatives: closed.
+exercises:
+  - { code: '2025', start: '2025-01-01', end: '2025-12-31', closed: true }
+  - { code: '2026', start: '2026-01-01', end: '2026-12-31', closed: false }
+
+dossier_date: '2026-01-01'

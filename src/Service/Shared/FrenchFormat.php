@@ -28,6 +28,8 @@ final class FrenchFormat
         'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
     ];
 
+    private const array WEEKDAYS = [1 => 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+
     private const array SHORT_MONTHS = [
         1 => 'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
         'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.',
@@ -115,6 +117,24 @@ final class FrenchFormat
     public static function chipDate(\DateTimeInterface $date): string
     {
         return $date->format('j').' '.self::SHORT_MONTHS[(int) $date->format('n')].' '.$date->format('Y');
+    }
+
+    /** « lundi 30 novembre 2026 », a day written in full (the date chip's panel). */
+    public static function longDate(\DateTimeInterface $date): string
+    {
+        $day = (int) $date->format('j');
+
+        return self::WEEKDAYS[(int) $date->format('N')].' '.(1 === $day ? '1er' : (string) $day).' '.self::MONTHS[(int) $date->format('n')].' '.$date->format('Y');
+    }
+
+    /** « 999 412 736 00018 »: a SIRET in its groups (SIREN, then the establishment's NIC); anything else as given. */
+    public static function siret(string $siret): string
+    {
+        if (1 !== preg_match('/^\d{14}$/', $siret)) {
+            return $siret;
+        }
+
+        return substr($siret, 0, 3).' '.substr($siret, 3, 3).' '.substr($siret, 6, 3).' '.substr($siret, 9);
     }
 
     /** « novembre 2026 », a period. */

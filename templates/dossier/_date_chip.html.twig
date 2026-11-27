@@ -1,0 +1,42 @@
+{#
+ # The dossier's date (design-ui.md § 4.2, design-ux.md § 2.1 and A18): a chip whose panel gives
+ # the day in full, the exercise, the period and its state, the last three moves (who, from which day to which: the real date appears nowhere in the PGI but the audit trail). A teacher moves it
+ # from there (« Avancer la date »); a student reads it. The chip flashes once when the date moved
+ # since the student's last visit.
+ #}
+{% set day = dossier.dossierDate %}
+<div class="px-datechip" data-controller="popover" data-action="keydown->popover#keydown">
+    <button type="button" class="px-chip px-chip--info{{ view.dateMoved ? ' is-flash' : '' }}" aria-haspopup="dialog" aria-expanded="false" aria-controls="px-datechip-panel"
+            data-popover-target="button" data-action="popover#toggle">
+        <twig:ux:icon name="calendar" aria-hidden="true"/>Date du dossier · {{ day|date_chip }}
+    </button>
+    <div class="px-popover px-datechip__panel" id="px-datechip-panel" role="dialog" aria-label="Date du dossier" data-popover-target="panel" hidden>
+        <p class="px-datechip__day">{{ day|date_long|capitalize }}</p>
+        <dl class="px-facts">
+            <dt>Exercice</dt>
+            <dd>{% if view.exercise %}{{ view.exercise.code }} · du {{ view.exercise.startsOn|date_fr }} au {{ view.exercise.endsOn|date_fr }}{{ view.exercise.closed ? ' · clos' : '' }}{% else %}Aucun exercice à cette date{% endif %}</dd>
+            <dt>Période</dt>
+            <dd>{% if view.period %}{% if view.period.closed %}<twig:ux:icon name="lock" aria-hidden="true" class="px-datechip__lock"/>{% endif %}{{ view.period.label }}, {{ view.period.closed ? 'close' : 'ouverte' }}{% else %}—{% endif %}</dd>
+        </dl>
+        {% if view.dateChanges is not empty %}
+            <p class="px-datechip__head">Derniers changements</p>
+            <ul class="px-datechip__changes">
+                {% for change in view.dateChanges %}
+                    <li>Du {{ change.fromDate|date_fr }} au {{ change.toDate|date_fr }} <small>· {{ change.actorName }}</small></li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        {% if view.canSetDate %}
+            <form method="post" action="{{ path('app_dossier_date', {dossier: dossier.id}) }}" class="px-datechip__form">
+                <input type="hidden" name="_token" value="{{ csrf_token('dossier-date-' ~ dossier.id) }}">
+                <input type="hidden" name="return" value="{{ app.request.pathInfo }}{{ app.request.queryString ? '?' ~ app.request.queryString : '' }}">
+                <twig:Px:Field id="dossier-date" label="Nouvelle date du dossier" :required="true" hint="Échéances, relances et millésime se lisent à cette date.">
+                    <twig:Px:DateInput id="dossier-date" name="date" :reference="day" :value="day" :required="true" hint="1"/>
+                </twig:Px:Field>
+                <twig:Px:Button type="submit" variant="primary" size="sm">Avancer la date</twig:Px:Button>
+            </form>
+        {% else %}
+            <p class="px-u-muted">La date du dossier est avancée par votre enseignant.</p>
+        {% endif %}
+    </div>
+</div>

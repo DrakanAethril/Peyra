@@ -1,7 +1,8 @@
 {#
  # Fiche étudiant (design-ux.md § 3.3, gabarit F): the enrolments year by year, the groups read
  # when the account was created, « Changer de classe » for the current year with the reminder that
- # the dossiers do not move. Dossiers, missions, positioning and accommodations join it with their lots.
+ # the dossiers do not move; the dossiers of every year, « Ouvrir le dossier » in a new tab (design-ux.md
+ # § 2.4). Missions, positioning and accommodations join it with their lots.
  #}
 {% extends 'classes/_layout.html.twig' %}
 
@@ -51,6 +52,45 @@
         {% endif %}
     </div>
 
+    <twig:Px:Card :flush="true" title="Dossiers" meta="toutes années ; ils sont à l’étudiant, pas à sa classe">
+        {% if dossier_groups is empty %}
+            <twig:Px:Empty icon="folder-open" title="Aucun dossier" text="Cet étudiant n’a encore reçu aucun dossier."/>
+        {% else %}
+            <twig:Px:Table caption="Dossiers de {{ student.displayName }}">
+                <thead>
+                    <tr>
+                        <th scope="col">Année</th>
+                        <th scope="col">Dossier</th>
+                        <th scope="col">Exercice</th>
+                        <th scope="col">Date du dossier</th>
+                        <th scope="col">Dernier passage</th>
+                        <th scope="col"><span class="px-u-sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for group in dossier_groups %}
+                        {% for row in group.rows %}
+                            <tr>
+                                <td>{{ group.year }}</td>
+                                <td>{{ row.dossier.name }} <twig:Px:Badge :of="row.dossier.kind"/></td>
+                                <td>{{ row.exercise ? row.exercise.code : '—' }}</td>
+                                <td>{{ row.dossier.dossierDate|date_fr }}</td>
+                                <td>{{ row.dossier.lastVisitedAt ? row.dossier.lastVisitedAt|date('d/m/Y') : 'Jamais ouvert' }}</td>
+                                <td class="px-u-right">
+                                    {% if is_granted('DOSSIER_VIEW', row.dossier) %}
+                                        <twig:Px:Button size="sm" href="{{ path('app_dossier_dashboard', {dossier: row.dossier.id}) }}" icon="external-link" target="_blank" rel="noopener">Ouvrir le dossier</twig:Px:Button>
+                                    {% else %}
+                                        <span class="px-u-muted">Lu par les enseignants de sa classe</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+
     <twig:Px:Card :flush="true" title="Inscriptions" meta="une par année, les années passées sont l’historique">
         {% if history is empty %}
             <twig:Px:Empty icon="graduation-cap" title="Aucune inscription" text="Cet étudiant n’a encore été placé dans aucune classe."/>
@@ -81,4 +121,4 @@
     </twig:Px:Card>
 {% endblock %}
 
-{% block facts %}<span>{{ student.displayName }}</span><span>Inscriptions · <b>{{ history|length }}</b></span>{% endblock %}
+{% block facts %}<span>{{ student.displayName }}</span><span>Inscriptions · <b>{{ history|length }}</b></span><span>Dossiers · <b>{{ dossier_groups|reduce((sum, g) => sum + g.rows|length, 0) }}</b></span>{% endblock %}

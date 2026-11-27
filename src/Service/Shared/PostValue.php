@@ -29,6 +29,17 @@ final class PostValue
     }
 
     /**
+     * An amount in cents as Px:AmountInput posts it (« 8000000 », « −13800 » as « -13800 »), zero
+     * included; anything else, an empty field included, reads as null.
+     */
+    public static function cents(Request $request, string $key): ?int
+    {
+        $value = self::raw($request, $key);
+
+        return \is_string($value) && 1 === preg_match('/^-?\d{1,15}$/', $value) ? (int) $value : null;
+    }
+
+    /**
      * A repeated field (`students[]=3&students[]=7`) as a list of ids, zero and junk dropped.
      *
      * @return list<int>

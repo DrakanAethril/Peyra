@@ -185,6 +185,65 @@
         }
     }
 
+    /* A fiche's fields on four columns (design-ux.md § 3.1, gabarit F), two under 1280 px. */
+    .px-fieldgrid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--px-space-12) var(--px-space-16);
+
+        & > .px-fieldgrid__full {
+            grid-column: 1 / -1;
+        }
+    }
+
+    @media (max-width: 1279.98px) {
+        .px-fieldgrid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    /* An exercise's months, one bar each: closed ones filled, the dossier's date's ringed. */
+    .px-periods {
+        display: inline-flex;
+        gap: var(--px-space-2);
+        margin-inline-end: var(--px-space-8);
+        vertical-align: middle;
+    }
+
+    .px-periods__month {
+        width: 10px;
+        height: 12px;
+        border-radius: var(--px-radius-xs);
+        background: var(--px-surface-inset);
+        border: 1px solid var(--px-border-strong);
+
+        &.is-closed {
+            background: var(--px-neutral);
+            border-color: var(--px-neutral);
+        }
+
+        &.is-current {
+            border-color: var(--px-action);
+            box-shadow: 0 0 0 1px var(--px-action);
+        }
+    }
+
+    /* « Mes dossiers »: one card per dossier, as many per line as fit (design-ux.md § 3.2, L en cartes). */
+    .px-dossiers {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: var(--px-space-12);
+    }
+
+    .px-dossiers__year {
+        margin: var(--px-space-8) 0 0;
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+        font-weight: var(--px-fw-semibold);
+        letter-spacing: .06em;
+        text-transform: uppercase;
+    }
+
     /* Label and value pairs in a card: « Classe suivante · BTS CG 2 · 2027-2028 ». */
     .px-facts {
         display: grid;

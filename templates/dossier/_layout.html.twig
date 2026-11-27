@@ -1,0 +1,48 @@
+{#
+ # The PGI inside a dossier (design-ux.md § 2.1): the rail of its modules, the switcher and the date
+ # chip in the top bar, and, for a teacher, the ribbon that says whose dossier this is (C4). Only the
+ # modules that exist are in the rail: Pièces, Ventes, Achats et stocks, Comptabilité and the others
+ # arrive with their steps. A screen sets `rail_current` (dashboard, si) and `dossier_title` outside
+ # any block, and fills page_head, page, module_tabs and `facts` (the status bar without a message).
+ #}
+{% extends 'layout/pgi.html.twig' %}
+
+{% set view = dossier_shell(dossier) %}
+{% set rail_home = path('app_dossier_dashboard', {dossier: dossier.id}) %}
+
+{% block title %}{{ dossier_title }} · {{ dossier.name }} · Peyra{% endblock %}
+
+{% block rail %}
+    <twig:Px:RailItem href="{{ path('app_dossier_dashboard', {dossier: dossier.id}) }}" icon="house" label="Tableau de bord" :current="(rail_current ?? '') == 'dashboard'"/>
+    <twig:Px:RailGroup label="Analyse">
+        <twig:Px:RailItem href="{{ path('app_dossier_company', {dossier: dossier.id}) }}" icon="database" label="Système d’information" :current="(rail_current ?? '') == 'si'"/>
+    </twig:Px:RailGroup>
+{% endblock %}
+
+{% block context_bar %}
+    {% if view.teacher %}
+        {% if dossier.template %}
+            <twig:Px:ContextBar tone="template" backLabel="Revenir à l’accueil" backHref="{{ path('app_teacher_home') }}">Dossier modèle · {{ dossier.name }}{% if dossier.owner is null %} · bibliothèque commune{% endif %}{% if view.canEdit %} · vos modifications valent pour les prochaines distributions{% endif %}</twig:Px:ContextBar>
+        {% elseif view.holders|length == 1 %}
+            <twig:Px:ContextBar backLabel="Revenir à la fiche de l’étudiant" backHref="{{ path('app_teacher_student', {id: view.holders[0].id}) }}">Dossier de {{ view.holderNames }} · {{ view.canEdit ? 'vos actions sont signées de votre nom' : 'en lecture' }}</twig:Px:ContextBar>
+        {% else %}
+            <twig:Px:ContextBar backLabel="Revenir à l’accueil" backHref="{{ path('app_teacher_home') }}">Dossier du groupe {{ view.holderNames }} · {{ view.canEdit ? 'vos actions sont signées de votre nom' : 'en lecture' }}</twig:Px:ContextBar>
+        {% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block topbar_start %}{{ include('dossier/_switcher.html.twig') }}{% endblock %}
+
+{% block topbar_end %}
+    {{ include('dossier/_date_chip.html.twig') }}
+    {{ include('layout/_user_menu.html.twig') }}
+{% endblock %}
+
+{% block status %}
+    {%- for message in app.flashes('status') %}<span>{{ message }}</span>{% else %}{% if view.dateMoved %}<span>Votre enseignant a fixé la date du dossier au <b>{{ dossier.dossierDate|date_fr }}</b></span>{% else %}{{ block('facts') }}{% endif %}{% endfor -%}
+{% endblock %}
+
+{% block facts %}
+    <span>Date du dossier · <b>{{ dossier.dossierDate|date_fr }}</b></span>
+    {% if view.period %}<span>Période · <b>{{ view.period.label }}</b>{{ view.period.closed ? ' (close)' : '' }}</span>{% endif %}
+{% endblock %}

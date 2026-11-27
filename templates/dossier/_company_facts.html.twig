@@ -1,0 +1,22 @@
+{# The fiche société read only (a teacher who distributed it, a colleague a template is shared with for reading). #}
+{% set company = dossier.company %}
+<div class="px-split px-split--even">
+    <twig:Px:Card title="Identité">
+        <dl class="px-facts">
+            <dt>Dénomination</dt><dd>{{ company.denomination }}</dd>
+            <dt>Forme juridique</dt><dd>{{ company.legalForm.label }}</dd>
+            {% if company.legalForm.hasCapital %}<dt>Capital social</dt><dd class="px-u-num">{{ company.capital|amount_eur }}</dd>{% endif %}
+            <dt>SIRET</dt><dd class="px-u-code">{{ company.siret|siret }}</dd>
+            <dt>N° de TVA</dt><dd class="px-u-code">{{ company.vatNumber ?? '—' }}</dd>
+            <dt>Code NAF</dt><dd class="px-u-code">{{ company.nafCode ?? '—' }}</dd>
+            <dt>Activité</dt><dd>{{ company.activity }}</dd>
+        </dl>
+    </twig:Px:Card>
+    <twig:Px:Card title="Adresse et régimes">
+        <dl class="px-facts">
+            <dt>Adresse</dt><dd>{{ company.street }}{% if company.street2 %}<br>{{ company.street2 }}{% endif %}<br>{{ company.postalCode }} {{ company.city }}</dd>
+            <dt>Régime de TVA</dt><dd>{{ company.vatRegime.label }}</dd>
+            <dt>Régime fiscal</dt><dd>{{ company.profitTaxRegime.label }}</dd>
+        </dl>
+    </twig:Px:Card>
+</div>
