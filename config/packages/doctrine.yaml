@@ -3,6 +3,9 @@ doctrine:
         url: '%env(resolve:DATABASE_URL)%'
 
         profiling_collect_backtrace: '%kernel.debug%'
+        types:
+            # A Money in a BIGINT of cents (App\Service\Shared\Money): never a float for money.
+            money: App\Doctrine\Type\MoneyType
     orm:
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore

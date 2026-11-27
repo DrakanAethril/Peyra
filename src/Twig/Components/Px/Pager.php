@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Twig\Components\Px;
 
+use App\Service\Shared\ListPage;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\UX\TwigComponent\Attribute\AsTwigComponent;
@@ -11,7 +12,9 @@ use Symfony\UX\TwigComponent\Attribute\AsTwigComponent;
 /**
  * The pager at the foot of a list card (design-ui.md § 4.7): « 1 à 50 sur 431 » on the left, the
  * pages on the right. Each page is a GET link to the current route with the current query, only
- * `page` changed, so a filtered list stays filtered.
+ * `page` changed, so a filtered list stays filtered. With `sizes`, the left part also offers the
+ * page sizes of App\Service\Shared\ListPage (25, 50, 100: design-ux.md § 6.6), each a link that
+ * sets `per` and goes back to the first page.
  */
 #[AsTwigComponent('Px:Pager')]
 final class Pager
@@ -20,6 +23,7 @@ final class Pager
     public int $perPage = 50;
     public int $total = 0;
     public string $parameter = 'page';
+    public bool $sizes = false;
 
     public function __construct(
         private readonly RequestStack $requestStack,
@@ -27,13 +31,14 @@ final class Pager
     ) {
     }
 
-    public function mount(int $total, int $perPage = 50, int $page = 1): void
+    public function mount(int $total, int $perPage = 50, int $page = 1, bool $sizes = false): void
     {
         if ($perPage < 1) {
             throw new \InvalidArgumentException('Px:Pager needs a positive page size.');
         }
         $this->total = max(0, $total);
         $this->perPage = $perPage;
+        $this->sizes = $sizes;
         $this->page = max(1, min($page, $this->pageCount()));
     }
 
@@ -91,15 +96,32 @@ final class Pager
         return $window;
     }
 
+    /** @return list<int> */
+    public function sizeChoices(): array
+    {
+        return ListPage::SIZES;
+    }
+
     public function url(int $page): string
+    {
+        return $this->with([$this->parameter => $page]);
+    }
+
+    public function sizeUrl(int $size): string
+    {
+        return $this->with(['per' => $size, $this->parameter => 1]);
+    }
+
+    /** @param array<string, int> $changes */
+    private function with(array $changes): string
     {
         $request = $this->requestStack->getCurrentRequest();
         if (null === $request) {
-            return '?'.http_build_query([$this->parameter => $page]);
+            return '?'.http_build_query($changes);
         }
         $route = $request->attributes->get('_route');
         $routeParams = $request->attributes->get('_route_params');
-        $query = array_merge($request->query->all(), [$this->parameter => $page]);
+        $query = array_merge($request->query->all(), $changes);
         if (!\is_string($route) || !\is_array($routeParams)) {
             return '?'.http_build_query($query);
         }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Shared;
 
+use App\Service\Shared\ListPage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,7 +24,11 @@ final class DesignGalleryController extends AbstractController
         return $this->render('design/gallery.html.twig', [
             'sort' => $request->query->getString('sort', 'date'),
             'direction' => 'desc' === $request->query->getString('dir') ? 'desc' : 'asc',
-            'page' => max(1, self::number($request, 'page') ?? 1),
+            'list_page' => ListPage::fromRequest($request, 'design.gallery')->within(431),
+            // The demonstration dossier's date (step 1.1 gives each dossier its own).
+            'gallery_reference' => new \DateTimeImmutable('2026-11-30'),
+            'gallery_entry_date' => new \DateTimeImmutable('2026-11-12'),
+            'gallery_clock' => new \DateTimeImmutable('2026-11-30 10:42'),
             'reason' => $request->query->getString('motif'),
         ]);
     }

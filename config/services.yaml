@@ -43,6 +43,13 @@ services:
 
     App\Service\Identity\Directory: '@App\Service\Identity\LdapDirectory'
 
+    # The HTTP client the Mercure hub publishes with (config/packages/mercure.yaml): short, so that a
+    # hub that does not answer costs a request three seconds at most (App\Service\Shared\LivePublisher).
+    mercure.http_client:
+        class: Symfony\Contracts\HttpClient\HttpClientInterface
+        factory: ['@http_client', 'withOptions']
+        arguments: [{ timeout: 3, max_duration: 3 }]
+
 when@test:
     services:
         _defaults:

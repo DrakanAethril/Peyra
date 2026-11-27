@@ -76,7 +76,7 @@ Quelques règles :
 - Compose lit ce fichier, pas Symfony : écrivez un secret **entre apostrophes** (`'…'`), sinon un
   `$`, un `#` ou une espace y sont interprétés.
 - `APP_SECRET`, `MERCURE_PUBLISHER_JWT_KEY` et `MERCURE_SUBSCRIBER_JWT_KEY` : `openssl rand -hex 32`
-  chacun, deux clés Mercure différentes ; `MERCURE_JWT_SECRET` reprend la clé de l'éditeur.
+  chacun, deux clés Mercure différentes.
 - `DATABASE_URL` : dans le mot de passe, encodez `@ : / # ? %` (`%40`, `%3A`…).
 - L'annuaire : les mêmes valeurs que le `.env.prod.local` de Formatool (hôte, port, chiffrement,
   base, compte de service). Les valeurs par défaut du gabarit sont celles d'un Samba AD :

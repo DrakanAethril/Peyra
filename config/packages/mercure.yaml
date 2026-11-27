@@ -1,0 +1,23 @@
+mercure:
+    hubs:
+        # Publishes (App\Service\Shared\LivePublisher): the Caddyfile's `publisher_jwt` checks the
+        # internal publish request against MERCURE_PUBLISHER_JWT_KEY. MERCURE_URL and
+        # MERCURE_PUBLIC_URL are set by the Compose files, never by .env.
+        default:
+            url: '%env(MERCURE_URL)%'
+            public_url: '%env(MERCURE_PUBLIC_URL)%'
+            # The hub of the Caddyfile speaks 0.x in its compatibility mode (decision of step 0.1).
+            protocol_version: '0.x'
+            # Three seconds at most: a live update is a comfort, never worth holding a request.
+            http_client: 'mercure.http_client'
+            jwt:
+                secret: '%env(MERCURE_PUBLISHER_JWT_KEY)%'
+                publish: '*'
+        # Mints subscriber tokens only (the live follow-up of step 2.10): the hub's `subscriber_jwt`
+        # checks them against a different key. Never publish through it.
+        subscriber:
+            url: '%env(MERCURE_URL)%'
+            public_url: '%env(MERCURE_PUBLIC_URL)%'
+            protocol_version: '0.x'
+            jwt:
+                secret: '%env(MERCURE_SUBSCRIBER_JWT_KEY)%'
