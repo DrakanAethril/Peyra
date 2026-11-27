@@ -1,0 +1,40 @@
+includes:
+    # Empty, and meant to stay so (CLAUDE.md, « Quality »): it is wired only so that
+    # `composer phpstan-baseline` keeps working. Parking a finding there is a decision, not a reflex.
+    - phpstan-baseline.neon
+
+parameters:
+    level: 5
+    paths:
+        - src
+        - tests
+
+    # Level 5 lets `mixed` through everywhere: what a value becomes after a json_decode(), a
+    # getScalarResult() or a form's getData() would be checked nowhere. This asks that one question
+    # and no more - it is not level 6, which would also demand iterable value types everywhere.
+    checkExplicitMixed: true
+
+    # Inside var/ (gitignored, a volume in dev) so the result cache survives between runs.
+    tmpDir: var/cache/phpstan
+
+    # The Symfony extension resolves service ids from the compiled dev container, the Doctrine
+    # extension reads the real ORM metadata: both need `bin/console cache:warmup` to have run.
+    symfony:
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+        consoleApplicationLoader: phpstan/console-application.php
+
+    doctrine:
+        objectManagerLoader: phpstan/object-manager.php
+        # Entity properties are hydrated by Doctrine, not by the constructor.
+        allowNullablePropertyForRequiredField: true
+
+    # Standing exemptions, not baseline debt: each one says why the rule is wrong here rather than
+    # why the code is.
+    ignoreErrors:
+        # KernelTrait declares getAllowedEnvs() private and calls it itself, so the override in
+        # src/Kernel.php has no caller PHPStan can see. Deleting it would re-allow any APP_ENV.
+        -
+            identifier: method.unused
+            message: '#^Method App\\Kernel\:\:getAllowedEnvs\(\) is unused\.$#'
+            path: src/Kernel.php
+            reportUnmatched: false

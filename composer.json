@@ -25,6 +25,13 @@
         "symfony/yaml": "8.1.*"
     },
     "require-dev": {
+        "brianium/paratest": "^7.30",
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.3",
+        "phpstan/phpstan-doctrine": "^2.1",
+        "phpstan/phpstan-phpunit": "^2.1",
+        "phpstan/phpstan-symfony": "^2.1",
         "phpunit/phpunit": "^13.4",
         "symfony/browser-kit": "8.1.*",
         "symfony/css-selector": "8.1.*"
@@ -33,7 +40,8 @@
         "allow-plugins": {
             "php-http/discovery": true,
             "symfony/flex": true,
-            "symfony/runtime": true
+            "symfony/runtime": true,
+            "phpstan/extension-installer": true
         },
         "bump-after-update": true,
         "sort-packages": true
@@ -70,7 +78,17 @@
         ],
         "post-update-cmd": [
             "@auto-scripts"
-        ]
+        ],
+        "phpstan": "phpstan analyse --memory-limit=1G",
+        "phpstan-baseline": "phpstan analyse --memory-limit=1G --generate-baseline",
+        "cs-check": "php-cs-fixer check --diff",
+        "cs-fix": "php-cs-fixer fix"
+    },
+    "scripts-descriptions": {
+        "phpstan": "Static analysis: level 5 + checkExplicitMixed, Doctrine/Symfony/PHPUnit extensions",
+        "phpstan-baseline": "Regenerate phpstan-baseline.neon from the current findings (a decision, not a reflex)",
+        "cs-check": "Report coding-standard deviations (PHP CS Fixer, @Symfony)",
+        "cs-fix": "Apply the coding standard"
     },
     "conflict": {
         "symfony/symfony": "*"
