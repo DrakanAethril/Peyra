@@ -66,6 +66,7 @@ docker compose exec -e APP_ENV=test php bin/phpunit
 docker compose exec -e APP_ENV=test php vendor/bin/paratest --processes=4   # setup: tests/README.md
 docker compose --profile worker up -d worker  # the scheduler's worker, opt-in in dev
 docker compose exec php bin/console app:dev:school # dev only, once: years, classes, mapping, teachers
+docker compose exec php bin/console app:ldap:check [login] # diagnostic: directory, service account, how a person is read
 
 docker compose exec php composer cs-check          # coding standard (cs-fix applies it)
 docker compose exec php bin/console cache:warmup   # PHPStan reads the compiled dev container
@@ -87,12 +88,44 @@ state, in both shells.
 The test database (`peyra_test`, and `peyra_test1`… for ParaTest through
 `app:test:parallel-databases`) is described in `tests/README.md`, with the sequence CI replays.
 
-Production needs both files, in this order (not deployed by the build agents):
+Production needs both files, in this order (not deployed by the build agents; `docs/production.md`
+is the operator's guide, and the server runs them through its own `deploy-prod.sh`, never in git):
 
 ```console
 docker compose -f compose.yaml -f compose.prod.yaml build --pull
 docker compose -f compose.yaml -f compose.prod.yaml up --wait
 ```
+
+**Production sits behind the establishment's nginx, on another machine** (plan README § 9), which
+terminates TLS. What the repository holds for it, each piece pinned by `ProductionConfigurationTest`:
+
+- `compose.prod.yaml` serves **plain HTTP on one port, for every Host**: `SERVER_NAME=:80` and
+  `auto_https off`, the ports `!override`n to HTTP alone, no database service (production uses
+  Formatool's MariaDB server, base and user of its own). Never put the domain in `SERVER_NAME`:
+  `frankenphp adapt` shows Caddy then listens on 443 even with automatic HTTPS off, and nothing
+  answers nginx on 80.
+- **`PUBLIC_URL`** (exported by the deploy script, required by `compose.prod.yaml`) gives
+  `DEFAULT_URI` and Mercure's public address to `php` and `worker`; in development both still derive
+  from `SERVER_NAME` and `HTTPS_PORT`. `PEYRA_VERSION` reaches both services the same way.
+- **`TRUSTED_PROXIES`** (`framework.trusted_proxies`, the four `x-forwarded-*` headers): empty in
+  development, `192.0.2.10` in `.env.test` (`TrustedProxyTest`). Without it the sign-in journal and
+  the limiters see nginx, and links say `http`. The session cookie is `SameSite=Lax`, `secure: auto`,
+  forced `true` under `when@prod`.
+- The Caddyfile sends the base security headers on every answer (and drops `Server`); HSTS is
+  `compose.prod.yaml`'s, through `CADDY_SERVER_EXTRA_DIRECTIVES` - on localhost it would stick.
+- **`.env.prod.local.example`** names every variable production reads that Compose does not set:
+  a new `%env()%` or `#[Autowire(env:)]` fails the test until it is added there.
+- **Three body-size ceilings**: nginx's `client_max_body_size 64m`, PHP's 64M/65M
+  (`frankenphp/conf.d/10-app.ini`), then the upload policy. PHP sits at nginx's height, or it drops
+  a body nginx let through without a word (FrankenPHP answers 200 with HTML). Move them together.
+- `FORMATOOL_URL` draws the avatar menu's « Formatool » entry and the forgotten-password link
+  (Formatool's `/login/magic-link`: Peyra keeps no password); `PEYRA_PASSWORD_HELP_URL` overrides the
+  latter (`App\Service\Identity\FormatoolLinks`). Empty: neither is drawn.
+- The directory variables default to production's, Formatool's Samba AD (`sAMAccountName`, `group`,
+  `objectGUID`); `.env.dev.local` sets the development OpenLDAP's `uid`, `groupOfNames`, `entryUUID`
+  - an older local copy of it lacks the first two and nobody can sign in: copy them from the example.
+- Migrations are not transactional (`doctrine_migrations.transactional: false`): MariaDB commits
+  around every DDL statement anyway.
 
 **Docker layer.** `compose.yaml` holds `php` (FrankenPHP + Caddy + the bundled Mercure hub) and
 `gotenberg`; `compose.override.yaml` (dev) adds `database` (MariaDB 11.8 as in production, no published port),

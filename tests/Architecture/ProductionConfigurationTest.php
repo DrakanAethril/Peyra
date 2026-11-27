@@ -54,9 +54,9 @@ final class ProductionConfigurationTest extends TestCase
         $php = $this->environment('compose.prod.yaml', 'php');
         self::assertSame(':80', $php['SERVER_NAME'], 'A host name would make Caddy listen on 443 even with automatic HTTPS off.');
         self::assertSame('auto_https off', $php['CADDY_GLOBAL_OPTIONS']);
-        self::assertStringStartsWith('${PUBLIC_URL:?', (string) $php['DEFAULT_URI']);
-        self::assertStringStartsWith('${PUBLIC_URL:?', (string) $php['MERCURE_PUBLIC_URL']);
-        self::assertStringContainsString('Strict-Transport-Security', (string) $php['CADDY_SERVER_EXTRA_DIRECTIVES']);
+        self::assertStringStartsWith('${PUBLIC_URL:?', self::text($php['DEFAULT_URI'] ?? null));
+        self::assertStringStartsWith('${PUBLIC_URL:?', self::text($php['MERCURE_PUBLIC_URL'] ?? null));
+        self::assertStringContainsString('Strict-Transport-Security', self::text($php['CADDY_SERVER_EXTRA_DIRECTIVES'] ?? null));
 
         $ports = $this->service('compose.prod.yaml', 'php')['ports'] ?? null;
         self::assertInstanceOf(TaggedValue::class, $ports, 'The ports replace those of compose.yaml (`!override`), they are not added to them.');
@@ -84,22 +84,33 @@ final class ProductionConfigurationTest extends TestCase
         self::assertContains('caddy_data:/data', $this->service('compose.yaml', 'php')['volumes'] ?? []);
 
         foreach (['php', 'gotenberg', 'worker'] as $name) {
-            self::assertSame('json-file', $this->service('compose.prod.yaml', $name)['logging']['driver'] ?? null, $name.'’s logs are bounded.');
+            self::assertSame('json-file', self::at($this->service('compose.prod.yaml', $name), 'logging', 'driver'), $name.'’s logs are bounded.');
         }
 
         $entrypoint = (string) file_get_contents(self::ROOT.'/frankenphp/docker-entrypoint.sh');
         self::assertStringContainsString('doctrine:migrations:migrate', $entrypoint);
         self::assertStringNotContainsString('database:create', $entrypoint, 'The production user has rights on its own base only.');
+        self::assertStringNotContainsString('--all-or-nothing', $entrypoint, 'It refuses non-transactional migrations.');
+    }
+
+    public function testNoMigrationPretendsToBeTransactionalOnMariaDb(): void
+    {
+        self::assertFalse(self::at($this->yaml('config/packages/doctrine_migrations.yaml'), 'doctrine_migrations', 'transactional'));
+        $files = glob(self::ROOT.'/migrations/*.php') ?: [];
+        self::assertNotSame([], $files);
+        foreach ($files as $file) {
+            self::assertMatchesRegularExpression('/function isTransactional\(\): bool\s*\{\s*return false;/', (string) file_get_contents($file), basename($file).': MariaDB commits around every DDL statement.');
+        }
     }
 
     public function testTheApplicationBelievesItsProxyAndKeepsTheSessionCookieSecure(): void
     {
         $framework = $this->yaml('config/packages/framework.yaml');
 
-        self::assertSame('%env(TRUSTED_PROXIES)%', $framework['framework']['trusted_proxies'] ?? null);
-        self::assertSame(['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host', 'x-forwarded-port'], $framework['framework']['trusted_headers'] ?? null);
-        self::assertSame('lax', $framework['framework']['session']['cookie_samesite'] ?? null);
-        self::assertTrue($framework['when@prod']['framework']['session']['cookie_secure'] ?? null);
+        self::assertSame('%env(TRUSTED_PROXIES)%', self::at($framework, 'framework', 'trusted_proxies'));
+        self::assertSame(['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host', 'x-forwarded-port'], self::at($framework, 'framework', 'trusted_headers'));
+        self::assertSame('lax', self::at($framework, 'framework', 'session', 'cookie_samesite'));
+        self::assertTrue(self::at($framework, 'when@prod', 'framework', 'session', 'cookie_secure'));
     }
 
     public function testEveryAnswerCarriesTheBaseSecurityHeaders(): void
@@ -177,11 +188,31 @@ final class ProductionConfigurationTest extends TestCase
     /** @return array<string, mixed> */
     private function service(string $file, string $name): array
     {
-        $service = $this->yaml($file)['services'][$name] ?? null;
+        $service = self::at($this->yaml($file), 'services', $name);
         self::assertIsArray($service, $file.' declares '.$name);
 
         /* @var array<string, mixed> $service */
         return $service;
+    }
+
+    /** The value under these keys, or null when one of them is missing. */
+    private static function at(mixed $data, string ...$keys): mixed
+    {
+        foreach ($keys as $key) {
+            if (!\is_array($data) || !\array_key_exists($key, $data)) {
+                return null;
+            }
+            $data = $data[$key];
+        }
+
+        return $data;
+    }
+
+    private static function text(mixed $value): string
+    {
+        self::assertIsString($value);
+
+        return $value;
     }
 
     /** @return array<string, mixed> */

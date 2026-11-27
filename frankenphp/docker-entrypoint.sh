@@ -34,7 +34,9 @@ if [ "$1" = 'frankenphp' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
 		fi
 
 		if [ "$(find ./migrations -iname '*.php' -print -quit)" ]; then
-			php bin/console doctrine:migrations:migrate --no-interaction --all-or-nothing
+			# Not all-or-nothing: MariaDB commits around every DDL statement, so no migration is
+			# transactional (config/packages/doctrine_migrations.yaml), and the option refuses them.
+			php bin/console doctrine:migrations:migrate --no-interaction
 		fi
 	fi
 

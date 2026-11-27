@@ -72,8 +72,7 @@ final class TrustedProxyTest extends WebTestCase
     private function nativeSessionCookie(KernelBrowser $client): array
     {
         $options = $client->getContainer()->getParameter('session.storage.options');
-        self::assertIsArray($options);
-        self::assertSame('auto', $options['cookie_secure'] ?? null);
+        self::assertSame('auto', $options['cookie_secure']);
         $saved = ['secure' => ini_get('session.cookie_secure'), 'samesite' => ini_get('session.cookie_samesite'), 'httponly' => ini_get('session.cookie_httponly')];
 
         try {

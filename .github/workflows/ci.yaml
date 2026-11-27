@@ -44,6 +44,14 @@ jobs:
       - name: Write .env.dev.local
         run: cp .env.dev.local.example .env.dev.local
 
+      # The production files are never built here, but they must stay a valid Compose model: the
+      # server finds out otherwise, mid-deploy. The template stands in for the server's secrets.
+      - name: Validate the production Compose files
+        run: |
+          cp .env.prod.local.example .env.prod.local
+          PUBLIC_URL=https://pgi.example.org docker compose -f compose.yaml -f compose.prod.yaml config --quiet
+          rm .env.prod.local
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
