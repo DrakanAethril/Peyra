@@ -61,6 +61,21 @@ enum AuditAction: string
     /** Third parties imported from a CSV file. */
     case ThirdPartiesImported = 'third_party.imported';
 
+    /** An entry saved to the brouillard. */
+    case EntryDrafted = 'accounting.entry_drafted';
+
+    /** An entry of the brouillard changed. */
+    case EntryChanged = 'accounting.entry_changed';
+
+    /** An entry of the brouillard deleted. */
+    case EntryDiscarded = 'accounting.entry_discarded';
+
+    /** An entry validated: numbered, never changed again. */
+    case EntryValidated = 'accounting.entry_validated';
+
+    /** A validated entry reversed by its inverse entry. */
+    case EntryReversed = 'accounting.entry_reversed';
+
     public function label(): string
     {
         return match ($this) {
@@ -81,6 +96,11 @@ enum AuditAction: string
             self::ThirdPartyChanged => 'Tiers modifié',
             self::ThirdPartyDeleted => 'Tiers supprimé',
             self::ThirdPartiesImported => 'Tiers importés',
+            self::EntryDrafted => 'Écriture enregistrée au brouillard',
+            self::EntryChanged => 'Écriture du brouillard modifiée',
+            self::EntryDiscarded => 'Écriture du brouillard supprimée',
+            self::EntryValidated => 'Écriture validée',
+            self::EntryReversed => 'Écriture contrepassée',
         };
     }
 }

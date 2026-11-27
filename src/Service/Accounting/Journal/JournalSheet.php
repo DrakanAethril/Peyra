@@ -12,6 +12,7 @@ use App\Enum\Accounting\AccountNature;
 use App\Enum\Accounting\JournalType;
 use App\Enum\Audit\AuditAction;
 use App\Repository\Accounting\AccountRepository;
+use App\Repository\Accounting\EntryRepository;
 use App\Repository\Accounting\JournalRepository;
 use App\Service\Accounting\Chart\AccountNumber;
 use App\Service\Audit\AuditTrail;
@@ -22,6 +23,8 @@ use Doctrine\ORM\EntityManagerInterface;
  * journal as typed, names every fault under its field, creates, changes and deletes - each gesture
  * in the audit trail. A bank journal's counterpart is a bank account (51…), a cash journal's a cash
  * account (53…), and no other journal has one; a dossier has one à-nouveaux journal at most.
+ * A journal that carries entries keeps its type and stays; once one of them is validated, its code
+ * no longer changes either (the entries' numbers name it: « ACH-2026-00012 »).
  * Runs inside the dossier's context; the caller checks DossierVoter::EDIT and flushes.
  */
 final readonly class JournalSheet
@@ -31,6 +34,7 @@ final readonly class JournalSheet
         private JournalRepository $journals,
         private AccountRepository $accounts,
         private AuditTrail $auditTrail,
+        private EntryRepository $entries,
     ) {
     }
 
@@ -50,6 +54,8 @@ final readonly class JournalSheet
             $same = $this->journals->findOneByCode($dossier, $draft->code);
             if (null !== $same && $same !== $journal) {
                 $draft->errors['code'] = \sprintf('Le journal %s existe déjà : %s.', $draft->code, $same->getLabel());
+            } elseif (null !== $journal && $draft->code !== $journal->getCode() && $this->entries->countInJournal($journal, true) > 0) {
+                $draft->errors['code'] = 'Ce journal porte des écritures validées, numérotées à son code : son code ne change plus.';
             }
         }
 
@@ -62,6 +68,8 @@ final readonly class JournalSheet
         $type = JournalType::tryFrom($draft->type);
         if (null === $type) {
             $draft->errors['type'] = 'Choisissez le type du journal.';
+        } elseif (null !== $journal && $type !== $journal->getType() && $this->entries->countInJournal($journal) > 0) {
+            $draft->errors['type'] = \sprintf('Ce journal porte des écritures : il reste de type « %s ».', $journal->getType()->label());
         } elseif (JournalType::Opening === $type) {
             foreach ($this->journals->findByType($dossier, JournalType::Opening) as $opening) {
                 if ($opening !== $journal) {
@@ -130,8 +138,24 @@ final readonly class JournalSheet
         return true;
     }
 
+    /** Why the journal may not be deleted, or null when it may. */
+    public function deletionRefusal(Journal $journal): ?string
+    {
+        $count = $this->entries->countInJournal($journal);
+        if (0 === $count) {
+            return null;
+        }
+
+        return $this->entries->countInJournal($journal, true) > 0
+            ? 'Ce journal porte des écritures validées : il reste au dossier.'
+            : \sprintf('Ce journal porte %s au brouillard : supprimez-%s d’abord.', 1 === $count ? 'une écriture' : $count.' écritures', 1 === $count ? 'la' : 'les');
+    }
+
     public function delete(Journal $journal, User $by): void
     {
+        if (null !== $this->deletionRefusal($journal)) {
+            throw new \LogicException('This journal carries entries.');
+        }
         $this->auditTrail->record(
             AuditAction::JournalDeleted,
             $by,

@@ -13,6 +13,8 @@ use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Security\Voter\DossierVoter;
+use App\Service\Accounting\Ledger\EntryScope;
+use App\Service\Accounting\Ledger\LedgerReader;
 use App\Service\Shared\PostValue;
 use App\Service\Shared\QueryValue;
 use App\Service\ThirdParty\ThirdPartyDraft;
@@ -61,7 +63,7 @@ final class ThirdPartyController extends AbstractController
     }
 
     #[Route('/{code}', name: 'app_third_party', requirements: ['code' => self::CODE], methods: ['GET', 'POST'])]
-    public function edit(Dossier $dossier, string $code, Request $request, ThirdPartyRepository $thirdParties, ThirdPartySheet $sheet, AccountRepository $accounts, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
+    public function edit(Dossier $dossier, string $code, Request $request, ThirdPartyRepository $thirdParties, ThirdPartySheet $sheet, AccountRepository $accounts, LedgerReader $ledger, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $thirdParty = $thirdParties->findOneByCode($dossier, $code) ?? throw new NotFoundHttpException('No such third party.');
         $draft = ThirdPartyDraft::of($thirdParty);
@@ -82,7 +84,12 @@ final class ThirdPartyController extends AbstractController
             $status = Response::HTTP_UNPROCESSABLE_ENTITY;
         }
 
-        return $this->render('third_party/fiche.html.twig', $this->view($dossier, $draft, $thirdParty, $accounts), new Response(status: $status));
+        $today = $dossier->getDossierDate();
+        $view = $this->view($dossier, $draft, $thirdParty, $accounts);
+        $view['outstanding'] = $ledger->thirdPartyBalance($thirdParty, $ledger->exerciseStart($dossier, $today), $today, EntryScope::WithDrafts);
+        $view['deletion_refusal'] = $sheet->deletionRefusal($thirdParty);
+
+        return $this->render('third_party/fiche.html.twig', $view, new Response(status: $status));
     }
 
     #[Route('/{code}/delete', name: 'app_third_party_delete', requirements: ['code' => self::CODE], methods: ['POST'])]
@@ -91,6 +98,12 @@ final class ThirdPartyController extends AbstractController
         $thirdParty = $thirdParties->findOneByCode($dossier, $code) ?? throw new NotFoundHttpException('No such third party.');
         if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !$this->isCsrfTokenValid('third-party-delete-'.$thirdParty->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
+        }
+        $refusal = $sheet->deletionRefusal($thirdParty);
+        if (null !== $refusal) {
+            $this->addFlash('status', $refusal);
+
+            return $this->redirectToRoute('app_third_party', ['dossier' => $dossier->getId(), 'code' => $code], Response::HTTP_SEE_OTHER);
         }
         $sheet->delete($thirdParty, $me);
         $entityManager->flush();
@@ -123,6 +136,8 @@ final class ThirdPartyController extends AbstractController
             'dossier' => $dossier,
             'draft' => $draft,
             'third_party' => $thirdParty,
+            'outstanding' => null,
+            'deletion_refusal' => null,
             'account_label' => $account?->getLabel(),
             'account_natures' => implode(',', $natures),
             'kind_options' => array_map(static fn (ThirdPartyKind $k): array => ['value' => $k->value, 'label' => $k->label()], ThirdPartyKind::cases()),

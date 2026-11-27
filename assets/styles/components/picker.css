@@ -69,9 +69,10 @@
 }
 
 /*
- * The account picker (Px:AccountPicker, F4): number, label on one line, grouped under the
- * two-digit heading of the reference chart, the typed digits in <mark>; the chosen account's
- * label under the field.
+ * The account picker (Px:AccountPicker, F4): number, label and balance on one line (design-ui.md
+ * § 4.6: grid 96px 1fr auto, the balance in mono 12 px, muted), grouped under the two-digit
+ * heading of the reference chart, the typed digits in <mark>; the chosen account's label under
+ * the field.
  */
 @layer px.components {
     .px-picker--account .px-picker__panel {
@@ -80,7 +81,15 @@
     }
 
     .px-picker--account .px-picker__option {
-        grid-template-columns: 96px minmax(0, 1fr);
+        grid-template-columns: 96px minmax(0, 1fr) auto;
+    }
+
+    .px-picker__balance {
+        color: var(--px-text-muted);
+        font-family: var(--px-font-mono);
+        font-size: var(--px-fs-12);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
     }
 
     .px-picker__group {

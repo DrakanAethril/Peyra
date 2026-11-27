@@ -61,7 +61,7 @@ final class JournalsController extends AbstractController
             $status = Response::HTTP_UNPROCESSABLE_ENTITY;
         }
 
-        return $this->render('accounting/journal.html.twig', ['dossier' => $dossier, 'draft' => $draft, 'journal' => null, 'types' => JournalType::cases()], new Response(status: $status));
+        return $this->render('accounting/journal.html.twig', ['dossier' => $dossier, 'draft' => $draft, 'journal' => null, 'types' => JournalType::cases(), 'deletion_refusal' => null], new Response(status: $status));
     }
 
     #[Route('/{code}', name: 'app_accounting_journal', requirements: ['code' => '[A-Z0-9]{1,6}'], methods: ['GET', 'POST'])]
@@ -92,6 +92,7 @@ final class JournalsController extends AbstractController
             'journal' => $journal,
             'types' => JournalType::cases(),
             'counterpart_label' => '' === $draft->counterpart ? null : $accounts->findOneByNumber($dossier, $draft->counterpart)?->getLabel(),
+            'deletion_refusal' => $sheet->deletionRefusal($journal),
         ], new Response(status: $status));
     }
 
@@ -101,6 +102,12 @@ final class JournalsController extends AbstractController
         $journal = $journals->findOneByCode($dossier, $code) ?? throw new NotFoundHttpException('No such journal.');
         if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !$this->isCsrfTokenValid('dossier-journal-delete-'.$journal->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
+        }
+        $refusal = $sheet->deletionRefusal($journal);
+        if (null !== $refusal) {
+            $this->addFlash('status', $refusal);
+
+            return $this->redirectToRoute('app_accounting_journal', ['dossier' => $dossier->getId(), 'code' => $code], Response::HTTP_SEE_OTHER);
         }
         $sheet->delete($journal, $me);
         $entityManager->flush();

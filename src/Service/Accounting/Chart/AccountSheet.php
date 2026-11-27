@@ -11,6 +11,7 @@ use App\Enum\Accounting\AccountNature;
 use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Audit\AuditAction;
 use App\Repository\Accounting\AccountRepository;
+use App\Repository\Accounting\EntryLineRepository;
 use App\Repository\Accounting\JournalRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Audit\AuditTrail;
@@ -33,6 +34,7 @@ final readonly class AccountSheet
         private ReferenceCharts $charts,
         private AuditTrail $auditTrail,
         private ThirdPartyRepository $thirdParties,
+        private EntryLineRepository $lines,
     ) {
     }
 
@@ -51,6 +53,8 @@ final readonly class AccountSheet
             $same = $this->accounts->findOneByNumber($dossier, $draft->number);
             if (null !== $same && $same !== $account) {
                 $draft->errors['number'] = \sprintf('Le compte %s existe déjà : %s.', $draft->number, $same->getLabel());
+            } elseif (null !== $account && $draft->number !== $account->getNumber() && $this->lines->countOnAccount($account, true) > 0) {
+                $draft->errors['number'] = 'Ce compte porte des écritures validées : son numéro ne change plus.';
             } elseif (null !== $account) {
                 $journals = $this->journals->findByCounterpart($account);
                 foreach ($journals as $journal) {
@@ -80,6 +84,8 @@ final readonly class AccountSheet
             $carried = \count($this->thirdParties->findByAccount($account));
             if ($carried > 0) {
                 $draft->errors['collective'] = self::collectiveRefusal($account->isCollective(), $carried);
+            } elseif ($this->lines->countOnAccount($account) > 0) {
+                $draft->errors['collective'] = self::entriesCollectiveRefusal($account->isCollective());
             }
         }
 
@@ -153,12 +159,28 @@ final readonly class AccountSheet
         return \sprintf('Ce compte porte %s sans code auxiliaire : il reste un compte général.', 1 === $carried ? 'un tiers' : $carried.' tiers');
     }
 
+    /**
+     * Why an account that carries entry lines keeps its « collectif » box: each line of a
+     * collective account names a third party, and a general account's lines may not.
+     */
+    public static function entriesCollectiveRefusal(bool $collective): string
+    {
+        return $collective
+            ? 'Ce compte porte des écritures, chacune avec son tiers : il reste collectif.'
+            : 'Ce compte porte des écritures sans tiers : il reste un compte général.';
+    }
+
     /** Why the account may not leave the plan, or null when it may. */
     public function deletionRefusal(Account $account): ?string
     {
         $journals = $this->journals->findByCounterpart($account);
         if ([] !== $journals) {
             return \sprintf('Ce compte est la contrepartie du journal %s : changez d’abord la contrepartie du journal.', $journals[0]->getCode());
+        }
+        if ($this->lines->countOnAccount($account) > 0) {
+            return $this->lines->countOnAccount($account, true) > 0
+                ? 'Ce compte porte des écritures validées : il reste au plan.'
+                : 'Ce compte figure sur des écritures du brouillard : changez-y le compte ou supprimez-les d’abord.';
         }
         $thirdParties = $this->thirdParties->findByAccount($account);
         if ([] !== $thirdParties) {

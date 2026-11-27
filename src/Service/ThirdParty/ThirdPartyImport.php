@@ -12,6 +12,7 @@ use App\Enum\ThirdParty\PaymentMethod;
 use App\Enum\ThirdParty\PaymentTermKind;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
+use App\Repository\Accounting\EntryLineRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Accounting\Chart\AccountSearch;
 use App\Service\Audit\AuditTrail;
@@ -27,7 +28,8 @@ use Doctrine\ORM\EntityManagerInterface;
  * A code missing from the dossier is added; a code already there is left as it is unless the person
  * asks for the existing ones to be updated. Without a `compte` column, a third party goes on its
  * kind's usual account (411000, 401000, 421000) when the plan holds it; on a collective account
- * without an auxiliary code, one is given. **One refused line and nothing is written**: the report
+ * without an auxiliary code, one is given; a third party named on entry lines keeps its account
+ * and its auxiliary code. **One refused line and nothing is written**: the report
  * names every line and why.
  *
  * @phpstan-type ParsedRow array{line: int, draft: ThirdPartyDraft, refusal: ?string}
@@ -65,6 +67,7 @@ final readonly class ThirdPartyImport
         private ThirdPartyRepository $thirdParties,
         private AccountRepository $accounts,
         private AuditTrail $auditTrail,
+        private EntryLineRepository $entryLines,
     ) {
     }
 
@@ -87,6 +90,7 @@ final readonly class ThirdPartyImport
             }
         }
         $accountOf = fn (string $number) => $this->accounts->findOneByNumber($dossier, $number);
+        $used = $this->entryLines->countByThirdParty($dossier);
         /** @var array<string, array{line: int, name: string}> $codesInFile */
         $codesInFile = [];
         /** @var array<string, array{line: int, name: string}> $auxiliariesInFile */
@@ -131,6 +135,11 @@ final readonly class ThirdPartyImport
                 continue;
             }
             $changes = $updateExisting && ThirdPartySheet::snapshot(ThirdPartyDraft::of($self)) !== ThirdPartySheet::snapshot($draft);
+            $faults = $changes && ($used[(int) $self->getId()] ?? 0) > 0 ? ThirdPartySheet::usageFaults($self, $fields) : [];
+            if ([] !== $faults) {
+                $lines[] = new ThirdPartyImportLine($row['line'], $draft->code, $draft->name, ThirdPartyImportLine::REFUSED, implode(' ', array_values($faults)));
+                continue;
+            }
             $lines[] = new ThirdPartyImportLine($row['line'], $draft->code, $draft->name, $changes ? ThirdPartyImportLine::UPDATE : ThirdPartyImportLine::SAME, $changes ? $draft->notice : null, $draft, $fields);
         }
 
