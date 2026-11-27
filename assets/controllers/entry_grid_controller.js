@@ -780,6 +780,11 @@ export default class extends Controller {
         } else if (focus) {
             group = this.groups.find((one) => one.entry === focus) ?? null;
         }
+        if (group && this.editable(group) && group.lines.length === 0) {
+            this.tableTarget.querySelector(`tbody[data-key="${CSS.escape(group.key)}"] [data-field="deleted"]`)?.focus();
+
+            return;
+        }
         if (group && this.editable(group)) {
             this.focusCell(group.key, 0, 'account');
             this.inputAt()?.closest('tr')?.scrollIntoView({ block: 'center' });
@@ -1028,6 +1033,14 @@ export default class extends Controller {
                 event.preventDefault();
                 event.stopPropagation();
                 this.closeAbandon(true);
+            } else if (event.key === 'Escape' && input instanceof HTMLElement && input.dataset.field === 'deleted') {
+                // A draft whose lines were all deleted: Échap gives them back.
+                event.preventDefault();
+                event.stopPropagation();
+                const group = this.groups.find((one) => one.key === input.closest('tbody')?.dataset.key);
+                if (group) {
+                    this.abandon(group);
+                }
             }
 
             return;
