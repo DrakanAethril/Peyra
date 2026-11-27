@@ -9,7 +9,6 @@ use App\Service\Shared\Money;
 use Doctrine\DBAL\Platforms\MariaDBPlatform;
 use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
-use Doctrine\DBAL\Types\Type;
 use PHPUnit\Framework\TestCase;
 
 final class MoneyTypeTest extends TestCase
@@ -19,12 +18,7 @@ final class MoneyTypeTest extends TestCase
 
     protected function setUp(): void
     {
-        if (!Type::hasType(MoneyType::NAME)) {
-            Type::addType(MoneyType::NAME, MoneyType::class);
-        }
-        $type = Type::getType(MoneyType::NAME);
-        self::assertInstanceOf(MoneyType::class, $type);
-        $this->type = $type;
+        $this->type = new MoneyType();
         $this->platform = new MariaDBPlatform();
     }
 
