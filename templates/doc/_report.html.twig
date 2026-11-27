@@ -1,0 +1,39 @@
+{#
+    A state Peyra edits for a dossier (journal, grand livre, balance, état de rapprochement…),
+    design-ui.md § 4.18: on every page, the dossier's name on the left, the state's title in the
+    centre, the fiscal year, the period and the dossier's date on the right, then a 0.5 pt rule; at
+    the foot, the fictitious-document mention, the student and the dossier's date, « page / pages ».
+    Margin boxes cannot read the document, so their texts are written here, escaped for CSS.
+
+    Context: report.company, report.title, report.fiscalYear, report.period (optional),
+    report.dossierDate (a date), report.student (optional).
+#}
+{% extends 'doc/_document.html.twig' %}
+
+{% block title %}{{ report.title }} · {{ report.company }}{% endblock %}
+
+{% block page_style %}
+    {% set right = report.fiscalYear ~ (report.period is defined and report.period ? ' · ' ~ report.period : '') ~ ' · date du dossier ' ~ report.dossierDate|date_fr %}
+    {% set centre = (report.student is defined and report.student ? report.student ~ ' · ' : '') ~ report.dossierDate|date_fr %}
+    <style>
+        @page {
+            margin-top: 20mm;
+            @top-left { content: "{{ report.company|e('css') }}"; font: 600 10pt "Inter", sans-serif; color: #0f1b2a; vertical-align: bottom; padding-bottom: 2.5mm; border-bottom: 0.5pt solid #7d8b9c; }
+            @top-center { content: "{{ report.title|e('css') }}"; font: 600 12pt "Spectral", serif; color: #0f1b2a; vertical-align: bottom; padding-bottom: 2mm; border-bottom: 0.5pt solid #7d8b9c; }
+            @top-right { content: "{{ right|e('css') }}"; font: 8pt "Inter", sans-serif; color: #0f1b2a; vertical-align: bottom; padding-bottom: 2.5mm; border-bottom: 0.5pt solid #7d8b9c; text-align: right; }
+            @bottom-center { content: "{{ centre|e('css') }}"; font: 7pt "Inter", sans-serif; color: #5b6b7c; vertical-align: top; padding-top: 3mm; }
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    {# On screen only: in the PDF, the margin boxes above carry the same three texts on every page. #}
+    <header class="px-doc__running">
+        <span class="px-doc__running-company">{{ report.company }}</span>
+        <h1 class="px-doc__title">{{ report.title }}</h1>
+        <span>{{ report.fiscalYear }}{% if report.period is defined and report.period %} · {{ report.period }}{% endif %} · date du dossier {{ report.dossierDate|date_fr }}</span>
+    </header>
+    <article class="px-doc px-doc--report">
+        {% block content %}{% endblock %}
+    </article>
+{% endblock %}

@@ -1,0 +1,30 @@
+{#
+    The base of every document on paper (design-ui.md § 3.6): no shell, the doc/ stylesheets.
+    `pdf` (set by App\Service\Shared\Pdf\PdfRenderer) names them flat, as Gotenberg serves them;
+    otherwise the page is a preview in the browser, on the application's own fonts.
+    `orientation` is portrait (default) or landscape; a document needing other margins writes its
+    own unnamed @page in `page_style`.
+#}
+{% set orientation = orientation|default('portrait') %}
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}Document{% endblock %}</title>
+    {% if pdf|default(false) %}
+        <link rel="stylesheet" href="doc-fonts.css">
+        <link rel="stylesheet" href="doc.css">
+        <link rel="stylesheet" href="doc-print.css">
+    {% else %}
+        <link rel="stylesheet" href="{{ asset('styles/fonts.css') }}">
+        <link rel="stylesheet" href="{{ asset('styles/doc/doc.css') }}">
+    {% endif %}
+    {% if orientation == 'landscape' %}
+        <style>@page { size: A4 landscape; margin: 12mm 12mm 14mm; }</style>
+    {% endif %}
+    {% block page_style %}{% endblock %}
+</head>
+<body class="px-docbody px-docbody--{{ orientation }}{{ pdf|default(false) ? '' : ' px-docbody--preview' }}">
+    {% block body %}{% endblock %}
+</body>
+</html>

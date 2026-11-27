@@ -1,0 +1,36 @@
+/*
+ * The PDF only (design-ui.md § 3.6): page format, running header and foot, page counter. The
+ * unnamed @page carries the format of the document, because Chromium lays out the first page with
+ * the default page's margins before applying a named page's. A document of another format sets
+ * its own unnamed @page in its template (block `page_style`), which wins by coming later. The
+ * running texts that depend on the dossier are written by the template too: margin boxes cannot
+ * read the document.
+ */
+@page {
+    size: A4 portrait;
+    margin: 15mm 15mm 18mm;
+
+    @bottom-left {
+        content: "Document pédagogique fictif, sans valeur légale";
+        font-family: "Inter", sans-serif;
+        font-size: 7pt;
+        color: #5b6b7c;
+        vertical-align: top;
+        padding-top: 3mm;
+    }
+
+    @bottom-right {
+        content: counter(page) " / " counter(pages);
+        font-family: "Inter", sans-serif;
+        font-size: 7pt;
+        color: #5b6b7c;
+        vertical-align: top;
+        padding-top: 3mm;
+    }
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}

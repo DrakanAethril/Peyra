@@ -1,0 +1,25 @@
+{# The gallery's sample state (DesignGalleryController::document): the base every edition extends. #}
+{% extends 'doc/_report.html.twig' %}
+
+{% block content %}
+    <table class="px-doc__table">
+        <colgroup><col style="width: 22mm"><col><col style="width: 34mm"><col style="width: 34mm"><col style="width: 34mm"></colgroup>
+        <thead>
+            <tr><th scope="col">Compte</th><th scope="col">Intitulé</th><th scope="col" class="px-doc__num">Débit</th><th scope="col" class="px-doc__num">Crédit</th><th scope="col" class="px-doc__num">Solde</th></tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                <tr>
+                    <td class="px-doc__code">{{ row.account }}</td>
+                    <td>{{ row.label }}</td>
+                    <td class="px-doc__num">{{ row.debit|amount_cell }}</td>
+                    <td class="px-doc__num">{{ row.credit|amount_cell }}</td>
+                    <td class="px-doc__num">{{ row.debit.minus(row.credit)|balance }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr><td colspan="2">Totaux de l’extrait</td><td class="px-doc__num">{{ total_debit|amount }}</td><td class="px-doc__num">{{ total_credit|amount }}</td><td></td></tr>
+        </tfoot>
+    </table>
+{% endblock %}
