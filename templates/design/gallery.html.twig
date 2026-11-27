@@ -178,6 +178,34 @@
                 <twig:Px:Input id="g-large" size="lg" placeholder="Identifiant"/>
             </twig:Px:Field>
         </div>
+        <div class="px-fieldrow">
+            <twig:Px:Field id="g-amount" label="Montant TTC" hint="« 2760-138 » se calcule en sortant.">
+                <twig:Px:AmountInput id="g-amount" :value="276000" unit="€" :hint="true"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="g-amount-grid" label="Débit (grille)">
+                <twig:Px:AmountInput id="g-amount-grid" :value="-13800" :grid="true"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="g-amount-error" label="Crédit" error="Un montant a deux décimales au plus.">
+                <twig:Px:AmountInput id="g-amount-error" :grid="true" :error="true"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="g-entry-date" label="Date de l’écriture" hint="« 12 », « 1211 », + et −.">
+                <twig:Px:DateInput id="g-entry-date" :reference="gallery_reference" :value="gallery_entry_date" :hint="true"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="g-due-date" label="Échéance" :required="true">
+                <twig:Px:DateInput id="g-due-date" :reference="gallery_reference" :required="true"/>
+            </twig:Px:Field>
+        </div>
+        <twig:Px:Table caption="Formats des nombres et des dates (filtres Twig, design-ux § 6.6)" variant="plain" density="compact" :captionVisible="true">
+            <thead><tr><th scope="col">Filtre</th><th scope="col">Rendu</th></tr></thead>
+            <tbody>
+                <tr><td class="px-u-code">amount</td><td class="px-u-num">{{ 324840|amount }} · {{ (-13800)|amount }} · {{ 0|amount }}</td></tr>
+                <tr><td class="px-u-code">amount_cell</td><td class="px-u-num">« {{ 0|amount_cell }} » · {{ 1234567|amount_cell }}</td></tr>
+                <tr><td class="px-u-code">amount_eur · balance</td><td class="px-u-num">{{ 324840|amount_eur }} · {{ (-324840)|balance }} · {{ 8500|balance }}</td></tr>
+                <tr><td class="px-u-code">whole_euros · percent · hours</td><td class="px-u-num">{{ 3956|whole_euros }} · {{ '20.00'|percent }} · {{ '1.646'|percent }} · {{ '151.67'|hours }}</td></tr>
+                <tr><td class="px-u-code">date_fr · day_month · date_chip · period</td><td class="px-u-num">{{ gallery_entry_date|date_fr }} · {{ gallery_entry_date|day_month(2026) }} · {{ gallery_reference|date_chip }} · {{ gallery_reference|period }}</td></tr>
+                <tr><td class="px-u-code">clock · duration</td><td class="px-u-num">{{ gallery_clock|clock }} · {{ 35|duration }} · {{ 102|duration }}</td></tr>
+            </tbody>
+        </twig:Px:Table>
         <div class="px-split">
             <twig:Px:Field id="g-comment" label="Commentaire de correction" hint="Visible de l’étudiante une fois la correction publiée.">
                 <twig:Px:Input id="g-comment" :area="true" :hint="true" value="Relis la facture : le port est une charge à part. Quel compte ?"/>
@@ -241,7 +269,7 @@
                 <tr class="px-table__total"><th scope="row" colspan="4">Totaux du filtre</th><td class="px-u-num">48&#8239;612,90</td><td class="px-u-num">48&#8239;612,90</td><td><twig:Px:Badge tone="success" label="Équilibré"/></td></tr>
             </tfoot>
         </twig:Px:Table>
-        <twig:Px:Pager :total="431" :perPage="50" :page="page"/>
+        <twig:Px:Pager :total="431" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
     </twig:Px:Card>
 
     <div class="px-split--even px-split">

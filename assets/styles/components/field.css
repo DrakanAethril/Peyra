@@ -332,4 +332,177 @@
         color: var(--px-text-muted);
         font-size: var(--px-fs-12);
     }
+
+    /* ---------------------------------------------------------------- Amount, date (§ 4.5) */
+
+    .px-amount,
+    .px-dateinput {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .px-amount {
+        width: 140px;
+    }
+
+    .px-amount--grid,
+    .px-dateinput {
+        width: 112px;
+    }
+
+    .px-amount__input,
+    .px-dateinput__input {
+        font-family: var(--px-font-mono);
+        font-size: var(--px-fs-12);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .px-amount__input {
+        text-align: end;
+    }
+
+    .px-amount--unit .px-amount__input {
+        padding-inline-end: 22px;
+    }
+
+    .px-amount__unit {
+        position: absolute;
+        inset-inline-end: var(--px-space-8);
+        color: var(--px-text-muted);
+        font-family: var(--px-font-mono);
+        font-size: var(--px-fs-12);
+        pointer-events: none;
+    }
+
+    .px-dateinput__input {
+        padding-inline-end: 26px;
+    }
+
+    .px-dateinput__button {
+        position: absolute;
+        inset-inline-end: 2px;
+        display: inline-grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border: 0;
+        border-radius: var(--px-radius-sm);
+        background: transparent;
+        color: var(--px-text-muted);
+        cursor: pointer;
+
+        & > svg {
+            width: var(--px-icon-sm);
+            height: var(--px-icon-sm);
+        }
+
+        &:hover {
+            background: var(--px-surface-sunken);
+            color: var(--px-text-strong);
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring);
+        }
+    }
+
+    /* The calendar of the date field: a popover under the field, the month's weeks from Monday. */
+    .px-calendar {
+        inset-block-start: calc(100% + 4px);
+        inset-inline-start: 0;
+        width: 248px;
+        padding: var(--px-space-8);
+    }
+
+    .px-calendar__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-block-end: var(--px-space-6);
+    }
+
+    .px-calendar__title {
+        color: var(--px-text-strong);
+        font-size: var(--px-fs-13);
+        font-weight: var(--px-fw-semibold);
+    }
+
+    .px-calendar__nav,
+    .px-calendar__day,
+    .px-calendar__reference {
+        border: 0;
+        border-radius: var(--px-radius-sm);
+        background: transparent;
+        color: var(--px-text);
+        cursor: pointer;
+
+        &:hover {
+            background: var(--px-surface-sunken);
+            color: var(--px-text-strong);
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring);
+        }
+    }
+
+    .px-calendar__nav {
+        width: 24px;
+        height: 24px;
+        font-size: var(--px-fs-14);
+    }
+
+    .px-calendar__grid {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+
+        & th {
+            padding-block-end: var(--px-space-4);
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-11);
+            font-weight: var(--px-fw-semibold);
+        }
+
+        & abbr {
+            text-decoration: none;
+        }
+    }
+
+    .px-calendar__day {
+        width: 100%;
+        height: 28px;
+        font-family: var(--px-font-mono);
+        font-size: var(--px-fs-12);
+        font-variant-numeric: tabular-nums;
+
+        &.px-calendar__day--outside {
+            color: var(--px-text-muted);
+        }
+
+        &.px-calendar__day--reference {
+            box-shadow: inset 0 0 0 1px var(--px-action);
+        }
+
+        &[aria-pressed="true"] {
+            background: var(--px-action);
+            color: var(--px-text-on-action);
+            font-weight: var(--px-fw-semibold);
+        }
+    }
+
+    .px-calendar__foot {
+        margin-block-start: var(--px-space-6);
+        padding-block-start: var(--px-space-6);
+        border-block-start: 1px solid var(--px-border-row);
+    }
+
+    .px-calendar__reference {
+        width: 100%;
+        min-height: 26px;
+        color: var(--px-action);
+        font-size: var(--px-fs-12);
+        font-weight: var(--px-fw-semibold);
+    }
 }

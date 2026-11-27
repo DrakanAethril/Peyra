@@ -1,0 +1,6 @@
+{# Px:AmountInput - see App\Twig\Components\Px\AmountInput. #}
+<span{{ attributes.defaults({class: 'px-amount' ~ (grid ? ' px-amount--grid' : '') ~ (unit ? ' px-amount--unit' : ''), 'data-controller': 'amount-input'}) }}>
+    <input type="text" id="{{ id }}" class="px-input px-amount__input" inputmode="decimal" autocomplete="off" spellcheck="false" value="{{ this.display }}" data-amount-input-target="visible" data-action="focus->amount-input#selectAll input->amount-input#filter blur->amount-input#commit keydown.enter->amount-input#commit"{% if this.describedBy %} aria-describedby="{{ this.describedBy }}"{% endif %}{% if error %} aria-invalid="true"{% endif %}{% if required %} aria-required="true"{% endif %}>
+    {% if unit %}<span class="px-amount__unit" aria-hidden="true">{{ unit }}</span>{% endif %}
+    <input type="hidden" name="{{ name ?? id }}" value="{{ cents }}" data-amount-input-target="cents">
+</span>

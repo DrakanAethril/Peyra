@@ -3,6 +3,10 @@ framework:
         # The paths to make available to the asset mapper.
         paths:
             - assets/
+        # Posted to Gotenberg with the document, beside the font files it names flat
+        # (App\Service\Shared\Pdf\PdfRenderer): never served by the application.
+        excluded_patterns:
+            - '*/assets/styles/doc/doc-fonts.css'
         missing_import_mode: strict
         # Every supported browser reads import maps: no polyfill fetched from a CDN, nothing leaves.
         importmap_polyfill: false

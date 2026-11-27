@@ -52,6 +52,8 @@ services:
       # Sessions survive a rebuild of the container.
       - php_sessions:/app/var/sessions
       - app_locks:/app/var/lock
+      # The dossiers' files when PEYRA_STORAGE=local (S3 otherwise): shared with `worker`.
+      - app_storage:/app/var/storage
       # The directory's CA certificate (LDAPS): `certs/ldap-ca.pem` next to this file, never in
       # git; LDAP_TLS_CA_CERT_PATH=/etc/peyra/certs/ldap-ca.pem. An absent folder mounts empty.
       - ./certs:/etc/peyra/certs:ro
@@ -96,6 +98,7 @@ services:
       LOCK_DSN: flock:///app/var/lock
     volumes:
       - app_locks:/app/var/lock
+      - app_storage:/app/var/storage
       - ./certs:/etc/peyra/certs:ro
     logging:
       driver: json-file
@@ -106,3 +109,4 @@ services:
 volumes:
   php_sessions:
   app_locks:
+  app_storage:

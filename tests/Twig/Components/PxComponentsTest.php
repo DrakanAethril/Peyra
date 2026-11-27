@@ -6,6 +6,7 @@ namespace App\Tests\Twig\Components;
 
 use App\Enum\Shared\BadgeTone;
 use App\Enum\Shared\HasBadge;
+use App\Service\Shared\Money;
 use App\Twig\Components\Px\Avatar;
 use App\Twig\Components\Px\Pager;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -171,6 +172,66 @@ final class PxComponentsTest extends KernelTestCase
 
         self::assertStringContainsString('Aucune ligne', $html);
         self::assertStringNotContainsString('px-pager__pages', $html);
+    }
+
+    public function testPagerSizesSetPerAndGoBackToTheFirstPage(): void
+    {
+        $request = Request::create('/_design', 'GET', ['journal' => 'ACH', 'page' => '3']);
+        $request->attributes->set('_route', 'app_design_gallery');
+        $request->attributes->set('_route_params', []);
+        self::getContainer()->get(RequestStack::class)->push($request);
+
+        $html = $this->renderTwigComponent('Px:Pager', ['total' => 431, 'perPage' => 100, 'page' => 3, 'sizes' => true])->toString();
+
+        self::assertStringContainsString('aria-label="Lignes par page"', $html);
+        self::assertStringContainsString('href="/_design?journal=ACH&amp;page=1&amp;per=25"', $html);
+        self::assertStringContainsString('aria-current="true" aria-label="100 lignes par page"', $html);
+        self::assertStringNotContainsString('aria-current="true" aria-label="50 lignes par page"', $html);
+    }
+
+    public function testAmountInputShowsFrenchAndPostsCents(): void
+    {
+        $html = $this->renderTwigComponent('Px:AmountInput', ['id' => 'amount', 'value' => Money::cents(-262200), 'unit' => '€', 'grid' => true, 'error' => 'Montant illisible.'])->toString();
+
+        self::assertStringContainsString('class="px-amount px-amount--grid px-amount--unit"', $html);
+        self::assertStringContainsString('data-controller="amount-input"', $html);
+        self::assertStringContainsString('value="'."\u{2212}\u{00A0}2\u{202F}622,00".'"', $html);
+        self::assertStringContainsString('inputmode="decimal"', $html);
+        self::assertStringContainsString('<input type="hidden" name="amount" value="-262200"', $html);
+        self::assertStringContainsString('aria-describedby="amount_error" aria-invalid="true"', $html);
+        self::assertStringContainsString('<span class="px-amount__unit" aria-hidden="true">€</span>', $html);
+    }
+
+    public function testAmountInputLeftEmptyPostsNothing(): void
+    {
+        $html = $this->renderTwigComponent('Px:AmountInput', ['id' => 'a', 'name' => 'line[debit]'])->toString();
+
+        self::assertStringContainsString('<input type="hidden" name="line[debit]" value=""', $html);
+        self::assertStringContainsString('value=""', $html);
+    }
+
+    public function testAmountInputRefusesAnUnknownUnit(): void
+    {
+        $this->expectException(RuntimeError::class);
+        $this->renderTwigComponent('Px:AmountInput', ['id' => 'a', 'unit' => '$']);
+    }
+
+    public function testDateInputIsNeverANativeDateField(): void
+    {
+        $html = $this->renderTwigComponent('Px:DateInput', [
+            'id' => 'date',
+            'reference' => new \DateTimeImmutable('2026-11-30'),
+            'value' => new \DateTimeImmutable('2026-11-12'),
+            'hint' => true,
+        ])->toString();
+
+        self::assertStringNotContainsString('type="date"', $html);
+        self::assertStringContainsString('data-date-input-reference-value="2026-11-30"', $html);
+        self::assertStringContainsString('value="12/11/2026"', $html);
+        self::assertStringContainsString('placeholder="JJ/MM/AAAA"', $html);
+        self::assertStringContainsString('<input type="hidden" name="date" value="2026-11-12"', $html);
+        self::assertStringContainsString('aria-controls="date_calendar"', $html);
+        self::assertStringContainsString('aria-describedby="date_hint"', $html);
     }
 
     public function testSortHeaderReversesTheSortingColumnAndResetsThePage(): void

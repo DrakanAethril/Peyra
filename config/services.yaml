@@ -43,6 +43,24 @@ services:
 
     App\Service\Identity\Directory: '@App\Service\Identity\LdapDirectory'
 
+    # The client of the `documents.s3` storage (config/packages/flysystem.yaml), built only when
+    # PEYRA_STORAGE=s3.
+    peyra.s3_client:
+        class: Aws\S3\S3Client
+        factory: ['App\Service\Shared\Storage\S3ClientFactory', 'create']
+        arguments:
+            $region: '%env(S3_REGION)%'
+            $accessKeyId: '%env(S3_ACCESS_KEY_ID)%'
+            $secretAccessKey: '%env(S3_SECRET_ACCESS_KEY)%'
+            $endpoint: '%env(S3_ENDPOINT)%'
+
+    # The HTTP client the Mercure hub publishes with (config/packages/mercure.yaml): short, so that a
+    # hub that does not answer costs a request three seconds at most (App\Service\Shared\LivePublisher).
+    mercure.http_client:
+        class: Symfony\Contracts\HttpClient\HttpClientInterface
+        factory: ['@http_client', 'withOptions']
+        arguments: [{ timeout: 3, max_duration: 3 }]
+
 when@test:
     services:
         _defaults:
@@ -55,6 +73,16 @@ when@test:
             public: true
 
         App\Service\Identity\Directory: '@App\Tests\Support\InMemoryDirectory'
+
+        # Not used by any screen yet: kept in the container for their tests (step 0.6).
+        App\Service\Shared\Storage\DossierFiles:
+            public: true
+
+        App\Service\Shared\Pdf\PdfRenderer:
+            public: true
+
+        App\Service\Shared\LivePublisher:
+            public: true
 
         # The sign-in limiters' counters (config/packages/framework.yaml, when@test).
         test.rate_limiter_storage:

@@ -76,6 +76,7 @@ final class ProductionConfigurationTest extends TestCase
             self::assertSame('${PEYRA_VERSION:-}', $environment['PEYRA_VERSION'] ?? null, $name);
             self::assertSame('flock:///app/var/lock', $environment['LOCK_DSN'] ?? null, $name);
             self::assertContains('app_locks:/app/var/lock', $service['volumes'] ?? [], $name);
+            self::assertContains('app_storage:/app/var/storage', $service['volumes'] ?? [], $name.' sees the files PEYRA_STORAGE=local writes.');
             self::assertContains('./certs:/etc/peyra/certs:ro', $service['volumes'] ?? [], $name);
             self::assertSame(['.env.prod.local'], $service['env_file'] ?? null, $name);
         }

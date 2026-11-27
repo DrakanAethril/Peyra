@@ -1,0 +1,204 @@
+/*
+ * The paper (design-ui.md § 3.6 and § 4.18): invoices, payslips, statements and the states Peyra
+ * edits, the same sheet on screen (in the viewer) and in the PDF. Lengths in mm and pt only: an
+ * element wider than the page makes Chromium shrink the whole document. The ink is its own and
+ * fixed - a document is printed, it does not follow the screen's theme - hence the colours here,
+ * the one stylesheet besides tokens.css allowed to write them (DesignTokensTest reads components/
+ * and layout/).
+ */
+:root {
+    --doc-ink: #0f1b2a;
+    --doc-muted: #5b6b7c;
+    --doc-rule: #7d8b9c;
+    --doc-head: #f4f6f8;
+    --doc-paper: #ffffff;
+    --doc-sans: "Inter", system-ui, sans-serif;
+    --doc-serif: "Spectral", Georgia, serif;
+    --doc-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.px-docbody {
+    margin: 0;
+    color: var(--doc-ink);
+    background: var(--doc-paper);
+    font-family: var(--doc-sans);
+    font-size: 9pt;
+    line-height: 1.35;
+    font-variant-numeric: tabular-nums;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.px-doc {
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.px-doc *,
+.px-doc *::before,
+.px-doc *::after {
+    box-sizing: border-box;
+}
+
+.px-doc h1,
+.px-doc h2,
+.px-doc p {
+    margin: 0;
+}
+
+/* Title of a document: 14 pt, Spectral 600. */
+.px-doc__title {
+    font-family: var(--doc-serif);
+    font-weight: 600;
+    font-size: 14pt;
+    line-height: 1.2;
+}
+
+.px-doc__subtitle {
+    margin-top: 1mm;
+    color: var(--doc-muted);
+    font-size: 8pt;
+}
+
+.px-doc__section {
+    margin: 5mm 0 2mm;
+    font-size: 7pt;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--doc-muted);
+    break-after: avoid;
+}
+
+/* Tables: fixed layout, never wider than the page; header 7.5 pt capitals on the head grey. */
+.px-doc__table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+}
+
+.px-doc__table thead {
+    display: table-header-group;
+}
+
+.px-doc__table th {
+    padding: 1.2mm 1.5mm;
+    background: var(--doc-head);
+    border-bottom: 0.5pt solid var(--doc-rule);
+    font-size: 7.5pt;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--doc-muted);
+}
+
+.px-doc__table td {
+    height: 6mm;
+    padding: 0.8mm 1.5mm;
+    border-bottom: 0.25pt solid var(--doc-rule);
+    vertical-align: baseline;
+    overflow-wrap: anywhere;
+}
+
+.px-doc__table tr {
+    break-inside: avoid;
+}
+
+/* Totals once, at the end: a footer group would repeat them at the foot of every page. */
+.px-doc__table tfoot {
+    display: table-row-group;
+    break-inside: avoid;
+}
+
+.px-doc__table tfoot td,
+.px-doc__table tfoot th {
+    background: none;
+    border-top: 0.75pt solid var(--doc-ink);
+    border-bottom: 0.75pt solid var(--doc-ink);
+    color: var(--doc-ink);
+    font-size: 8.5pt;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* Figures: mono, right-aligned, tabular. */
+.px-doc__num,
+.px-doc__table th.px-doc__num {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.px-doc__table td.px-doc__num,
+.px-doc__table tfoot .px-doc__num {
+    font-family: var(--doc-mono);
+    font-size: 8.5pt;
+}
+
+.px-doc__code {
+    font-family: var(--doc-mono);
+}
+
+.px-doc__totals {
+    break-inside: avoid;
+}
+
+/* Legal mentions, in the foot of an invoice: 7.5 pt, muted. */
+.px-doc__legal {
+    margin-top: 6mm;
+    color: var(--doc-muted);
+    font-size: 7.5pt;
+}
+
+/* On screen, outside the viewer: the sheet on a grey table, at its paper width. */
+@media screen {
+    html:has(.px-docbody--preview) {
+        background: var(--doc-head);
+    }
+
+    .px-docbody--preview {
+        width: 297mm;
+        min-height: 210mm;
+        margin: 8mm auto;
+        padding: 12mm;
+        box-shadow: 0 0.5mm 3mm rgb(15 27 42 / 0.15);
+    }
+
+    .px-docbody--preview.px-docbody--portrait {
+        width: 210mm;
+        min-height: 297mm;
+        padding: 15mm;
+    }
+
+    .px-doc__running {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: end;
+        gap: 4mm;
+        margin-bottom: 6mm;
+        padding-bottom: 2mm;
+        border-bottom: 0.5pt solid var(--doc-rule);
+        font-size: 8pt;
+    }
+
+    .px-doc__running .px-doc__title {
+        font-size: 12pt;
+    }
+
+    .px-doc__running > :last-child {
+        text-align: right;
+    }
+
+    .px-doc__running-company {
+        font-size: 10pt;
+        font-weight: 600;
+    }
+}
+
+@media print {
+    .px-doc__running {
+        display: none;
+    }
+}

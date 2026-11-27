@@ -1,6 +1,14 @@
 {# Px:Pager - see App\Twig\Components\Px\Pager. #}
 <nav{{ attributes.defaults({class: 'px-pager'}) }} aria-label="Pagination">
     <span>{% if total == 0 %}Aucune ligne{% else %}{{ this.first }} à {{ this.last }} sur {{ total }}{% endif %}</span>
+    {% if sizes %}
+        <span class="px-pager__sizes" role="group" aria-label="Lignes par page">
+            <span aria-hidden="true">Lignes</span>
+            {% for size in this.sizeChoices %}
+                <a class="px-pager__size" href="{{ this.sizeUrl(size) }}"{% if size == perPage %} aria-current="true"{% endif %} aria-label="{{ size }} lignes par page">{{ size }}</a>
+            {% endfor %}
+        </span>
+    {% endif %}
     {% if this.pageCount > 1 %}
         <span class="px-pager__pages">
             {% if page > 1 %}

@@ -76,7 +76,7 @@ Quelques règles :
 - Compose lit ce fichier, pas Symfony : écrivez un secret **entre apostrophes** (`'…'`), sinon un
   `$`, un `#` ou une espace y sont interprétés.
 - `APP_SECRET`, `MERCURE_PUBLISHER_JWT_KEY` et `MERCURE_SUBSCRIBER_JWT_KEY` : `openssl rand -hex 32`
-  chacun, deux clés Mercure différentes ; `MERCURE_JWT_SECRET` reprend la clé de l'éditeur.
+  chacun, deux clés Mercure différentes.
 - `DATABASE_URL` : dans le mot de passe, encodez `@ : / # ? %` (`%40`, `%3A`…).
 - L'annuaire : les mêmes valeurs que le `.env.prod.local` de Formatool (hôte, port, chiffrement,
   base, compte de service). Les valeurs par défaut du gabarit sont celles d'un Samba AD :
@@ -90,6 +90,14 @@ Quelques règles :
   passe, et la procédure est celle de Formatool (sa connexion par lien envoyé par courriel,
   `/login/magic-link`, puis le changement de mot de passe dans le profil Formatool).
   `PEYRA_PASSWORD_HELP_URL` ne sert que si la procédure est ailleurs.
+- Les fichiers des dossiers (pièces, documents produits) : `PEYRA_STORAGE=s3` et les `S3_*`. Un
+  compartiment propre à Peyra, privé, et un utilisateur dont les seuls droits sont
+  `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` et `s3:ListBucket` sur ce compartiment ; clés
+  vides : la chaîne d'identification du SDK (rôle de l'instance). `S3_ENDPOINT` ne sert que pour un
+  service compatible S3 autre qu'AWS. À défaut de compartiment, `PEYRA_STORAGE=local` écrit dans le
+  volume `app_storage` de la machine, partagé par `php` et `worker` : il faut alors le sauvegarder
+  (« Sauvegarde »). Un envoi est refusé au-delà de 20 Mo, avec une phrase, sous les 64 Mo de PHP et
+  de nginx.
 
 ### `certs/ldap-ca.pem`
 
@@ -308,9 +316,17 @@ Le code revient en arrière par git, la base par sa sauvegarde :
   ```
 
   Restauration : `gunzip -c pgi_mngmt-AAAA-MM-JJ.sql.gz | mariadb -h <serveur> -u user_pgi -p pgi_mngmt`.
-- **Les fichiers** : aucun pour l'instant hors de la base. Les volumes Docker de la pile ne
-  tiennent que les sessions (`php_sessions`), les verrous (`app_locks`) et l'état de Caddy : rien à
-  sauvegarder. Les pièces et documents iront sur S3 (étape 0.6) et y seront sauvegardés.
+- **Les fichiers des dossiers** : sur S3 (`PEYRA_STORAGE=s3`), activez le versionnement du
+  compartiment, qui garde une copie de tout objet remplacé ou supprimé. En `local`, ils sont dans le
+  volume `app_storage`, à copier avec la base :
+
+  ```console
+  docker run --rm -v peyra_app_storage:/d:ro -v "$PWD":/out debian:13-slim tar czf /out/peyra-fichiers-$(date +%F).tgz -C /d .
+  ```
+
+  (le nom du volume est préfixé par celui du projet Compose : `docker volume ls`). Les autres
+  volumes ne tiennent que les sessions (`php_sessions`), les verrous (`app_locks`) et l'état de
+  Caddy : rien à sauvegarder.
 - **Les fichiers du serveur** (`.env.prod.local`, `deploy-prod.sh`, `certs/`) : une copie hors de la
   machine, chiffrée ; sans `APP_SECRET`, toute session ouverte est perdue, sans les clés Mercure le
   suivi en direct s'arrête.
@@ -336,6 +352,9 @@ alias dc='docker compose -f compose.yaml -f compose.prod.yaml'
 | Le journal des connexions montre l'adresse de nginx, ou une adresse en `172.…` | `TRUSTED_PROXIES` ne contient pas l'adresse que Peyra voit. Docker la remplace par celle de son pont quand nginx arrive en IPv6 (proxy de Docker) : mettez l'adresse affichée, ou `REMOTE_ADDR` si le pare-feu ferme le port à tout autre |
 | Les liens ou les redirections partent en `http://` | `TRUSTED_PROXIES` (ci-dessus) et l'en-tête `X-Forwarded-Proto` du bloc nginx |
 | Le suivi en direct ne bouge pas | la `location /.well-known/mercure` de nginx (`proxy_buffering off`), les clés Mercure, `PUBLIC_URL` |
+| Un document PDF ne sort pas (« Le document n'a pas pu être produit ») | `dc logs --tail=100 gotenberg` et `dc logs php` (ligne « Gotenberg failed on … ») ; `dc restart gotenberg` |
+| Un envoi de fichier échoue | `PEYRA_STORAGE` et les `S3_*` ; les journaux de `php` ; au-delà de 64 Mo, c'est nginx qui refuse (413) |
+| Une tâche planifiée échoue | `dc logs worker` : une ligne par exécution (« Scheduled task … exited with code … »), la fin de sa sortie quand elle échoue |
 | « À propos » affiche une autre version | `PEYRA_VERSION` est exportée par `deploy-prod.sh` : un déploiement à la main doit l'exporter aussi |
 
 ## Essai local de la pile de production

@@ -79,4 +79,20 @@ final class DesignGalleryControllerTest extends WebTestCase
         $client->request('POST', '/_design/dialog', ['motif' => 'Erreur de compte']);
         self::assertResponseRedirects('/_design?motif=Erreur%20de%20compte', 303);
     }
+
+    public function testTheSampleDocumentInTheBrowserAndAsAPdf(): void
+    {
+        $client = self::createClient();
+        $client->request('GET', '/_design/document');
+        self::assertResponseIsSuccessful();
+        self::assertSelectorExists('body.px-docbody.px-docbody--landscape.px-docbody--preview');
+        self::assertSelectorTextContains('.px-doc__running h1', 'Balance d’ouverture (extrait)');
+        self::assertSelectorTextContains('tfoot', "291\u{202F}293,08");
+        self::assertStringNotContainsString('doc-fonts.css', (string) $client->getResponse()->getContent(), 'The preview loads the application\'s fonts.');
+
+        $client->request('GET', '/_design/document.pdf');
+        self::assertResponseIsSuccessful();
+        self::assertResponseHeaderSame('Content-Type', 'application/pdf');
+        self::assertStringStartsWith('%PDF-', (string) $client->getResponse()->getContent());
+    }
 }

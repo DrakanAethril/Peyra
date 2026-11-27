@@ -322,6 +322,45 @@ Conception § 3 bis, held by code in `src/Service/Identity/`:
   are placed by their own first sign-in, as in production. Classes are the institution's: they are
   never part of the demonstration dossier (`app:demo:install`, lot 1).
 
+## Cross-cutting building blocks (built at step 0.6a)
+
+Reach for these rather than re-implement them; each has its test.
+
+- **Money**: `App\Service\Shared\Money` (whole cents, brick/math, an overflow throws), column
+  `#[ORM\Column(type: 'money')]` (BIGINT, `App\Doctrine\Type\MoneyType`). `times()` takes the
+  rounding as an argument: there is no default rounding. JSON carries cents as an integer.
+  `AmountParser::parse()` reads what a person types (« 1 234,56 », « 1234.56 », « −138 », thousands
+  « 1.234,56 ») or throws `AmountParseError` with the sentence to print; it never computes.
+- **French formats**: `FrenchFormat` behind Twig filters (`App\Twig\FormatExtension`): `amount`,
+  `amount_cell` (empty for zero), `amount_eur`, `balance` (« D »/« C »), `whole_euros`, `percent`,
+  `quantity`, `hours`, `date_fr`, `day_month(year)`, `date_chip`, `period`, `clock`, `duration`.
+  Thousands are U+202F, a unit follows U+00A0, a minus is U+2212. No ICU, no locale, no clock.
+- **Fields**: `Px:AmountInput` (display field + hidden cents, arithmetic on leaving the field) and
+  `Px:DateInput` (« JJ/MM/AAAA » + hidden ISO day; `reference` is the dossier's date, never the
+  computer's: no `<input type="date">`). The server reads `DateValue::parse()`.
+- **Readers**: `QueryValue`, `PostValue`, `FormValue` (+ `money()`), `JsonRequestPayload`
+  (+ `date()`; no float), `ListPage::fromRequest($request, 'screen.name')` (25/50/100, 50 by
+  default, remembered per screen in the session) with `<twig:Px:Pager … :sizes="true"/>`.
+- **Files**: `App\Service\Shared\Storage\DossierFiles` is the only writer of the documents
+  storage: keys `dossiers/<id>/<category>/<random>.<ext>`, every reading takes the dossier and
+  refuses a key outside its prefix, `copyAll()` copies a dossier's prefix and answers the key map.
+  `documents.storage` is `documents.local` (`var/storage`, the `app_storage` volume shared by `php`
+  and `worker`; under the cache in test) or `documents.s3`, by `PEYRA_STORAGE`. `UploadPolicy`:
+  one platform rule (20 Mo, pdf/images/csv/txt/ofx/xml/xlsx/ods), narrowed per field with
+  `restrictTo()` / `limitedTo()`, never widened; the type is sniffed from the bytes.
+- **PDF**: `App\Service\Shared\Pdf\PdfRenderer` (`renderTemplate`, `render`, `merge`,
+  `pageCount`) is the one door to Gotenberg. A document extends `doc/_document.html.twig` (a state
+  Peyra edits: `doc/_report.html.twig`, header and foot in `@page` margin boxes) and links
+  `assets/styles/doc/*` by their bare names, posted with the fonts: Gotenberg never reaches the
+  application. `doc-fonts.css` is excluded from AssetMapper. Totals in a `tfoot` are a row group
+  (a footer group would repeat them on every page). Sample: `/_design/document` and
+  `/_design/document.pdf`; look at a PDF with `pdftoppm -png` on the host.
+- **Live**: `LivePublisher::publish($topics, $data)` - private by default, a failure is a warning
+  in the log and `false`, never an exception. Topics are `peyra/<area>/<id>`.
+- **Scheduled commands**: `App\Command\Shared\SharedLockableTrait` (`$this->lock()`, released when
+  `run()` returns); `App\Scheduler\ScheduledCommandLogger` writes one line per run in the
+  worker's log, the output's tail at error level when it fails.
+
 ## Conventions (as in Formatool)
 
 - **Code is English, display text is French.** Identifiers, comments and docblocks are English; only
@@ -345,10 +384,10 @@ Conception § 3 bis, held by code in `src/Service/Identity/`:
 - **Forms**: checkbox groups rather than `<select multiple>`; a select used for input has a
   placeholder; picking users uses an autocomplete fed by ajax.
 - **Worker mode**: a service that keeps state between calls implements `ResetInterface`. A scheduled
-  command that locks itself uses a shared-lock trait like Formatool's `SharedLockableTrait`, never
-  Symfony's `LockableTrait` (the worker reruns the same instance).
-- **Publishing to Mercure is a comfort, never a condition**: catch and log, since CI's publisher key
-  makes every publish throw.
+  command that locks itself uses `App\Command\Shared\SharedLockableTrait`, never Symfony's
+  `LockableTrait` (the worker reruns the same instance).
+- **Publishing to Mercure is a comfort, never a condition**: always through `LivePublisher`, which
+  catches and logs.
 - **Indentation** follows `.editorconfig`: 4 spaces; tabs in Dockerfile, Caddyfile and `*.sh`;
   2 spaces in Compose and GitHub Actions YAML.
 - **Configuration** goes through `.env`, not by editing `compose.yaml` or the Caddyfile.

@@ -1,0 +1,7 @@
+{# Px:DateInput - see App\Twig\Components\Px\DateInput. #}
+<span{{ attributes.defaults({class: 'px-dateinput', 'data-controller': 'date-input', 'data-date-input-reference-value': reference|date('Y-m-d')}) }}>
+    <input type="text" id="{{ id }}" class="px-input px-dateinput__input" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="JJ/MM/AAAA" maxlength="10" value="{{ value ? value|date_fr : '' }}" data-date-input-target="visible" data-action="focus->date-input#selectAll blur->date-input#commit keydown->date-input#keydown"{% if this.describedBy %} aria-describedby="{{ this.describedBy }}"{% endif %}{% if error %} aria-invalid="true"{% endif %}{% if required %} aria-required="true"{% endif %}>
+    <button type="button" class="px-dateinput__button" aria-label="Choisir dans le calendrier" aria-haspopup="dialog" aria-expanded="false" aria-controls="{{ id }}_calendar" data-date-input-target="button" data-action="date-input#toggle"><twig:ux:icon name="calendar" aria-hidden="true"/></button>
+    <input type="hidden" name="{{ name ?? id }}" value="{{ value ? value|date('Y-m-d') : '' }}" data-date-input-target="iso">
+    <div class="px-popover px-calendar" id="{{ id }}_calendar" role="dialog" aria-label="Calendrier" hidden data-date-input-target="panel" data-action="keydown->date-input#calendarKeydown"></div>
+</span>

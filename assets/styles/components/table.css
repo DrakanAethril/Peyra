@@ -369,4 +369,41 @@
     .px-pager__gap {
         padding: 0 var(--px-space-2);
     }
+
+    /* Page sizes (25, 50, 100: design-ux.md § 6.6), after the count: quiet links, the current one
+       in strong ink. */
+    .px-pager__sizes {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-2);
+        padding-inline-start: var(--px-space-10);
+        border-inline-start: 1px solid var(--px-border-row);
+    }
+
+    .px-pager__size {
+        display: inline-grid;
+        place-items: center;
+        min-width: 24px;
+        min-height: 24px;
+        padding: 0 var(--px-space-4);
+        border-radius: var(--px-radius-sm);
+        color: var(--px-text-muted);
+        font-family: var(--px-font-mono);
+        text-decoration: none;
+
+        &:hover {
+            background: var(--px-surface-sunken);
+            color: var(--px-text-strong);
+            text-decoration: none;
+        }
+
+        &:focus-visible {
+            box-shadow: var(--px-ring);
+        }
+
+        &[aria-current="true"] {
+            color: var(--px-text-strong);
+            font-weight: var(--px-fw-semibold);
+        }
+    }
 }
