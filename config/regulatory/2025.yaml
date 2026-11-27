@@ -1,0 +1,23 @@
+# Peyra - paramètres réglementaires, millésime 2025 : les valeurs datées que les calculs lisent à la
+# date du dossier (App\Service\Regulatory\RegulatoryReader). Installées par app:regulatory:sync à
+# chaque déploiement ; un administrateur les complète sous Paramètres › Paramètres réglementaires.
+#
+# Une entrée :
+#
+#   - key: social.smic_hourly        # domaine.nom, en anglais et snake_case ; domaines : social, fiscal
+#     label: SMIC horaire brut       # le libellé affiché
+#     value: 12.02                   # un nombre, un texte, ou une structure (tableau, liste de tranches)
+#     unit: EUR/heure                # percent (6.90 = 6,90 %), EUR, EUR/mois, coefficient, text…
+#     effective_from: 2025-01-01     # date d’effet ; un changement déjà connu pour l’an prochain a sa place ici
+#     source_url: https://www.urssaf.fr/…   # la page officielle lue
+#     consulted_on: 2026-11-27       # le jour où elle a été lue
+#     verified: true                 # true seulement si la valeur a été lue sur la source ; sinon false
+#     note: …                        # facultatif
+#
+# Une même clé peut revenir à plusieurs dates d'effet (SMIC de janvier et de juin). Corriger une
+# valeur déjà installée, c'est la réécrire ici : la synchronisation ajoute une ligne qui la remplace
+# et garde l'ancienne dans l'historique ; elle ne touche jamais à une valeur saisie par un
+# administrateur. Les données préparées pour Peyra (sources, marques verified) entrent ici avec les
+# modules qui les lisent : TVA et fiscalité au lot 3, paie au lot 4.
+millesime: 2025
+entries: []

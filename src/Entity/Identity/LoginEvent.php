@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity\Identity;
 
+use App\Entity\Shared\AppendOnly;
 use App\Enum\Identity\LoginOutcome;
 use App\Repository\Identity\LoginEventRepository;
 use Doctrine\ORM\Mapping as ORM;
@@ -15,7 +16,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity(repositoryClass: LoginEventRepository::class, readOnly: true)]
 #[ORM\Index(name: 'idx_login_event_occurred', columns: ['occurred_at'])]
-class LoginEvent
+class LoginEvent implements AppendOnly
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]

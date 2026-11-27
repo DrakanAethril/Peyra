@@ -1,0 +1,16 @@
+{#
+ # A regulatory value in a table cell (`value`, a RegulatoryValue): a number on the right in
+ # tabular figures, a text on the left (its first words: the sheet has the rest), a structure as its
+ # count of values, read on the sheet.
+ #}
+{%- set leaves = regulatory_leaves(value.tree) -%}
+{%- if leaves|length == 1 and leaves[0].path is empty -%}
+    {%- if leaves[0].isNumber -%}
+        <td class="px-u-num px-u-right px-u-nowrap">{{ leaves[0].value|regulatory_leaf(value.unit) }}</td>
+    {%- else -%}
+        {%- set text = leaves[0].value|regulatory_leaf(value.unit) -%}
+        <td>{{ text|length > 90 ? text|slice(0, 90)|trim ~ '…' : text }}</td>
+    {%- endif -%}
+{%- else -%}
+    <td class="px-u-right px-u-muted px-u-nowrap">{{ leaves|length }} valeurs</td>
+{%- endif -%}

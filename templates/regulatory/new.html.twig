@@ -1,0 +1,105 @@
+{#
+ # « Nouvelle valeur datée » (design-ux.md § 3.3, gabarit F), administrators only. It starts from
+ # the latest value: its elements are changed, never its shape. A date already held corrects that
+ # date's value; the corrected one stays in the history. F10 records.
+ #}
+{% extends 'regulatory/_layout.html.twig' %}
+
+{% set base = draft.base %}
+{% set regulatory_title = 'Nouvelle valeur datée' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Nouvelle valeur datée" :trail="[
+        {label: 'Paramètres', href: path('app_regulatory')},
+        {label: 'Paramètres réglementaires', href: path('app_regulatory')},
+        {label: base.label, href: path('app_regulatory_show', {key: base.key})},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    <form method="post" action="{{ path('app_regulatory_new', {key: base.key}) }}" class="px-stack" id="regulatory-form" novalidate>
+        <input type="hidden" name="_token" value="{{ csrf_token('regulatory-new-' ~ base.key) }}">
+
+        {% if draft.error('form') %}
+            <twig:Px:Alert tone="warning">{{ draft.error('form') }}</twig:Px:Alert>
+        {% endif %}
+
+        {% set leaves = draft.baseLeaves %}
+        <twig:Px:Card title="{{ base.label }}" meta="{{ base.key }} · {{ base.unit|regulatory_unit }}">
+            <div class="px-form">
+                <div class="px-formrow">
+                    <twig:Px:Field id="effective_from" label="Date d’effet" :required="true" :error="draft.error('effective_from')">
+                        <twig:Px:DateInput id="effective_from" :reference="today" :value="draft.effectiveFrom" :required="true" hint="1" :error="draft.error('effective_from') is not null"/>
+                    </twig:Px:Field>
+                    {% if leaves|length == 1 and leaves[0].path is empty %}
+                        {% set leaf = leaves[0] %}
+                        {% set suffix = base.unit|regulatory_suffix %}
+                        <twig:Px:Field id="leaf_0" label="Valeur{{ suffix ? ' (' ~ suffix ~ ')' : '' }}" :required="leaf.value is not null" :wide="not leaf.isNumber" :error="draft.error('leaf_0')">
+                            {{ include('regulatory/_leaf_input.html.twig', {index: 0, leaf: leaf}) }}
+                        </twig:Px:Field>
+                    {% endif %}
+                </div>
+                {% if leaves|length == 1 and leaves[0].path is empty %}
+                    <p class="px-u-muted" id="leaf_0_hint">Valeur du {{ base.effectiveFrom|date_fr }} : {{ leaves[0].value|regulatory_leaf(base.unit) }}.</p>
+                {% endif %}
+                <p class="px-u-muted" id="effective_from_hint">La date d’effet est le premier jour où la valeur s’applique. Une date déjà inscrite corrige la valeur de ce jour : l’ancienne reste dans l’historique, et les calculs lisent la nouvelle.</p>
+            </div>
+        </twig:Px:Card>
+
+        {% if not (leaves|length == 1 and leaves[0].path is empty) %}
+            <twig:Px:Card title="Valeur" meta="{{ leaves|length }} éléments, ceux du {{ base.effectiveFrom|date_fr }} pour commencer" :flush="true">
+                <twig:Px:Table caption="Éléments de la nouvelle valeur">
+                    <thead>
+                        <tr>
+                            <th scope="col">Élément</th>
+                            <th scope="col" class="px-u-right">Valeur du {{ base.effectiveFrom|date_fr }}</th>
+                            <th scope="col">Nouvelle valeur</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for index, leaf in leaves %}
+                            <tr>
+                                <th scope="row"><label class="px-u-code" for="leaf_{{ index }}">{{ leaf.pathLabel }}</label></th>
+                                <td class="{{ leaf.isNumber ? 'px-u-num' : '' }}">{{ leaf.value|regulatory_leaf(base.unit) }}</td>
+                                <td>
+                                    {{ include('regulatory/_leaf_input.html.twig', {index: index, leaf: leaf}) }}
+                                    {% if draft.error('leaf_' ~ index) %}<p class="px-field__error" id="leaf_{{ index }}_error"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ draft.error('leaf_' ~ index) }}</p>{% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            </twig:Px:Card>
+        {% endif %}
+
+        <twig:Px:Card title="Source">
+            <div class="px-form">
+                <div class="px-formrow">
+                    <twig:Px:Field id="source_url" label="Page officielle lue" :wide="true" :error="draft.error('source_url')">
+                        <twig:Px:Input id="source_url" type="url" value="{{ draft.sourceUrl }}" placeholder="https://www.urssaf.fr/…" :error="draft.error('source_url')" autocomplete="off" spellcheck="false"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="consulted_on" label="Consultée le" :error="draft.error('consulted_on')">
+                        <twig:Px:DateInput id="consulted_on" :reference="today" :value="draft.consultedOn" :error="draft.error('consulted_on') is not null"/>
+                    </twig:Px:Field>
+                </div>
+                <div>
+                    <label class="px-check">
+                        <input type="checkbox" name="verified" value="1"{% if draft.verified %} checked{% endif %}{% if draft.error('verified') %} aria-invalid="true" aria-describedby="verified_error"{% endif %}>
+                        <span>Valeur vérifiée : lue sur la page officielle ci-dessus</span>
+                    </label>
+                    {% if draft.error('verified') %}<p class="px-field__error" id="verified_error"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ draft.error('verified') }}</p>{% endif %}
+                </div>
+                <twig:Px:Field id="note" label="Note" :error="draft.error('note')" hint="Ce qui a changé, une réserve, le texte qui la fonde.">
+                    <twig:Px:Input id="note" :area="true" value="{{ draft.note }}" hint="1" :error="draft.error('note')"/>
+                </twig:Px:Field>
+            </div>
+        </twig:Px:Card>
+
+        <div class="px-cluster">
+            <twig:Px:Button href="{{ path('app_regulatory_show', {key: base.key}) }}" variant="quiet">Annuler</twig:Px:Button>
+            <twig:Px:Button type="submit" variant="primary" icon="save" shortcut="F10 Ctrl+S" class="px-u-push">Enregistrer la valeur</twig:Px:Button>
+        </div>
+    </form>
+{% endblock %}
+
+{% block facts %}<span>Valeur la plus récente · <b>{{ base.effectiveFrom|date_fr }}</b></span>{% endblock %}

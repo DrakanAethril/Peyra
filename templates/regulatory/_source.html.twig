@@ -1,0 +1,7 @@
+{# Where and when a value was read (`value`, a RegulatoryValue). #}
+{%- if value.sourceUrl -%}
+    <a class="px-link px-u-nowrap" href="{{ value.sourceUrl }}" rel="noopener noreferrer" target="_blank">{{ value.sourceUrl|split('/')[2] ?? value.sourceUrl }}<twig:ux:icon name="external-link" aria-hidden="true" width="12" height="12"/><span class="px-u-sr-only"> (nouvel onglet)</span></a>
+    {%- if value.consultedOn %}<br><span class="px-u-muted">lue le {{ value.consultedOn|date_fr }}</span>{% endif -%}
+{%- else -%}
+    <span class="px-u-muted">Aucune source</span>
+{%- endif -%}

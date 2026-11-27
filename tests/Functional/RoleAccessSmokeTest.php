@@ -6,7 +6,9 @@ namespace App\Tests\Functional;
 
 use App\Entity\Identity\User;
 use App\Tests\Support\BuildsSchool;
+use App\Tests\Support\RegulatoryFixtures;
 use App\Tests\Support\SignsIn;
+use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
@@ -55,6 +57,32 @@ final class RoleAccessSmokeTest extends WebTestCase
         yield 'Classes (administration)' => ['/teacher/admin/classes', $admins];
         yield 'Correspondance avec l’annuaire' => ['/teacher/admin/directory', $admins];
         yield 'Recherche d’enseignants' => ['/teacher/admin/classes/teachers/search?q=pr', $admins];
+        yield 'Paramètres réglementaires' => ['/teacher/regulatory', $teachers];
+    }
+
+    /** The sheet of a regulatory value and « Nouvelle valeur datée », on a value written for the test. */
+    public function testTheScreensOfARegulatoryValue(): void
+    {
+        $client = static::createClient();
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+        $em->persist(RegulatoryFixtures::fromFile('social.smic_hourly', '2026-01-01', '12.02', unit: 'EUR/heure'));
+        $em->flush();
+
+        $screens = [
+            '/teacher/regulatory/social.smic_hourly' => ['student' => 404, 'teacher' => 200, 'admin' => 200, 'refused' => 302],
+            '/teacher/regulatory/social.smic_hourly/new' => ['student' => 404, 'teacher' => 404, 'admin' => 200, 'refused' => 302],
+        ];
+        foreach ($screens as $url => $expected) {
+            $actual = [];
+            foreach (self::ACCOUNTS as $role => $login) {
+                self::ensureKernelShutdown();
+                $client = static::createClient();
+                $this->submitLogin($client, $login);
+                $client->request('GET', $url);
+                $actual[$role] = $client->getResponse()->getStatusCode();
+            }
+            self::assertSame($expected, $actual, $url);
+        }
     }
 
     /**

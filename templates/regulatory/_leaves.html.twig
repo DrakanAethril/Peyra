@@ -1,0 +1,36 @@
+{#
+ # The value of a RegulatoryValue (`value`): a plain number or text as it reads, a list of brackets
+ # as a table (one row per bracket), any other structure as the list of its elements
+ # (path › value). `compact` inside a table cell: a structure folds behind its count (<details>,
+ # opened by a click or Enter).
+ #}
+{%- set leaves = regulatory_leaves(value.tree) -%}
+{%- set brackets = regulatory_table(value.tree) -%}
+{%- if leaves|length == 1 and leaves[0].path is empty -%}
+    {%- if leaves[0].isNumber -%}
+        <span class="px-u-num{% if not (compact ?? false) %} px-u-strong{% endif %}">{{ leaves[0].value|regulatory_leaf(value.unit) }}</span>
+    {%- else -%}
+        <span>{{ leaves[0].value|regulatory_leaf(value.unit) }}</span>
+    {%- endif -%}
+{%- elseif compact ?? false -%}
+    <details>
+        <summary>{{ brackets ? brackets.rows|length ~ ' tranches' : leaves|length ~ ' valeurs' }}</summary>
+        {{ include('regulatory/_leaves.html.twig', {value: value, compact: false}) }}
+    </details>
+{%- elseif brackets -%}
+    <twig:Px:Table caption="{{ value.label }}" variant="plain" density="compact">
+        <thead><tr>{% for column in brackets.columns %}<th scope="col" class="px-u-right">{{ column }}</th>{% endfor %}</tr></thead>
+        <tbody>
+            {%- for bracket in brackets.rows -%}
+                <tr>{% for cell in bracket %}<td class="px-u-num">{{ cell|regulatory_leaf(value.unit) }}</td>{% endfor %}</tr>
+            {%- endfor -%}
+        </tbody>
+    </twig:Px:Table>
+{%- else -%}
+    <dl class="px-facts">
+        {%- for leaf in leaves -%}
+            <dt class="px-u-code">{{ leaf.pathLabel }}</dt>
+            <dd class="{{ leaf.isNumber ? 'px-u-num' : '' }}">{{ leaf.value|regulatory_leaf(value.unit) }}</dd>
+        {%- endfor -%}
+    </dl>
+{%- endif -%}

@@ -1,6 +1,7 @@
 {#
  # Paramètres › Administration (design-ux.md §§ 2.6 and 3.6), administrators only, in the order of
- # design-ux.md § 2.6. A screen sets `admin_tab` and `admin_title` outside any block.
+ # design-ux.md § 2.6, after « Paramètres réglementaires » in the same bar
+ # (teacher/_settings_tabs.html.twig). A screen sets `admin_tab` and `admin_title` outside any block.
  #}
 {% extends 'teacher/_layout.html.twig' %}
 
@@ -8,17 +9,7 @@
 
 {% block title %}{{ admin_title }} · Administration · Peyra{% endblock %}
 
-{% block module_tabs %}
-    <twig:Px:ModuleTabs label="Administration" :tabs="[
-        {label: 'Années scolaires', href: path('app_admin_years'), current: admin_tab == 'years'},
-        {label: 'Classes', href: path('app_admin_classes'), current: admin_tab == 'classes'},
-        {label: 'Correspondance avec l’annuaire', href: path('app_admin_directory'), current: admin_tab == 'directory'},
-        {label: 'Enseignants de la filière', href: path('app_admin_teachers'), current: admin_tab == 'teachers'},
-        {label: 'Administrateurs', href: path('app_admin_administrators'), current: admin_tab == 'administrators'},
-        {label: 'Journal des connexions', href: path('app_admin_logins'), current: admin_tab == 'logins'},
-        {label: 'Journal d’administration', href: path('app_admin_journal'), current: admin_tab == 'journal'},
-    ]"/>
-{% endblock %}
+{% block module_tabs %}{{ include('teacher/_settings_tabs.html.twig', {settings_tab: admin_tab}) }}{% endblock %}
 
 {% block status %}
     {%- for message in app.flashes('status') %}<span>{{ message }}</span>{% else %}{{ block('facts') }}{% endfor -%}
