@@ -36,7 +36,7 @@
                         <label class="px-u-sr-only" for="place-class">Classe</label>
                         <twig:Px:Select id="place-class" name="class" size="sm" placeholder="Choisir la classe…" :options="classes|map(r => {value: r.schoolClass.id, label: r.schoolClass.name ~ ' · ' ~ r.students ~ (r.students > 1 ? ' étudiants' : ' étudiant')})"/>
                         <twig:Px:Button type="submit" size="sm" variant="primary" icon="user-plus">Placer la sélection</twig:Px:Button>
-                        <twig:Px:ConfirmButton label="Sortis de la filière" confirmLabel="Confirmer : sortis de la filière" variant="secondary" size="sm" formaction="{{ path('app_teacher_unplaced_depart') }}" aria-describedby="unplaced-note"/>
+                        <twig:Px:ConfirmButton label="Sortis de la filière" confirmLabel="Confirmer la sortie" variant="secondary" size="sm" formaction="{{ path('app_teacher_unplaced_depart') }}" aria-describedby="unplaced-note"/>
                     {% endif %}
                 </div>
                 {% if students is empty %}
