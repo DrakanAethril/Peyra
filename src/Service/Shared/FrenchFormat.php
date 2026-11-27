@@ -81,6 +81,12 @@ final class FrenchFormat
         return self::decimal(BigDecimal::of($rate)->strippedOfTrailingZeros()).self::NBSP.'%';
     }
 
+    /** « 48 060 », « 0,3193 », « 6,9 »: a number with the decimals it has, trailing zeros dropped. */
+    public static function number(BigNumber|int|string $value): string
+    {
+        return self::decimal(BigDecimal::of($value)->strippedOfTrailingZeros());
+    }
+
     /** « 2,40 »: a quantity at the scale the screen asks for (two decimals by default). */
     public static function quantity(BigNumber|int|string $quantity, int $scale = 2): string
     {

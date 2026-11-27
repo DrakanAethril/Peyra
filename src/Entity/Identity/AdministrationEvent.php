@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity\Identity;
 
+use App\Entity\Shared\AppendOnly;
 use App\Enum\Identity\AdministrationAction;
 use App\Repository\Identity\AdministrationEventRepository;
 use Doctrine\ORM\Mapping as ORM;
@@ -16,7 +17,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity(repositoryClass: AdministrationEventRepository::class, readOnly: true)]
 #[ORM\Index(name: 'idx_administration_event_occurred', columns: ['occurred_at'])]
-class AdministrationEvent
+class AdministrationEvent implements AppendOnly
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]

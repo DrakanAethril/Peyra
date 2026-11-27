@@ -1,0 +1,73 @@
+{#
+ # Paramètres › Paramètres réglementaires (design-ux.md § 3.3, gabarit L): the values of one
+ # millésime - every dated value applying on at least one day of the year -, filtered by domain and
+ # searched, each opening its sheet. Filters in GET, kept in the address.
+ #}
+{% extends 'regulatory/_layout.html.twig' %}
+
+{% set regulatory_title = 'Paramètres réglementaires' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Paramètres réglementaires" :trail="[{label: 'Paramètres', href: path('app_regulatory')}]"/>
+{% endblock %}
+
+{% block page %}
+    {% if millesimes is empty %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="scale" title="Aucune valeur réglementaire installée" text="Taux, plafonds, seuils et barèmes arrivent avec les modules qui les lisent : la TVA et la fiscalité, puis la paie. Chaque déploiement installe les millésimes du dépôt ; un administrateur les complète ici, date par date."/>
+        </twig:Px:Card>
+    {% else %}
+        {% set keep = {year: year, domain: domain ? domain.value : null, q: search ?: null} %}
+        <twig:Px:Tabs label="Millésimes" :tabs="millesimes|map(m => {label: 'Millésime ' ~ m, href: path('app_regulatory', keep|merge({year: m})), current: m == year})"/>
+
+        <twig:Px:Card :flush="true">
+            <twig:Px:Filters action="{{ path('app_regulatory') }}" search="{{ search }}" searchLabel="Clé ou libellé">
+                <twig:Px:FilterChip label="Tous les domaines" href="{{ path('app_regulatory', keep|merge({domain: null})) }}" :count="counts['']" :current="domain is null"/>
+                {% for each in domains %}
+                    <twig:Px:FilterChip label="{{ each.label }}" href="{{ path('app_regulatory', keep|merge({domain: each.value})) }}" :count="counts[each.value]" :current="domain == each"/>
+                {% endfor %}
+                <input type="hidden" name="year" value="{{ year }}">
+                {% if domain %}<input type="hidden" name="domain" value="{{ domain.value }}">{% endif %}
+            </twig:Px:Filters>
+            {% if value_rows is empty %}
+                <twig:Px:Empty icon="scale" title="Aucune valeur" text="{{ search ? 'Aucune valeur de ' ~ year ~ ' ne correspond à cette recherche.' : 'Aucune valeur de ce domaine ne s’applique en ' ~ year ~ '.' }}"/>
+            {% else %}
+                <twig:Px:Table caption="Valeurs réglementaires applicables en {{ year }}" :rows="true">
+                    <thead>
+                        <tr>
+                            <th scope="col">Paramètre</th>
+                            <th scope="col" class="px-u-right">Valeur</th>
+                            <th scope="col">S’applique</th>
+                            <th scope="col">Source</th>
+                            <th scope="col">État</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for version in value_rows %}
+                            {% set value = version.value %}
+                            <tr data-rows-target="row">
+                                <td>
+                                    <a class="px-link" href="{{ path('app_regulatory_show', {key: value.key}) }}">{{ value.label }}</a>
+                                    <br><span class="px-u-code px-u-muted">{{ value.key }}</span>
+                                </td>
+                                {{ include('regulatory/_value_cell.html.twig', {value: value}) }}
+                                <td class="px-u-nowrap">
+                                    {%- if version.until -%}
+                                        du {{ value.effectiveFrom|date_fr }} <br>au {{ version.until|date_fr }}
+                                    {%- else -%}
+                                        depuis le {{ value.effectiveFrom|date_fr }}
+                                    {%- endif -%}
+                                </td>
+                                <td>{{ include('regulatory/_source.html.twig', {value: value}) }}</td>
+                                <td><twig:Px:Badge :of="value.verification"/>{% if version.corrected is not empty %} <twig:Px:Badge tone="info" label="Corrigée"/>{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+            <twig:Px:Pager :total="listing.total" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}{% if millesimes is not empty %}<span>Millésime · <b>{{ year }}</b></span><span>Valeurs · <b>{{ listing.total }}</b></span><span>À vérifier · <b>{{ listing.unverified }}</b></span>{% endif %}{% endblock %}

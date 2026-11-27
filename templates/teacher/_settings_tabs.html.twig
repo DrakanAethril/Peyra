@@ -1,0 +1,18 @@
+{#
+ # The sections of Paramètres (design-ux.md § 2.6) as one bar: « Paramètres réglementaires » for
+ # every teacher (they read the millésimes), then the administration's screens for administrators.
+ # The including screen sets `settings_tab`.
+ #}
+{% set settings_tabs = [{label: 'Paramètres réglementaires', href: path('app_regulatory'), current: settings_tab == 'regulatory'}] %}
+{% if is_granted('ROLE_ADMIN') %}
+    {% set settings_tabs = settings_tabs|merge([
+        {label: 'Années scolaires', href: path('app_admin_years'), current: settings_tab == 'years'},
+        {label: 'Classes', href: path('app_admin_classes'), current: settings_tab == 'classes'},
+        {label: 'Correspondance avec l’annuaire', href: path('app_admin_directory'), current: settings_tab == 'directory'},
+        {label: 'Enseignants de la filière', href: path('app_admin_teachers'), current: settings_tab == 'teachers'},
+        {label: 'Administrateurs', href: path('app_admin_administrators'), current: settings_tab == 'administrators'},
+        {label: 'Journal des connexions', href: path('app_admin_logins'), current: settings_tab == 'logins'},
+        {label: 'Journal d’administration', href: path('app_admin_journal'), current: settings_tab == 'journal'},
+    ]) %}
+{% endif %}
+<twig:Px:ModuleTabs label="Paramètres" :tabs="settings_tabs"/>

@@ -1,0 +1,15 @@
+{#
+ # The field of one element of a new regulatory value (`index`, `leaf` of the base value): a number
+ # typed in French, a yes or no, a text (a long one in an area). A plain value's field carries the
+ # hint of its Px:Field (id leaf_0); an element of a structure only its error.
+ #}
+{%- set leaf_error = draft.error('leaf_' ~ index) -%}
+{%- set typed = draft.leaves[index] ?? '' -%}
+{%- set with_hint = leaf.path is empty -%}
+{%- if leaf.value is same as(true) or leaf.value is same as(false) -%}
+    <twig:Px:Select id="leaf_{{ index }}" name="leaf[{{ index }}]" value="{{ typed }}" :options="[{value: '1', label: 'Oui'}, {value: '0', label: 'Non'}]" :hint="with_hint" :error="leaf_error is not null"/>
+{%- elseif leaf.isNumber -%}
+    <twig:Px:Input id="leaf_{{ index }}" name="leaf[{{ index }}]" value="{{ typed }}" class="px-u-num" inputmode="decimal" autocomplete="off" spellcheck="false" :hint="with_hint" :error="leaf_error is not null"/>
+{%- else -%}
+    <twig:Px:Input id="leaf_{{ index }}" name="leaf[{{ index }}]" value="{{ typed }}" :area="typed|length > 80 or (leaf.value ?? '')|length > 80" autocomplete="off" :hint="with_hint" :error="leaf_error is not null"/>
+{%- endif -%}

@@ -51,6 +51,16 @@ final class FrenchFormatTest extends TestCase
         self::assertSame('151,67'.self::N.'h', FrenchFormat::hours('151.67'));
     }
 
+    public function testNumbersKeepTheirDecimals(): void
+    {
+        self::assertSame('48'.self::T.'060', FrenchFormat::number('48060'));
+        self::assertSame('0,3193', FrenchFormat::number('0.3193'));
+        self::assertSame('6,9', FrenchFormat::number('6.90'));
+        self::assertSame('1'.self::T.'823,03', FrenchFormat::number('1823.03'));
+        self::assertSame(self::M.self::N.'2,5', FrenchFormat::number('-2.50'));
+        self::assertSame('0', FrenchFormat::number('0.000'));
+    }
+
     public function testDates(): void
     {
         $day = new \DateTimeImmutable('2026-11-12 10:42:00');

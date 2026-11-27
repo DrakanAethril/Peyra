@@ -166,7 +166,7 @@ $COMPOSE build --pull --no-cache
 $COMPOSE up --wait --remove-orphans "$@"
 
 # Après un déploiement qui ajoute des valeurs réglementaires ou des articles d'aide.
-$COMPOSE exec -T php bin/console app:regulatory:sync --no-interaction || echo "AVERTISSEMENT : app:regulatory:sync a échoué (commande absente avant l'étape 0.6)."
+$COMPOSE exec -T php bin/console app:regulatory:sync --no-interaction || echo "AVERTISSEMENT : app:regulatory:sync a échoué ; les millésimes réglementaires ne sont pas à jour (voir ses messages ci-dessus)."
 
 # Le site répond-il vraiment, vu de la machine ? (nginx et le DNS se vérifient de l'extérieur.)
 if curl -fsS -o /dev/null "http://127.0.0.1:${HTTP_PORT}/health"; then
@@ -285,9 +285,26 @@ Ce qui compte dans ce bloc :
 ```
 
 Le script jette toute modification locale du clone, se place sur `origin/main`, reconstruit sans
-cache, redémarre (les sessions survivent : elles sont sur un volume), joue les migrations nouvelles
-et vérifie `/health`. Avant une mise à jour qui porte des migrations, faites une sauvegarde de la
+cache, redémarre (les sessions survivent : elles sont sur un volume), joue les migrations nouvelles,
+installe les millésimes réglementaires du dépôt (`app:regulatory:sync`, ci-dessous) et vérifie
+`/health`. Avant une mise à jour qui porte des migrations, faites une sauvegarde de la
 base (ci-dessous) : on ne revient pas en arrière sur une migration jouée.
+
+### Les millésimes réglementaires
+
+Les taux, plafonds, seuils et barèmes que les calculs lisent à la date du dossier sont versionnés
+dans `config/regulatory/<année>.yaml`, avec leur source officielle et leur marque « vérifiée ».
+`app:regulatory:sync` (lancé par `deploy-prod.sh` après chaque démarrage) les installe dans la base
+**en n'ajoutant que des lignes** : une valeur absente est ajoutée, une valeur que le fichier a changée
+est ajoutée de nouveau et remplace l'ancienne pour tout calcul (l'ancienne reste dans l'historique),
+une valeur qu'un administrateur a saisie depuis sous Paramètres › Paramètres réglementaires n'est
+jamais écrasée (la commande la signale « conservée »). Un fichier fautif n'installe rien et la
+commande dit pourquoi, ligne par ligne. Elle peut être relancée sans risque ; `--dry-run` dit ce
+qu'elle ferait sans rien écrire :
+
+```console
+dc exec php bin/console app:regulatory:sync --dry-run
+```
 
 ## Retour en arrière
 
@@ -355,6 +372,7 @@ alias dc='docker compose -f compose.yaml -f compose.prod.yaml'
 | Un document PDF ne sort pas (« Le document n'a pas pu être produit ») | `dc logs --tail=100 gotenberg` et `dc logs php` (ligne « Gotenberg failed on … ») ; `dc restart gotenberg` |
 | Un envoi de fichier échoue | `PEYRA_STORAGE` et les `S3_*` ; les journaux de `php` ; au-delà de 64 Mo, c'est nginx qui refuse (413) |
 | Une tâche planifiée échoue | `dc logs worker` : une ligne par exécution (« Scheduled task … exited with code … »), la fin de sa sortie quand elle échoue |
+| Une valeur réglementaire manque ou paraît fausse | `dc exec php bin/console app:regulatory:sync --dry-run` (ce qui reste à installer, les valeurs « conservées » d'un administrateur) ; Paramètres › Paramètres réglementaires, la fiche de la valeur et son historique |
 | « À propos » affiche une autre version | `PEYRA_VERSION` est exportée par `deploy-prod.sh` : un déploiement à la main doit l'exporter aussi |
 
 ## Essai local de la pile de production

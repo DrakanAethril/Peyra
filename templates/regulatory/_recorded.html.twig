@@ -1,0 +1,6 @@
+{# Who wrote a RegulatoryValue (`value`) and when: a millésime file, or an administrator. #}
+{%- if value.recordedBy -%}
+    {{ value.recordedBy.displayName }}<br><span class="px-u-muted">le {{ value.recordedAt|date_fr }} à {{ value.recordedAt|clock }}</span>
+{%- else -%}
+    Millésime {{ value.millesime }}<br><span class="px-u-muted">installé le {{ value.recordedAt|date_fr }}</span>
+{%- endif -%}

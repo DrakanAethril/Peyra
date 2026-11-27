@@ -1,0 +1,108 @@
+{#
+ # The sheet of one regulatory value (design-ux.md § 3.3, gabarit F): what it is, its value in force
+ # today, every dated value with the period it applies, and the values corrected since, kept in the
+ # history. Administrators add a dated value; nothing here changes or deletes one.
+ #}
+{% extends 'regulatory/_layout.html.twig' %}
+
+{% set regulatory_title = latest.label %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ latest.label }}" :trail="[
+        {label: 'Paramètres', href: path('app_regulatory')},
+        {label: 'Paramètres réglementaires', href: path('app_regulatory')},
+    ]">
+        <twig:block name="badge"> <twig:Px:Badge :of="latest.verification"/></twig:block>
+        <twig:block name="actions">
+            {% if is_granted('ROLE_ADMIN') %}
+                <twig:Px:Button href="{{ path('app_regulatory_new', {key: history.key}) }}" variant="primary" icon="plus">Nouvelle valeur datée</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <div class="px-split--even px-split">
+        <twig:Px:Card title="Le paramètre">
+            <dl class="px-facts">
+                <dt>Clé</dt><dd class="px-u-code">{{ history.key }}</dd>
+                <dt>Domaine</dt><dd>{{ latest.domain ? latest.domain.label : '—' }}</dd>
+                <dt>Unité</dt><dd>{{ latest.unit|regulatory_unit }}{% if latest.unit|regulatory_unit != latest.unit %} <span class="px-u-code px-u-muted">{{ latest.unit }}</span>{% endif %}</dd>
+                <dt>Dates d’effet</dt><dd>{{ history.versions|length }}{% if history.correctionCount > 0 %}, {{ history.correctionCount }} {{ history.correctionCount > 1 ? 'corrections' : 'correction' }}{% endif %}</dd>
+            </dl>
+        </twig:Px:Card>
+
+        <twig:Px:Card title="En vigueur aujourd’hui" meta="{{ in_force ? 'depuis le ' ~ in_force.effectiveFrom|date_fr : '' }}">
+            {% if in_force %}
+                {{ include('regulatory/_leaves.html.twig', {value: in_force}) }}
+                {% if in_force.note %}<p class="px-u-muted">{{ in_force.note }}</p>{% endif %}
+            {% else %}
+                <p class="px-u-muted">Aucune valeur ne s’applique encore : la première prend effet le {{ history.versions[0].value.effectiveFrom|date_fr }}.</p>
+            {% endif %}
+        </twig:Px:Card>
+    </div>
+
+    <twig:Px:Card title="Valeurs datées" meta="la plus récente d’abord ; un calcul lit celle de la date du dossier" :flush="true">
+        <twig:Px:Table caption="Valeurs datées de « {{ latest.label }} »">
+            <thead>
+                <tr>
+                    <th scope="col">S’applique</th>
+                    <th scope="col" class="px-u-right">Valeur</th>
+                    <th scope="col">Source</th>
+                    <th scope="col">État</th>
+                    <th scope="col">Inscrite</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for version in history.versions|reverse %}
+                    {% set value = version.value %}
+                    <tr{% if in_force and value == in_force %} class="is-current"{% endif %}>
+                        <td class="px-u-nowrap">
+                            {%- if version.until -%}
+                                du {{ value.effectiveFrom|date_fr }} <br>au {{ version.until|date_fr }}
+                            {%- else -%}
+                                depuis le {{ value.effectiveFrom|date_fr }}
+                            {%- endif -%}
+                            {%- if in_force and value == in_force %}<br><span class="px-u-muted">en vigueur</span>{% endif -%}
+                        </td>
+                        <td class="px-u-right">{{ include('regulatory/_leaves.html.twig', {value: value, compact: true}) }}</td>
+                        <td>{{ include('regulatory/_source.html.twig', {value: value}) }}</td>
+                        <td><twig:Px:Badge :of="value.verification"/></td>
+                        <td>{{ include('regulatory/_recorded.html.twig', {value: value}) }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </twig:Px:Table>
+    </twig:Px:Card>
+
+    {% if history.correctionCount > 0 %}
+        <twig:Px:Card title="Valeurs corrigées" meta="remplacées par une valeur de même date, gardées pour l’historique" :flush="true">
+            <twig:Px:Table caption="Valeurs corrigées de « {{ latest.label }} »">
+                <thead>
+                    <tr>
+                        <th scope="col">Date d’effet</th>
+                        <th scope="col" class="px-u-right">Valeur</th>
+                        <th scope="col">Source</th>
+                        <th scope="col">État</th>
+                        <th scope="col">Inscrite</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for version in history.versions|reverse %}
+                        {% for value in version.corrected %}
+                            <tr>
+                                <td>{{ value.effectiveFrom|date_fr }}</td>
+                                <td class="px-u-right">{{ include('regulatory/_leaves.html.twig', {value: value, compact: true}) }}</td>
+                                <td>{{ include('regulatory/_source.html.twig', {value: value}) }}</td>
+                                <td><twig:Px:Badge :of="value.verification"/></td>
+                                <td>{{ include('regulatory/_recorded.html.twig', {value: value}) }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>Dates d’effet · <b>{{ history.versions|length }}</b></span>{% if history.correctionCount > 0 %}<span>Corrections · <b>{{ history.correctionCount }}</b></span>{% endif %}{% endblock %}

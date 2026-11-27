@@ -1,0 +1,6 @@
+{# « Nouvelle valeur datée »: the field of a plain value - beside the date for a number, on its own line for a text. #}
+{% set leaf = draft.baseLeaves[0] %}
+{% set suffix = draft.base.unit|regulatory_suffix %}
+<twig:Px:Field id="leaf_0" label="Valeur{{ suffix ? ' (' ~ suffix ~ ')' : '' }}" :required="leaf.value is not null" :wide="not leaf.isNumber" :error="draft.error('leaf_0')">
+    {{ include('regulatory/_leaf_input.html.twig', {index: 0, leaf: leaf}) }}
+</twig:Px:Field>
