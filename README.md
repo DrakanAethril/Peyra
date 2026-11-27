@@ -66,7 +66,9 @@ production), `openldap` (un annuaire fictif, versionné dans `frankenphp/ldap/`)
 Peyra se déploie avec `compose.yaml` et `compose.prod.yaml`, derrière un reverse proxy qui termine
 TLS. `docs/production.md` décrit les prérequis, les fichiers propres au serveur (dont un gabarit
 versionné, `.env.prod.local.example`), le premier déploiement, la mise à jour, le retour en arrière,
-la sauvegarde et les diagnostics (`/health`, `bin/console app:ldap:check`).
+la sauvegarde et les diagnostics (`/health`, `bin/console app:ldap:check`). Les fichiers des dossiers
+vont dans un compartiment S3 privé que crée la configuration Terraform de `infra/terraform/`, lancée
+par l'exploitant depuis sa machine avec son profil AWS (même document).
 
 ## Licence
 

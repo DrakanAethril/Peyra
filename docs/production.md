@@ -90,14 +90,14 @@ Quelques règles :
   passe, et la procédure est celle de Formatool (sa connexion par lien envoyé par courriel,
   `/login/magic-link`, puis le changement de mot de passe dans le profil Formatool).
   `PEYRA_PASSWORD_HELP_URL` ne sert que si la procédure est ailleurs.
-- Les fichiers des dossiers (pièces, documents produits) : `PEYRA_STORAGE=s3` et les `S3_*`. Un
-  compartiment propre à Peyra, privé, et un utilisateur dont les seuls droits sont
-  `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` et `s3:ListBucket` sur ce compartiment ; clés
-  vides : la chaîne d'identification du SDK (rôle de l'instance). `S3_ENDPOINT` ne sert que pour un
-  service compatible S3 autre qu'AWS. À défaut de compartiment, `PEYRA_STORAGE=local` écrit dans le
-  volume `app_storage` de la machine, partagé par `php` et `worker` : il faut alors le sauvegarder
-  (« Sauvegarde »). Un envoi est refusé au-delà de 20 Mo, avec une phrase, sous les 64 Mo de PHP et
-  de nginx.
+- Les fichiers des dossiers (pièces, documents produits) : `PEYRA_STORAGE=s3` et les `S3_*`, tels
+  que Terraform les donne (« Le compartiment S3 (Terraform) », ci-dessous) : un compartiment propre à
+  Peyra, privé, et un utilisateur IAM qui n'a de droits que sur lui. `S3_ENDPOINT` reste vide (il ne
+  sert que pour un service compatible S3 autre qu'AWS) ; des clés vides laisseraient le SDK chercher
+  ses identifiants ailleurs (rôle d'une instance AWS), ce qui n'est pas le cas ici. À défaut de
+  compartiment, `PEYRA_STORAGE=local` écrit dans le volume `app_storage` de la machine, partagé par
+  `php` et `worker` : il faut alors le sauvegarder (« Sauvegarde »). Un envoi est refusé au-delà de
+  20 Mo, avec une phrase, sous les 64 Mo de PHP et de nginx.
 
 ### `certs/ldap-ca.pem`
 
@@ -255,11 +255,152 @@ Ce qui compte dans ce bloc :
   avec une page HTML, comme Formatool l'a constaté). On change les trois ensemble ou aucun.
 - **HSTS** est envoyé par Peyra lui-même (`compose.prod.yaml`) ; nginx n'a pas à l'ajouter.
 
+## Le compartiment S3 (Terraform)
+
+Les fichiers des dossiers vont dans un compartiment S3 créé par la configuration Terraform du dépôt,
+`infra/terraform/`. **Vous la lancez depuis votre propre machine**, avec votre profil AWS : ni la CI
+ni la machine de Peyra n'ont de droits sur AWS, et aucune clé n'est écrite dans un fichier du dépôt.
+Terraform lit la configuration, compare avec ce qui existe chez AWS, montre ce qu'il va faire
+(`plan`), puis le fait quand vous le lui demandez (`apply`). Ce qu'il a créé, il le note dans un
+fichier d'état, `infra/terraform/terraform.tfstate`, sur votre machine.
+
+Ce qui est créé (dix ressources, dans la région choisie) :
+
+| Ressource | Réglage |
+|---|---|
+| le compartiment | nom choisi (`bucket_name`) ; Terraform refuse de le détruire (`prevent_destroy`) |
+| propriété des objets | « Bucket owner enforced » : les ACL sont désactivées, seuls les droits IAM comptent |
+| blocage de l'accès public | les quatre cases cochées ; aucun fichier n'a d'adresse publique, pas de CloudFront |
+| chiffrement | SSE-S3 (AES-256, clés gérées par S3, sans KMS) |
+| versionnement | activé : un fichier supprimé ou remplacé reste récupérable |
+| cycle de vie | les versions anciennes effacées après 90 jours (`noncurrent_version_days`), les envois inachevés après 7 ; **jamais un fichier courant** |
+| politique du compartiment | HTTPS obligatoire, pour tous |
+| utilisateur IAM `peyra-storage` | celui avec lequel Peyra se connecte, et sa clé d'accès |
+| sa politique | `s3:ListBucket` sur le compartiment, `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` sur ses objets, rien d'autre |
+
+La politique de l'utilisateur est exactement ce que Peyra fait sur le compartiment : lire, écrire,
+vérifier qu'un fichier existe et sa taille, lister les fichiers d'un dossier, copier un dossier,
+supprimer. `tests/Service/Shared/Storage/S3BucketPolicyTest.php` la compare aux requêtes que le code
+envoie réellement ; la CI vérifie que la configuration est bien formée (`terraform fmt`,
+`terraform validate`). Ne sont pas accordés : effacer une version (cela viderait le filet du
+versionnement), lire ou poser une ACL (Peyra n'en envoie aucune), régler le compartiment.
+
+### Ce qu'il vous faut
+
+- **Terraform 1.5 ou plus récent** sur votre machine (`terraform version`). Sur macOS :
+  `brew tap hashicorp/tap && brew install hashicorp/tap/terraform` (le `terraform` du dépôt
+  principal de Homebrew est arrêté à 1.5.7 : il convient aussi). Ailleurs :
+  <https://developer.hashicorp.com/terraform/install>.
+- **Un profil AWS** sur cette machine, dans `~/.aws/config` et `~/.aws/credentials`, qui a le droit
+  de créer un compartiment S3 et de le régler, un utilisateur IAM, sa clé et sa politique (un profil
+  d'administrateur du compte convient). Pour en créer un avec l'AWS CLI :
+  `aws configure --profile <nom>`. Vérification, facultative : `aws sts get-caller-identity
+  --profile <nom>` dit sur quel compte vous allez agir.
+- Un clone du dépôt sur votre machine (pas besoin de la pile Docker de Peyra).
+- Choisir le **nom du compartiment** : unique dans tout AWS, 3 à 63 caractères, minuscules,
+  chiffres et tirets (par exemple `<établissement>-peyra-documents`). Il ne pourra plus changer.
+
+### Renseigner les variables
+
+```console
+cd infra/terraform
+cp terraform.tfvars.example terraform.tfvars
+```
+
+Ouvrez `terraform.tfvars` (ignoré par git) et remplissez :
+
+| Variable | Valeur |
+|---|---|
+| `aws_profile` | le nom de votre profil AWS |
+| `aws_region` | `eu-west-3` (Paris), sauf raison contraire ; c'est `S3_REGION` |
+| `bucket_name` | le nom choisi ; l'exemple `exemple-peyra-documents` est refusé |
+| `prefix` | à laisser vide : le compartiment est à Peyra seul (sinon un dossier terminé par `/`, auquel l'utilisateur est borné) |
+| `iam_user_name`, `noncurrent_version_days`, `incomplete_upload_days` | facultatives, valeurs par défaut `peyra-storage`, 90, 7 |
+
+### Créer le compartiment
+
+Toujours depuis `infra/terraform` :
+
+```console
+terraform init
+terraform plan -out=peyra.tfplan
+```
+
+`init` télécharge le fournisseur AWS de Terraform (la version notée dans `.terraform.lock.hcl`) dans
+`.terraform/` ; il ne contacte pas AWS. `plan` lit votre compte AWS et écrit ce qu'il ferait dans
+`peyra.tfplan`, sans rien changer. **Relisez-le** : la première fois, il doit finir par
+`Plan: 10 to add, 0 to change, 0 to destroy.`, et ne lister que des créations (`+`) : le
+compartiment, ses cinq réglages et sa politique, l'utilisateur, sa clé et sa politique. Une erreur à ce stade vient du profil (identifiants absents ou expirés, droits
+manquants) ou du nom (déjà pris dans AWS : `BucketAlreadyExists` n'apparaîtra qu'à l'`apply`).
+Puis :
+
+```console
+terraform apply peyra.tfplan
+```
+
+`apply` exécute exactement le plan relu, sans nouvelle question, et finit par
+`Apply complete! Resources: 10 added, 0 changed, 0 destroyed.` suivi des sorties. Si le nom était
+déjà pris (`BucketAlreadyExists`), Terraform a pu créer une partie du reste, l'utilisateur IAM par
+exemple, et l'a noté dans son état : changez `bucket_name`, puis recommencez `plan` et `apply`, qui
+ne créent que ce qui manque.
+
+### Recopier les sorties dans `.env.prod.local`
+
+Les sorties portent le nom des variables de Peyra. `terraform output` les affiche, la clé secrète
+masquée (`<sensitive>`) ; le bloc complet, clé secrète comprise, prêt à coller :
+
+```console
+terraform output -raw env_prod_local
+```
+
+```
+PEYRA_STORAGE=s3
+S3_BUCKET=<le nom choisi>
+S3_PREFIX=
+S3_REGION=eu-west-3
+S3_ACCESS_KEY_ID=AKIA…
+S3_SECRET_ACCESS_KEY=…
+S3_ENDPOINT=
+```
+
+Sur la machine de Peyra, dans `.env.prod.local`, **remplacez** les lignes du bloc
+`###> peyra/storage ###` par celles-ci (ne les ajoutez pas à la suite : une variable écrite deux fois
+prête à confusion), puis relancez `./deploy-prod.sh`, qui recrée `php` et `worker` avec ces valeurs.
+Faites passer la clé secrète par un canal sûr (une session SSH, pas un courriel ni une messagerie).
+Une valeur seule se lit aussi : `terraform output -raw S3_SECRET_ACCESS_KEY`.
+
+### Le fichier d'état
+
+`infra/terraform/terraform.tfstate` est ce qui permet à Terraform de modifier plus tard ce qu'il a
+créé. **Il contient la clé secrète en clair.** Gardez-le (il est ignoré par git ; ne le supprimez
+pas), et sauvegardez-le chiffré avec les autres fichiers secrets du serveur. Le perdre ne touche pas
+au compartiment, mais Terraform ne le connaîtrait plus (il faudrait le réimporter, `terraform
+import`). `peyra.tfplan` peut être supprimé après l'`apply`.
+
+### Plus tard
+
+- **Vérifier que rien n'a dérivé** : `terraform plan` doit répondre `No changes.`
+- **Changer un réglage** (durée de conservation des versions, par exemple) : modifiez
+  `terraform.tfvars`, puis `terraform plan -out=peyra.tfplan`, relecture, `terraform apply
+  peyra.tfplan`. Un plan qui annonce `destroy` ou `must be replaced` sur le compartiment est refusé
+  par Terraform lui-même (`prevent_destroy`) : c'est voulu, ce serait la perte de tous les fichiers.
+- **Changer la clé d'accès** (une clé exposée, ou par hygiène) : `terraform plan
+  -replace=aws_iam_access_key.storage -out=peyra.tfplan`, relecture, `terraform apply peyra.tfplan`,
+  puis recopier les deux nouvelles valeurs `S3_ACCESS_KEY_ID` et `S3_SECRET_ACCESS_KEY` et relancer
+  `./deploy-prod.sh`. L'ancienne clé cesse de fonctionner dès l'`apply`.
+- **Récupérer un fichier supprimé** (dans les 90 jours) : console AWS, le compartiment, « Afficher
+  les versions », supprimer le marqueur de suppression du fichier.
+- Terraform refuse de détruire le compartiment, même par `terraform destroy`. Le supprimer vraiment
+  est un geste à faire exprès : retirer le bloc `prevent_destroy` de `bucket.tf`, vider le
+  compartiment (versions comprises), puis `terraform destroy`.
+
 ## Premier déploiement
 
 1. Sur la machine nginx : le bloc `server`, le certificat, `nginx -t && systemctl reload nginx`.
 2. Sur la machine de Peyra : cloner le dépôt, ouvrir le port 8080 à nginx seul.
-3. Créer `.env.prod.local` (ci-dessus), déposer `certs/ldap-ca.pem`, écrire `deploy-prod.sh`.
+3. Créer le compartiment S3 depuis votre machine (« Le compartiment S3 (Terraform) », ci-dessus).
+   Créer `.env.prod.local` (ci-dessus, avec les sorties de Terraform), déposer `certs/ldap-ca.pem`,
+   écrire `deploy-prod.sh`.
 4. Lancer `./deploy-prod.sh`. Il construit l'image (plusieurs minutes la première fois), démarre
    `php`, qui attend la base puis joue les migrations, puis `worker` et `gotenberg`, et finit par
    « Peyra <commit> est en ligne. »
@@ -333,9 +474,9 @@ Le code revient en arrière par git, la base par sa sauvegarde :
   ```
 
   Restauration : `gunzip -c pgi_mngmt-AAAA-MM-JJ.sql.gz | mariadb -h <serveur> -u user_pgi -p pgi_mngmt`.
-- **Les fichiers des dossiers** : sur S3 (`PEYRA_STORAGE=s3`), activez le versionnement du
-  compartiment, qui garde une copie de tout objet remplacé ou supprimé. En `local`, ils sont dans le
-  volume `app_storage`, à copier avec la base :
+- **Les fichiers des dossiers** : sur S3 (`PEYRA_STORAGE=s3`), le compartiment créé par Terraform
+  est versionné : un fichier supprimé ou remplacé reste récupérable 90 jours (« Le compartiment S3
+  (Terraform) »). En `local`, ils sont dans le volume `app_storage`, à copier avec la base :
 
   ```console
   docker run --rm -v peyra_app_storage:/d:ro -v "$PWD":/out debian:13-slim tar czf /out/peyra-fichiers-$(date +%F).tgz -C /d .
@@ -344,7 +485,8 @@ Le code revient en arrière par git, la base par sa sauvegarde :
   (le nom du volume est préfixé par celui du projet Compose : `docker volume ls`). Les autres
   volumes ne tiennent que les sessions (`php_sessions`), les verrous (`app_locks`) et l'état de
   Caddy : rien à sauvegarder.
-- **Les fichiers du serveur** (`.env.prod.local`, `deploy-prod.sh`, `certs/`) : une copie hors de la
+- **Les fichiers du serveur** (`.env.prod.local`, `deploy-prod.sh`, `certs/`), et l'état Terraform
+  (`infra/terraform/terraform.tfstate`, sur la machine d'où vous l'avez lancé) : une copie hors de la
   machine, chiffrée ; sans `APP_SECRET`, toute session ouverte est perdue, sans les clés Mercure le
   suivi en direct s'arrête.
 
@@ -370,7 +512,7 @@ alias dc='docker compose -f compose.yaml -f compose.prod.yaml'
 | Les liens ou les redirections partent en `http://` | `TRUSTED_PROXIES` (ci-dessus) et l'en-tête `X-Forwarded-Proto` du bloc nginx |
 | Le suivi en direct ne bouge pas | la `location /.well-known/mercure` de nginx (`proxy_buffering off`), les clés Mercure, `PUBLIC_URL` |
 | Un document PDF ne sort pas (« Le document n'a pas pu être produit ») | `dc logs --tail=100 gotenberg` et `dc logs php` (ligne « Gotenberg failed on … ») ; `dc restart gotenberg` |
-| Un envoi de fichier échoue | `PEYRA_STORAGE` et les `S3_*` ; les journaux de `php` ; au-delà de 64 Mo, c'est nginx qui refuse (413) |
+| Un envoi de fichier échoue | `PEYRA_STORAGE` et les `S3_*` (les sorties de Terraform) ; les journaux de `php` : `AccessDenied` = clé ou politique (`terraform plan` doit dire `No changes.`), `NoSuchBucket` = nom ou région ; au-delà de 64 Mo, c'est nginx qui refuse (413) |
 | Une tâche planifiée échoue | `dc logs worker` : une ligne par exécution (« Scheduled task … exited with code … »), la fin de sa sortie quand elle échoue |
 | Une valeur réglementaire manque ou paraît fausse | `dc exec php bin/console app:regulatory:sync --dry-run` (ce qui reste à installer, les valeurs « conservées » d'un administrateur) ; Paramètres › Paramètres réglementaires, la fiche de la valeur et son historique |
 | « À propos » affiche une autre version | `PEYRA_VERSION` est exportée par `deploy-prod.sh` : un déploiement à la main doit l'exporter aussi |

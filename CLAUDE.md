@@ -156,6 +156,15 @@ terminates TLS. What the repository holds for it, each piece pinned by `Producti
   - an older local copy of it lacks the first two and nobody can sign in: copy them from the example.
 - Migrations are not transactional (`doctrine_migrations.transactional: false`): MariaDB commits
   around every DDL statement anyway.
+- **The S3 bucket is Terraform's**, `infra/terraform/` (step 0.8): a private bucket (public access
+  blocked, ACLs disabled, SSE-S3, versioned, old versions expired, HTTPS only, `prevent_destroy`) and
+  one IAM user whose policy is `s3:ListBucket` on the bucket's ARN and `s3:GetObject`/`PutObject`/
+  `DeleteObject` on `bucket/<prefix>*`. Outputs are named after the `S3_*` variables
+  (`terraform output -raw env_prod_local` prints the block). **Run by the operator from their own
+  machine, with their AWS profile and a local state - never by an agent nor CI**: an agent never runs
+  `plan`/`apply` nor reads `~/.aws`; CI only runs `fmt -check`, `init -backend=false` and
+  `validate` in `hashicorp/terraform`. `.terraform.lock.hcl` is committed; state, `*.tfvars` and
+  plans are gitignored, and `infra/` is dockerignored.
 
 **Docker layer.** `compose.yaml` holds `php` (FrankenPHP + Caddy + the bundled Mercure hub) and
 `gotenberg`; `compose.override.yaml` (dev) adds `database` (MariaDB 11.8 as in production, no published port),
@@ -387,6 +396,12 @@ Reach for these rather than re-implement them; each has its test.
   and `worker`; under the cache in test) or `documents.s3`, by `PEYRA_STORAGE`. `UploadPolicy`:
   one platform rule (20 Mo, pdf/images/csv/txt/ofx/xml/xlsx/ods), narrowed per field with
   `restrictTo()` / `limitedTo()`, never widened; the type is sniffed from the bytes.
+  **On S3, Peyra sends no ACL**: Flysystem puts `private` on every write and copy, which would need
+  `s3:PutObjectAcl` and which a bucket with ACLs disabled refuses - `S3ClientFactory` strips it
+  (handler step `peyra.no_acl`), and `documents.s3` has `retain_visibility: false` (else a copy reads
+  the source's ACL). `S3BucketPolicyTest` plays every public method of `DossierFiles` against a
+  stubbed S3 and requires `infra/terraform/iam.tf` to grant exactly the IAM actions of what is sent
+  (plus `GRANTED_AHEAD`): a new gesture or a new S3 operation fails it until the policy follows.
 - **PDF**: `App\Service\Shared\Pdf\PdfRenderer` (`renderTemplate`, `render`, `merge`,
   `pageCount`) is the one door to Gotenberg. A document extends `doc/_document.html.twig` (a state
   Peyra edits: `doc/_report.html.twig`, header and foot in `@page` margin boxes) and links
