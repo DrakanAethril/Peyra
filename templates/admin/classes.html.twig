@@ -1,0 +1,80 @@
+{#
+ # Administration › Classes (design-ux.md § 2.6): the classes of a year (chips for the years, the
+ # current one by default), « Nouvelle classe », and each class's sheet for its next class and its
+ # teachers.
+ #}
+{% extends 'admin/_layout.html.twig' %}
+
+{% set admin_tab = 'classes' %}
+{% set admin_title = 'Classes' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Classes{{ year ? ' ' ~ year.label : '' }}" :trail="[
+        {label: 'Paramètres', href: path('app_admin_years')},
+        {label: 'Administration', href: path('app_admin_years')},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    {% if year is null %}
+        <twig:Px:Card>
+            <twig:Px:Empty :page="true" icon="calendar" title="Aucune année scolaire" text="Une classe appartient à une année : créez d’abord l’année.">
+                <twig:block name="action"><twig:Px:Button variant="primary" href="{{ path('app_admin_years') }}" icon="plus">Nouvelle année</twig:Px:Button></twig:block>
+            </twig:Px:Empty>
+        </twig:Px:Card>
+    {% else %}
+        <twig:Px:Card title="Nouvelle classe" meta="en {{ year.label }}">
+            <form method="post" action="{{ path('app_admin_classes_create') }}" class="px-formrow" novalidate>
+                <input type="hidden" name="_token" value="{{ csrf_token('admin-classes-create') }}">
+                <input type="hidden" name="year" value="{{ year.id }}">
+                <twig:Px:Field id="class-name" label="Nom" :required="true" :error="error" hint="Par exemple « BTS CG 1 ».">
+                    <twig:Px:Input id="class-name" name="name" value="{{ name }}" :required="true" :error="error" hint="1" autocomplete="off" :autofocus="error is not null"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="class-level" label="Année du BTS" :required="true">
+                    <twig:Px:Select id="class-level" name="level" placeholder="Choisir…" :required="true" value="{{ level ? level.value : '' }}" :options="[{value: 1, label: '1re année'}, {value: 2, label: '2e année'}]"/>
+                </twig:Px:Field>
+                <twig:Px:Button type="submit" variant="primary" icon="plus">Créer la classe</twig:Px:Button>
+            </form>
+        </twig:Px:Card>
+
+        <twig:Px:Card :flush="true">
+            <twig:Px:Filters action="{{ path('app_admin_classes') }}">
+                {% for candidate in years %}
+                    <twig:Px:FilterChip label="{{ candidate.label }}" href="{{ path('app_admin_classes', {year: candidate.id}) }}" :current="candidate == year"/>
+                {% endfor %}
+            </twig:Px:Filters>
+            {% if class_rows is empty %}
+                <twig:Px:Empty icon="graduation-cap" title="Aucune classe en {{ year.label }}" text="Créez-les ci-dessus, ou créez l’année en reprenant les classes de la précédente."/>
+            {% else %}
+                <twig:Px:Table caption="Classes de {{ year.label }}" :rows="true">
+                    <thead>
+                        <tr>
+                            <th scope="col">Classe</th>
+                            <th scope="col">Niveau</th>
+                            <th scope="col" class="px-u-right">Effectif</th>
+                            <th scope="col">Enseignants</th>
+                            <th scope="col">Classe suivante</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in class_rows %}
+                            <tr data-rows-target="row">
+                                <td><a class="px-link" href="{{ path('app_admin_class', {id: row.schoolClass.id}) }}">{{ row.schoolClass.name }}</a></td>
+                                <td>{{ row.schoolClass.level.label }}</td>
+                                <td class="px-u-num">{{ row.students }}</td>
+                                <td>{% if row.teacherNames %}{{ row.teacherNames }}{% else %}<twig:Px:Badge tone="warning" label="Aucun enseignant"/>{% endif %}</td>
+                                <td>
+                                    {% if row.schoolClass.nextClass %}{{ row.schoolClass.nextClass.label }}
+                                    {% elseif row.schoolClass.level.value == 1 %}<twig:Px:Badge tone="warning" label="À renseigner"/>
+                                    {% else %}<span class="px-u-muted">Aucune (fin du BTS)</span>{% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}{% if year %}<span>{{ year.label }}</span><span>Classes · <b>{{ class_rows|length }}</b></span>{% endif %}{% endblock %}

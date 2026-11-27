@@ -1,0 +1,26 @@
+{#
+ # Classes › Classes de l'année (design-ux.md § 3.3, gabarit L): the current year's classes, the
+ # teacher's own first, effectif, teachers and next class. A row opens the class (Entrée).
+ #}
+{% extends 'classes/_layout.html.twig' %}
+
+{% set classes_tab = 'year' %}
+{% set classes_title = 'Classes de l’année' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Classes de l’année{{ year ? ' ' ~ year.label : '' }}" :trail="[{label: 'Classes', href: path('app_teacher_classes')}]"/>
+{% endblock %}
+
+{% block page %}
+    {% if rows is empty %}
+        {{ include('classes/_no_year.html.twig') }}
+    {% else %}
+        <twig:Px:Card :flush="true" title="{{ rows|length }} {{ rows|length > 1 ? 'classes' : 'classe' }}" meta="les vôtres d’abord">
+            {{ include('classes/_class_table.html.twig', {class_rows: rows, caption: 'Classes de l’année ' ~ year.label}) }}
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}
+    {%- if year %}<span>Année · <b>{{ year.label }}</b></span><span>Classes · <b>{{ rows|length }}</b></span><span>Étudiants · <b>{{ rows|reduce((sum, r) => sum + r.students, 0) }}</b></span>{% endif -%}
+{% endblock %}

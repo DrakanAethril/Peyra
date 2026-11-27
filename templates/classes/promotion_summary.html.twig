@@ -1,0 +1,64 @@
+{#
+ # Passage de classe, step 3 (design-ux.md §§ 4.12 and 6.2): the summary counts what changes -
+ # « 21 passent en CG2 2027-2028, 2 redoublent en CG1 2027-2028, 1 n'est pas placé. Les dossiers ne
+ # sont pas touchés. » - then « Passer les étudiants » (Ctrl Entrée).
+ #}
+{% extends 'classes/_layout.html.twig' %}
+
+{% set classes_tab = 'promotion' %}
+{% set classes_title = 'Passage de classe' %}
+{% set query = '?' ~ app.request.queryString %}
+{% set status_keys = plan.empty ? [] : [{combo: 'Ctrl+Enter', verb: 'Passer les étudiants'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ plan.source.name }} → {{ plan.next.label }}" :trail="[{label: 'Classes', href: path('app_teacher_classes')}, {label: 'Passage de classe', href: path('app_teacher_promotion')}]"/>
+{% endblock %}
+
+{% block page %}
+    <div class="px-split--side px-split">
+        {{ include('classes/_promotion_steps.html.twig', {step: 3}) }}
+        <div class="px-stack">
+            <twig:Px:Card title="Récapitulatif">
+                <p class="px-u-strong">{{ plan.sentence }}{% if not plan.empty %} Les dossiers ne sont pas touchés.{% endif %}</p>
+                {% if plan.alreadyCount > 0 %}<p class="px-u-muted">{{ plan.alreadyCount }} {{ plan.alreadyCount > 1 ? 'étudiants déjà inscrits' : 'étudiant déjà inscrit' }} en {{ plan.next.schoolYear.label }} {{ plan.alreadyCount > 1 ? 'restent' : 'reste' }} dans {{ plan.alreadyCount > 1 ? 'leur' : 'sa' }} classe.</p>{% endif %}
+                <twig:block name="foot">
+                    <form method="post" action="{{ path('app_teacher_promotion_apply', {id: plan.source.id}) }}" class="px-cluster">
+                        <input type="hidden" name="_token" value="{{ csrf_token('promotion-' ~ plan.source.id) }}">
+                        {% for line in plan.lines|filter(l => not l.alreadyEnrolled) %}
+                            {% if line.ticked %}
+                                <input type="hidden" name="pass[]" value="{{ line.student.id }}">
+                            {% else %}
+                                <input type="hidden" name="other[{{ line.student.id }}]" value="{{ line.choice.formValue }}">
+                            {% endif %}
+                        {% endfor %}
+                        <twig:Px:Button href="{{ path('app_teacher_promotion_students', {id: plan.source.id}) ~ query }}" icon="chevron-left">Revenir aux étudiants</twig:Px:Button>
+                        {% if not plan.empty %}
+                            <twig:Px:Button type="submit" variant="primary" icon="arrow-right" shortcut="Ctrl+Enter" class="px-u-push">Passer les étudiants</twig:Px:Button>
+                        {% endif %}
+                    </form>
+                </twig:block>
+            </twig:Px:Card>
+
+            <twig:Px:Card :flush="true" title="Étudiant par étudiant">
+                <twig:Px:Table caption="Ce que devient chaque étudiant de {{ plan.source.label }}">
+                    <thead><tr><th scope="col">Nom</th><th scope="col">En {{ plan.next.schoolYear.label }}</th></tr></thead>
+                    <tbody>
+                        {% for line in plan.lines %}
+                            <tr{% if line.alreadyEnrolled %} class="is-dim"{% endif %}>
+                                <td>{{ line.student.sortName }}</td>
+                                <td>
+                                    {% if line.alreadyEnrolled %}Déjà en {{ line.alreadyEnrolled.schoolClass.name }}
+                                    {% elseif line.target %}{{ line.target == plan.next ? 'Passe en ' : (line.target.level == plan.source.level ? 'Redouble en ' : 'Va en ') }}{{ line.target.name }}
+                                    {% elseif line.choice.kind == 'departed' %}Sort de la filière
+                                    {% else %}Pas placé · « À placer »{% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            </twig:Px:Card>
+        </div>
+    </div>
+{% endblock %}
+
+{% block facts %}<span>{{ plan.source.label }} → {{ plan.next.label }}</span>{% endblock %}

@@ -1,0 +1,102 @@
+{#
+ # Administration › Classes › a class: name, level and next class (F10 saves); its teachers, added
+ # with the autocomplete and removed in two steps; « Supprimer la classe » for a class that never
+ # had a student.
+ #}
+{% extends 'admin/_layout.html.twig' %}
+
+{% set admin_tab = 'classes' %}
+{% set admin_title = class.label %}
+{% set status_keys = [{combo: 'F10', verb: 'Enregistrer'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ class.name }}" :trail="[
+        {label: 'Administration', href: path('app_admin_years')},
+        {label: 'Classes ' ~ class.schoolYear.label, href: path('app_admin_classes', {year: class.schoolYear.id})},
+    ]">
+        <twig:block name="badge"><twig:Px:Chip>{{ class.schoolYear.label }}</twig:Px:Chip></twig:block>
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ path('app_teacher_class', {id: class.id}) }}" icon="users">Voir ses étudiants</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <div class="px-split--even px-split">
+        <twig:Px:Card title="La classe">
+            <form method="post" action="{{ path('app_admin_class_save', {id: class.id}) }}" class="px-form" id="class-form" novalidate>
+                <input type="hidden" name="_token" value="{{ csrf_token('admin-class-' ~ class.id) }}">
+                <twig:Px:Field id="name" label="Nom" :required="true" :error="error">
+                    <twig:Px:Input id="name" value="{{ form.name }}" :required="true" :error="error" autocomplete="off"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="level" label="Année du BTS" :required="true">
+                    <twig:Px:Select id="level" :required="true" value="{{ form.level ? form.level.value : '' }}" placeholder="Choisir…" :options="levels|map(l => {value: l.value, label: l.label})"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="next" label="Classe suivante" hint="Celle où passent ses étudiants l’année d’après ; aucune pour une classe de fin de BTS.">
+                    <twig:Px:Select id="next" value="{{ form.next ? form.next.id : '' }}" placeholder="Aucune" :options="later|map(c => {value: c.id, label: c.label})" hint="1"/>
+                </twig:Px:Field>
+                <div class="px-cluster">
+                    <twig:Px:Button type="submit" variant="primary" icon="save" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+                </div>
+            </form>
+            {% if later is empty %}<p class="px-u-muted">Créez l’année suivante et ses classes pour choisir une classe suivante.</p>{% endif %}
+        </twig:Px:Card>
+
+        <twig:Px:Card title="Enseignants de la classe" meta="ils la retrouvent dans « Mes classes »">
+            <form method="post" action="{{ path('app_admin_class_teacher_add', {id: class.id}) }}" class="px-formline">
+                <input type="hidden" name="_token" value="{{ csrf_token('admin-class-teacher-' ~ class.id) }}">
+                <twig:Px:Field id="add-teacher" label="Ajouter un enseignant" :error="teacher_error" hint="Tapez deux lettres du nom ou de l’identifiant.">
+                    <div class="px-formline__control">
+                        <div class="px-picker" data-controller="user-picker" data-user-picker-url-value="{{ path('app_admin_classes_teacher_search') }}">
+                            <input type="text" id="add-teacher" name="teacher_label" value="{{ teacher_label }}" class="px-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="add-teacher-list"
+                                   aria-describedby="add-teacher_hint{{ teacher_error ? ' add-teacher_error' }}"{% if teacher_error %} aria-invalid="true" autofocus{% endif %} autocomplete="off" required
+                                   data-user-picker-target="input" data-action="input->user-picker#search keydown->user-picker#keydown">
+                            <input type="hidden" name="teacher" value="" data-user-picker-target="value">
+                            <div class="px-popover px-picker__panel" data-user-picker-target="panel" hidden>
+                                <ul class="px-picker__list" id="add-teacher-list" role="listbox" aria-label="Enseignants" data-user-picker-target="list"></ul>
+                                <p class="px-picker__foot"><twig:Px:Kbd combo="ArrowUp"/><twig:Px:Kbd combo="ArrowDown"/> choisir <twig:Px:Kbd combo="Enter"/> valider <twig:Px:Kbd combo="Escape"/> fermer</p>
+                            </div>
+                        </div>
+                        <twig:Px:Button type="submit" icon="user-plus">Ajouter</twig:Px:Button>
+                    </div>
+                </twig:Px:Field>
+            </form>
+            {% if teachers is empty %}
+                <p class="px-u-muted">Aucun enseignant n’est rattaché à cette classe.</p>
+            {% else %}
+                <twig:Px:Table caption="Enseignants de {{ class.label }}">
+                    <thead><tr><th scope="col">Nom</th><th scope="col">Depuis</th><th scope="col"><span class="px-u-sr-only">Action</span></th></tr></thead>
+                    <tbody>
+                        {% for assignment in teachers %}
+                            <tr>
+                                <td>{{ assignment.teacher.displayName }}</td>
+                                <td>{{ assignment.addedAt|date('d/m/Y') }}</td>
+                                <td class="px-u-right">
+                                    <form method="post" action="{{ path('app_admin_class_teacher_remove', {id: class.id, assignment: assignment.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('admin-class-teacher-remove-' ~ assignment.id) }}">
+                                        <twig:Px:ConfirmButton label="Retirer" confirmLabel="Confirmer le retrait" size="sm"/>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+        </twig:Px:Card>
+    </div>
+
+    <twig:Px:Card title="Supprimer la classe">
+        {% if sheet_error %}<twig:Px:Alert tone="danger">{{ sheet_error }}</twig:Px:Alert>{% endif %}
+        {% if deletion_refusal %}
+            <p class="px-u-muted">{{ deletion_refusal }} Ses inscriptions sont l’historique de ses étudiants.</p>
+        {% else %}
+            <form method="post" action="{{ path('app_admin_class_delete', {id: class.id}) }}" class="px-cluster">
+                <input type="hidden" name="_token" value="{{ csrf_token('admin-class-delete-' ~ class.id) }}">
+                <span class="px-u-muted">Cette classe n’a jamais eu d’étudiant : elle peut être supprimée.</span>
+                <twig:Px:ConfirmButton label="Supprimer la classe" confirmLabel="Confirmer la suppression" size="sm" icon="trash-2"/>
+            </form>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>{{ class.label }}</span><span>Enseignants · <b>{{ teachers|length }}</b></span>{% endblock %}

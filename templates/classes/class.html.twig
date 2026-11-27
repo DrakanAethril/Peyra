@@ -1,0 +1,140 @@
+{#
+ # A class (design-ux.md § 3.3, « Classe › Étudiants », gabarit L): its students with how they came
+ # here, « Ajouter un étudiant », and, once rows are ticked, « Déplacer » and « Retirer de la
+ # classe » in place of the filters. A past year's class is read only.
+ #}
+{% extends 'classes/_layout.html.twig' %}
+
+{% set classes_tab = history ? 'past' : 'year' %}
+{% set classes_title = class.label %}
+{% set switcher_class = history ? null : class %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ class.name }}" :trail="history
+        ? [{label: 'Classes', href: path('app_teacher_classes')}, {label: 'Années précédentes', href: path('app_teacher_classes_past')}]
+        : [{label: 'Classes', href: path('app_teacher_classes')}, {label: 'Classes de l’année', href: path('app_teacher_classes')}]">
+        <twig:block name="badge">
+            <twig:Px:Chip>{{ class.schoolYear.label }} · {{ class.level.label }}</twig:Px:Chip>
+            {% if history %}<twig:Px:Badge tone="neutral" label="En lecture"/>{% endif %}
+            {% if row.mine %}<twig:Px:Badge tone="info" label="Votre classe"/>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if can_place %}
+        <twig:Px:Card title="Ajouter un étudiant" meta="déjà dans une autre classe de l’année, il change de classe ; ses dossiers ne bougent pas">
+            <form method="post" action="{{ path('app_teacher_class_add', {id: class.id}) }}" class="px-formline">
+                <input type="hidden" name="_token" value="{{ csrf_token('class-add-' ~ class.id) }}">
+                <twig:Px:Field id="add-student" label="Étudiant" :required="true" hint="Tapez deux lettres du nom ou de l’identifiant.">
+                    <div class="px-formline__control">
+                        <div class="px-picker" data-controller="user-picker" data-user-picker-url-value="{{ path('app_teacher_students_search') }}" data-user-picker-empty-value="Aucun étudiant ne correspond.">
+                            <input type="text" id="add-student" name="student_label" class="px-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="add-student-list"
+                                   aria-describedby="add-student_hint" autocomplete="off" required
+                                   data-user-picker-target="input" data-action="input->user-picker#search keydown->user-picker#keydown">
+                            <input type="hidden" name="student" value="" data-user-picker-target="value">
+                            <div class="px-popover px-picker__panel" data-user-picker-target="panel" hidden>
+                                <ul class="px-picker__list" id="add-student-list" role="listbox" aria-label="Étudiants" data-user-picker-target="list"></ul>
+                                <p class="px-picker__foot"><twig:Px:Kbd combo="ArrowUp"/><twig:Px:Kbd combo="ArrowDown"/> choisir <twig:Px:Kbd combo="Enter"/> valider <twig:Px:Kbd combo="Escape"/> fermer</p>
+                            </div>
+                        </div>
+                        <twig:Px:Button type="submit" variant="primary" icon="user-plus">Ajouter</twig:Px:Button>
+                    </div>
+                </twig:Px:Field>
+            </form>
+        </twig:Px:Card>
+    {% endif %}
+
+    <twig:Px:Card :flush="true" title="Étudiants" meta="{{ enrolments|length }} {{ enrolments|length > 1 ? 'étudiants' : 'étudiant' }}">
+        {% if enrolments is empty %}
+            <twig:Px:Empty title="Aucun étudiant dans cette classe" text="{{ can_place ? 'Ajoutez un étudiant ci-dessus, ou placez ceux qui attendent dans « À placer ».' : 'Personne n’était inscrit dans cette classe.' }}">
+                <twig:block name="action">
+                    {% if can_place %}<twig:Px:Button href="{{ path('app_teacher_unplaced') }}" icon="users">À placer</twig:Px:Button>{% endif %}
+                </twig:block>
+            </twig:Px:Empty>
+        {% else %}
+            <form method="post" action="{{ path('app_teacher_class_move', {id: class.id}) }}" id="class-lot"
+                  data-controller="selection" data-selection-one-value="%d étudiant coché" data-selection-many-value="%d étudiants cochés"
+                  data-action="change->selection#refresh">
+                <input type="hidden" name="_token" value="{{ csrf_token('class-lot-' ~ class.id) }}">
+                {% if can_place %}
+                    <div class="px-lotbar" data-selection-target="bar" hidden>
+                        <span class="px-lotbar__count" data-selection-target="count" aria-live="polite"></span>
+                        {% if others is not empty %}
+                            <label class="px-u-sr-only" for="lot-target">Déplacer vers</label>
+                            <twig:Px:Select id="lot-target" name="target" size="sm" placeholder="Déplacer vers…" :options="others|map(c => {value: c.id, label: c.name})"/>
+                            <twig:Px:Button type="submit" size="sm" icon="arrow-right">Déplacer</twig:Px:Button>
+                        {% endif %}
+                        <twig:Px:ConfirmButton label="Retirer de la classe" confirmLabel="Confirmer le retrait" size="sm" formaction="{{ path('app_teacher_class_remove', {id: class.id}) }}" aria-describedby="remove-note"/>
+                    </div>
+                {% endif %}
+                <twig:Px:Table caption="Étudiants de {{ class.label }}" :rows="true">
+                    <thead>
+                        <tr>
+                            {% if can_place %}
+                                <th scope="col" class="px-table__pick">
+                                    <label class="px-check"><input type="checkbox" data-selection-target="all" data-action="selection#toggleAll"><span class="px-u-sr-only">Tout cocher</span></label>
+                                </th>
+                            {% endif %}
+                            <th scope="col">Nom</th>
+                            <th scope="col">Identifiant</th>
+                            <th scope="col">Placé</th>
+                            <th scope="col">Dernière connexion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for enrolment in enrolments %}
+                            {% set student = enrolment.student %}
+                            <tr data-rows-target="row">
+                                {% if can_place %}
+                                    <td class="px-table__pick">
+                                        <label class="px-check"><input type="checkbox" name="students[]" value="{{ student.id }}" data-selection-target="box"><span class="px-u-sr-only">Cocher {{ student.sortName }}</span></label>
+                                    </td>
+                                {% endif %}
+                                <td>
+                                    <a class="px-link" href="{{ path('app_teacher_student', {id: student.id}) }}">{{ student.sortName }}</a>
+                                    {% if student.departed %} <twig:Px:Badge tone="neutral" label="Sort de la filière"/>{% endif %}
+                                </td>
+                                <td class="px-u-code">{{ student.login }}</td>
+                                <td><twig:Px:Badge :of="enrolment.origin"/> <span class="px-u-muted">le {{ enrolment.enrolledAt|date('d/m/Y') }}{% if enrolment.enrolledBy %}, par {{ enrolment.enrolledBy.displayName }}{% endif %}</span></td>
+                                <td>{{ student.lastLoginAt ? student.lastLoginAt|date('d/m/Y à H \\h i') : 'Jamais connecté' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            </form>
+        {% endif %}
+        <twig:block name="foot">
+            {% if can_place and enrolments is not empty %}
+                <p class="px-u-muted" id="remove-note">Cochez des étudiants pour les déplacer ou les retirer. Retirer un étudiant ne touche ni son compte ni ses dossiers : il apparaît dans « À placer ».</p>
+            {% endif %}
+        </twig:block>
+    </twig:Px:Card>
+
+    <div class="px-split--even px-split">
+        <twig:Px:Card title="Enseignants de la classe">
+            {% if teachers is empty %}
+                <p class="px-u-muted">Aucun enseignant n’est encore rattaché à cette classe.</p>
+            {% else %}
+                <ul class="px-namelist">
+                    {% for assignment in teachers %}<li>{{ assignment.teacher.displayName }}</li>{% endfor %}
+                </ul>
+            {% endif %}
+            {% if is_granted('ROLE_ADMIN') %}
+                <p><a class="px-link" href="{{ path('app_admin_class', {id: class.id}) }}">Modifier la classe et ses enseignants</a></p>
+            {% else %}
+                <p class="px-u-muted">Un administrateur rattache les enseignants aux classes.</p>
+            {% endif %}
+        </twig:Px:Card>
+        <twig:Px:Card title="D’une année à l’autre">
+            <dl class="px-facts">
+                <dt>Classe suivante</dt>
+                <dd>{% if class.nextClass %}<a class="px-link" href="{{ path('app_teacher_class', {id: class.nextClass.id}) }}">{{ class.nextClass.label }}</a>{% else %}<span class="px-u-muted">Aucune</span>{% endif %}</dd>
+                <dt>Vient de</dt>
+                <dd>{% for p in previous %}<a class="px-link" href="{{ path('app_teacher_class', {id: p.id}) }}">{{ p.label }}</a>{% if not loop.last %}, {% endif %}{% else %}<span class="px-u-muted">Aucune classe</span>{% endfor %}</dd>
+            </dl>
+        </twig:Px:Card>
+    </div>
+{% endblock %}
+
+{% block facts %}<span>{{ class.label }}</span><span>Effectif · <b>{{ enrolments|length }}</b></span>{% endblock %}

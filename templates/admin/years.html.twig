@@ -1,0 +1,92 @@
+{#
+ # Administration › Années scolaires (design-ux.md §§ 2.6 and 4.12, step 1): the years with their
+ # state, « Nouvelle année » (the day after the last year by default, taking over its classes and
+ # its mapping with the directory), « Rendre courante » in two steps. What the rentrée still needs
+ # is listed above.
+ #}
+{% extends 'admin/_layout.html.twig' %}
+
+{% set admin_tab = 'years' %}
+{% set admin_title = 'Années scolaires' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Années scolaires" :trail="[
+        {label: 'Paramètres', href: path('app_admin_years')},
+        {label: 'Administration', href: path('app_admin_years')},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    {% if checks|filter(c => not c.passed) is not empty %}
+        <twig:Px:Card title="Préparer l’année" meta="ce qu’il reste avant les premières connexions et le passage de classe">
+            <twig:Px:Checks :items="checks|map(c => {state: c.passed ? 'passed' : 'warning', text: c.text})"/>
+        </twig:Px:Card>
+    {% endif %}
+
+    <twig:Px:Card title="Nouvelle année">
+        <form method="post" action="{{ path('app_admin_years_create') }}" class="px-formrow" novalidate>
+            <input type="hidden" name="_token" value="{{ csrf_token('admin-years-create') }}">
+            <twig:Px:Field id="starts_on" label="Début" :required="true" :error="error">
+                <twig:Px:Input id="starts_on" type="date" value="{{ starts_on }}" :required="true" :error="error"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="ends_on" label="Fin" :required="true">
+                <twig:Px:Input id="ends_on" type="date" value="{{ ends_on }}" :required="true"/>
+            </twig:Px:Field>
+            {% if latest %}
+                <label class="px-check">
+                    <input type="checkbox" name="take_over" value="1"{% if take_over %} checked{% endif %}>
+                    <span>Reprendre les classes et la correspondance de {{ latest.label }}</span>
+                </label>
+            {% endif %}
+            <twig:Px:Button type="submit" variant="primary" icon="plus">Créer l’année</twig:Px:Button>
+        </form>
+        <twig:block name="foot">
+            <p class="px-u-muted">{{ latest ? 'Les classes reprises gardent leur nom et leur niveau ; les classes de 1re année de ' ~ latest.label ~ ' nomment la classe de 2e année comme classe suivante quand il n’y en a qu’une. Les étudiants ne sont pas déplacés : c’est le passage de classe.' : 'La première année créée devient l’année courante.' }}</p>
+        </twig:block>
+    </twig:Px:Card>
+
+    <twig:Px:Card :flush="true" title="Années" meta="{{ year_rows|length }} {{ year_rows|length > 1 ? 'années' : 'année' }}">
+        {% if year_rows is empty %}
+            <twig:Px:Empty icon="calendar" title="Aucune année scolaire" text="Créez la première ci-dessus : elle deviendra l’année courante."/>
+        {% else %}
+            <twig:Px:Table caption="Années scolaires de Peyra">
+                <thead>
+                    <tr>
+                        <th scope="col">Année</th>
+                        <th scope="col">Du</th>
+                        <th scope="col">Au</th>
+                        <th scope="col">État</th>
+                        <th scope="col" class="px-u-right">Classes</th>
+                        <th scope="col" class="px-u-right">Étudiants</th>
+                        <th scope="col"><span class="px-u-sr-only">Action</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in year_rows %}
+                        <tr{% if row.year.current %} class="is-current"{% endif %}>
+                            <td><a class="px-link" href="{{ path('app_admin_classes', {year: row.year.id}) }}">{{ row.year.label }}</a></td>
+                            <td>{{ row.year.startsOn|date('d/m/Y') }}</td>
+                            <td>{{ row.year.endsOn|date('d/m/Y') }}</td>
+                            <td><twig:Px:Badge :of="row.state"/></td>
+                            <td class="px-u-num">{{ row.classes }}</td>
+                            <td class="px-u-num">{{ row.students }}</td>
+                            <td class="px-u-right">
+                                {% if not row.year.current %}
+                                    <form method="post" action="{{ path('app_admin_years_current', {id: row.year.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('admin-years-current-' ~ row.year.id) }}">
+                                        <twig:Px:ConfirmButton label="Rendre courante" confirmLabel="Confirmer : {{ row.year.label }} courante" variant="secondary" size="sm" aria-describedby="current-note"/>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+        <twig:block name="foot">
+            {% if year_rows|length > 1 %}<p class="px-u-muted" id="current-note">L’année courante est celle des classes affichées aux enseignants, de « À placer » et du placement des nouveaux comptes ; les années d’avant restent lisibles, sans changement possible.</p>{% endif %}
+        </twig:block>
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>Années · <b>{{ year_rows|length }}</b></span>{% endblock %}

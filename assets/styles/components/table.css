@@ -274,6 +274,39 @@
         min-width: 190px;
     }
 
+    /* The lot actions of a list, in place of its filters once a row is ticked (design-ux.md § 3.1, L). */
+    .px-lotbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--px-space-8);
+        min-height: calc(var(--px-control-sm) + 2 * var(--px-space-8) + 1px);
+        padding: var(--px-space-8) var(--px-space-12);
+        border-block-end: 1px solid var(--px-border-row);
+        background: var(--px-action-soft);
+
+        & > .px-select {
+            width: auto;
+            max-width: 280px;
+        }
+    }
+
+    .px-lotbar__count {
+        color: var(--px-text-strong);
+        font-weight: var(--px-fw-semibold);
+        margin-inline-end: var(--px-space-8);
+    }
+
+    /* The box of a row, first column (design-ux.md § 3.1, L: « Sélection multiple par case en première colonne »). */
+    .px-table__pick {
+        width: 36px;
+        padding-inline-end: 0;
+
+        & .px-check {
+            min-height: 0;
+        }
+    }
+
     /* ---------------------------------------------------------------- Pager */
 
     .px-pager {

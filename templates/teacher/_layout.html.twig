@@ -1,9 +1,10 @@
 {#
  # The teacher space with its rail and top bar (design-ux.md §§ 2.4 and 2.6). A screen extends it,
- # sets `rail_current` (accueil, parametres) outside any block, and fills page_head, page, status
- # and, when the module has sections, module_tabs. Only the modules that exist are in the rail:
- # Classes, Bibliothèque, Pièces and Référentiel arrive with their lots; « Paramètres » is drawn for
- # administrators, the only ones it has anything for until the regulatory values (step 0.6).
+ # sets `rail_current` (accueil, classes, parametres) and, on a class's screens, `switcher_class`
+ # outside any block, and fills page_head, page, status and, when the module has sections,
+ # module_tabs. Only the modules that exist are in the rail: Bibliothèque, Pièces and Référentiel
+ # arrive with their lots; « Paramètres » is drawn for administrators, the only ones it has anything
+ # for until the regulatory values (step 0.6).
  #}
 {% extends 'layout/teacher.html.twig' %}
 
@@ -11,10 +12,13 @@
 
 {% block rail %}
     <twig:Px:RailItem href="{{ path('app_teacher_home') }}" icon="house" label="Accueil" :current="(rail_current ?? '') == 'accueil'"/>
+    <twig:Px:RailItem href="{{ path('app_teacher_classes') }}" icon="graduation-cap" label="Classes" :current="(rail_current ?? '') == 'classes'"/>
     {% if is_granted('ROLE_ADMIN') %}
-        <twig:Px:RailItem href="{{ path('app_admin_teachers') }}" icon="settings" label="Paramètres" :current="(rail_current ?? '') == 'parametres'"/>
+        <twig:Px:RailItem href="{{ path('app_admin_years') }}" icon="settings" label="Paramètres" :current="(rail_current ?? '') == 'parametres'"/>
     {% endif %}
 {% endblock %}
+
+{% block topbar_start %}{{ include('classes/_switcher.html.twig') }}{% endblock %}
 
 {% block topbar_end %}
     <twig:Px:Chip tone="role">Espace enseignant</twig:Px:Chip>

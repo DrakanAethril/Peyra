@@ -1,0 +1,84 @@
+{#
+ # Fiche étudiant (design-ux.md § 3.3, gabarit F): the enrolments year by year, the groups read
+ # when the account was created, « Changer de classe » for the current year with the reminder that
+ # the dossiers do not move. Dossiers, missions, positioning and accommodations join it with their lots.
+ #}
+{% extends 'classes/_layout.html.twig' %}
+
+{% set classes_tab = current ? 'year' : 'unplaced' %}
+{% set classes_title = student.sortName %}
+{% set switcher_class = current ? current.schoolClass : null %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ student.sortName }}" :trail="current
+        ? [{label: 'Classes', href: path('app_teacher_classes')}, {label: current.schoolClass.name, href: path('app_teacher_class', {id: current.schoolClass.id})}]
+        : [{label: 'Classes', href: path('app_teacher_classes')}, {label: 'À placer', href: path('app_teacher_unplaced')}]">
+        <twig:block name="badge">
+            {% if current %}<twig:Px:Chip>{{ current.schoolClass.label }}</twig:Px:Chip>{% elseif year %}<twig:Px:Badge tone="warning" label="Sans classe en {{ year.label }}"/>{% endif %}
+            {% if student.departed %}<twig:Px:Badge tone="neutral" label="Sorti de la filière"/>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <div class="px-split--even px-split">
+        <twig:Px:Card title="Compte">
+            <dl class="px-facts">
+                <dt>Nom</dt><dd>{{ student.displayName }}</dd>
+                <dt>Identifiant</dt><dd class="px-u-code">{{ student.login }}</dd>
+                <dt>Compte créé</dt><dd>le {{ student.createdAt|date('d/m/Y') }}</dd>
+                <dt>Groupes lus à la création</dt><dd class="px-u-code">{{ student.groupsAtCreation|filter(g => g not in ['student', 'teacher'])|join(', ') ?: '—' }}</dd>
+                {% if student.initialPlacement %}<dt>Placement à la création</dt><dd>{{ student.initialPlacement.label }}</dd>{% endif %}
+                <dt>Dernière connexion</dt><dd>{{ student.lastLoginAt ? student.lastLoginAt|date('d/m/Y à H \\h i') : 'Jamais connecté' }}</dd>
+            </dl>
+        </twig:Px:Card>
+
+        {% if year and classes is not empty %}
+            <twig:Px:Card title="{{ current ? 'Changer de classe' : 'Placer' }}" meta="{{ year.label }}">
+                <form method="post" action="{{ path('app_teacher_student_class', {id: student.id}) }}" class="px-form">
+                    <input type="hidden" name="_token" value="{{ csrf_token('student-class-' ~ student.id) }}">
+                    {% set options = classes|filter(r => not current or r.schoolClass != current.schoolClass)|map(r => {value: r.schoolClass.id, label: r.schoolClass.name}) %}
+                    {% if current %}{% set options = options|merge([{value: 'none', label: 'Aucune classe (à placer)'}]) %}{% endif %}
+                    <twig:Px:Field id="student-class" label="{{ current ? 'Nouvelle classe' : 'Classe' }}" :required="true" hint="{{ current ? 'Actuellement en ' ~ current.schoolClass.name ~ '.' : 'Aucune classe en ' ~ year.label ~ '.' }}">
+                        <twig:Px:Select id="student-class" name="class" placeholder="Choisir la classe…" :options="options" :required="true" hint="1"/>
+                    </twig:Px:Field>
+                    <p class="px-u-muted" id="student-class-note">Ses dossiers ne bougent pas : ils sont à l’étudiant, pas à sa classe.</p>
+                    <div class="px-cluster">
+                        <twig:Px:ConfirmButton label="{{ current ? 'Changer de classe' : 'Placer' }}" confirmLabel="Confirmer" variant="secondary" aria-describedby="student-class-note"/>
+                    </div>
+                </form>
+            </twig:Px:Card>
+        {% endif %}
+    </div>
+
+    <twig:Px:Card :flush="true" title="Inscriptions" meta="une par année, les années passées sont l’historique">
+        {% if history is empty %}
+            <twig:Px:Empty icon="graduation-cap" title="Aucune inscription" text="Cet étudiant n’a encore été placé dans aucune classe."/>
+        {% else %}
+            <twig:Px:Table caption="Inscriptions de {{ student.displayName }}">
+                <thead>
+                    <tr>
+                        <th scope="col">Année</th>
+                        <th scope="col">Classe</th>
+                        <th scope="col">Placé</th>
+                        <th scope="col">Le</th>
+                        <th scope="col">Par</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for enrolment in history %}
+                        <tr{% if enrolment == current %} class="is-current"{% endif %}>
+                            <td>{{ enrolment.schoolYear.label }}</td>
+                            <td><a class="px-link" href="{{ path('app_teacher_class', {id: enrolment.schoolClass.id}) }}">{{ enrolment.schoolClass.name }}</a></td>
+                            <td><twig:Px:Badge :of="enrolment.origin"/></td>
+                            <td>{{ enrolment.enrolledAt|date('d/m/Y') }}</td>
+                            <td>{{ enrolment.enrolledBy ? enrolment.enrolledBy.displayName : 'À la création du compte' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>{{ student.displayName }}</span><span>Inscriptions · <b>{{ history|length }}</b></span>{% endblock %}

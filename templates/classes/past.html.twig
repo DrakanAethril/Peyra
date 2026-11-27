@@ -1,0 +1,32 @@
+{#
+ # Classes › Années précédentes (design-ux.md § 2.6): the classes of the years before the current
+ # one, read only - their enrolments are the history.
+ #}
+{% extends 'classes/_layout.html.twig' %}
+
+{% set classes_tab = 'past' %}
+{% set classes_title = 'Années précédentes' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Années précédentes" :trail="[{label: 'Classes', href: path('app_teacher_classes')}]"/>
+{% endblock %}
+
+{% block page %}
+    {% if years is empty %}
+        <twig:Px:Card>
+            <twig:Px:Empty :page="true" icon="history" title="Aucune année passée" text="Les classes d’une année restent lisibles ici quand une nouvelle année devient courante."/>
+        </twig:Px:Card>
+    {% else %}
+        {% for entry in years %}
+            <twig:Px:Card :flush="true" title="{{ entry.year.label }}" meta="{{ entry.rows|length }} {{ entry.rows|length > 1 ? 'classes' : 'classe' }} · en lecture">
+                {% if entry.rows is empty %}
+                    <twig:Px:Empty title="Aucune classe cette année-là"/>
+                {% else %}
+                    {{ include('classes/_class_table.html.twig', {class_rows: entry.rows, caption: 'Classes de ' ~ entry.year.label}) }}
+                {% endif %}
+            </twig:Px:Card>
+        {% endfor %}
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>Années passées · <b>{{ years|length }}</b></span>{% endblock %}

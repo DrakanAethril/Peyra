@@ -346,6 +346,44 @@
         font-size: var(--px-fs-12);
     }
 
+    /* The teacher's class switcher (design-ux.md § 2.4): the year's classes, then « Années précédentes ». */
+    .px-classswitch {
+        position: relative;
+        display: inline-flex;
+        min-width: 0;
+    }
+
+    button.px-switcher {
+        font: inherit;
+        cursor: pointer;
+
+        &:focus-visible {
+            outline: none;
+            box-shadow: var(--px-ring);
+        }
+    }
+
+    .px-switcher__panel {
+        inset-block-start: calc(100% + var(--px-space-6));
+        inset-inline-start: 0;
+        width: 360px;
+        max-width: calc(100vw - 2 * var(--px-space-16));
+    }
+
+    .px-switcher__option {
+        justify-content: space-between;
+
+        & small {
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-12);
+        }
+
+        &[aria-current="true"] {
+            color: var(--px-action);
+            font-weight: var(--px-fw-semibold);
+        }
+    }
+
     .px-cmdk-trigger {
         flex: 1 1 auto;
         flex-shrink: 1;
