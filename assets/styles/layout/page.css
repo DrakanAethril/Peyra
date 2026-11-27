@@ -140,3 +140,21 @@
         }
     }
 }
+
+@layer px.layout {
+    /* A short form on one line: one field whose control row also holds the button. */
+    .px-formline > .px-field {
+        max-width: 520px;
+    }
+
+    .px-formline__control {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-8);
+
+        & > :first-child {
+            flex: 1;
+            min-width: 0;
+        }
+    }
+}

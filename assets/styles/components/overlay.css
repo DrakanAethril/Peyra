@@ -233,3 +233,56 @@
         }
     }
 }
+
+/* ---------------------------------------------------------------- User menu (menu_controller.js) */
+@layer px.components {
+    .px-usermenu {
+        position: relative;
+        display: inline-flex;
+    }
+
+    .px-usermenu__button {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        cursor: pointer;
+
+        &:focus-visible {
+            outline: none;
+            box-shadow: var(--px-ring);
+        }
+    }
+
+    .px-usermenu__panel {
+        inset-block-start: calc(100% + var(--px-space-6));
+        inset-inline-end: 0;
+        min-width: 240px;
+    }
+
+    .px-usermenu__who {
+        display: grid;
+        gap: 2px;
+        padding: var(--px-space-6) var(--px-space-8) var(--px-space-8);
+
+        & b {
+            color: var(--px-text-strong);
+            font-weight: var(--px-fw-semibold);
+        }
+
+        & small {
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-12);
+        }
+    }
+
+    button.px-menu__item {
+        border: 0;
+        background: transparent;
+        font: inherit;
+        text-align: start;
+        cursor: pointer;
+    }
+}

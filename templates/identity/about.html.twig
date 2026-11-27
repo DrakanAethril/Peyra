@@ -1,0 +1,40 @@
+{#
+ # « À propos » (design-ux.md § 2.1): what Peyra is, its version, its licence and its source code
+ # (AGPL § 13), in the public shell with the 48 px seal (design-ui.md § 6).
+ #}
+{% extends 'layout/public.html.twig' %}
+
+{% block title %}À propos · Peyra{% endblock %}
+
+{% block card_class %}px-public__card--wide{% endblock %}
+
+{% block brand %}
+    <div class="px-public__brand px-public__brand--sm">
+        <img src="{{ asset('brand/seal.svg') }}" alt="" width="48" height="48">
+        {{ source('@brand/wordmark.svg') }}
+        <span class="px-public__tagline">PGI pédagogique</span>
+    </div>
+{% endblock %}
+
+{% block card %}
+    <div class="px-public__body">
+        <h1 class="px-public__title">À propos de Peyra</h1>
+        <p>Peyra est un progiciel de gestion intégré pédagogique pour le BTS Comptabilité et gestion : les étudiants y tiennent le dossier d’une entreprise fictive, les enseignants y distribuent les dossiers, suivent la classe et corrigent par comparaison avec un corrigé.</p>
+        <dl class="px-public__facts">
+            <dt>Version</dt>
+            <dd>{{ version ?? 'Version de développement' }}</dd>
+            <dt>Licence</dt>
+            <dd>GNU Affero General Public License, version 3 ou ultérieure (AGPL-3.0-or-later)</dd>
+            <dt>Code source</dt>
+            <dd><a class="px-link" href="{{ source_url }}">{{ source_url|replace({'https://': ''}) }}</a></dd>
+            <dt>Auteur</dt>
+            <dd>Sébastien Tharaud</dd>
+        </dl>
+        <p class="px-public__note">Toutes les entreprises, tous les salariés et tous les tiers des dossiers sont fictifs. Les noms, logos et emblèmes de l’établissement ne relèvent pas de la licence.</p>
+        {% if app.user %}
+            <twig:Px:Button href="{{ path('app_home') }}" icon="chevron-left">Revenir à Peyra</twig:Px:Button>
+        {% else %}
+            <twig:Px:Button href="{{ path('app_login') }}" icon="chevron-left">Revenir à la connexion</twig:Px:Button>
+        {% endif %}
+    </div>
+{% endblock %}

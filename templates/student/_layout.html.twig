@@ -1,0 +1,16 @@
+{#
+ # The student's screens outside any dossier (design-ux.md § 2.2): the PGI shell without modules nor
+ # dossier date, its rail reduced to « Mes dossiers » (« Mes missions », « Mon passeport » and
+ # « Aide » arrive with their steps). A screen sets `rail_current` outside any block.
+ #}
+{% extends 'layout/pgi.html.twig' %}
+
+{% set rail_home = path('app_student_dossiers') %}
+
+{% block rail %}
+    <twig:Px:RailItem href="{{ path('app_student_dossiers') }}" icon="folder-open" label="Mes dossiers" :current="(rail_current ?? '') == 'dossiers'"/>
+{% endblock %}
+
+{% block topbar_end %}
+    {{ include('layout/_user_menu.html.twig') }}
+{% endblock %}

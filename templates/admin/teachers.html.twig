@@ -1,0 +1,84 @@
+{#
+ # Administration › Enseignants de la filière (design-ux.md § 3.6): who enters as a teacher and why.
+ # « Retirer » only on a teacher authorised by name; the others follow the directory or the
+ # bootstrap list of the server.
+ #}
+{% extends 'admin/_layout.html.twig' %}
+
+{% set admin_tab = 'teachers' %}
+{% set admin_title = 'Enseignants de la filière' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Enseignants de la filière" :trail="[
+        {label: 'Paramètres', href: path('app_admin_teachers')},
+        {label: 'Administration', href: path('app_admin_teachers')},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card title="Ajouter un enseignant" meta="un enseignant hors des groupes CG de l’annuaire">
+        <form method="post" action="{{ path('app_admin_teachers_add') }}" class="px-formline">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin-teachers-add') }}">
+            <twig:Px:Field id="login" label="Identifiant de l’annuaire" :required="true" :error="error" hint="Vérifié dans l’annuaire à l’ajout.">
+                <div class="px-formline__control">
+                    <twig:Px:Input id="login" value="{{ login }}" :required="true" :error="error" hint="1" autocomplete="off" autocapitalize="none" spellcheck="false" :autofocus="error is not null"/>
+                    <twig:Px:Button type="submit" variant="primary" icon="user-plus">Ajouter</twig:Px:Button>
+                </div>
+            </twig:Px:Field>
+        </form>
+    </twig:Px:Card>
+
+    <twig:Px:Card title="Qui entre comme enseignant" meta="{{ entries|length }} {{ entries|length > 1 ? 'personnes' : 'personne' }}" :flush="true">
+        {% if entries is empty %}
+            <twig:Px:Empty title="Personne pour l’instant" text="Les enseignants des groupes CG entrent d’eux-mêmes ; ajoutez ici ceux qui n’y sont pas."/>
+        {% else %}
+            <twig:Px:Table caption="Enseignants admis à entrer dans Peyra">
+                <thead>
+                    <tr>
+                        <th scope="col">Nom</th>
+                        <th scope="col">Identifiant</th>
+                        <th scope="col">Accès</th>
+                        <th scope="col">Ajouté</th>
+                        <th scope="col">Dernière connexion</th>
+                        <th scope="col"><span class="px-u-sr-only">Action</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in entries %}
+                        <tr>
+                            <td>{{ row.displayName ?? '—' }}</td>
+                            <td class="px-u-code">{{ row.login }}</td>
+                            <td>
+                                <twig:Px:Badge :of="row.basis"/>
+                                {% if row.groups %}<span class="px-u-muted"> {{ row.groups }}</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if row.authorization %}
+                                    {{ row.authorization.addedAt|date('d/m/Y') }}, par {{ row.authorization.addedBy.displayName }}
+                                {% else %}
+                                    <span class="px-u-muted">d’office</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ row.account and row.account.lastLoginAt ? row.account.lastLoginAt|date('d/m/Y à H:i') : 'Jamais connecté' }}</td>
+                            <td class="px-u-right">
+                                {% if row.removable %}
+                                    <form method="post" action="{{ path('app_admin_teachers_revoke', {id: row.authorization.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('admin-teachers-revoke-' ~ row.authorization.id) }}">
+                                        <twig:Px:ConfirmButton label="Retirer" confirmLabel="Confirmer le retrait" size="sm" aria-describedby="revoke-note"/>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+        <twig:block name="foot">
+            {% if entries|filter(r => r.removable) is not empty %}
+                <p class="px-u-muted" id="revoke-note">Retirer un enseignant l’empêche de se connecter ; ses modèles, ses missions et ses corrections restent.</p>
+            {% endif %}
+        </twig:block>
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}{% set named = entries|filter(r => r.removable)|length %}<span>Autorisés nommément · <b>{{ named }}</b></span><span>Admis en tout · <b>{{ entries|length }}</b></span>{% endblock %}

@@ -19,6 +19,19 @@ The tree mirrors `src/` (`tests/Controller/Shared/` tests `src/Controller/Shared
 - **Functional tests** (`WebTestCase`): real HTTP requests, among them the smoke test that asks for
   each main screen as a student, a teacher, an administrator and a refused account.
 
+## Isolation and the directory
+
+Every test runs inside a transaction rolled back at its end (`dama/doctrine-test-bundle`, wired in
+`phpunit.dist.xml`): a test sees the database the migrations left, whatever ran before. Anything
+written outside PHPUnit (a `php -r` probe in the test environment) stays: recreate the database.
+
+The test environment never reaches the directory: `tests/Support/InMemoryDirectory` holds the
+people of `frankenphp/ldap/10-tree.ldif` (password `peyra-dev`) and lets a test add a person, rename
+a login or take the directory down - keep the client's kernel (`$client->disableReboot()`) for the
+change to last past the next request. `tests/Support/SignsIn` signs in through the real form.
+The sign-in limiters count in memory, one kernel at a time. `LdapDirectoryTest` alone reads the
+real development directory, which CI starts too.
+
 ## The test database
 
 The test environment opens `<database>_test` (`config/packages/doctrine.yaml`, `dbname_suffix`),

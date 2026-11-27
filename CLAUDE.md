@@ -75,10 +75,13 @@ bin/shot /_design shot.png [width] [height]        # capture a page with headles
 
 `bin/shot` is a dependency-free Node script (host Node ≥ 22) that drives Chrome over the DevTools
 protocol: it waits for the fonts, captures the viewport (height `0` = the whole document, for the
-public pages), and signs in with `PEYRA_SHOT_COOKIE="name=value"` or, once step 0.4 adds the dev
-route, `PEYRA_SHOT_LOGIN=<login>` (`/_dev/login-as/<login>`); `PEYRA_SHOT_RAIL=collapsed` sets the
-rail cookie. The design gallery is <https://localhost:8143/_design> (with `/_design/teacher` and
-`/_design/public`), development and test only: every Px component in every state, in both shells.
+public pages), and signs in with `PEYRA_SHOT_LOGIN=<login>` (`/_dev/login-as/<login>`) or
+`PEYRA_SHOT_COOKIE="name=value"`; `PEYRA_SHOT_RAIL=collapsed` sets the rail cookie. A keyboard
+path is replayed and checked before the capture: `PEYRA_SHOT_FOCUS=<selector>` focuses an element,
+`PEYRA_SHOT_KEYS="text:prof.leroy,Tab,Enter"` presses real keys, `PEYRA_SHOT_EVAL=<js>` prints what
+an expression returns (awaited). The design gallery is <https://localhost:8143/_design> (with
+`/_design/teacher` and `/_design/public`), development and test only: every Px component in every
+state, in both shells.
 
 The test database (`peyra_test`, and `peyra_test1`… for ParaTest through
 `app:test:parallel-databases`) is described in `tests/README.md`, with the sequence CI replays.
@@ -133,6 +136,8 @@ Gotchas met while building it:
   is on its enum (`App\Enum\Shared\HasBadge` + `BadgeTone`, `<twig:Px:Badge :of="…"/>`).
   `PxComponentsTest` pins their markup. Write `<tag{{ attributes }}>` with no space before:
   the attribute bag brings its own leading space.
+  Inside a component's block, a prop of the component hides the page's variable of the same name
+  (`rows` in a `Px:Table`, `label` or `error` in a `Px:Field`): name the page's variables apart.
 - **Shells**: `layout/pgi.html.twig` (student), `layout/teacher.html.twig`, `layout/public.html.twig`.
   The first two capture their blocks (`{% set x %}{{ block('x') }}{% endset %}`) and include
   `layout/_shell.html.twig`: a child template's block placed inside a `<twig:…>` tag would belong
@@ -191,14 +196,66 @@ never by discipline.
 ## Authentication and access
 
 LDAP as in Formatool: bind as the service account, search `(uid=…)`, find-or-create the local
-`User`, then bind again as the person's own DN. No password is ever stored. The entry rule is
-`(ROLE_TEACHER or ROLE_STUDENT) AND a CG group`; every other account is refused at login,
-Formatool's administrators included. There is no administrator role in the directory for Peyra:
-administration belongs to teachers designated inside the application. Peyra never writes to the
-directory.
+`User`, then bind again as the person's own DN. No password is ever stored. Peyra never writes to
+the directory. Built at step 0.4; the pieces:
+
+- **`App\Service\Identity\Directory`** is the directory, read-only: `LdapDirectory` everywhere
+  but test, where `tests/Support/InMemoryDirectory` holds the same people (`config/services.yaml`,
+  `when@test`); `LdapDirectoryTest` reads the real development one. A person's name is
+  `givenName sn` (production's `cn` is the login), their groups the `cn` of every group naming
+  their DN as `member` (`LDAP_GROUP_OBJECT_CLASS`).
+- **The account is keyed on a stable id, never the login**: the attribute `PEYRA_LDAP_STABLE_ID`
+  (`objectGUID` in production, `entryUUID` on the development OpenLDAP - an operational attribute,
+  asked for by name), else `uidNumber`, stored `<attribute>:<value>` (`StableId`; a binary GUID is
+  written in its text form). It is also `User::getUserIdentifier()`, so a session survives a
+  renamed login. Re-seeding the development directory gives everybody new `entryUUID`s, hence new
+  accounts: rename in place with `ldapmodrdn` instead when you test a rename.
+- **The entry rule** is `App\Service\Identity\EntryRule::decide()`, a pure function (README of
+  the plan, § 9): a student (group `student`) in a group of `PEYRA_STUDENT_GROUPS`; a teacher
+  (group `teacher`) in a group of `PEYRA_TEACHER_GROUPS`, or a login of `PEYRA_ADMIN_LOGINS`, or
+  authorised by name (`AuthorizedTeacher`, Administration › Enseignants de la filière); anybody
+  else refused, Formatool's administrators included. `EntryPolicy` feeds it, and
+  `App\Security\UserProvider` asks it again **at each request** on what the last sign-in read: a
+  teacher removed from the list loses their session at the next click.
+- **`App\Security\SignIn` is the one door of a sign-in** - the rate limiters (`login_ip`,
+  `login_name`), the directory, the password, the rule, the account (`AccountProvisioner`), a line
+  of the sign-in journal for every outcome - before any passport exists, so a refused person never
+  gets an account. A wrong password and an unknown login read the same; the refusal is a sentence
+  of design-ux.md § 4.1, never a reason. `LdapAuthenticator` only adds the form and its token.
+- **Administrators**: `User::$administrator`, a teacher's flag. `PEYRA_ADMIN_LOGINS` sets it at
+  each sign-in (and is never removed from the screen); an administrator designates others among
+  the teachers; the last one never goes (`Administrators`). Every gesture of the administration
+  screens goes to the administration journal; every sign-in to the sign-in journal. Both are read
+  under Paramètres › Administration (`/teacher/admin/…`, `ROLE_ADMIN`).
+- `/_dev/login-as/<login>` (dev and test only) signs in without a password, the rule still applied:
+  `bin/shot` uses it (`PEYRA_SHOT_LOGIN`).
+
+Real time is read where the request is (`ClockInterface` in `src/Security/` and the controllers)
+and passed to the services as a date: `NoClockReadingTest` scans `src/Service/`.
 
 Per-object rules belong in Voters, never inline in a controller. An object one may not see answers
-a **404, never a 403**.
+a **404, never a 403**: `App\Security\NotFoundOnAccessDenied` (the firewall's
+`access_denied_handler`) renders the « Page introuvable » page itself - the firewall refuses an
+exception thrown from there. Never hand an authentication exception as the `previous` of a 404:
+the firewall walks the chain and sends the person to the sign-in page instead.
+
+### Demonstration accounts
+
+The fictitious directory `frankenphp/ldap/10-tree.ldif` (password **`peyra-dev`** for all;
+`PEYRA_ADMIN_LOGINS=prof.martin` in `.env.dev.local.example`):
+
+| Login | Name | Groups | Enters as |
+|---|---|---|---|
+| `prof.martin` | Jean-Pierre Martin | teacher, cg-1, cg-2 | teacher, **administrator** (bootstrap list) |
+| `prof.durand` | Sophie Durand | teacher, cg-1 | teacher |
+| `prof.leroy` | Marc Leroy | teacher, sio-1 | **refused** until authorised by name |
+| `lucas.bernard`, `manon.chevalier`, `theo.garnier`, `ines.morel`, `adam.roussel`, `chloe.fabre` | | student, cg-1 | students of first year |
+| `yasmine.haddad`, `louis.perret`, `camille.dufour`, `nathan.mercier`, `lea.boyer`, `sacha.lambert` | | student, cg-2 | students of second year |
+| `jules.martel` | Jules Martel | student, cg-1, cg-2 | student with two contradictory groups (« à placer », step 0.5) |
+| `enzo.petit` | Enzo Petit | student, sio-1 | **refused** |
+
+The service account is `cn=svc-peyra,ou=service,dc=peyra,dc=lan`. After changing the tree:
+`docker compose rm -sf openldap && docker volume rm peyra_ldap_data && docker compose up -d openldap`.
 
 ## Conventions (as in Formatool)
 

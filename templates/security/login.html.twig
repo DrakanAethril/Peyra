@@ -1,0 +1,32 @@
+{#
+ # The sign-in page (design-ux.md § 4.1, design-ui.md § 6 « Connexion »): the card of the public
+ # shell, fields and button in the large size. A refusal is one sentence above the fields, the same
+ # for an unknown login and a wrong password.
+ #}
+{% extends 'layout/public.html.twig' %}
+
+{% block title %}Connexion · Peyra{% endblock %}
+
+{% block card %}
+    <form method="post" action="{{ path('app_login') }}" class="px-public__body" data-turbo="false">
+        <h1 class="px-u-sr-only">Se connecter à Peyra</h1>
+        {% if error %}
+            <twig:Px:Alert tone="danger" id="login-error">{{ error }}</twig:Px:Alert>
+        {% endif %}
+        <twig:Px:Field id="username" label="Identifiant">
+            <twig:Px:Input id="username" name="_username" value="{{ last_username }}" size="lg" :required="true" autocomplete="username" autocapitalize="none" spellcheck="false" :autofocus="last_username is empty"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="password" label="Mot de passe de l’établissement">
+            <twig:Px:Input id="password" name="_password" type="password" size="lg" :required="true" autocomplete="current-password" :autofocus="last_username is not empty"/>
+        </twig:Px:Field>
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+        <twig:Px:Button type="submit" variant="primary" size="lg" :block="true">Se connecter</twig:Px:Button>
+        <p class="px-public__note">
+            {% if password_help_url %}
+                <a class="px-link" href="{{ password_help_url }}">Mot de passe oublié</a> : la procédure de l’établissement.
+            {% else %}
+                Mot de passe oublié : adressez-vous au service informatique de l’établissement.
+            {% endif %}
+        </p>
+    </form>
+{% endblock %}

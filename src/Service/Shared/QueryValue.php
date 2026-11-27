@@ -1,0 +1,120 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Service\Shared;
+
+use Symfony\Component\HttpFoundation\Request;
+
+/**
+ * Reads a query-string parameter as the type the caller needs, treating anything unusable as
+ * « not provided » (taken from Formatool, same author and licence).
+ *
+ * InputBag::getInt() and getBoolean() throw a BadRequestException - a 400 - as soon as the value is
+ * present but not convertible, the empty string included, and the empty string is exactly what a
+ * GET filter bar submits for its « Toutes » option. A filter bar has no use for that distinction: an
+ * unselected filter and an unparseable one both mean « do not filter on this ».
+ *
+ * Values are read off the raw parameter array rather than through InputBag::get(), which throws on
+ * its own account when the parameter arrives as an array (`?page[]=1`).
+ */
+final class QueryValue
+{
+    public static function int(Request $request, string $key, int $default = 0): int
+    {
+        $value = self::raw($request, $key);
+
+        return is_numeric($value) ? (int) $value : $default;
+    }
+
+    /**
+     * The same reading, for a filter that feeds a repository lookup: null says "no filter", where 0
+     * would be a genuine - and never matching - identifier.
+     */
+    public static function nullableInt(Request $request, string $key): ?int
+    {
+        $value = self::raw($request, $key);
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    public static function string(Request $request, string $key, string $default = ''): string
+    {
+        $value = self::raw($request, $key);
+
+        return \is_scalar($value) ? (string) $value : $default;
+    }
+
+    public static function trimmed(Request $request, string $key, string $default = ''): string
+    {
+        $value = self::raw($request, $key);
+
+        return \is_scalar($value) ? trim((string) $value) : $default;
+    }
+
+    /**
+     * A repeated parameter as the array it is meant to be, keys kept.
+     *
+     * InputBag::all($key) throws as soon as the parameter is present without being an array, so a
+     * URL carrying `?cohorts=` - or a hand-edited one carrying `?answers=1` where the screen builds
+     * `answers[3]=1` - answers a 400 rather than reading as "nothing submitted". Keys are preserved
+     * because several callers read them (`foreach (... as $zoneId => $key)`); values stay raw, since
+     * what counts as valid differs at every call site.
+     *
+     * @return array<array-key, mixed>
+     */
+    public static function all(Request $request, string $key): array
+    {
+        $value = self::raw($request, $key);
+
+        return \is_array($value) ? $value : [];
+    }
+
+    /**
+     * A repeated filter (`?cohorts[]=3&cohorts[]=7`) as a list of ids.
+     *
+     * InputBag::all($key) is the third member of this family that throws rather than falls back: it
+     * raises as soon as the parameter is present but not an array, and `?cohorts=` is exactly that.
+     * Zero and anything unparseable are dropped, since no row carries id 0 - a filter naming only
+     * junk filters on nothing, which is the same answer as naming nothing at all.
+     *
+     * @return list<int>
+     */
+    public static function intList(Request $request, string $key): array
+    {
+        $value = self::raw($request, $key);
+
+        if (!\is_array($value)) {
+            $value = [$value];
+        }
+
+        $ids = [];
+        foreach ($value as $entry) {
+            if (is_numeric($entry) && 0 !== (int) $entry) {
+                $ids[] = (int) $entry;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * True only for the forms a checkbox or a hand-written URL actually uses; everything else,
+     * including the empty string, is false.
+     */
+    public static function bool(Request $request, string $key): bool
+    {
+        $value = self::raw($request, $key);
+
+        if (!\is_scalar($value)) {
+            return false;
+        }
+
+        return true === filter_var($value, \FILTER_VALIDATE_BOOL, \FILTER_NULL_ON_FAILURE);
+    }
+
+    private static function raw(Request $request, string $key): mixed
+    {
+        return $request->query->all()[$key] ?? null;
+    }
+}

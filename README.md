@@ -47,6 +47,12 @@ chaque composant de l'interface dans chacun de ses états, dans la coquille de l
 celle de l'enseignant ; `bin/shot <adresse> <fichier.png>` en fait une capture avec Chrome sans
 écran.
 
+On s'y connecte avec un compte de l'annuaire fictif, mot de passe `peyra-dev` : `prof.martin`
+(enseignant, administrateur), `prof.durand` (enseignante), `ines.morel` (étudiante de 1re année),
+`yasmine.haddad` (étudiante de 2e année) ; `enzo.petit` et `prof.leroy` montrent les refus. La
+liste complète est dans `CLAUDE.md`. Seuls les étudiants et les enseignants du BTS CG entrent ;
+aucun mot de passe n'est conservé par Peyra.
+
 La pile de développement : `php` (FrankenPHP et Caddy), `database` (MariaDB, comme en
 production), `openldap` (un annuaire fictif, versionné dans `frankenphp/ldap/`), `gotenberg`
 (rendu des PDF) et, à la demande, `worker` (Symfony Scheduler).

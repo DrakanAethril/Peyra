@@ -1,0 +1,7 @@
+# Each test of the suite runs inside a transaction rolled back at its end: the test databases stay
+# as the migrations left them, whatever order ParaTest runs the files in.
+when@test:
+    dama_doctrine_test:
+        enable_static_connection: true
+        enable_static_meta_data_cache: true
+        enable_static_query_cache: true

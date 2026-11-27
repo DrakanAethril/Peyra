@@ -1,0 +1,25 @@
+{#
+ # Paramètres › Administration (design-ux.md §§ 2.6 and 3.6), administrators only. A screen sets
+ # `admin_tab` and `admin_title` outside any block. The years, the classes and the mapping with the
+ # directory join these tabs with their step.
+ #}
+{% extends 'teacher/_layout.html.twig' %}
+
+{% set rail_current = 'parametres' %}
+
+{% block title %}{{ admin_title }} · Administration · Peyra{% endblock %}
+
+{% block module_tabs %}
+    <twig:Px:ModuleTabs label="Administration" :tabs="[
+        {label: 'Enseignants de la filière', href: path('app_admin_teachers'), current: admin_tab == 'teachers'},
+        {label: 'Administrateurs', href: path('app_admin_administrators'), current: admin_tab == 'administrators'},
+        {label: 'Journal des connexions', href: path('app_admin_logins'), current: admin_tab == 'logins'},
+        {label: 'Journal d’administration', href: path('app_admin_journal'), current: admin_tab == 'journal'},
+    ]"/>
+{% endblock %}
+
+{% block status %}
+    {%- for message in app.flashes('status') %}<span>{{ message }}</span>{% else %}{{ block('facts') }}{% endfor -%}
+{% endblock %}
+
+{% block facts %}{% endblock %}

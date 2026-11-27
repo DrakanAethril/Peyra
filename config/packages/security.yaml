@@ -1,0 +1,40 @@
+security:
+    # No password is ever stored (CLAUDE.md, « Authentication and access »): the directory checks
+    # it, and no hasher is declared.
+
+    providers:
+        # Reloads the account by its id at each request and asks the entry rule again: a teacher
+        # removed from « Enseignants de la filière » is signed out at their next click.
+        peyra_users:
+            id: App\Security\UserProvider
+
+    firewalls:
+        dev:
+            # Dev tools and static assets.
+            pattern: ^/(_profiler(/|$)|(_wdt|assets|build)/)
+            security: false
+        main:
+            lazy: true
+            provider: peyra_users
+            custom_authenticators:
+                - App\Security\LdapAuthenticator
+            entry_point: App\Security\LdapAuthenticator
+            # A refusal is a 404, never a 403 (README of the plan, § 8): what one may not see reads
+            # like a page that is not there.
+            access_denied_handler: App\Security\NotFoundOnAccessDenied
+            # The link carries a token (`logout_path()`): a page elsewhere cannot sign anybody out.
+            logout:
+                path: app_logout
+                target: app_login
+                enable_csrf: true
+
+    # Only the first matching rule applies. Every PUBLIC_ACCESS rule precedes the catch-all.
+    access_control:
+        - { path: ^/(login|about|health)$, roles: PUBLIC_ACCESS }
+        # Development and test only: the routes do not exist in production.
+        - { path: ^/_design(/|$), roles: PUBLIC_ACCESS }
+        - { path: ^/_dev/, roles: PUBLIC_ACCESS }
+        - { path: ^/teacher/admin(/|$), roles: ROLE_ADMIN }
+        - { path: ^/teacher(/|$), roles: ROLE_TEACHER }
+        - { path: ^/dossiers(/|$), roles: ROLE_STUDENT }
+        - { path: ^/, roles: ROLE_USER }
