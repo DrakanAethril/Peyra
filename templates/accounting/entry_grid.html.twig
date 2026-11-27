@@ -4,7 +4,8 @@
  # from `grid` (the month's entries and the person's pending work) and looks accounts up in `lookup`
  # without asking the server; the head's buttons answer F10 (enregistrer au brouillard), Ctrl Entrée
  # (valider, after the confirmation bar), « + » (équilibrer) and F6 (appeler un modèle d'écriture
- # of the journal: its lines laid in the current entry, HT, TVA and TTC from the amount typed). Whoever only reads the dossier, or a
+ # of the journal: its lines laid in the current entry, HT, TVA and TTC from the amount typed); F5
+ # opens the line's account in a drawer. Whoever only reads the dossier, or a
  # closed month, gets the same grid without fields.
  #}
 {% extends 'accounting/_layout.html.twig' %}
@@ -12,7 +13,7 @@
 {% set module_current = 'entry' %}
 {% set entry_view = 'journal' %}
 {% set dossier_title = 'Saisie ' ~ journal.code ~ ' · ' ~ period.label|lower %}
-{% set status_keys = editable ? [{combo: 'Tab', verb: 'champ suivant'}, {combo: 'Enter', verb: 'champ à remplir'}, {combo: 'F4', verb: 'chercher un compte'}, {combo: 'F6', verb: 'modèle'}, {combo: 'Escape', verb: 'abandonner'}] : [] %}
+{% set status_keys = editable ? [{combo: 'Tab', verb: 'champ suivant'}, {combo: 'Enter', verb: 'champ à remplir'}, {combo: 'F4', verb: 'chercher un compte'}, {combo: 'F5', verb: 'détail du compte'}, {combo: 'F6', verb: 'modèle'}, {combo: 'Escape', verb: 'abandonner'}] : [] %}
 {% set grid_url = path('app_accounting_entry', {dossier: dossier.id}) %}
 
 {% block page_head %}
@@ -62,6 +63,7 @@
          data-entry-grid-account-url-value="{{ path('app_accounting_entry_account', {dossier: dossier.id}) }}"
          data-entry-grid-template-url-value="{{ path('app_accounting_entry_template', {dossier: dossier.id}) }}"
          data-entry-grid-templates-href-value="{{ path('app_accounting_templates', {dossier: dossier.id}) }}"
+         data-entry-grid-peek-url-value="{{ path('app_accounting_consultation_peek', {dossier: dossier.id}) }}"
          data-entry-grid-entry-url-value="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: 0})|replace({'/0': '/__ID__'}) }}">
 
         <form class="px-entry__context" method="get" action="{{ grid_url }}" data-turbo-action="advance">
@@ -78,6 +80,7 @@
                 </select>
             </div>
             <noscript><twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button></noscript>
+            <twig:Px:Button variant="quiet" size="sm" icon="search" href="{{ path('app_accounting_entries', {dossier: dossier.id, journal: journal.code, period: period.startsOn|date('Y-m-d'), dir: 'asc'}) }}">Interroger le journal</twig:Px:Button>
             {% if grid.counterpart %}
                 <p class="px-entry__treasury">
                     <span>Contrepartie <span class="px-u-code">{{ grid.counterpart.number }}</span> {{ grid.counterpart.label }}</span>
@@ -182,6 +185,11 @@
                 <p class="px-picker__foot"><twig:Px:Kbd combo="Enter"/> poser les lignes <twig:Px:Kbd combo="Escape"/> revenir</p>
             </div>
         </div>
+
+        {# F5: the current line's account or third party - balance and last movements (design-ux.md § 5.1). #}
+        <twig:Px:Drawer id="entry-peek" title="Détail du compte" data-entry-grid-target="peek">
+            <div data-entry-grid-target="peekBody"></div>
+        </twig:Px:Drawer>
 
         <template data-entry-grid-target="iconLock">{{ ux_icon('lock', {'aria-hidden': 'true'}) }}</template>
         <template data-entry-grid-target="iconDraft">{{ ux_icon('file-text', {'aria-hidden': 'true'}) }}</template>

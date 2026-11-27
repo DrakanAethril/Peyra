@@ -85,6 +85,22 @@ final readonly class LedgerReader
     }
 
     /**
+     * A third party's lines in the window - on its collective, or on another account of its nature
+     * (416000, 419100) -, in date order then as entered, each with the balance after it, starting
+     * from what it carried before `from` when `before` is given.
+     *
+     * @return list<LedgerMovement>
+     */
+    public function thirdPartyMovements(ThirdParty $thirdParty, ?\DateTimeImmutable $from, \DateTimeImmutable $to, EntryScope $scope, ?Totals $before = null): array
+    {
+        $query = $this->lines($thirdParty->getDossier(), $from, $to, $scope)
+            ->andWhere('l.thirdParty = :thirdParty')
+            ->setParameter('thirdParty', $thirdParty);
+
+        return self::withBalances($query->getQuery()->getResult(), ($before ?? Totals::zero())->balance());
+    }
+
+    /**
      * The trial balance (« balance générale ») of the window: every account that carries lines in
      * it, in number order, with its totals.
      *
@@ -171,13 +187,14 @@ final readonly class LedgerReader
         return $totals;
     }
 
-    /** The lines of the window with their entry, journal, exercise and third party, in date order. */
+    /** The lines of the window with their entry, journal, exercise, account and third party, in date order. */
     private function lines(Dossier $dossier, ?\DateTimeImmutable $from, \DateTimeImmutable $to, EntryScope $scope): QueryBuilder
     {
         $query = $this->entityManager->createQueryBuilder()
-            ->select('l', 'e', 'j', 'x', 't')
+            ->select('l', 'e', 'j', 'x', 't', 'a')
             ->from(EntryLine::class, 'l')
             ->join('l.entry', 'e')
+            ->join('l.account', 'a')
             ->join('e.journal', 'j')
             ->join('e.exercise', 'x')
             ->leftJoin('l.thirdParty', 't')

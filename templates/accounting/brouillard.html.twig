@@ -1,0 +1,143 @@
+{#
+ # Comptabilité › Brouillard (design-ux.md § 3.2, gabarit L): the entries not yet validated, by
+ # journal and month (chips that count them), with their controls at the dossier's level of
+ # assistance. A box per entry; at levels G and B an entry a control stops has none to tick (its
+ # reason under the box's label). « Valider la sélection » (Ctrl Entrée) opens the confirmation
+ # bar in place of the lot actions (§ 6.2). The pending work - typed, not yet an entry - is named
+ # above with a link to its grid.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set module_current = 'brouillard' %}
+{% set dossier_title = 'Brouillard' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'Space', verb: 'Cocher'}, {combo: 'Enter', verb: 'Ouvrir'}, {combo: 'Ctrl+Enter', verb: 'Valider la sélection'}] : [{combo: 'Enter', verb: 'Ouvrir'}] %}
+{% set keep = {journal: journal ?: null, period: period ?: null} %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Brouillard" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_entry', {dossier: dossier.id})},
+        {label: 'Brouillard', href: path('app_accounting_brouillard', {dossier: dossier.id})},
+    ]">
+        <twig:block name="badge"> <twig:Px:Badge tone="neutral" label="{{ level.label }}"/></twig:block>
+        <twig:block name="actions">
+            {% if total_count > 0 %}
+                <twig:Px:ExportMenu xlsx="{{ path('app_accounting_brouillard_export', {dossier: dossier.id, format: 'xlsx'}) }}" csv="{{ path('app_accounting_brouillard_export', {dossier: dossier.id, format: 'csv'}) }}"/>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if pending is not empty %}
+        <twig:Px:Alert tone="warning" title="{{ pending|length > 1 ? 'Saisies en attente' : 'Saisie en attente' }}, hors du brouillard">
+            <ul class="px-brouillard__pending">
+                {% for work in pending %}
+                    <li>Journal {{ work.journal.code }}, {{ work.period.label|lower }} : {{ work.groups|length }} écriture{{ work.groups|length > 1 ? 's' : '' }} de {{ work.author.displayName }} · <a class="px-link" href="{{ path('app_accounting_entry', {dossier: dossier.id, journal: work.journal.code, period: work.period.startsOn|date('Y-m-d')}) }}">reprendre la saisie</a></li>
+                {% endfor %}
+            </ul>
+            Une écriture en cours de saisie entre au brouillard par F10, une fois équilibrée.
+        </twig:Px:Alert>
+    {% endif %}
+
+    {% if total_count == 0 %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="circle-check" title="Le brouillard est vide" text="Toutes les écritures du dossier sont validées. Une écriture enregistrée par F10 dans la grille de saisie attend ici sa validation.">
+                <twig:block name="action"><twig:Px:Button href="{{ path('app_accounting_entry', {dossier: dossier.id}) }}" icon="pencil">Saisir une écriture</twig:Px:Button></twig:block>
+            </twig:Px:Empty>
+        </twig:Px:Card>
+    {% else %}
+        <twig:Px:Card :flush="true">
+            <form method="post" action="{{ path('app_accounting_brouillard_validate', {dossier: dossier.id}) }}"
+                  data-controller="selection confirm-bar" data-selection-one-value="%d écriture cochée" data-selection-many-value="%d écritures cochées"
+                  data-action="change->selection#refresh">
+                <input type="hidden" name="_token" value="{{ csrf_token('brouillard-' ~ dossier.id) }}">
+                {% if journal %}<input type="hidden" name="journal" value="{{ journal }}">{% endif %}
+                {% if period %}<input type="hidden" name="period" value="{{ period }}">{% endif %}
+                <div class="px-filters" data-selection-target="idle">
+                    <twig:Px:FilterChip label="Tous les journaux" href="{{ path('app_accounting_brouillard', {dossier: dossier.id}|merge(keep)|merge({journal: null, period: null})) }}" :count="total_count" :current="journal == ''"/>
+                    {% for code, one in journal_counts %}
+                        <twig:Px:FilterChip label="{{ code }}" title="{{ one.label }}" href="{{ path('app_accounting_brouillard', {dossier: dossier.id, journal: code, period: null}) }}" :count="one.count" :current="journal == code"/>
+                    {% endfor %}
+                    {% if period_counts|length > 1 or period %}
+                        <span class="px-filters__sep" aria-hidden="true"></span>
+                        {% for month, one in period_counts %}
+                            <twig:Px:FilterChip label="{{ one.label|lower }}" href="{{ path('app_accounting_brouillard', {dossier: dossier.id}|merge(keep)|merge({period: period == month ? null : month})) }}" :count="one.count" :current="period == month"/>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                {% if can_edit %}
+                    <div class="px-lotbar" data-selection-target="bar" hidden>
+                        <span class="px-lotbar__count" data-selection-target="count" aria-live="polite"></span>
+                        <span data-confirm-bar-target="actions">
+                            <twig:Px:Button size="sm" variant="primary" shortcut="Ctrl+Enter" icon="check" data-action="confirm-bar#open">Valider la sélection</twig:Px:Button>
+                        </span>
+                        <div class="px-confirmbar" role="alertdialog" aria-labelledby="brouillard-validate-text" hidden data-confirm-bar-target="bar" data-action="keydown->confirm-bar#keydown">
+                            <p id="brouillard-validate-text">Valider les écritures cochées ? Elles seront numérotées et ne pourront plus être modifiées, seulement contrepassées.</p>
+                            <twig:Px:Button size="sm" variant="quiet" data-action="confirm-bar#close">Annuler</twig:Px:Button>
+                            <twig:Px:Button size="sm" type="submit" variant="primary" data-confirm-bar-target="confirm">Valider</twig:Px:Button>
+                        </div>
+                    </div>
+                {% endif %}
+                {% if brouillard_rows is empty %}
+                    <twig:Px:Empty icon="search" title="Aucune écriture" text="Aucune écriture de ce journal et de ce mois n’attend sa validation."/>
+                {% else %}
+                    <twig:Px:Table caption="Écritures du brouillard" :rows="true">
+                        <thead><tr>
+                            {% if can_edit %}
+                                <th scope="col" class="px-table__pick">
+                                    <label class="px-check"><input type="checkbox" data-selection-target="all" data-action="selection#toggleAll"><span class="px-u-sr-only">Tout cocher</span></label>
+                                </th>
+                            {% endif %}
+                            <th scope="col">Date</th>
+                            <th scope="col">Journal</th>
+                            <th scope="col">Pièce</th>
+                            <th scope="col">Libellé</th>
+                            <th scope="col" class="px-u-right">Montant</th>
+                            <th scope="col">Contrôles</th>
+                        </tr></thead>
+                        <tbody>
+                            {% for row in brouillard_rows %}
+                                {% set entry = row.entry %}
+                                {% set reason = row.reason %}
+                                <tr data-rows-target="row"{% if row.blocked %} class="is-error"{% endif %}>
+                                    {% if can_edit %}
+                                        <td class="px-table__pick">
+                                            <label class="px-check"{% if reason %} title="{{ reason }}"{% endif %}><input type="checkbox" name="entries[]" value="{{ entry.id }}" data-selection-target="box"{% if not row.selectable %} disabled{% endif %}><span class="px-u-sr-only">Cocher l’écriture {{ entry.document }}{% if reason %} (impossible : {{ reason }}){% endif %}</span></label>
+                                        </td>
+                                    {% endif %}
+                                    <td class="px-u-code">{{ entry.entryDate|date('d/m/Y') }}</td>
+                                    <td class="px-u-code">{{ entry.journal.code }}</td>
+                                    <td class="px-u-code"><a class="px-link" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id, return: here}) }}">{{ entry.document }}</a></td>
+                                    <td class="px-u-truncate px-u-fill" title="{{ entry.label }}">{{ entry.label }}</td>
+                                    <td class="px-u-num">{{ entry.totalDebit|amount }}</td>
+                                    <td class="px-brouillard__controls">
+                                        {% if row.changing %}
+                                            <twig:Px:Badge tone="info" label="En cours de modification"/>
+                                        {% elseif row.errors is not empty %}
+                                            <twig:Px:Badge tone="danger" label="Refusée"/> <span>{{ row.errors|first }}</span>
+                                        {% elseif row.controls is not empty %}
+                                            {% set first = row.controls|first %}
+                                            <twig:Px:Badge tone="{{ first.blocking ? 'danger' : 'warning' }}" label="{{ first.blocking ? 'Bloquée' : 'À vérifier' }}"/>
+                                            <span title="{{ row.controls|map(c => c.message)|join(' ') }}">{{ first.message }}{% if row.controls|length > 1 %} (+{{ row.controls|length - 1 }}){% endif %}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot><tr class="px-table__total">
+                            <th scope="row" colspan="{{ can_edit ? 5 : 4 }}">{{ brouillard_rows|length }} écriture{{ brouillard_rows|length > 1 ? 's' : '' }}</th>
+                            <td class="px-u-num">{{ amount|amount }}</td>
+                            <td></td>
+                        </tr></tfoot>
+                    </twig:Px:Table>
+                {% endif %}
+            </form>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}
+    <span>Brouillard · <b>{{ total_count }}</b> écriture{{ total_count > 1 ? 's' : '' }}</span>
+    <span>Niveau d’assistance · <b>{{ level.label }}</b></span>
+{% endblock %}

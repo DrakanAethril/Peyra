@@ -1,0 +1,103 @@
+{#
+ # Comptabilité › Consultation › Recherche d'écritures (design-ux.md § 3.2, gabarit L): the
+ # entries of the window (a month, or the exercise up to the dossier's date) filtered by state,
+ # journal, account or third party, exact amount, document or label; newest first (§ 6.6), the
+ # date column sorting. Narrowed to a journal and a month, it is the journal's interrogation. An
+ # entry opens its fiche, which leads back here. Count and amount over the whole filter.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set module_current = 'consultation' %}
+{% set consultation_current = 'entries' %}
+{% set dossier_title = criteria.journal ? 'Journal ' ~ criteria.journal.code : 'Recherche d’écritures' %}
+{% set status_keys = [{combo: '/', verb: 'Rechercher'}, {combo: 'Enter', verb: 'Ouvrir l’écriture'}] %}
+{% set state_filter = criteria.state ? criteria.state.value : '' %}
+{% set without = filters|filter((v, k) => k != 'page') %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ criteria.journal ? 'Journal ' ~ criteria.journal.code ~ ' · ' ~ criteria.journal.label : 'Recherche d’écritures' }}" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_entry', {dossier: dossier.id})},
+        {label: 'Consultation', href: path('app_accounting_consultation', {dossier: dossier.id})},
+        {label: 'Recherche d’écritures', href: path('app_accounting_entries', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if result.total > 0 %}
+                <twig:Px:ExportMenu xlsx="{{ path('app_accounting_entries_export', {dossier: dossier.id, format: 'xlsx'}|merge(without)) }}" csv="{{ path('app_accounting_entries_export', {dossier: dossier.id, format: 'csv'}|merge(without)) }}"/>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_consultation_tabs.html.twig') }}
+
+    {% if criteria.errors is not empty %}
+        <twig:Px:Alert tone="danger">{% for message in criteria.errors %}{{ message }}{% if not loop.last %}<br>{% endif %}{% endfor %}</twig:Px:Alert>
+    {% endif %}
+
+    <twig:Px:Card :flush="true">
+        <twig:Px:Filters action="{{ path('app_accounting_entries', {dossier: dossier.id}) }}" search="{{ filters.q ?? '' }}" searchLabel="Pièce ou libellé" resetHref="{{ without is not empty ? path('app_accounting_entries', {dossier: dossier.id}) : null }}">
+            <twig:Px:FilterChip label="Toutes" href="{{ path('app_accounting_entries', {dossier: dossier.id}|merge(without)|merge({state: null})) }}" :count="state_counts.all" :current="state_filter == ''"/>
+            <twig:Px:FilterChip label="Brouillard" href="{{ path('app_accounting_entries', {dossier: dossier.id}|merge(without)|merge({state: 'draft'})) }}" :count="state_counts.draft" :current="state_filter == 'draft'"/>
+            <twig:Px:FilterChip label="Validées" href="{{ path('app_accounting_entries', {dossier: dossier.id}|merge(without)|merge({state: 'validated'})) }}" :count="state_counts.validated" :current="state_filter == 'validated'"/>
+            <div class="px-filters__values">
+            <label class="px-u-sr-only" for="search-journal">Journal</label>
+            <twig:Px:Select id="search-journal" name="journal" size="sm" :value="criteria.journal ? criteria.journal.code : ''" :options="[{value: '', label: 'Tous les journaux'}]|merge(journals|map(j => {value: j.code, label: j.code ~ ' · ' ~ j.label}))"/>
+            <label class="px-u-sr-only" for="search-period">Période</label>
+            <twig:Px:Select id="search-period" name="period" size="sm" :value="filters.period ?? ''" :options="[{value: '', label: 'Exercice au ' ~ dossier.dossierDate|date('d/m/Y')}]|merge(periods|map(p => {value: p.startsOn|date('Y-m-d'), label: p.label}))"/>
+            <span class="px-filters__field">
+                <label for="search-account">Compte</label>
+                <twig:Px:AccountPicker id="search-account" name="account" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" value="{{ filters.account ?? '' }}" accountLabel="{{ criteria.subject ? criteria.subject.label : '' }}" :error="criteria.errors.account is defined ? criteria.errors.account : null"/>
+            </span>
+            <span class="px-filters__field">
+                <label for="search-amount">Montant</label>
+                <twig:Px:Input id="search-amount" name="amount" value="{{ filters.amount ?? '' }}" :error="criteria.errors.amount is defined" class="px-u-code px-filters__amount" inputmode="decimal" autocomplete="off"/>
+            </span>
+            {% if state_filter %}<input type="hidden" name="state" value="{{ state_filter }}">{% endif %}
+            {% if filters.from is defined and filters.period is not defined %}<input type="hidden" name="from" value="{{ filters.from }}">{% endif %}
+            {% if filters.to is defined and filters.period is not defined %}<input type="hidden" name="to" value="{{ filters.to }}">{% endif %}
+            <twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button>
+            </div>
+        </twig:Px:Filters>
+
+        {% if result.entries is empty %}
+            <twig:Px:Empty icon="search" title="Aucune écriture" text="Aucune écriture du {{ criteria.window.from|date_fr }} au {{ criteria.window.to|date_fr }} ne répond à ces filtres."/>
+        {% else %}
+            <twig:Px:Table caption="Écritures du {{ criteria.window.from|date_fr }} au {{ criteria.window.to|date_fr }}" :rows="true">
+                <thead><tr>
+                    <twig:Px:SortHeader label="Date" field="date" sort="date" direction="{{ criteria.newestFirst ? 'desc' : 'asc' }}"/>
+                    <th scope="col">Journal</th>
+                    <th scope="col">Pièce</th>
+                    <th scope="col">Numéro</th>
+                    <th scope="col">Libellé</th>
+                    <th scope="col" class="px-u-right">Montant</th>
+                    <th scope="col">État</th>
+                </tr></thead>
+                <tbody>
+                    {% for entry in result.entries %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-code">{{ entry.entryDate|date('d/m/Y') }}</td>
+                            <td class="px-u-code">{{ entry.journal.code }}</td>
+                            <td class="px-u-code"><a class="px-link" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id, return: here}) }}">{{ entry.document }}</a></td>
+                            <td class="px-u-code">{{ entry.numberLabel }}</td>
+                            <td class="px-u-truncate px-u-fill" title="{{ entry.label }}">{{ entry.label }}</td>
+                            <td class="px-u-num">{{ entry.totalDebit|amount }}</td>
+                            <td><twig:Px:Badge :of="entry.state"/></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot><tr class="px-table__total">
+                    <th scope="row" colspan="5">{{ result.total }} écriture{{ result.total > 1 ? 's' : '' }}</th>
+                    <td class="px-u-num">{{ result.amount|amount }}</td>
+                    <td></td>
+                </tr></tfoot>
+            </twig:Px:Table>
+        {% endif %}
+        <twig:Px:Pager :total="result.total" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}
+    <span>{{ result.total }} écriture{{ result.total > 1 ? 's' : '' }} · <b>{{ result.amount|amount }}</b></span>
+    <span>Du {{ criteria.window.from|date('d/m/Y') }} au {{ criteria.window.to|date('d/m/Y') }}</span>
+{% endblock %}

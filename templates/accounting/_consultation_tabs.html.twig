@@ -1,0 +1,5 @@
+{# The views of Comptabilité › Consultation (design-ux.md § 2.5): un compte ou un tiers, la recherche d'écritures; le lettrage joins them at step 1.6. #}
+<twig:Px:Tabs label="Consultation" :tabs="[
+    {label: 'Compte ou tiers', href: path('app_accounting_consultation', {dossier: dossier.id}), current: consultation_current == 'account'},
+    {label: 'Recherche d’écritures', href: path('app_accounting_entries', {dossier: dossier.id}), current: consultation_current == 'entries'},
+]"/>

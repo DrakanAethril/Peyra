@@ -1,0 +1,38 @@
+{#
+ # F5 in the entry grid (design-ux.md § 5.1, « Détail : compte de la ligne »): the line's account or
+ # third party, its balance at the dossier's date (brouillard included) and its last movements, in
+ # the grid's drawer; « Consulter » opens the whole consultation, which leads back to the grid.
+ #}
+{% if statement is null %}
+    <twig:Px:Empty icon="search" title="{{ typed ? 'Ni compte ni tiers ne répond à ' ~ typed : 'Aucun compte sur cette ligne' }}" text="Tapez un compte ou un tiers dans la colonne Compte, puis F5."/>
+{% else %}
+    {% set subject = statement.subject %}
+    <div class="px-peek">
+        <p class="px-peek__subject"><span class="px-u-code">{{ subject.code }}</span> {{ subject.label }}</p>
+        <dl class="px-facts">
+            <dt>Solde au {{ dossier.dossierDate|date('d/m/Y') }}</dt><dd class="px-u-code">{{ statement.closing|balance }}</dd>
+            <dt>Mouvements de l’exercice</dt><dd>{{ statement.movements|length }}, brouillard inclus</dd>
+        </dl>
+        {% if last is empty %}
+            <p class="px-u-muted">Aucun mouvement depuis l’ouverture de l’exercice.</p>
+        {% else %}
+            <twig:Px:Table caption="Derniers mouvements de {{ subject.code }}" density="compact">
+                <thead><tr>
+                    <th scope="col">Date</th><th scope="col">Libellé</th>
+                    <th scope="col" class="px-u-right">Débit</th><th scope="col" class="px-u-right">Crédit</th>
+                </tr></thead>
+                <tbody>
+                    {% for movement in last %}
+                        <tr{% if not movement.line.entry.validated %} class="is-todo"{% endif %}>
+                            <td class="px-u-code">{{ movement.line.entry.entryDate|date('d/m') }}</td>
+                            <td class="px-u-truncate px-u-fill" title="{{ movement.line.label ?: movement.line.entry.label }}">{{ movement.line.label ?: movement.line.entry.label }}</td>
+                            <td class="px-u-num">{{ movement.line.debit|amount_cell }}</td>
+                            <td class="px-u-num">{{ movement.line.credit|amount_cell }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+        <p><twig:Px:Button href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: subject.code, return: return_path}) }}" icon="search">Consulter {{ subject.code }}</twig:Px:Button></p>
+    </div>
+{% endif %}

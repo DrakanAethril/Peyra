@@ -694,6 +694,52 @@ Lot 1, step 1.4c, held by code in `src/Entity/Accounting/EntrySubscription.php`,
   leasing (31 from February), into the brouillard, generated up to the dossier's date at install -
   nothing on 31/01/2026.
 
+## Consultation, search and brouillard (built at step 1.5a)
+
+Lot 1, step 1.5a (design-ux.md §§ 3.2 and 6.6), held by code in `src/Service/Accounting/Consultation/`,
+`ConsultationController`, `EntrySearchController`, `BrouillardController` and `App\Service\Shared\Export\`:
+
+- **Comptabilité gains two module tabs**, Brouillard and Consultation (the editions come at 1.5b);
+  Consultation has two views (`accounting/_consultation_tabs.html.twig`): « Compte ou tiers » and
+  « Recherche d'écritures ».
+- **Consultation of an account or a third party** (`/d/{dossier}/accounting/consultation?account=…`):
+  `AccountStatements::subject()` reads what is typed - a number, an auxiliary code, a third party's
+  code when it has none (« A0001 ») -; `statement()` reads its movements through `LedgerReader`
+  (`movements()`, or `thirdPartyMovements()`: every line naming the third party, 411000 and 419100
+  alike) over a `ConsultationWindow` - the exercise up to the dossier's date by default, a fault
+  said and the defaults read - brouillard included or not (`scope=validated`). A window that starts
+  after its exercise opened opens on « Solde au » the eve (`AccountStatement::$opening`); every page
+  after the first opens on the balance carried (« Report », `page()`). A collective account shows
+  each line's third party, a third party each line's account. The filter bar's picker submits on
+  Entrée (`data-account-picker-submit-value`).
+- **Recherche d'écritures** (`/d/{dossier}/accounting/entries`) is also the journal's interrogation
+  (`?journal=ACH&period=2026-01-01`, the grid's « Interroger le journal »): `EntrySearchCriteria`
+  reads state, journal, month (`period`) or `from`/`to`, account or third party, exact amount (a
+  line's debit or credit), text (document or a label); `EntrySearch` pages entries newest first
+  (the Date header sorts, `dir=asc`), counts and adds the whole filter, counts by state for the
+  chips. Its value filters sit on a second line of the bar (`px-filters__values`).
+- **Brouillard** (`/d/{dossier}/accounting/brouillard`): `Brouillard::rows()` checks each draft as
+  the grid does (`JournalGrid::check()` in a context per journal and month): a fault or, at G and B,
+  a blocking control makes it `blocked` - no box to tick, the reason in the label -; a draft the
+  person is changing in the grid is held back like the grid's Ctrl Entrée does. `validate()` is the
+  Ledger's all or nothing over the ticked drafts, the held ones counted (`BrouillardOutcome`). Chips
+  count by journal and month; the pending work (not entries) is named above with its grid.
+- **From the balance to the detail, and back**: every line leads to its entry with `?return=` the
+  page's address (`ReturnPath::here()`, its own `return` dropped); the entry offers « Revenir »
+  only to a path of the same dossier (`ReturnPath::of()`). The entry's accounts, the account and
+  third party fiches, the encours and the balances lead to the consultation. **F5** in the grid
+  opens the line's account in a drawer (`…/consultation/peek`, balance at the dossier's date and the
+  last eight movements, « Consulter » with the way back to the grid).
+- **Spreadsheet exports**: `ExportTable` (columns typed by `ColumnKind`: text, code, amount, debit
+  or credit cell, day) and `TableExport::csv()` / `xlsx()` / `response()` (openspout 5, MIT). CSV
+  amounts are « 1234,56 » / « -138,00 », XLSX amounts numbers formatted `#,##0.00` - the only place
+  cents become a float, at the file's boundary -, codes text, days dates. `Px:ExportMenu` offers both
+  (`…/export.xlsx`, `…/export.csv` with the list's filters, `data-turbo="false"`). `EntryExport` is
+  one row per line. The plan's and third parties' CSV stay their import formats.
+- `rows_controller.js`: Espace ticks the row's box; Entrée opens the row only without a modifier
+  (Ctrl Entrée is the screen's engaging gesture). `px-u-fill` is the label cell that takes the room
+  left and is cut there.
+
 ## Cross-cutting building blocks (built at step 0.6a)
 
 Reach for these rather than re-implement them; each has its test.

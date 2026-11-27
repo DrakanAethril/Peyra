@@ -263,6 +263,20 @@
     }
 }
 
+/* ---------------------------------------------------------------- Menu button (Px:ExportMenu) */
+@layer px.components {
+    .px-menubutton {
+        position: relative;
+        display: inline-flex;
+    }
+
+    .px-menubutton__panel {
+        inset-block-start: calc(100% + var(--px-space-6));
+        inset-inline-end: 0;
+        min-width: 200px;
+    }
+}
+
 /* ---------------------------------------------------------------- User menu (menu_controller.js) */
 @layer px.components {
     .px-usermenu {

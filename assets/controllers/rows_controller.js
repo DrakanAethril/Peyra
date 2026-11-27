@@ -2,8 +2,9 @@ import { Controller } from '@hotwired/stimulus';
 
 /*
  * Keyboard reading of a list (design-ux.md § 5.1, « Listes »; design-ui.md § 4.7): one row in the
- * tab order (tabindex="0" on the current one), ↑ ↓ Home End move it, Enter opens the row's link.
- * Rows that take part carry data-rows-target="row".
+ * tab order (tabindex="0" on the current one), ↑ ↓ Home End move it, Enter opens the row's link,
+ * Space ticks the row's box when it has one (a change event tells the selection). Rows that take
+ * part carry data-rows-target="row".
  */
 export default class extends Controller {
     static targets = ['row'];
@@ -24,11 +25,20 @@ export default class extends Controller {
         if (event.key in moves) {
             event.preventDefault();
             this.move(rows[Math.max(0, Math.min(rows.length - 1, moves[event.key]))]);
-        } else if (event.key === 'Enter') {
+        } else if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
             const link = event.target.querySelector('a[href]');
             if (link) {
                 event.preventDefault();
                 link.click();
+            }
+        } else if (event.key === ' ') {
+            const box = event.target.querySelector('input[type="checkbox"]');
+            if (box) {
+                event.preventDefault();
+                if (!box.disabled) {
+                    box.checked = !box.checked;
+                    box.dispatchEvent(new Event('change', { bubbles: true }));
+                }
             }
         }
     }
