@@ -1,0 +1,15 @@
+{#
+ # Comptabilité (design-ux.md § 2.5): the module's tab bar - Paramètres comptables for now, the
+ # entry, the draft, the consultation and the editions join it with their steps - and, under it, the
+ # three views of the settings (plan de comptes, journaux; tiers at step 1.2b). A screen sets
+ # `settings_current` and `dossier_title` outside any block.
+ #}
+{% extends 'dossier/_layout.html.twig' %}
+
+{% set rail_current = 'accounting' %}
+
+{% block module_tabs %}
+    <twig:Px:ModuleTabs label="Comptabilité" :tabs="[
+        {label: 'Paramètres comptables', href: path('app_accounting_accounts', {dossier: dossier.id}), current: true},
+    ]"/>
+{% endblock %}

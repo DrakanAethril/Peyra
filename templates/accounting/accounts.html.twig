@@ -1,0 +1,99 @@
+{#
+ # Comptabilité › Paramètres comptables › Plan de comptes (design-ux.md § 3.2, gabarit L): the
+ # dossier's plan by number, each two-digit heading of the reference chart as a section row,
+ # filtered by class and searched like the account picker (F4). Filters in GET, kept in the address.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set settings_current = 'accounts' %}
+{% set dossier_title = 'Plan de comptes' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouveau compte'}, {combo: '/', verb: 'Rechercher'}] : [{combo: '/', verb: 'Rechercher'}] %}
+{% set short_classes = {1: 'Capitaux', 2: 'Immobilisations', 3: 'Stocks', 4: 'Tiers', 5: 'Financiers', 6: 'Charges', 7: 'Produits', 8: 'Spéciaux'} %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Plan de comptes" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Paramètres comptables', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Plan de comptes', href: path('app_accounting_accounts', {dossier: dossier.id})},
+    ]">
+        <twig:block name="badge">{% if chart %} <twig:Px:Badge tone="neutral" label="{{ chart.label }}"/>{% endif %}</twig:block>
+        <twig:block name="actions">
+            {% if plan_size > 0 %}<twig:Px:Button href="{{ path('app_accounting_accounts_export', {dossier: dossier.id}) }}" icon="download" data-turbo="false">Exporter</twig:Px:Button>{% endif %}
+            {% if can_edit %}
+                <twig:Px:Button href="{{ path('app_accounting_accounts_import', {dossier: dossier.id}) }}" icon="upload">Importer</twig:Px:Button>
+                <twig:Px:Button href="{{ path('app_accounting_account_new', {dossier: dossier.id}) }}" variant="primary" icon="plus" shortcut="N">Nouveau compte</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_settings_tabs.html.twig') }}
+
+    {% if plan_size == 0 %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="book-text" title="Le plan de comptes est vide" text="{{ installable ? 'Le plan de référence de l’exercice est le ' ~ installable.label ~ ' (' ~ installable.regulation ~ ') : ses comptes de trois chiffres et plus y entrent à six chiffres, et le dossier les complète.' : '' }}">
+                <twig:block name="action">
+                    {% if can_edit and installable %}
+                        <form method="post" action="{{ path('app_accounting_accounts_install', {dossier: dossier.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('accounting-install-' ~ dossier.id) }}">
+                            <twig:Px:Button type="submit" variant="primary">Installer le {{ installable.label }}</twig:Px:Button>
+                        </form>
+                    {% endif %}
+                </twig:block>
+            </twig:Px:Empty>
+        </twig:Px:Card>
+    {% else %}
+        {% set keep = {class: class, q: search ?: null} %}
+        <twig:Px:Card :flush="true">
+            <twig:Px:Filters action="{{ path('app_accounting_accounts', {dossier: dossier.id}) }}" search="{{ search }}" searchLabel="Numéro ou intitulé" resetHref="{{ class or search ? path('app_accounting_accounts', {dossier: dossier.id}) : null }}">
+                <twig:Px:FilterChip label="Toutes les classes" href="{{ path('app_accounting_accounts', {dossier: dossier.id}|merge(keep)|merge({class: null})) }}" :count="counts['']" :current="class is null"/>
+                {% for digit in 1..8 %}
+                    {% if counts[digit] > 0 or class == digit %}
+                        <twig:Px:FilterChip label="{{ digit }} · {{ short_classes[digit] }}" href="{{ path('app_accounting_accounts', {dossier: dossier.id}|merge(keep)|merge({class: digit})) }}" :count="counts[digit]" :current="class == digit" title="{{ class_labels[digit] ?? '' }}"/>
+                    {% endif %}
+                {% endfor %}
+                {% if class %}<input type="hidden" name="class" value="{{ class }}">{% endif %}
+            </twig:Px:Filters>
+            {% if account_rows is empty %}
+                <twig:Px:Empty icon="search" title="Aucun compte" text="{{ search ? 'Aucun compte de ce filtre ne correspond à « ' ~ search ~ ' ».' : 'Aucun compte dans cette classe.' }}"/>
+            {% else %}
+                <twig:Px:Table caption="Plan de comptes de {{ dossier.name }}" :rows="true">
+                    <thead>
+                        <tr>
+                            <th scope="col">Numéro</th>
+                            <th scope="col">Intitulé</th>
+                            <th scope="col">Nature</th>
+                            <th scope="col">Lettrable</th>
+                            <th scope="col">Collectif</th>
+                            <th scope="col">Origine</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set last_group = null %}
+                        {% for account in account_rows %}
+                            {% set group = account.number|slice(0, 2) %}
+                            {% if group != last_group %}
+                                {% set heading = chart ? chart.groupOf(account.number) : null %}
+                                <tr class="px-table__section"><th colspan="6" scope="rowgroup">{{ group }} · {{ heading ? heading.label : class_labels[account.classDigit] }}</th></tr>
+                                {% set last_group = group %}
+                            {% endif %}
+                            <tr data-rows-target="row">
+                                <td class="px-u-code"><a class="px-link" href="{{ path('app_accounting_account', {dossier: dossier.id, number: account.number}) }}">{{ account.number }}</a></td>
+                                <td class="px-u-truncate" title="{{ account.label }}">{{ account.label }}</td>
+                                <td class="px-u-nowrap">{{ account.nature.label }}</td>
+                                <td>{% if account.lettrable %}<twig:ux:icon name="check" aria-hidden="true"/><span class="px-u-sr-only">Lettrable</span>{% endif %}</td>
+                                <td>{% if account.collective %}<twig:ux:icon name="check" aria-hidden="true"/><span class="px-u-sr-only">Collectif</span>{% endif %}</td>
+                                <td>{% if account.origin.value != 'reference' %}<twig:Px:Badge :of="account.origin"/>{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+            <twig:Px:Pager :total="shown_total" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}{% if chart %}<span>Plan de référence · <b>{{ chart.label }}</b></span>{% endif %}<span>Comptes · <b>{{ plan_size }}</b></span>{% endblock %}

@@ -3,8 +3,9 @@
 # 999 412 736 and the SIRET 999 412 736 00018 fail the Luhn check, the VAT key 36 is computed on
 # that invalid SIREN so that the format check passes.
 # Source: design/validated/plan/donnees/demo/societe.yaml (prepared data, 2026-11-27).
-# The other files of the dossier (chart of accounts, journals, third parties, opening balance,
-# entries…) join this folder with their steps.
+# The other files of the dossier: accounts.yaml (what its plan adds to the reference chart) and
+# journals.yaml; the third parties, the opening balance and the entries join this folder with
+# their steps.
 
 company:
   denomination: Menuiserie Vasseur

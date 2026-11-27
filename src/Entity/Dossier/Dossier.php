@@ -80,6 +80,13 @@ class Dossier
     #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?User $createdBy;
 
+    /**
+     * The reference chart its plan of accounts was copied from (« pcg-2026 », ReferenceCharts);
+     * null while it has no plan.
+     */
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $chartCode = null;
+
     /** The last time its student (or a member of its group) opened it: « dernier passage ». */
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $lastVisitedAt = null;
@@ -196,6 +203,17 @@ class Dossier
     public function getCreatedBy(): ?User
     {
         return $this->createdBy;
+    }
+
+    public function getChartCode(): ?string
+    {
+        return $this->chartCode;
+    }
+
+    /** ChartInstaller is the caller, when it copies a reference chart into the empty plan. */
+    public function usesChart(string $code): void
+    {
+        $this->chartCode = $code;
     }
 
     public function getLastVisitedAt(): ?\DateTimeImmutable

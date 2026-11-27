@@ -67,3 +67,51 @@
         font-size: var(--px-fs-12);
     }
 }
+
+/*
+ * The account picker (Px:AccountPicker, F4): number, label on one line, grouped under the
+ * two-digit heading of the reference chart, the typed digits in <mark>; the chosen account's
+ * label under the field.
+ */
+@layer px.components {
+    .px-picker--account .px-picker__panel {
+        width: 440px;
+        max-width: min(440px, 90vw);
+    }
+
+    .px-picker--account .px-picker__option {
+        grid-template-columns: 96px minmax(0, 1fr);
+    }
+
+    .px-picker__group {
+        display: flex;
+        align-items: center;
+        min-height: 24px;
+        padding: 0 var(--px-space-10);
+        background: var(--px-surface-inset);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-11);
+        font-weight: var(--px-fw-semibold);
+        letter-spacing: .05em;
+        text-transform: uppercase;
+    }
+
+    .px-picker__label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .px-picker mark {
+        background: transparent;
+        color: var(--px-text-strong);
+        font-weight: var(--px-fw-semibold);
+    }
+
+    .px-picker__chosen {
+        min-height: 1lh;
+        margin: var(--px-space-4) 0 0;
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+    }
+}

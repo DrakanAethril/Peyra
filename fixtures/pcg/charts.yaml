@@ -1,0 +1,45 @@
+# The reference charts of accounts Peyra ships (plan of the lot 1, « plan millésimé »): one per
+# date of effect, each a CSV of `numero;intitule;classe;niveau;verifie` read in the ANC's own text.
+# A dossier receives a copy of the chart that applies to the exercise it starts on
+# (App\Service\Accounting\Chart\ReferenceCharts::forExerciseStartingOn()), then extends it.
+# `applies_from`: the first day of the exercises opened under it; the earliest has none.
+# `verified: true` means every line of the file was read in the source, none written from memory.
+
+classes:
+  '1': Comptes de capitaux
+  '2': Comptes d'immobilisations
+  '3': Comptes de stocks et en-cours
+  '4': Comptes de tiers
+  '5': Comptes financiers
+  '6': Comptes de charges
+  '7': Comptes de produits
+  '8': Comptes spéciaux
+
+charts:
+  - code: pcg-2026
+    label: PCG 2026
+    regulation: Règlement ANC n° 2014-03 modifié, version consolidée au 1er janvier 2026 (règlement ANC n° 2024-07 du 6 décembre 2024, distinction dettes et autres fonds propres)
+    applies_from: '2026-01-01'
+    file: pcg-2026.csv
+    source: https://www.anc.gouv.fr/files/anc/files/1_Normes_fran%C3%A7aises/Plans%20comptables/2026/PCG--1er-janvier-2026.pdf
+    consulted: '2026-11-27'
+    verified: true
+    note: Le PCG 2025 et les changements du règlement 2024-07 lus dans la version consolidée (art. 1121-1 et chapitre III, classe 8) - comptes 1671 à 1674 et 1682 créés ou renumérotés, 1675 et les intérêts courus 16718, 16748, 16758 supprimés, dix intitulés modifiés (1045, 16, 161 à 164, 167, 1671, 1674, 229).
+  - code: pcg-2025
+    label: PCG 2025
+    regulation: Règlement ANC n° 2014-03 modifié par le règlement ANC n° 2022-06 du 4 novembre 2022 (homologué par arrêté du 26 décembre 2023)
+    applies_from: '2025-01-01'
+    file: pcg-2025.csv
+    source: https://www.anc.gouv.fr/files/anc/files/1_Normes_fran%C3%A7aises/Reglements/Recueils/PCG_Janvier2025/Recueil-NF-Janvier-2025.pdf
+    consulted: '2026-11-27'
+    verified: true
+    note: Liste des comptes de l'art. 1121-1 et comptes spéciaux de la classe 8 (art. 1231-80 à 1231-89).
+  - code: pcg-anterieur
+    label: PCG antérieur
+    regulation: Règlement ANC n° 2014-03 avant la réforme 2022-06 (recueil des normes comptables au 1er janvier 2022)
+    applies_from: ~
+    file: pcg-anterieur.csv
+    source: https://www.anc.gouv.fr/files/anc/files/1_Normes_fran%C3%A7aises/Reglements/Recueils/Recueil%20comptable%20entreprises/2022/Recueil-normes-comptables_2022.pdf
+    consulted: '2026-11-27'
+    verified: true
+    note: Liste des comptes de l'art. 932-1 et classe 8 (art. 948-80 à 948-89). Les comptes 29187 et 29787 n'ont pas leur parent imprimé dans le texte.

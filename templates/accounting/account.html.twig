@@ -1,0 +1,95 @@
+{#
+ # The fiche of an account of the plan (design-ux.md § 3.2, « Plan de comptes », gabarit F): the
+ # number, the label and two flags, saved with F10; its class, nature and the reference account it
+ # subdivides as facts. A number outside the reference chart is signalled, never refused (assistance
+ # « avertissements » until the missions, step 2.8). Whoever only reads sees the facts alone.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set settings_current = 'accounts' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set dossier_title = account ? 'Compte ' ~ account.number : 'Nouveau compte' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+{% set form_id = 'account-form' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ account ? account.number ~ ' · ' ~ account.label : 'Nouveau compte' }}" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Plan de comptes', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: account ? account.number : 'Nouveau compte', href: account ? path('app_accounting_account', {dossier: dossier.id, number: account.number}) : path('app_accounting_account_new', {dossier: dossier.id})},
+    ]">
+        <twig:block name="badge">{% if account %} <twig:Px:Badge :of="account.origin"/>{% endif %}</twig:block>
+        <twig:block name="actions">
+            {% if can_edit %}
+                {% if account and deletion_refusal is null %}
+                    <twig:Px:ConfirmButton label="Supprimer le compte" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="account-delete"/>
+                {% endif %}
+                <twig:Px:Button type="submit" variant="primary" form="{{ form_id }}" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_settings_tabs.html.twig') }}
+
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">Le compte n’est pas enregistré : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% elseif draft.warning %}
+        <twig:Px:Alert tone="warning">{{ draft.warning }}</twig:Px:Alert>
+    {% endif %}
+
+    <div class="px-split px-split--even">
+        {% if can_edit %}
+            <form method="post" action="{{ account ? path('app_accounting_account', {dossier: dossier.id, number: account.number}) : path('app_accounting_account_new', {dossier: dossier.id}) }}" id="{{ form_id }}" novalidate>
+                <input type="hidden" name="_token" value="{{ csrf_token(account ? 'dossier-account-' ~ account.id : 'dossier-account-new-' ~ dossier.id) }}">
+                <twig:Px:Card title="Compte">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="number" label="Numéro" :required="true" hint="6 à 8 chiffres." :error="draft.error('number')">
+                            <twig:Px:Input id="number" value="{{ draft.number }}" :required="true" hint="1" :error="draft.error('number')" class="px-u-code" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="8" autofocus/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="label" label="Intitulé" :required="true" :wide="true" :error="draft.error('label')">
+                            <twig:Px:Input id="label" value="{{ draft.label }}" :required="true" :error="draft.error('label')" autocomplete="off" maxlength="200"/>
+                        </twig:Px:Field>
+                        <div class="px-field px-fieldgrid__full">
+                            <label class="px-check"><input type="checkbox" name="lettrable" value="1"{% if draft.lettrable %} checked{% endif %}> <span>Lettrable : ses écritures se rapprochent les unes des autres (factures et règlements)</span></label>
+                            <label class="px-check"><input type="checkbox" name="collective" value="1"{% if draft.collective %} checked{% endif %}{% if draft.error('collective') %} aria-invalid="true" aria-describedby="collective_error"{% endif %}> <span>Collectif : chaque ligne nomme un tiers (clients, fournisseurs)</span></label>
+                            {% if draft.error('collective') %}<p class="px-field__error" id="collective_error"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ draft.error('collective') }}</p>{% endif %}
+                        </div>
+                    </div>
+                </twig:Px:Card>
+            </form>
+        {% else %}
+            <twig:Px:Card title="Compte">
+                <dl class="px-facts">
+                    <dt>Numéro</dt><dd class="px-u-code">{{ account.number }}</dd>
+                    <dt>Intitulé</dt><dd>{{ account.label }}</dd>
+                    <dt>Lettrable</dt><dd>{{ account.lettrable ? 'Oui' : 'Non' }}</dd>
+                    <dt>Collectif</dt><dd>{{ account.collective ? 'Oui' : 'Non' }}</dd>
+                </dl>
+            </twig:Px:Card>
+        {% endif %}
+
+        <twig:Px:Card title="Dans le plan" meta="{{ chart ? chart.label : '' }}">
+            {% if shown_number %}
+                <dl class="px-facts">
+                    <dt>Classe</dt><dd>{{ shown_number|first }}{% if class_label %} · {{ class_label }}{% endif %}</dd>
+                    <dt>Nature</dt><dd>{{ nature.label }}</dd>
+                    <dt>Compte du plan</dt><dd>{% if root %}<span class="px-u-code">{{ root.number }}</span> · {{ root.label }}{% else %}<span class="px-u-muted">aucun compte du plan de référence</span>{% endif %}</dd>
+                    {% if counterpart_of is not empty %}
+                        <dt>Contrepartie de</dt><dd>{% for journal in counterpart_of %}<a class="px-link px-u-code" href="{{ path('app_accounting_journal', {dossier: dossier.id, code: journal.code}) }}">{{ journal.code }}</a> {{ journal.label }}{{ not loop.last ? ', ' : '' }}{% endfor %}</dd>
+                    {% endif %}
+                </dl>
+            {% else %}
+                <p class="px-u-muted">La classe, la nature et le compte du plan qu’il subdivise se lisent dans son numéro.</p>
+            {% endif %}
+            {% if account and deletion_refusal %}<p class="px-u-muted">{{ deletion_refusal }}</p>{% endif %}
+        </twig:Px:Card>
+    </div>
+
+    {% if can_edit and account and deletion_refusal is null %}
+        <form method="post" action="{{ path('app_accounting_account_delete', {dossier: dossier.id, number: account.number}) }}" id="account-delete" hidden>
+            <input type="hidden" name="_token" value="{{ csrf_token('dossier-account-delete-' ~ account.id) }}">
+        </form>
+    {% endif %}
+{% endblock %}

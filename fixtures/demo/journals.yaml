@@ -1,0 +1,10 @@
+# Menuiserie Vasseur SARL - its six journals (societe.yaml of the prepared data; the six lines of
+# the mock-up 5). `counterpart` is the account a bank journal balances against.
+
+journals:
+  - { code: ACH, label: Achats, type: purchases }
+  - { code: VTE, label: Ventes, type: sales }
+  - { code: BQ1, label: Crédit Coopératif, type: bank, counterpart: '512100' }
+  - { code: BQ2, label: Banque Populaire, type: bank, counterpart: '512200' }
+  - { code: OD, label: Opérations diverses, type: general }
+  - { code: AN, label: À-nouveaux, type: opening }
