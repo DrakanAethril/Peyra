@@ -72,7 +72,7 @@
                         {% for row in group.rows %}
                             <tr>
                                 <td>{{ group.year }}</td>
-                                <td>{{ row.dossier.name }} <twig:Px:Badge :of="row.dossier.kind"/></td>
+                                <td>{{ row.dossier.name }}{% if row.dossier.kind.value != 'student' %} <twig:Px:Badge :of="row.dossier.kind"/>{% endif %}</td>
                                 <td>{{ row.exercise ? row.exercise.code : '—' }}</td>
                                 <td>{{ row.dossier.dossierDate|date_fr }}</td>
                                 <td>{{ row.dossier.lastVisitedAt ? row.dossier.lastVisitedAt|date('d/m/Y') : 'Jamais ouvert' }}</td>

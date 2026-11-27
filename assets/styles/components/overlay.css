@@ -129,6 +129,24 @@
         box-shadow: var(--px-shadow-pop);
     }
 
+    /* The dossier switcher's rows: the company, then its exercise and date under it. */
+    .px-dossierswitch .px-switcher__option {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+
+        & > span {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--px-space-4);
+        }
+
+        & svg {
+            width: var(--px-icon-sm);
+            height: var(--px-icon-sm);
+        }
+    }
+
     /* The date chip's panel (design-ui.md § 4.2): text and a small form, not a menu. */
     .px-datechip__panel {
         inset-block-start: calc(100% + var(--px-space-6));

@@ -11,7 +11,7 @@
         <small class="px-switcher__meta">{{ exercise_label }}</small>
     </div>
 {% else %}
-    <div class="px-classswitch" data-controller="menu" data-action="keydown->menu#keydown">
+    <div class="px-classswitch px-dossierswitch" data-controller="menu" data-action="keydown->menu#keydown">
         <button type="button" class="px-switcher" aria-haspopup="menu" aria-expanded="false" aria-controls="px-dossierswitch-panel"
                 data-menu-target="button" data-action="menu#toggle">
             <b class="px-switcher__name">{{ dossier.name }}</b>
