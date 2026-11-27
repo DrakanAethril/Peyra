@@ -20,6 +20,8 @@ use App\Service\Accounting\Chart\ChartInstaller;
 use App\Service\Accounting\Chart\ReferenceCharts;
 use App\Service\Accounting\Ledger\EntryRefused;
 use App\Service\Accounting\Ledger\Ledger;
+use App\Service\Accounting\Subscription\SubscriptionRun;
+use App\Service\Accounting\Subscription\SubscriptionSheet;
 use App\Service\Accounting\Template\TemplateSheet;
 use App\Service\Audit\AuditTrail;
 use App\Service\Dossier\DossierContext;
@@ -51,6 +53,8 @@ final readonly class DemoInstaller
         private DossierContext $context,
         private Ledger $ledger,
         private TemplateSheet $templateSheet,
+        private SubscriptionSheet $subscriptionSheet,
+        private SubscriptionRun $subscriptionRun,
         #[Autowire('%kernel.project_dir%/fixtures/demo')]
         private string $directory,
     ) {
@@ -84,6 +88,7 @@ final readonly class DemoInstaller
         $thirdPartyFile = DemoThirdPartyFile::read($this->directory.'/third_parties.yaml');
         $entryFile = DemoEntryFile::read($this->directory.'/entries.yaml');
         $templateFile = DemoTemplateFile::read($this->directory.'/templates.yaml');
+        $subscriptionFile = DemoSubscriptionFile::read($this->directory.'/subscriptions.yaml');
         $dossier = new Dossier($kind, $file->company, $file->dossierDate, $owner, $year, $at, null);
         $dossier->comesFrom($template, null);
         $this->entityManager->persist($dossier);
@@ -105,6 +110,7 @@ final readonly class DemoInstaller
         $this->entityManager->flush();
         $this->context->within($dossier, fn () => $this->installEntries($dossier, $entryFile, $actor));
         $this->context->within($dossier, fn () => $this->installTemplates($dossier, $templateFile, $actor));
+        $this->context->within($dossier, fn () => $this->installSubscriptions($dossier, $subscriptionFile, $actor, $at));
         $this->auditTrail->record(
             AuditAction::DossierCreated,
             $actor,
@@ -179,6 +185,26 @@ final readonly class DemoInstaller
             $this->templateSheet->create($dossier, $fields, $actor);
             // Flushed one by one: the next one's code is checked against the database.
             $this->entityManager->flush();
+        }
+    }
+
+    /**
+     * Its subscriptions, each checked as the fiche checks it (a fault names the subscription and
+     * installs nothing), then generated up to the dossier's date like « Générer jusqu'au ».
+     */
+    private function installSubscriptions(Dossier $dossier, DemoSubscriptionFile $file, string $actor, \DateTimeImmutable $at): void
+    {
+        foreach ($file->drafts as $draft) {
+            $fields = $this->subscriptionSheet->check($draft, $dossier);
+            if (null === $fields) {
+                throw new \InvalidArgumentException(\sprintf('subscriptions.yaml : %s : %s', $draft->label, implode(' ', $draft->errors)));
+            }
+            $this->subscriptionSheet->create($dossier, $fields, $actor);
+        }
+        $this->entityManager->flush();
+        $outcome = $this->subscriptionRun->generate($dossier, $dossier->getDossierDate(), $actor, $at);
+        if ([] !== $outcome->faults) {
+            throw new \InvalidArgumentException('subscriptions.yaml : '.implode(' ', $outcome->faults));
         }
     }
 

@@ -1,0 +1,103 @@
+{#
+ # Comptabilité › Paramètres comptables › Abonnements (gabarit L): the dossier's subscriptions - an
+ # entry template called every month - with their amount, their day, their months, the occurrences
+ # generated and the next one. « Générer jusqu'au » the dossier's date (Ctrl Entrée) opens the
+ # confirmation bar that counts the entries due, then makes them: into the grid's pending work or the
+ # brouillard. A subscription that stopped on a refused occurrence says why above the list.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set settings_current = 'subscriptions' %}
+{% set dossier_title = 'Abonnements' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set due_total = due_pending + due_drafts %}
+{% set today = dossier.dossierDate %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouvel abonnement'}]|merge(due_total > 0 ? [{combo: 'Ctrl+Enter', verb: 'Générer'}] : []) : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Abonnements" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Paramètres comptables', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Abonnements', href: path('app_accounting_subscriptions', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}
+                <div class="px-entry-confirmable" data-controller="confirm-bar">
+                    <div class="px-entry-actions" data-confirm-bar-target="actions">
+                        <twig:Px:Button href="{{ path('app_accounting_subscription_new', {dossier: dossier.id}) }}" icon="plus" shortcut="N">Nouvel abonnement</twig:Px:Button>
+                        {% if due_total > 0 %}
+                            <twig:Px:Button variant="primary" icon="calendar" shortcut="Ctrl+Enter" data-action="confirm-bar#open">Générer jusqu’au {{ today|date_fr }}</twig:Px:Button>
+                        {% else %}
+                            <twig:Px:Button variant="primary" icon="calendar" :disabled="true" disabledReason="Aucune écriture d’abonnement n’est due au {{ today|date_fr }}.">Générer jusqu’au {{ today|date_fr }}</twig:Px:Button>
+                        {% endif %}
+                    </div>
+                    {% if due_total > 0 %}
+                        <form class="px-confirmbar" method="post" action="{{ path('app_accounting_subscriptions_generate', {dossier: dossier.id}) }}" role="alertdialog" aria-labelledby="subscriptions-generate-text" hidden data-confirm-bar-target="bar" data-action="keydown->confirm-bar#keydown">
+                            <input type="hidden" name="_token" value="{{ csrf_token('dossier-subscriptions-generate-' ~ dossier.id) }}">
+                            <p id="subscriptions-generate-text">
+                                Générer {{ due_total > 1 ? due_total ~ ' écritures' : 'une écriture' }} jusqu’au {{ today|date_fr }} :
+                                {%- if due_drafts > 0 %} {{ due_drafts > 1 ? due_drafts ~ ' au brouillard' : 'une au brouillard' }}{% endif %}
+                                {%- if due_drafts > 0 and due_pending > 0 %},{% endif %}
+                                {%- if due_pending > 0 %} {{ due_pending > 1 ? due_pending ~ ' en saisie en attente' : 'une en saisie en attente' }}{% endif %} ?
+                            </p>
+                            <twig:Px:Button variant="quiet" data-action="confirm-bar#close">Annuler</twig:Px:Button>
+                            <twig:Px:Button type="submit" variant="primary" data-confirm-bar-target="confirm">Générer</twig:Px:Button>
+                        </form>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_settings_tabs.html.twig') }}
+
+    {% for fault in app.flashes('subscription_fault') %}
+        <twig:Px:Alert tone="warning">{{ fault }}</twig:Px:Alert>
+    {% endfor %}
+
+    <twig:Px:Card :flush="true">
+        {% if subscription_rows is empty %}
+            <twig:Px:Empty icon="calendar" title="Aucun abonnement" text="Un abonnement appelle un modèle d’écriture chaque mois, au même jour : un loyer, une échéance de crédit-bail. « Générer » écrit les écritures dues jusqu’à la date du dossier, au brouillard ou en saisie en attente."/>
+        {% else %}
+            <twig:Px:Table caption="Abonnements de {{ dossier.name }}" :rows="true">
+                <thead>
+                    <tr>
+                        <th scope="col">Intitulé</th>
+                        <th scope="col">Modèle</th>
+                        <th scope="col" class="px-u-right">Montant</th>
+                        <th scope="col" class="px-u-right">Jour</th>
+                        <th scope="col">Mois</th>
+                        <th scope="col" class="px-u-right">Générées</th>
+                        <th scope="col">Prochaine</th>
+                        <th scope="col">Destination</th>
+                        <th scope="col"><span class="px-u-sr-only">État</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in subscription_rows %}
+                        {% set one = row.subscription %}
+                        <tr data-rows-target="row">
+                            <td><a class="px-link" href="{{ path('app_accounting_subscription', {dossier: dossier.id, id: one.id}) }}">{{ one.label }}</a></td>
+                            <td><span class="px-u-code">{{ one.template.code }}</span> <span class="px-u-muted">{{ one.template.journal.code }}</span></td>
+                            <td class="px-u-num">{% if one.amount %}{{ one.amount|amount }} <span class="px-u-muted">{{ one.template.base ? (one.template.base.value == 'ht' ? 'HT' : 'TTC') }}</span>{% else %}<span class="px-u-muted">—</span>{% endif %}</td>
+                            <td class="px-u-num">{{ one.dayOfMonth == 31 ? 'dernier' : one.dayOfMonth }}</td>
+                            <td>{{ one.firstMonth|period }} → {{ row.last|period }}</td>
+                            <td class="px-u-num">{{ one.generated }} / {{ one.occurrences }}</td>
+                            <td class="px-u-code">{{ row.next ? row.next|date_fr : '' }}</td>
+                            <td>{{ one.target.label }}</td>
+                            <td>
+                                {% if row.fault %}<twig:Px:Badge tone="warning" label="À revoir" full="À revoir : {{ row.fault }}"/>
+                                {% elseif one.over %}<twig:Px:Badge tone="neutral" label="Terminé"/>
+                                {% elseif row.due > 0 %}<twig:Px:Badge tone="info" label="{{ row.due }} à générer"/>{% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>Abonnements · <b>{{ subscription_rows|length }}</b></span>{% if due_total > 0 %}<span>À générer au {{ today|date_fr }} · <b>{{ due_total }}</b></span>{% endif %}{% endblock %}

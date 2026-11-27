@@ -15,10 +15,13 @@ use App\Enum\Dossier\DossierKind;
 use App\Enum\ThirdParty\PaymentMethod;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\EntryRepository;
+use App\Repository\Accounting\EntrySubscriptionRepository;
 use App\Repository\Accounting\EntryTemplateRepository;
 use App\Repository\Dossier\DossierRepository;
 use App\Service\Accounting\Ledger\EntryScope;
 use App\Service\Accounting\Ledger\LedgerReader;
+use App\Service\Accounting\Subscription\SubscriptionRun;
+use App\Service\Accounting\Subscription\SubscriptionSchedule;
 use App\Service\Accounting\Template\TemplateCall;
 use App\Service\Dossier\DossierContext;
 use App\Service\Shared\Money;
@@ -27,7 +30,7 @@ use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
-/** app:demo:install puts Menuiserie Vasseur SARL in the common library once, from fixtures/demo/: exercises, plan, journals, third parties, entries, entry templates. */
+/** app:demo:install puts Menuiserie Vasseur SARL in the common library once, from fixtures/demo/: exercises, plan, journals, third parties, entries, entry templates, subscriptions. */
 final class DemoInstallCommandTest extends KernelTestCase
 {
     public function testInstallsTheTemplateOnceWithItsExercises(): void
@@ -151,5 +154,24 @@ final class DemoInstallCommandTest extends KernelTestCase
             array_map(static fn ($line): array => [$line->account, $line->debit, $line->credit], $call['lines']),
             'Le loyer de février : 3 200,00 HT, 640,00 de TVA, 3 840,00 à la SCI (LOY-2026-02).',
         );
+
+        // Its subscriptions (step 1.4c): the rent and the leasing from February, into the brouillard;
+        // none is due on 31/01/2026, the first falls on 01/02.
+        $subscriptions = $context->within($vasseur, static fn (): array => self::getContainer()->get(EntrySubscriptionRepository::class)->findByDossier($vasseur));
+        self::assertSame(
+            ['Crédit-bail du chariot élévateur CBAIL 41200 5 2026-02 31 0 draft', 'Loyer de l\'atelier LOYER 320000 1 2026-02 11 0 draft'],
+            array_map(static fn ($s): string => implode(' ', [$s->getLabel(), $s->getTemplate()->getCode(), $s->getAmount()?->cents, $s->getDayOfMonth(), $s->getFirstMonth()->format('Y-m'), $s->getOccurrences(), $s->getGenerated(), $s->getTarget()->value]), $subscriptions),
+        );
+        self::assertSame('2026-02-01', SubscriptionSchedule::next($subscriptions[1]->getFirstMonth(), 1, 11, 0)?->format('Y-m-d'));
+
+        // Up to 31/03, February and March of both: four drafts, LOY-2026-02 = 3 840,00, LBE-2026-03 = 494,40.
+        $outcome = $context->within($vasseur, static fn () => self::getContainer()->get(SubscriptionRun::class)->generate($vasseur, new \DateTimeImmutable('2026-03-31'), 'test', new \DateTimeImmutable('2026-11-28 10:00')));
+        self::assertSame([4, 0, []], [$outcome->drafts, $outcome->pending, $outcome->faults]);
+        $context->within($vasseur, static function () use ($vasseur): void {
+            $entries = self::getContainer()->get(EntryRepository::class);
+            self::assertSame(384_000, $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LOY-2026-02'])?->totalDebit()->cents);
+            self::assertSame(49_440, $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LBE-2026-03'])?->totalDebit()->cents);
+            self::assertSame('2026-03-05', $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LBE-2026-03'])?->getEntryDate()->format('Y-m-d'));
+        });
     }
 }

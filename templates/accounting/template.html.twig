@@ -22,7 +22,7 @@
     ]">
         <twig:block name="actions">
             {% if can_edit %}
-                {% if template %}<twig:Px:ConfirmButton label="Supprimer le modèle" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="template-delete"/>{% endif %}
+                {% if template and deletion_refusal is null %}<twig:Px:ConfirmButton label="Supprimer le modèle" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="template-delete"/>{% endif %}
                 <twig:Px:Button type="submit" variant="primary" form="template-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
             {% endif %}
         </twig:block>
@@ -60,6 +60,7 @@
                         <twig:Px:Input id="rate" value="{{ draft.rate }}" size="sm" hint="1" :error="draft.error('rate')" class="px-u-num px-tlines__rate" maxlength="7" autocomplete="off" inputmode="decimal"/>
                     </twig:Px:Field>
                 </div>
+                {% if template and deletion_refusal %}<p class="px-u-muted">{{ deletion_refusal }}</p>{% endif %}
             </twig:Px:Card>
 
             <twig:Px:Card title="Lignes" :flush="true" meta="Comme dans la grille de saisie : un numéro de compte, ou le code auxiliaire d’un tiers (401SCIV).">
@@ -91,7 +92,7 @@
                 </twig:block>
             </twig:Px:Card>
         </form>
-        {% if template %}
+        {% if template and deletion_refusal is null %}
             <form method="post" action="{{ path('app_accounting_template_delete', {dossier: dossier.id, code: template.code}) }}" id="template-delete" hidden>
                 <input type="hidden" name="_token" value="{{ csrf_token('dossier-template-delete-' ~ template.id) }}">
             </form>

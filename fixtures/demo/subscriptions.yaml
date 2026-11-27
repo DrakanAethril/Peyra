@@ -1,0 +1,31 @@
+# Menuiserie Vasseur SARL - its subscriptions (« abonnements », step 1.4c): the entries that come
+# back every month in the prepared data (operations-2026.md), from February on - January's are typed
+# in the purchases journal already. The rent of the workshop (LOY-2026-xx, the 1st, 3 200,00 HT) for
+# the rest of the exercise, and the leasing of the forklift (LBE-2026-xx, the 5th, 412,00 HT), its
+# instalments 18 to 48 of 48 - a subscription may outlive its exercise. Both go to the brouillard,
+# generated up to the dossier's date at install (none is due on 31/01/2026).
+#
+# `template` is a template's code (templates.yaml); `amount` the call's amount (euros as text) and
+# `rate` its VAT rate, when the template asks an amount; `third_party` when it asks one; `day` 1 to
+# 31 (31: the last day); `first_month` « AAAA-MM »; `pattern` with {AAAA}, {MM}, {N}; `target`
+# draft or pending. Checked by SubscriptionRules, as the fiche.
+
+subscriptions:
+  - label: "Loyer de l'atelier"
+    template: LOYER
+    amount: '3200.00'
+    rate: '20'
+    day: 1
+    first_month: '2026-02'
+    occurrences: 11
+    pattern: 'LOY-{AAAA}-{MM}'
+    target: draft
+  - label: "Crédit-bail du chariot élévateur"
+    template: CBAIL
+    amount: '412.00'
+    rate: '20'
+    day: 5
+    first_month: '2026-02'
+    occurrences: 31
+    pattern: 'LBE-{AAAA}-{MM}'
+    target: draft

@@ -9,6 +9,7 @@ use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
 use App\Enum\Audit\AuditAction;
 use App\Repository\Accounting\AccountRepository;
+use App\Repository\Accounting\EntrySubscriptionRepository;
 use App\Repository\Accounting\EntryTemplateRepository;
 use App\Repository\Accounting\JournalRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
@@ -31,6 +32,7 @@ final readonly class TemplateSheet
         private AccountRepository $accounts,
         private ThirdPartyRepository $thirdParties,
         private AuditTrail $auditTrail,
+        private EntrySubscriptionRepository $subscriptions,
     ) {
     }
 
@@ -97,8 +99,24 @@ final readonly class TemplateSheet
         return true;
     }
 
+    /** Why the template may not be deleted - a subscription calls it -, or null when it may. */
+    public function deletionRefusal(EntryTemplate $template): ?string
+    {
+        $labels = $this->subscriptions->labelsCalling($template);
+        if ([] === $labels) {
+            return null;
+        }
+
+        return 1 === \count($labels)
+            ? \sprintf('L’abonnement « %s » appelle ce modèle : supprimez-le ou donnez-lui un autre modèle d’abord.', $labels[0])
+            : \sprintf('%d abonnements appellent ce modèle (%s) : supprimez-les ou donnez-leur un autre modèle d’abord.', \count($labels), implode(', ', $labels));
+    }
+
     public function delete(EntryTemplate $template, User $by): void
     {
+        if (null !== $this->deletionRefusal($template)) {
+            throw new \LogicException('A subscription calls this template.');
+        }
         $this->auditTrail->record(
             AuditAction::EntryTemplateDeleted,
             $by,

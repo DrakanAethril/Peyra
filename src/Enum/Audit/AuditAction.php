@@ -85,6 +85,18 @@ enum AuditAction: string
     /** An entry template deleted. */
     case EntryTemplateDeleted = 'accounting.entry_template_deleted';
 
+    /** A subscription created. */
+    case EntrySubscriptionCreated = 'accounting.entry_subscription_created';
+
+    /** A subscription changed. */
+    case EntrySubscriptionChanged = 'accounting.entry_subscription_changed';
+
+    /** A subscription deleted. */
+    case EntrySubscriptionDeleted = 'accounting.entry_subscription_deleted';
+
+    /** A subscription's occurrences generated up to the dossier's date. */
+    case EntrySubscriptionGenerated = 'accounting.entry_subscription_generated';
+
     public function label(): string
     {
         return match ($this) {
@@ -113,6 +125,10 @@ enum AuditAction: string
             self::EntryTemplateCreated => 'Modèle d’écriture créé',
             self::EntryTemplateChanged => 'Modèle d’écriture modifié',
             self::EntryTemplateDeleted => 'Modèle d’écriture supprimé',
+            self::EntrySubscriptionCreated => 'Abonnement créé',
+            self::EntrySubscriptionChanged => 'Abonnement modifié',
+            self::EntrySubscriptionDeleted => 'Abonnement supprimé',
+            self::EntrySubscriptionGenerated => 'Écritures d’abonnement générées',
         };
     }
 }

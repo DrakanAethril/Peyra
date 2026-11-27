@@ -64,11 +64,13 @@ journaux et ses 59 tiers (clients, fournisseurs et autres, chacun sur son compte
 code auxiliaire, ou sur son compte), sa balance d'ouverture du 1er janvier 2026 (une écriture
 validée du journal des à-nouveaux équilibrée à 459 260,31), les achats et la Banque Populaire de
 janvier et ses sept modèles d'écriture (loyer, crédit-bail, honoraires, achat et vente à 20 %, frais
-bancaires, règlement fournisseur), datée du 31 janvier 2026 ; `app:dev:dossiers` en donne une copie à chaque étudiant placé
+bancaires, règlement fournisseur), ses deux abonnements (le loyer et le crédit-bail, à partir de
+février), datée du 31 janvier 2026 ; `app:dev:dossiers` en donne une copie à chaque étudiant placé
 (en attendant la distribution), qu'il ouvre depuis « Mes dossiers » et que les enseignants de sa classe ouvrent
 depuis sa fiche. Comptabilité › Saisie y est la grille de saisie au clavier, par journal et par
 mois, à la manière de Sage : F6 y appelle un modèle d'écriture (HT, TVA et TTC calculés du montant
-tapé), et la saisie guidée part d'un modèle et de quelques champs. Les plans comptables de référence (PCG 2026, PCG 2025, PCG antérieur), lus dans
+tapé), la saisie guidée part d'un modèle et de quelques champs, et un abonnement appelle un modèle
+chaque mois (« Générer jusqu'au » la date du dossier, au brouillard ou en saisie en attente). Les plans comptables de référence (PCG 2026, PCG 2025, PCG antérieur), lus dans
 les textes de l'ANC, sont dans `fixtures/pcg/`.
 
 La pile de développement : `php` (FrankenPHP et Caddy), `database` (MariaDB, comme en
