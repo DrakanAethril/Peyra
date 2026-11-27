@@ -62,6 +62,8 @@ services:
       start_period: 60s
     volumes:
       - database_data:/var/lib/mysql:rw
+      # Run on an empty volume only: grants the application user its test databases.
+      - ./frankenphp/mariadb:/docker-entrypoint-initdb.d:ro
 
   # Fictitious directory for development, seeded from frankenphp/ldap/*.ldif (versioned: every
   # person in it is invented) on an empty volume only. Reachable from `php` at ldap://openldap:1389.
