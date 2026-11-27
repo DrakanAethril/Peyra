@@ -1,0 +1,44 @@
+---
+# Base services, shared by dev (compose.override.yaml, applied implicitly) and production
+# (compose.prod.yaml, named explicitly). Ports and the project name come from .env.
+services:
+  php:
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Paris
+      # `php:80` lets the application publish to the Mercure hub over the internal network.
+      SERVER_NAME: ${SERVER_NAME:-localhost}, php:80
+      DEFAULT_URI: https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}
+      MERCURE_URL: ${CADDY_MERCURE_URL:-http://php/.well-known/mercure}
+      MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8143}/.well-known/mercure}
+      # An internal hostname, defined by the `gotenberg` service below: not a secret.
+      GOTENBERG_URL: http://gotenberg:3000
+      # DATABASE_URL, the LDAP credentials and the Mercure keys are credential-shaped: never
+      # defaulted here. They come from .env.dev.local (dev) or .env.prod.local (production).
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - name: http
+        target: 80
+        published: ${HTTP_PORT:-8180}
+        protocol: tcp
+      - name: https
+        target: 443
+        published: ${HTTPS_PORT:-8143}
+        protocol: tcp
+      - name: http3
+        target: 443
+        published: ${HTTP3_PORT:-8143}
+        protocol: udp
+
+  # Every printable document (generated invoices, statements, payslips, the tax return) is a Twig
+  # template rendered to PDF here, through one service, App\Service\Shared\PdfRenderer. Internal
+  # network only: no port published.
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

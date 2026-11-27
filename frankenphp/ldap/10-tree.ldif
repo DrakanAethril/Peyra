@@ -1,0 +1,29 @@
+# Peyra's development directory. Everything in it is invented, which is why it is versioned.
+# Loaded by the openldap service on an empty volume only (see compose.override.yaml).
+# The demonstration accounts are added at step 0.4.
+
+dn: dc=peyra,dc=lan
+objectClass: dcObject
+objectClass: organization
+dc: peyra
+o: Peyra (annuaire fictif de développement)
+
+dn: ou=users,dc=peyra,dc=lan
+objectClass: organizationalUnit
+ou: users
+
+dn: ou=groups,dc=peyra,dc=lan
+objectClass: organizationalUnit
+ou: groups
+
+dn: ou=service,dc=peyra,dc=lan
+objectClass: organizationalUnit
+ou: service
+
+# Read-only account the application binds as to search the directory (LDAP_SEARCH_DN).
+dn: cn=svc-peyra,ou=service,dc=peyra,dc=lan
+objectClass: organizationalRole
+objectClass: simpleSecurityObject
+cn: svc-peyra
+description: Compte de service de Peyra (lecture seule)
+userPassword: peyra-dev-svc
