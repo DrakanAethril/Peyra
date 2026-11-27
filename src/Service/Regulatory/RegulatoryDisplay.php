@@ -44,8 +44,10 @@ final class RegulatoryDisplay
         }
         if (RegulatoryTree::isNumber($value)) {
             $suffix = self::suffix($unit);
+            // An amount in euros with cents shows both of them: « 12,70 », never « 12,7 ».
+            $text = str_starts_with($suffix, '€') && 1 === preg_match('/\.\d$/', $value) ? FrenchFormat::quantity($value) : FrenchFormat::number($value);
 
-            return FrenchFormat::number($value).('' === $suffix ? '' : FrenchFormat::NBSP.$suffix);
+            return $text.('' === $suffix ? '' : FrenchFormat::NBSP.$suffix);
         }
         if (1 === preg_match(self::ISO_DAY, $value)) {
             $day = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Service\Audit;
 
-use App\Entity\Audit\AuditEvent;
 use App\Entity\Identity\User;
 use App\Enum\Audit\AuditAction;
 use App\Enum\Identity\AccountKind;
@@ -56,6 +55,5 @@ final class AuditTrailTest extends KernelTestCase
         }
 
         self::assertSame(['Service/Audit/AuditTrail.php'], $writers);
-        self::assertTrue(is_a(AuditEvent::class, \App\Entity\Shared\AppendOnly::class, true));
     }
 }

@@ -67,6 +67,7 @@ docker compose exec -e APP_ENV=test php vendor/bin/paratest --processes=4   # se
 docker compose --profile worker up -d worker  # the scheduler's worker, opt-in in dev
 docker compose exec php bin/console app:dev:school # dev only, once: years, classes, mapping, teachers
 docker compose exec php bin/console app:ldap:check [login] # diagnostic: directory, service account, how a person is read
+docker compose exec php bin/console app:regulatory:sync [--dry-run] # installs config/regulatory/<année>.yaml; every deploy runs it
 
 docker compose exec php composer cs-check          # coding standard (cs-fix applies it)
 docker compose exec php bin/console cache:warmup   # PHPStan reads the compiled dev container
@@ -151,6 +152,10 @@ Gotchas met while building it:
   sourcing it, and a script written to be sourced dies with « bad interpreter ».
 - Until the first migration exists, `doctrine:migrations:migrate` fails without
   `--allow-no-migration`; CI passes it, and it is a no-op afterwards.
+- The development worker reloads on a changed file under `src/`, `templates/` or `config/`, but not
+  in a **directory created after `php` started**: its PHP keeps the old code (a new controller
+  answers with the previous one, a template gets variables it no longer expects). `docker compose
+  restart php` after adding a directory.
 
 ## Design system (design-ui.md, built at step 0.3)
 
@@ -220,7 +225,8 @@ never by discipline.
   accounting engine, through one door, which applies the mission's assistance level.
 - **No business calculation reads the server clock.** Each dossier has its own date, moved by the
   teacher; real timestamps serve the audit trail only.
-- **Regulatory parameters are dated values** (millésimes), read at the dossier's date.
+- **Regulatory parameters are dated values** (millésimes), read at the dossier's date
+  (`RegulatoryReader::at()`, see « Regulatory values and audit trail »).
 - **Nothing leaves**: tax, social and e-invoicing portals are simulated inside the application.
   No call to a real service.
 - **The correction is a pure function over primitives**, tested as such (§ 6). The answer key never
@@ -360,6 +366,44 @@ Reach for these rather than re-implement them; each has its test.
 - **Scheduled commands**: `App\Command\Shared\SharedLockableTrait` (`$this->lock()`, released when
   `run()` returns); `App\Scheduler\ScheduledCommandLogger` writes one line per run in the
   worker's log, the output's tail at error level when it fails.
+
+## Regulatory values and audit trail (built at step 0.6b)
+
+- **`RegulatoryValue`** (`src/Entity/Regulatory/`) is one dated value of a key (`social.smic_hourly`,
+  column `value_key`: `key` is reserved): label, value, unit, effective date, source, date of
+  consultation, `verified`, note, origin (a millésime file or an administrator), `millesime`.
+  **Append-only**: a new value is a new effective date; a correction is one more row at the same
+  date, which replaces it for every reading (the last row written for a date wins) while the older
+  one stays in the history (`RegulatoryHistory`, `RegulatoryVersion`).
+- **The value is `RegulatoryTree`'s canonical JSON** - a number, a text, or a structure (map, list
+  of brackets) of them - **numbers kept as exact decimal texts** (« 6.9 », « 0.3193 ») stored as JSON
+  strings: decoding never yields a float. A leaf whose text is a plain decimal is a number; any
+  other text is a text (a date is « 2027-01-01 »).
+- **Reading**: `RegulatoryReader::at($dossierDate)` gives a `RegulatorySnapshot`, typed by key and
+  path: `decimal()`, `rate()` (a value in percent as a fraction), `money()` (refuses more than two
+  decimals), `integer()`, `text()`. Absent or of the wrong kind: `MissingRegulatoryValue`, never a
+  default. No rate is written in the code (lots 3 and 4).
+- **The millésime files** `config/regulatory/<année>.yaml` follow the prepared data's schema (plan,
+  `donnees/reglementaire/LISEZ-MOI.md`); `RegulatoryFile` checks a file whole and names every fault.
+  2025 and 2026 ship **empty**: the fiscal values arrive at lot 3, the social ones at lot 4, from the
+  prepared data (whose `social-2026.yaml` needs one flow mapping quoted to be Symfony YAML).
+  `app:regulatory:sync` (`RegulatorySync`) only ever adds rows: what is missing, what a file changed
+  (the older row kept), never over an administrator's value (reported « conservée »); a stable rule
+  both files carry word for word is written once; one fault anywhere installs nothing.
+- **The screens**: Paramètres › Paramètres réglementaires (`/teacher/regulatory`), read by every
+  teacher - the rail's « Paramètres » is now everybody's, its administration tabs administrators'
+  (`teacher/_settings_tabs.html.twig`). The list is a millésime (every version applying on a day of
+  the year), filtered by domain and searched; the sheet shows every date and the corrections;
+  « Nouvelle valeur datée » (`ROLE_ADMIN`, `RegulatoryValues` the one door) starts from the latest
+  value and changes its leaves, never its shape.
+- **`AppendOnly`** (`App\Entity\Shared\AppendOnly`) marks a row never changed nor deleted;
+  `App\Doctrine\AppendOnlyGuard` refuses the whole flush that tries. The sign-in and administration
+  journals, the regulatory values and the audit trail carry it.
+- **The audit trail** (`AuditEvent`, written by `App\Service\Audit\AuditTrail::record()` alone,
+  which stamps the real time itself - `src/Service/Audit/` is the one business place that reads the
+  clock): who (an account, or a command's name), what (`AuditAction`, one case per gesture), on what
+  (`subjectType` + `subjectId`), a French sentence and JSON details. The caller flushes with its
+  gesture. The dossier and its date join it at step 1.7, with its screen.
 
 ## Conventions (as in Formatool)
 

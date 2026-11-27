@@ -27,6 +27,7 @@ cp .env.dev.local.example .env.dev.local   # une seule fois : valeurs locales, t
 docker compose build --pull
 docker compose up --wait
 docker compose exec php bin/console app:dev:school      # une seule fois : années et classes de démonstration
+docker compose exec php bin/console app:regulatory:sync # les millésimes réglementaires du dépôt (config/regulatory)
 ```
 
 L'application répond alors sur <https://localhost:8143> (certificat local à accepter) ;

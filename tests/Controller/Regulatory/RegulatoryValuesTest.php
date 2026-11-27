@@ -94,7 +94,7 @@ final class RegulatoryValuesTest extends WebTestCase
 
         $crawler = $client->request('GET', '/teacher/regulatory/social.smic_hourly/new');
         self::assertResponseIsSuccessful();
-        self::assertSame("12,31", $crawler->filter('#leaf_0')->attr('value'), 'The form starts from the latest value.');
+        self::assertSame('12,31', $crawler->filter('#leaf_0')->attr('value'), 'The form starts from the latest value.');
         $client->submit($crawler->filter('#regulatory-form')->form(), [
             'effective_from' => '2027-01-01',
             'leaf' => ['0' => '12,55'],

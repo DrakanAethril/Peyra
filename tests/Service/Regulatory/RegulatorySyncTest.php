@@ -10,7 +10,6 @@ use App\Entity\Regulatory\RegulatoryValue;
 use App\Enum\Audit\AuditAction;
 use App\Enum\Identity\AccountKind;
 use App\Enum\Identity\EntryBasis;
-use App\Enum\Regulatory\RegulatoryOrigin;
 use App\Repository\Regulatory\RegulatoryValueRepository;
 use App\Service\Audit\AuditTrail;
 use App\Service\Regulatory\InvalidRegulatoryFile;
@@ -123,22 +122,21 @@ final class RegulatorySyncTest extends KernelTestCase
         self::assertSame([2026], array_map(static fn ($r) => $r->millesime, $this->sync()->run(new \DateTimeImmutable('2026-11-27 10:00'))));
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<string, string|bool> */
     private function entry(string $key, string $value, string $effectiveFrom): array
     {
         return ['key' => $key, 'label' => 'Libellé de '.$key, 'value' => $value, 'unit' => 'EUR', 'effective_from' => $effectiveFrom, 'source_url' => 'https://www.urssaf.fr/', 'consulted_on' => '2026-11-27', 'verified' => true];
     }
 
-    /** @param list<array<string, mixed>> $entries values as YAML numbers */
+    /** @param list<array<string, string|bool>> $entries values as YAML numbers */
     private function write(int $millesime, array $entries): void
     {
         $yaml = "millesime: {$millesime}\nentries:\n";
         foreach ($entries as $entry) {
-            $yaml .= '  - key: '.$entry['key']."\n";
+            $yaml .= '  - key: '.(string) $entry['key']."\n";
             foreach ($entry as $field => $value) {
                 if ('key' !== $field) {
-                    $yaml .= '    '.$field.': '.(\is_bool($value) ? ($value ? 'true' : 'false') : (\is_string($value) ? $value : '')).
-"\n";
+                    $yaml .= '    '.$field.': '.(\is_bool($value) ? ($value ? 'true' : 'false') : $value)."\n";
                 }
             }
         }

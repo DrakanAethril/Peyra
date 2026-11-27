@@ -19,6 +19,8 @@ final class RegulatoryDisplayTest extends TestCase
         self::assertSame('6,9'.self::N.'%', RegulatoryDisplay::leaf('6.9', 'percent'));
         self::assertSame('50'.self::N.'% du SMIC', RegulatoryDisplay::leaf('50', 'percent of SMIC'));
         self::assertSame('40'.self::N.'€', RegulatoryDisplay::leaf('40', 'EUR'));
+        self::assertSame('12,70'.self::N.'€/heure', RegulatoryDisplay::leaf('12.7', 'EUR/heure'), 'Cents come in pairs.');
+        self::assertSame('0,175'.self::N.'€', RegulatoryDisplay::leaf('0.175', 'EUR'));
         self::assertSame('0,3193', RegulatoryDisplay::leaf('0.3193', 'coefficient'));
         self::assertSame('1'.self::T.'620', RegulatoryDisplay::leaf('1620', 'percent (bornes en EUR, borne basse incluse, borne haute exclue)'), 'A unit explained in words puts no sign on the bounds.');
     }

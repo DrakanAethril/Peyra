@@ -27,18 +27,14 @@
         {% set leaves = draft.baseLeaves %}
         <twig:Px:Card title="{{ base.label }}" meta="{{ base.key }} · {{ base.unit|regulatory_unit }}">
             <div class="px-form">
-                <div class="px-formrow">
+                {% set plain = leaves|length == 1 and leaves[0].path is empty %}
+                <div class="px-fieldrow">
                     <twig:Px:Field id="effective_from" label="Date d’effet" :required="true" :error="draft.error('effective_from')">
                         <twig:Px:DateInput id="effective_from" :reference="today" :value="draft.effectiveFrom" :required="true" hint="1" :error="draft.error('effective_from') is not null"/>
                     </twig:Px:Field>
-                    {% if leaves|length == 1 and leaves[0].path is empty %}
-                        {% set leaf = leaves[0] %}
-                        {% set suffix = base.unit|regulatory_suffix %}
-                        <twig:Px:Field id="leaf_0" label="Valeur{{ suffix ? ' (' ~ suffix ~ ')' : '' }}" :required="leaf.value is not null" :wide="not leaf.isNumber" :error="draft.error('leaf_0')">
-                            {{ include('regulatory/_leaf_input.html.twig', {index: 0, leaf: leaf}) }}
-                        </twig:Px:Field>
-                    {% endif %}
+                    {% if plain and leaves[0].isNumber %}{{ include('regulatory/_plain_value.html.twig') }}{% endif %}
                 </div>
+                {% if plain and not leaves[0].isNumber %}{{ include('regulatory/_plain_value.html.twig') }}{% endif %}
                 {% if leaves|length == 1 and leaves[0].path is empty %}
                     <p class="px-u-muted" id="leaf_0_hint">Valeur du {{ base.effectiveFrom|date_fr }} : {{ leaves[0].value|regulatory_leaf(base.unit) }}.</p>
                 {% endif %}
