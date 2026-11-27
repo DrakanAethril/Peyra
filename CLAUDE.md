@@ -100,7 +100,7 @@ empty, and `PeyraScheduleTest` pins that list, so adding a task is a decision th
 | `app:regulatory:sync [--dry-run]` | Installs the millésime files `config/regulatory/<année>.yaml`; only ever adds rows, never over an administrator's value. **Every deploy runs it** |
 | `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
-| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
+| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
 | `app:dev:dossiers` | **Development and test only**, until the distribution of step 1.8: gives each student enrolled this year their own Menuiserie Vasseur, built from the fixtures (the template installed first if missing). Sign the students in first: their first sign-in places them |
 | `app:test:parallel-databases` | **Test only.** Copies the migrated `peyra_test` into `peyra_test1`… for ParaTest (tests/README.md) |
 
@@ -440,12 +440,12 @@ and `src/Entity/Accounting/`:
   29, 39, 49, 59 depreciation…); lettrable and collective have defaults read from the number
   (`AccountNumber::isLettrableByDefault()`, `isCollectiveByDefault()`), only a class-4 account is
   collective. **A third party is not an account**: « 401SCIE » is a third party's code on a
-  collective account (step 1.2b) - the account picker refuses letters in an account number.
+  collective account (« Third parties » below) - an account number has digits only.
 - **`AccountSheet` is the one door by hand** (check field by field, create, update, delete), every
   gesture in the audit trail (subject: the dossier). A number that subdivides no account of ≥ 2
   digits of the dossier's reference chart is **signalled, never refused** until the assistance
   levels (step 2.8). An account a journal names as counterpart is not deleted and stays of its
-  nature. **Step 1.3 adds the guards of an account or a journal that carries entries.**
+  nature. **Step 1.3 adds the guards of an account, a journal or a third party that carries entries.**
 - **`Journal`** (DossierOwned, `JournalSheet` the one door): code of 1 to 6 capitals or digits, type
   (`JournalType`), a counterpart account for bank (a bank account) and cash (a cash account) journals
   only, one à-nouveaux journal at most. A cash journal needs a 53… account the dossier creates (the
@@ -465,9 +465,46 @@ and `src/Entity/Accounting/`:
   The import form posts outside Turbo (`data-turbo="false"`): the report is the answer to the post.
 - The demonstration's own accounts and journals: `fixtures/demo/accounts.yaml`, `journals.yaml`
   (`DemoChartFile`); a demonstration account over a reference one keeps its origin under its label.
+- **Guards of an account that carries third parties** (step 1.2b, `AccountSheet`, `ChartImport`):
+  its « collectif » box stays as it is (their auxiliary codes exist because it is collective), its
+  number keeps a nature their kinds accept, and it does not leave the plan.
 - **An account number used as an array key becomes an integer** (« 512100 » is a numeric string):
   `$map['512100']` then reads, but PHPStan and `array_keys()` see ints and a strict comparison with
   the number fails. Look an account up by its number through the repository or a loop.
+
+## Third parties (built at step 1.2b)
+
+Lot 1, step 1.2b, held by code in `src/Entity/ThirdParty/`, `src/Service/ThirdParty/` and
+`src/Controller/ThirdParty/`:
+
+- **`ThirdParty`** (DossierOwned): code (« C0003 », 1 to 12 capitals or digits, unique; a new one
+  gets its kind's letter and the next number, `ThirdPartyCode::next()`), kind (`ThirdPartyKind`:
+  customer, supplier, employee, other), name, private person or not, SIREN and VAT number, address
+  and contact, **structured payment terms** (`PaymentTerms`, embedded: `PaymentTermKind` + N days
+  or day J; `dueDate($invoiceDate)` is the one reckoning, read at 2.7 - « 45 jours fin de mois » of
+  the prepared data is « fin de mois + 45 jours »), payment method (`PaymentMethod`), a note.
+- **Its account**: a collective (401000, 404000, 411000…) **with its auxiliary code** (« 401SCIE »,
+  2 to 17 capitals or digits with at least one letter, unique in the dossier; left empty, one is
+  proposed from the collective and the name, `AuxiliaryCode::suggest()`), or a general account
+  (431000, 455100, 164100 for a lender) without one, or no account at all (a shop paid by card).
+  The kind decides the natures accepted (`ThirdPartyKind::accountNatures()`). `ThirdParty::keepOn()`
+  refuses an auxiliary code without a collective, or a collective without one.
+- **`ThirdPartyRules::check()` is the one reading** of a third party, a pure function over three
+  callables (the plan, who holds a code, who holds an auxiliary code): the fiche (`ThirdPartySheet`,
+  audit trail), each CSV line (`ThirdPartyImport`) and the demonstration's file
+  (`DemoThirdPartyFile`) go through it.
+- **The account picker finds auxiliary codes**: when the text holds a letter and no `nature`
+  narrows it, `AccountSearchController` adds a « Tiers » group (auxiliary code, name · collective)
+  after the accounts - what the entry grid's Compte column takes (design-ux.md § 5.2, step 1.4).
+  A third party on a general account is entered by its account.
+- **Screens**: Comptabilité › Paramètres comptables › Tiers (`/d/{dossier}/accounting/third-parties`,
+  filtered by kind and by `account`, searched by code, auxiliary code or name), the fiche
+  (`…/{code}`, F10, delete in two steps; the due date of an invoice dated the dossier's date is
+  shown), `…/export.csv` and `…/import` (header required, at least `code;nature;nom`; without a
+  `compte` column a customer goes on 411000 and a supplier on 401000; one refused line writes
+  nothing). Ventes › Clients and Achats › Fournisseurs (lot 2) will read the same entity.
+- A form refused (422) focuses its first field in error (`focus_error_controller.js`, design-ux.md
+  § 6.1), on the fiches of a third party, an account, a journal and the company.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 
