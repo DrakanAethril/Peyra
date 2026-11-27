@@ -1,0 +1,41 @@
+Peyra
+Copyright (C) 2026 Sébastien Tharaud
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+The full text of the license is in the LICENSE file at the root of this
+repository.
+
+
+--------------------------------------------------------------------------------
+Names, logos and emblems
+--------------------------------------------------------------------------------
+
+The AGPL covers the source code of this program. It does NOT grant any right to
+use the names, trademarks, logos or emblems of Institution Beaupeyrat, which
+remain the property of that institution and are excluded from the licence.
+
+No such file is bundled at present. Any file added later that carries them is
+listed here.
+
+If you fork this project, replace those files with your own branding. You are
+free to keep, modify and redistribute the code that references them.
+
+
+--------------------------------------------------------------------------------
+Third-party components
+--------------------------------------------------------------------------------
+
+This project will incorporate or bundle third-party works, each under its own
+licence. Those licences are unchanged by this project's own licensing, and their
+notices are listed here as each component is added.
