@@ -60,7 +60,7 @@ final class AdministratorsController extends AbstractController
             return $this->page($users, $administrators, $refusal, $request->request->getString('user_label'), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
         \assert(null !== $teacher);
-        $this->addFlash('status', \sprintf('%s est désormais administrateur.', $teacher->getDisplayName()));
+        $this->addFlash('status', \sprintf('%s administre désormais Peyra.', $teacher->getDisplayName()));
 
         return $this->redirectToRoute('app_admin_administrators', status: Response::HTTP_SEE_OTHER);
     }
@@ -73,7 +73,7 @@ final class AdministratorsController extends AbstractController
         if (null !== $refusal) {
             return $this->page($users, $administrators, status: Response::HTTP_UNPROCESSABLE_ENTITY, listError: $refusal);
         }
-        $this->addFlash('status', \sprintf('%s n’est plus administrateur.', $administrator->getDisplayName()));
+        $this->addFlash('status', \sprintf('%s n’administre plus Peyra.', $administrator->getDisplayName()));
 
         // Removing oneself leaves the administration: the next page is the teacher's home.
         return $this->redirectToRoute($administrator === $me ? 'app_teacher_home' : 'app_admin_administrators', status: Response::HTTP_SEE_OTHER);

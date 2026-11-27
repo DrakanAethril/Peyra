@@ -10,7 +10,11 @@ The tree mirrors `src/` (`tests/Controller/Shared/` tests `src/Controller/Shared
 
 - **`tests/Architecture/`** — the invariants of the build plan (§ 8), each held by a test that reads
   the code or the ORM metadata rather than trusting discipline: no floating-point column
-  (`NoFloatColumnTest`), no business calculation reading the server clock (`NoClockReadingTest`).
+  (`NoFloatColumnTest`), no business calculation reading the server clock (`NoClockReadingTest`),
+  no native date or number field (`NoNativeDateOrNumberFieldTest`), the colours and contrasts of
+  the design system (`DesignTokensTest`), the production configuration
+  (`ProductionConfigurationTest`); the list of scheduled tasks, none of which deletes, is pinned by
+  `tests/Scheduler/PeyraScheduleTest`.
   Each also checks itself on a hand-written offender, so a test that finds nothing is known to be
   able to find something. More arrive with the lots (`DossierOwned`, the single door of the ledger…).
 - **Unit tests** over pure services: no kernel, no database. A business rule is tested on figures
@@ -29,7 +33,11 @@ The test environment never reaches the directory: `tests/Support/InMemoryDirecto
 people of `frankenphp/ldap/10-tree.ldif` (password `peyra-dev`) and lets a test add a person, rename
 a login or take the directory down - keep the client's kernel (`$client->disableReboot()`) for the
 change to last past the next request. `tests/Support/SignsIn` signs in through the real form.
-The sign-in limiters count in memory, one kernel at a time. `LdapDirectoryTest` alone reads the
+The sign-in limiters count in memory, one kernel at a time.
+
+A test that changes an environment variable (`$_ENV`, `$_SERVER`) puts back the value it found,
+never `unset()`s it: `.env` declares every variable, and the tests after it in the same process
+(`bin/phpunit`, not ParaTest) would boot without it (« Environment variable not found »). `LdapDirectoryTest` alone reads the
 real development directory, which CI starts too.
 
 ## The test database

@@ -45,7 +45,7 @@ final class FieldTeachersController extends AbstractController
         if (null !== $refusal) {
             return $this->page($fieldTeachers, $login, $refusal, Response::HTTP_UNPROCESSABLE_ENTITY);
         }
-        $this->addFlash('status', \sprintf('« %s » ajouté aux enseignants de la filière.', $login));
+        $this->addFlash('status', \sprintf('« %s » fait désormais partie des enseignants de la filière.', $login));
 
         return $this->redirectToRoute('app_admin_teachers', status: Response::HTTP_SEE_OTHER);
     }
@@ -58,7 +58,7 @@ final class FieldTeachersController extends AbstractController
             throw new NotFoundHttpException('Already removed.');
         }
         $authorizations->revoke($authorization, $me, $clock->now());
-        $this->addFlash('status', \sprintf('%s retiré des enseignants de la filière.', $authorization->getDisplayName()));
+        $this->addFlash('status', \sprintf('%s ne fait plus partie des enseignants de la filière.', $authorization->getDisplayName()));
 
         return $this->redirectToRoute('app_admin_teachers', status: Response::HTTP_SEE_OTHER);
     }

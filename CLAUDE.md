@@ -52,27 +52,55 @@ colour or layout copied from a vendor: the genre, not the copy.
 
 ## Commands
 
-Everything runs inside the `php` container; there is no host-side PHP.
+Everything runs inside the `php` container; there is no host-side PHP. The stack, from this
+directory only (Formatool runs on the same machine, under its own project name):
 
 ```console
 cp .env.dev.local.example .env.dev.local      # once: local, fictitious credentials
 docker compose build --pull                   # build peyra-php-dev
 docker compose up --wait                      # start (dev overlay is implicit)
-docker compose down --remove-orphans          # stop — only ever from this directory
-
-docker compose exec php bin/console <cmd>
-docker compose exec php composer <cmd>
-docker compose exec -e APP_ENV=test php bin/phpunit
-docker compose exec -e APP_ENV=test php vendor/bin/paratest --processes=4   # setup: tests/README.md
+docker compose restart php                    # after adding a directory under src/ or a route (worker mode)
 docker compose --profile worker up -d worker  # the scheduler's worker, opt-in in dev
-docker compose exec php bin/console app:dev:school # dev only, once: years, classes, mapping, teachers
-docker compose exec php bin/console app:ldap:check [login] # diagnostic: directory, service account, how a person is read
-docker compose exec php bin/console app:regulatory:sync [--dry-run] # installs config/regulatory/<année>.yaml; every deploy runs it
+docker compose down --remove-orphans          # stop — only ever from this directory
+docker compose exec php bash                  # a shell
+```
 
+A development database from nothing, then the dev data (students are placed by their own first
+sign-in, as in production):
+
+```console
+docker compose exec php bin/console doctrine:migrations:migrate -n
+docker compose exec php bin/console app:dev:school           # dev and test only: years, classes, mapping, teachers
+docker compose exec php bin/console app:regulatory:sync      # installs config/regulatory/<année>.yaml
+```
+
+Quality — the definition of done of a step runs all of it (plan README § 6):
+
+```console
 docker compose exec php composer cs-check          # coding standard (cs-fix applies it)
 docker compose exec php bin/console cache:warmup   # PHPStan reads the compiled dev container
 docker compose exec php composer phpstan           # static analysis, level 5 + checkExplicitMixed
+docker compose exec php bin/console lint:yaml config && docker compose exec php bin/console lint:twig templates && docker compose exec php bin/console lint:container
+docker compose exec -e APP_ENV=test php bin/phpunit                  # the suite, in one process
+docker compose exec -e APP_ENV=test php bin/phpunit --filter <Test>
+docker compose exec -e APP_ENV=test php vendor/bin/paratest --processes=4   # in parallel; setup: tests/README.md
+```
 
+Run the suite both ways before pushing, as CI does: ParaTest gives every test file its own
+process, so a test that leaks global state (an environment variable unset, a static) only breaks
+the files after it under `bin/phpunit`.
+
+Application commands (`src/Command/`). **None is scheduled yet**: `App\Scheduler\PeyraSchedule` is
+empty, and `PeyraScheduleTest` pins that list, so adding a task is a decision the test makes visible.
+
+| Command | Role |
+|---|---|
+| `app:regulatory:sync [--dry-run]` | Installs the millésime files `config/regulatory/<année>.yaml`; only ever adds rows, never over an administrator's value. **Every deploy runs it** |
+| `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
+| `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
+| `app:test:parallel-databases` | **Test only.** Copies the migrated `peyra_test` into `peyra_test1`… for ParaTest (tests/README.md) |
+
+```console
 bin/shot /_design shot.png [width] [height]        # capture a page with headless Chrome (on the host)
 ```
 
@@ -82,7 +110,8 @@ public pages), and signs in with `PEYRA_SHOT_LOGIN=<login>` (`/_dev/login-as/<lo
 `PEYRA_SHOT_COOKIE="name=value"`; `PEYRA_SHOT_RAIL=collapsed` sets the rail cookie. A keyboard
 path is replayed and checked before the capture: `PEYRA_SHOT_FOCUS=<selector>` focuses an element,
 `PEYRA_SHOT_KEYS="text:prof.leroy,Tab,Enter"` presses real keys, `PEYRA_SHOT_EVAL=<js>` prints what
-an expression returns (awaited). The design gallery is <https://localhost:8143/_design> (with
+an expression returns (awaited); a Chrome that stops answering is given up after
+`PEYRA_SHOT_TIMEOUT` milliseconds (60 000). The design gallery is <https://localhost:8143/_design> (with
 `/_design/teacher` and `/_design/public`), development and test only: every Px component in every
 state, in both shells.
 
@@ -287,15 +316,18 @@ the firewall walks the chain and sends the person to the sign-in page instead.
 The fictitious directory `frankenphp/ldap/10-tree.ldif` (password **`peyra-dev`** for all;
 `PEYRA_ADMIN_LOGINS=prof.martin` in `.env.dev.local.example`):
 
-| Login | Name | Groups | Enters as |
-|---|---|---|---|
-| `prof.martin` | Jean-Pierre Martin | teacher, cg-1, cg-2 | teacher, **administrator** (bootstrap list) |
-| `prof.durand` | Sophie Durand | teacher, cg-1 | teacher |
-| `prof.leroy` | Marc Leroy | teacher, sio-1 | **refused** until authorised by name |
-| `lucas.bernard`, `manon.chevalier`, `theo.garnier`, `ines.morel`, `adam.roussel`, `chloe.fabre` | | student, cg-1 | students of first year |
-| `yasmine.haddad`, `louis.perret`, `camille.dufour`, `nathan.mercier`, `lea.boyer`, `sacha.lambert` | | student, cg-2 | students of second year |
-| `jules.martel` | Jules Martel | student, cg-1, cg-2 | student with two contradictory groups (« à placer », step 0.5) |
-| `enzo.petit` | Enzo Petit | student, sio-1 | **refused** |
+| Login | Name | Groups | Enters as | After `app:dev:school`, what it shows |
+|---|---|---|---|---|
+| `prof.martin` | Jean-Pierre Martin | teacher, cg-1, cg-2 | teacher, **administrator** (bootstrap list) | every class of both years; Paramètres › Administration |
+| `prof.durand` | Sophie Durand | teacher, cg-1 | teacher | « Mes classes » = BTS CG 1 2026-2027; Administration answers 404 |
+| `prof.leroy` | Marc Leroy | teacher, sio-1 | **refused** until authorised by name | the refusal of design-ux § 3.6, then entry once added |
+| `lucas.bernard`, `manon.chevalier`, `theo.garnier`, `ines.morel`, `adam.roussel`, `chloe.fabre` | Lucas Bernard, Manon Chevalier, Théo Garnier, Inès Morel, Adam Roussel, Chloé Fabre | student, cg-1 | students of first year | placed in BTS CG 1 2026-2027 at their first sign-in |
+| `yasmine.haddad`, `louis.perret`, `camille.dufour`, `nathan.mercier`, `lea.boyer`, `sacha.lambert` | Yasmine Haddad, Louis Perret, Camille Dufour, Nathan Mercier, Léa Boyer, Sacha Lambert | student, cg-2 | students of second year | placed in BTS CG 2 2026-2027 at their first sign-in |
+| `jules.martel` | Jules Martel | student, cg-1, cg-2 | student with two contradictory groups | « à placer », with the amber banner on « Mes dossiers » |
+| `enzo.petit` | Enzo Petit | student, sio-1 | **refused** | « Peyra est réservé aux étudiants et aux enseignants du BTS CG… » |
+
+A wrong password, or an unknown login, reads « Identifiant ou mot de passe incorrect. » for
+everybody. `/_dev/login-as/<login>` (development and test) skips the password, never the rule.
 
 The service account is `cn=svc-peyra,ou=service,dc=peyra,dc=lan`. After changing the tree:
 `docker compose rm -sf openldap && docker volume rm peyra_ldap_data && docker compose up -d openldap`.
@@ -343,7 +375,8 @@ Reach for these rather than re-implement them; each has its test.
   Thousands are U+202F, a unit follows U+00A0, a minus is U+2212. No ICU, no locale, no clock.
 - **Fields**: `Px:AmountInput` (display field + hidden cents, arithmetic on leaving the field) and
   `Px:DateInput` (« JJ/MM/AAAA » + hidden ISO day; `reference` is the dossier's date, never the
-  computer's: no `<input type="date">`). The server reads `DateValue::parse()`.
+  computer's: no `<input type="date">` nor `type="number"`, `NoNativeDateOrNumberFieldTest`). The
+  server reads `DateValue::parse()`.
 - **Readers**: `QueryValue`, `PostValue`, `FormValue` (+ `money()`), `JsonRequestPayload`
   (+ `date()`; no float), `ListPage::fromRequest($request, 'screen.name')` (25/50/100, 50 by
   default, remembered per screen in the session) with `<twig:Px:Pager … :sizes="true"/>`.
@@ -450,7 +483,7 @@ Reach for these rather than re-implement them; each has its test.
   correction and payroll are tested on reference cases of each millésime. ParaTest for the suite.
 - **CI** (GitHub Actions, one job, on every push to `staging` and every pull request): `cs-check`,
   `lint:yaml`, `lint:twig`, `lint:container`, PHPStan, migrations replayed from an empty database
-  then `doctrine:schema:validate`, the suite. No repository secret. A push touching only `**.md`
+  then `doctrine:schema:validate`, the suite through ParaTest, then once more in one process. No repository secret. A push touching only `**.md`
   may skip it — on the `push` trigger only, never on `pull_request`. Concurrency grouped by
   `github.head_ref || github.ref`.
 

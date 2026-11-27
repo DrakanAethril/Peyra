@@ -134,6 +134,10 @@ final class ClassPlacementTest extends WebTestCase
         $client->request('GET', '/teacher');
         self::assertAnySelectorTextContains('.px-card', 'BTS CG 2');
         $crawler = $client->request('GET', '/teacher/admin/classes/'.$cg2->getId());
+        $client->submit($crawler->filter('form[action*="/teachers/"][action$="/remove"]')->form());
+        $client->followRedirect();
+        self::assertSelectorTextContains('.px-statusbar', 'Jean-Pierre Martin n’enseigne plus en BTS CG 2.');
+        $crawler = $client->request('GET', '/teacher/admin/classes/'.$cg2->getId());
         $client->submit($crawler->filter('form[action$="/delete"]')->form());
         self::assertResponseRedirects('/teacher/admin/classes?year='.$year);
         self::assertSame(1, $this->classCount($client));

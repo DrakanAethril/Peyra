@@ -23,7 +23,7 @@
 
 {% block page %}
     {% if can_place %}
-        <twig:Px:Card title="Ajouter un étudiant" meta="déjà dans une autre classe de l’année, il change de classe ; ses dossiers ne bougent pas">
+        <twig:Px:Card title="Ajouter un étudiant" meta="un étudiant déjà dans une autre classe de l’année en change ; ses dossiers ne bougent pas">
             <form method="post" action="{{ path('app_teacher_class_add', {id: class.id}) }}" class="px-formline">
                 <input type="hidden" name="_token" value="{{ csrf_token('class-add-' ~ class.id) }}">
                 <twig:Px:Field id="add-student" label="Étudiant" :required="true" hint="Tapez deux lettres du nom ou de l’identifiant.">

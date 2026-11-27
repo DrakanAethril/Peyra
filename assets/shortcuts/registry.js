@@ -21,13 +21,17 @@ const KEY_NAMES = {
     Down: 'ArrowDown',
 };
 
-/** Shortcuts every screen answers, in the order the shortcut sheet lists them. */
+/**
+ * Shortcuts every screen answers, in the order the shortcut sheet lists them. `when` is a selector
+ * the page must hold for the shortcut to mean something there (the search Ctrl K opens, a bar of
+ * module tabs): the sheet never lists a key that would do nothing.
+ */
 export const GLOBAL_SHORTCUTS = [
-    { combo: 'Ctrl+K', label: 'Recherche globale' },
+    { combo: 'Ctrl+K', label: 'Recherche globale', when: '[data-px-shortcut~="Ctrl+K"]' },
     { combo: 'Alt+1', label: 'Entrées du menu, dans l’ordre (Alt 1 à Alt 0)' },
     { combo: 'Ctrl+B', label: 'Replier ou déplier le menu' },
-    { combo: 'Ctrl+Alt+ArrowLeft', label: 'Onglet précédent du module' },
-    { combo: 'Ctrl+Alt+ArrowRight', label: 'Onglet suivant du module' },
+    { combo: 'Ctrl+Alt+ArrowLeft', label: 'Onglet précédent du module', when: '.px-moduletabs a' },
+    { combo: 'Ctrl+Alt+ArrowRight', label: 'Onglet suivant du module', when: '.px-moduletabs a' },
     { combo: '?', label: 'Raccourcis de cet écran (aussi F1)' },
     { combo: 'Escape', label: 'Fermer le panneau ouvert' },
     { combo: 'F10', label: 'Enregistrer (aussi Ctrl S)' },

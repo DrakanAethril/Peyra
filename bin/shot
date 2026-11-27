@@ -12,7 +12,8 @@
  *   PEYRA_SHOT_LOGIN=prof.martin    visits /_dev/login-as/<login> first (development route,
  *                                   from step 0.4 onwards).
  * Other knobs: PEYRA_SHOT_BASE (another origin), PEYRA_SHOT_CHROME (the browser binary),
- * PEYRA_SHOT_RAIL=collapsed|expanded (the rail cookie), PEYRA_SHOT_WAIT (extra milliseconds).
+ * PEYRA_SHOT_RAIL=collapsed|expanded (the rail cookie), PEYRA_SHOT_WAIT (extra milliseconds),
+ * PEYRA_SHOT_TIMEOUT (milliseconds before giving up on a silent Chrome, 60000 by default).
  *
  * Replaying a keyboard path before the capture (step 0.4 onwards):
  *   PEYRA_SHOT_FOCUS="#login"       a CSS selector focused before the keys;
@@ -57,6 +58,14 @@ const browser = spawn(chrome, [
 ], { stdio: 'ignore' });
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+
+// A Chrome that stops answering (it happens, rarely, on a busy machine) must not hold a script
+// that captures a list of pages: give up after a minute and say so.
+const watchdog = setTimeout(() => {
+    console.error(`bin/shot: no answer from Chrome after 60 s (${url}).`);
+    browser.kill('SIGKILL');
+    process.exit(1);
+}, Number(process.env.PEYRA_SHOT_TIMEOUT ?? 60000));
 
 async function pageSocket() {
     for (let attempt = 0; attempt < 50; attempt++) {
@@ -188,7 +197,10 @@ try {
     console.error(`bin/shot: ${error.message}`);
     process.exitCode = 1;
 } finally {
+    clearTimeout(watchdog);
     browser.kill();
     await sleep(200);
     rmSync(profile, { recursive: true, force: true });
 }
+// The DevTools socket may still be closing: leave now rather than wait for it.
+process.exit(process.exitCode ?? 0);

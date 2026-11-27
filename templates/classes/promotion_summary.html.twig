@@ -39,24 +39,26 @@
                 </twig:block>
             </twig:Px:Card>
 
-            <twig:Px:Card :flush="true" title="Étudiant par étudiant">
-                <twig:Px:Table caption="Ce que devient chaque étudiant de {{ plan.source.label }}">
-                    <thead><tr><th scope="col">Nom</th><th scope="col">En {{ plan.next.schoolYear.label }}</th></tr></thead>
-                    <tbody>
-                        {% for line in plan.lines %}
-                            <tr{% if line.alreadyEnrolled %} class="is-dim"{% endif %}>
-                                <td>{{ line.student.sortName }}</td>
-                                <td>
-                                    {% if line.alreadyEnrolled %}Déjà en {{ line.alreadyEnrolled.schoolClass.name }}
-                                    {% elseif line.target %}{{ line.target == plan.next ? 'Passe en ' : (line.target.level == plan.source.level ? 'Redouble en ' : 'Va en ') }}{{ line.target.name }}
-                                    {% elseif line.choice.kind == 'departed' %}Sort de la filière
-                                    {% else %}Pas placé · « À placer »{% endif %}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </twig:Px:Table>
-            </twig:Px:Card>
+            {% if plan.lines is not empty %}
+                <twig:Px:Card :flush="true" title="Étudiant par étudiant">
+                    <twig:Px:Table caption="Ce que devient chaque étudiant de {{ plan.source.label }}">
+                        <thead><tr><th scope="col">Nom</th><th scope="col">En {{ plan.next.schoolYear.label }}</th></tr></thead>
+                        <tbody>
+                            {% for line in plan.lines %}
+                                <tr{% if line.alreadyEnrolled %} class="is-dim"{% endif %}>
+                                    <td>{{ line.student.sortName }}</td>
+                                    <td>
+                                        {% if line.alreadyEnrolled %}Déjà en {{ line.alreadyEnrolled.schoolClass.name }}
+                                        {% elseif line.target %}{{ line.target == plan.next ? 'Passe en ' : (line.target.level == plan.source.level ? 'Redouble en ' : 'Va en ') }}{{ line.target.name }}
+                                        {% elseif line.choice.kind == 'departed' %}Sort de la filière
+                                        {% else %}Pas placé · « À placer »{% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                </twig:Px:Card>
+            {% endif %}
         </div>
     </div>
 {% endblock %}

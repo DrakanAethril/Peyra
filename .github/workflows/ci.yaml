@@ -146,6 +146,12 @@ jobs:
       - name: Run the test suite
         run: docker compose exec -T -e APP_ENV=test php vendor/bin/paratest --processes=4
 
+      # The same suite in one process, on the database the migrations were replayed into: ParaTest
+      # gives every file its own process, so a test that leaks global state (an environment
+      # variable unset, a static) breaks the files after it only here. Half a minute.
+      - name: Run the test suite in one process
+        run: docker compose exec -T -e APP_ENV=test -e TEST_TOKEN=ci php bin/phpunit
+
       - name: Dump service logs on failure
         if: failure()
         run: docker compose logs --tail=200

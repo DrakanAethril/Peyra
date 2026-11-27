@@ -49,7 +49,7 @@ final class AdministrationTest extends WebTestCase
         $this->add($client, 'prof.leroy');
         self::assertResponseRedirects('/teacher/admin/teachers');
         $crawler = $client->followRedirect();
-        self::assertSelectorTextContains('.px-statusbar', '« prof.leroy » ajouté aux enseignants de la filière.');
+        self::assertSelectorTextContains('.px-statusbar', '« prof.leroy » fait désormais partie des enseignants de la filière.');
         $row = $crawler->filter('tbody tr')->reduce(static fn ($tr): bool => str_contains($tr->text(), 'Marc Leroy'));
         self::assertStringContainsString('Autorisé nommément', $row->text());
         self::assertStringContainsString('par Jean-Pierre Martin', $row->text());
@@ -68,6 +68,7 @@ final class AdministrationTest extends WebTestCase
 
         self::assertResponseRedirects('/teacher/admin/teachers');
         $crawler = $client->followRedirect();
+        self::assertSelectorTextContains('.px-statusbar', 'Marc Leroy ne fait plus partie des enseignants de la filière.');
         self::assertStringNotContainsString('Marc Leroy', $crawler->filter('tbody')->text());
 
         $crawler = $client->request('GET', '/teacher/admin/journal');
@@ -100,7 +101,7 @@ final class AdministrationTest extends WebTestCase
         $client->submit($form);
         self::assertResponseRedirects('/teacher/admin/administrators');
         $crawler = $client->followRedirect();
-        self::assertSelectorTextContains('.px-statusbar', 'Sophie Durand est désormais administrateur.');
+        self::assertSelectorTextContains('.px-statusbar', 'Sophie Durand administre désormais Peyra.');
         $durand = $crawler->filter('tbody tr')->eq(1);
         self::assertStringContainsString('Sophie Durand', $durand->text());
         self::assertStringContainsString('Jean-Pierre Martin', $durand->text());
@@ -110,6 +111,7 @@ final class AdministrationTest extends WebTestCase
         $client->submit($durand->filter('form')->form());
         self::assertResponseRedirects('/teacher/admin/administrators');
         $crawler = $client->followRedirect();
+        self::assertSelectorTextContains('.px-statusbar', 'Sophie Durand n’administre plus Peyra.');
         self::assertCount(1, $crawler->filter('tbody tr'));
 
         $actions = array_map(static fn (AdministrationEvent $event): AdministrationAction => $event->getAction(), $client->getContainer()->get('doctrine')->getRepository(AdministrationEvent::class)->findBy([], ['id' => 'ASC']));

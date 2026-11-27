@@ -180,8 +180,9 @@ export default class extends Controller {
             list.closest('section').hidden = list.childElementCount === 0;
         }
         const globals = sheet.querySelector('[data-px-shortcut-list="global"]');
-        if (globals && globals.childElementCount === 0) {
-            globals.replaceChildren(...GLOBAL_SHORTCUTS.flatMap(({ combo, label }) => this.row(combo, label)));
+        if (globals) {
+            const answered = GLOBAL_SHORTCUTS.filter(({ when }) => !when || document.querySelector(when) !== null);
+            globals.replaceChildren(...answered.flatMap(({ combo, label }) => this.row(combo, label)));
         }
         sheet.dispatchEvent(new CustomEvent('px:open'));
     }

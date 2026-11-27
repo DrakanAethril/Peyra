@@ -58,6 +58,16 @@ final class PromotionPlanTest extends TestCase
         self::assertSame('Aucun changement : tous les étudiants sont déjà inscrits dans l’année.', $plan->sentence());
     }
 
+    public function testAClassWithoutStudentsSaysSoRatherThanThatEverybodyIsEnrolled(): void
+    {
+        $cg1 = F::schoolClass(10, F::year(1, 2026), 'CG1', ClassLevel::First);
+        $cg2 = F::schoolClass(20, F::year(2, 2027), 'CG2', ClassLevel::Second);
+        $plan = new PromotionPlan($cg1, $cg2, []);
+
+        self::assertTrue($plan->isEmpty());
+        self::assertSame('Personne dans cette classe : aucun étudiant à faire passer.', $plan->sentence());
+    }
+
     public function testASecondYearClassGoingToAnotherSecondYearClassDoesNotRepeat(): void
     {
         $cg1 = F::schoolClass(10, F::year(1, 2026), 'CG1', ClassLevel::First);
