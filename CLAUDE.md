@@ -11,8 +11,9 @@ none of them does: distribute a dossier to a class, generate the documents, foll
 correct by comparison with an answer key, track the référentiel's activities, prefill the passeport
 professionnel. The reference is the BTS CG référentiel, processes P1 to P7.
 
-**Status: designed, not built.** Nothing is scaffolded yet. Deployed for Institution Beaupeyrat,
-which will use it — the application is not theirs (see Licensing).
+**Status: under construction**, lot by lot, by autonomous agents following
+`design/validated/plan/` (start with its `README.md`, then `ETAT.md` for the step in hand). Deployed
+for Institution Beaupeyrat, which will use it — the application is not theirs (see Licensing).
 
 **The conception lives in `design/validated/`**, which is gitignored and never committed:
 
@@ -22,6 +23,8 @@ which will use it — the application is not theirs (see Licensing).
 - `pgi-pedagogique-screens.html` — the page written for the teachers who are the project's référents
   (mock-ups, comparison with the market tools, lots, decisions). It is a build output: edit
   `source/` and run `python3 -I design/validated/source/build.py`, never the HTML itself.
+- `design-ux.md` and `design-ui.md` — the UX and UI specifications arbitrated from the mock-ups.
+- `plan/` — the build plan: how to work, one file per lot, progress, decisions, points to verify.
 - `logos/` — the logo board (the seal was chosen); `references/` — the documents the conception
   cites.
 
@@ -33,8 +36,8 @@ Formatool », Formatool's `CLAUDE.md` holds the long version and the reason. Say
 
 ## Stack (planned, conception § 8)
 
-Symfony 8.1, PHP ≥ 8.5, Doctrine ORM 3, **MySQL 8 in dev and MariaDB in production** — so migrations
-are portable SQL (no `CAST(… AS JSON)`, nothing MySQL-only). FrankenPHP in worker mode, scaffolded
+Symfony 8.1, PHP ≥ 8.5, Doctrine ORM 3, **MariaDB in dev as in production** — migrations are
+portable SQL (no `CAST(… AS JSON)`, nothing MySQL-only). FrankenPHP in worker mode, scaffolded
 from `dunglas/symfony-docker` as Formatool was. Stimulus, Turbo and AssetMapper; Gotenberg for PDFs
 (generated documents, statements, payslips, tax return); Mercure for the live follow-up; Symfony
 Scheduler and a `worker` service for background jobs; S3 for uploaded documents (flysystem, never
@@ -103,7 +106,9 @@ a **404, never a 403**.
   English word would mislead (dossier, écriture, brouillard, lettrage, liasse…) — fix the list early
   and keep to it. Screen names quoted inside an English comment stay French.
 - **URLs and route names are English.**
-- If translations are introduced, keys are semantic camelCase, never the French sentence.
+- **No translation layer**: French text is written directly in templates and in enums' `label()`.
+- **Layout**: Symfony's by-type folders with one sub-namespace per domain
+  (`src/Entity/Accounting/`, `src/Service/Accounting/`, `templates/accounting/`…).
 - **Business rules belong in `src/Service/`**, not in controllers. When an area grows, add a
   controller rather than grow one.
 - **Type at the boundary, never cast further in.** Recreate Formatool's readers rather than casting
