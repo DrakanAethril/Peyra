@@ -20,18 +20,20 @@
         <form method="post" action="{{ path('app_admin_administrators_designate') }}" class="px-formline">
             <input type="hidden" name="_token" value="{{ csrf_token('admin-administrators-designate') }}">
             <twig:Px:Field id="designate" label="Enseignant" :required="true" :error="error" hint="Tapez deux lettres du nom ou de l’identifiant.">
-                <div class="px-picker" data-controller="user-picker" data-user-picker-url-value="{{ path('app_admin_administrators_candidates') }}">
-                    <input type="text" id="designate" name="user_label" value="{{ designate_label }}" class="px-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="designate-list"
-                           aria-describedby="designate_hint{{ error ? ' designate_error' }}"{% if error %} aria-invalid="true" autofocus{% endif %} autocomplete="off" required
-                           data-user-picker-target="input" data-action="input->user-picker#search keydown->user-picker#keydown">
-                    <input type="hidden" name="user" value="" data-user-picker-target="value">
-                    <div class="px-popover px-picker__panel" data-user-picker-target="panel" hidden>
-                        <ul class="px-picker__list" id="designate-list" role="listbox" aria-label="Enseignants" data-user-picker-target="list"></ul>
-                        <p class="px-picker__foot"><twig:Px:Kbd combo="ArrowUp"/><twig:Px:Kbd combo="ArrowDown"/> choisir <twig:Px:Kbd combo="Enter"/> valider <twig:Px:Kbd combo="Escape"/> fermer</p>
+                <div class="px-formline__control">
+                    <div class="px-picker" data-controller="user-picker" data-user-picker-url-value="{{ path('app_admin_administrators_candidates') }}">
+                        <input type="text" id="designate" name="user_label" value="{{ designate_label }}" class="px-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="designate-list"
+                               aria-describedby="designate_hint{{ error ? ' designate_error' }}"{% if error %} aria-invalid="true" autofocus{% endif %} autocomplete="off" required
+                               data-user-picker-target="input" data-action="input->user-picker#search keydown->user-picker#keydown">
+                        <input type="hidden" name="user" value="" data-user-picker-target="value">
+                        <div class="px-popover px-picker__panel" data-user-picker-target="panel" hidden>
+                            <ul class="px-picker__list" id="designate-list" role="listbox" aria-label="Enseignants" data-user-picker-target="list"></ul>
+                            <p class="px-picker__foot"><twig:Px:Kbd combo="ArrowUp"/><twig:Px:Kbd combo="ArrowDown"/> choisir <twig:Px:Kbd combo="Enter"/> valider <twig:Px:Kbd combo="Escape"/> fermer</p>
+                        </div>
                     </div>
+                    <twig:Px:Button type="submit" variant="primary" icon="shield-check">Désigner</twig:Px:Button>
                 </div>
             </twig:Px:Field>
-            <twig:Px:Button type="submit" variant="primary" icon="shield-check">Désigner</twig:Px:Button>
         </form>
     </twig:Px:Card>
 
@@ -82,4 +84,4 @@
     </twig:Px:Card>
 {% endblock %}
 
-{% block facts %}<b>{{ entries|length }}</b> administrateur{{ entries|length > 1 ? 's' }}{% endblock %}
+{% block facts %}<span>Administrateurs · <b>{{ entries|length }}</b></span>{% endblock %}

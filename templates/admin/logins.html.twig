@@ -38,7 +38,7 @@
                 <tbody>
                     {% for event in events %}
                         <tr>
-                            <td class="px-u-num">{{ event.occurredAt|date('d/m/Y H:i:s') }}</td>
+                            <td>{{ event.occurredAt|date('d/m/Y H:i:s') }}</td>
                             <td class="px-u-code">{{ event.login }}</td>
                             <td>{{ event.displayName ?? '—' }}</td>
                             <td><twig:Px:Badge :of="event.outcome"/></td>
@@ -48,8 +48,8 @@
                 </tbody>
             </twig:Px:Table>
         {% endif %}
-        <twig:block name="foot"><twig:Px:Pager :total="total" :perPage="per_page" :page="page"/></twig:block>
+        <twig:Px:Pager :total="total" :perPage="per_page" :page="page"/>
     </twig:Px:Card>
 {% endblock %}
 
-{% block facts %}<b>{{ total }}</b> connexion{{ total > 1 ? 's' }}{% endblock %}
+{% block facts %}<span>Lignes · <b>{{ total }}</b></span>{% endblock %}

@@ -19,7 +19,7 @@
 {% endblock %}
 
 {% block status %}
-    {%- for message in app.flashes('status') %}{{ message }}{% else %}{{ block('facts') }}{% endfor -%}
+    {%- for message in app.flashes('status') %}<span>{{ message }}</span>{% else %}{{ block('facts') }}{% endfor -%}
 {% endblock %}
 
 {% block facts %}{% endblock %}

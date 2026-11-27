@@ -20,4 +20,4 @@
     </twig:Px:Card>
 {% endblock %}
 
-{% block status %}{{ app.user.displayName }}{% if is_granted('ROLE_ADMIN') %} · <b>administrateur</b>{% endif %}{% endblock %}
+{% block status %}<span>{{ app.user.displayName }}{% if is_granted('ROLE_ADMIN') %} · <b>administrateur</b>{% endif %}</span>{% endblock %}

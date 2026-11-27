@@ -14,6 +14,14 @@
  * Other knobs: PEYRA_SHOT_BASE (another origin), PEYRA_SHOT_CHROME (the browser binary),
  * PEYRA_SHOT_RAIL=collapsed|expanded (the rail cookie), PEYRA_SHOT_WAIT (extra milliseconds).
  *
+ * Replaying a keyboard path before the capture (step 0.4 onwards):
+ *   PEYRA_SHOT_FOCUS="#login"       a CSS selector focused before the keys;
+ *   PEYRA_SHOT_KEYS="Tab,Tab,text:prof.leroy,Enter"  real key presses, in order, comma-separated:
+ *                                   a key name (Tab, Enter, Escape, ArrowDown, F10…), with
+ *                                   Ctrl+ / Alt+ / Shift+ prefixes, or `text:` for typed text;
+ *   PEYRA_SHOT_EVAL="…"             a JavaScript expression run in the page after the keys
+ *                                   (awaited when it returns a promise); its value is printed.
+ *
  * Plain Node (22 or later, global WebSocket) speaking the DevTools protocol: no dependency.
  */
 import { spawn } from 'node:child_process';
@@ -102,6 +110,25 @@ function client(socket) {
     };
 }
 
+const KEY_CODES = { Backspace: 8, Tab: 9, Enter: 13, Escape: 27, Space: 32, End: 35, Home: 36, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, F1: 112, F4: 115, F7: 118, F8: 119, F10: 121 };
+
+/** One real key press (or typed text) through the DevTools protocol. */
+async function press(cdp, step) {
+    if (step.startsWith('text:')) {
+        await cdp.send('Input.insertText', { text: step.slice(5) });
+
+        return;
+    }
+    const parts = step.split('+');
+    const key = parts.pop() || '+';
+    const modifiers = (parts.includes('Alt') ? 1 : 0) | (parts.includes('Ctrl') ? 2 : 0) | (parts.includes('Shift') ? 8 : 0);
+    const code = KEY_CODES[key] ?? key.toUpperCase().charCodeAt(0);
+    const common = { key: key === 'Space' ? ' ' : key, modifiers, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code };
+    const text = key === 'Enter' ? '\r' : (key.length === 1 && modifiers === 0 ? key : undefined);
+    await cdp.send('Input.dispatchKeyEvent', { type: text ? 'keyDown' : 'rawKeyDown', ...common, ...(text ? { text } : {}) });
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', ...common });
+}
+
 async function visit(cdp, address) {
     const loaded = cdp.once('Page.loadEventFired');
     await cdp.send('Page.navigate', { url: address });
@@ -135,6 +162,18 @@ try {
     await visit(cdp, url);
     await cdp.send('Runtime.evaluate', { expression: 'document.fonts.ready.then(() => true)', awaitPromise: true });
     await sleep(Number(process.env.PEYRA_SHOT_WAIT ?? 300));
+    if (process.env.PEYRA_SHOT_FOCUS) {
+        await cdp.send('Runtime.evaluate', { expression: `document.querySelector(${JSON.stringify(process.env.PEYRA_SHOT_FOCUS)})?.focus()` });
+    }
+    for (const step of (process.env.PEYRA_SHOT_KEYS ?? '').split(',').filter((key) => key !== '')) {
+        await press(cdp, step);
+        await sleep(120);
+    }
+    if (process.env.PEYRA_SHOT_EVAL) {
+        const { result } = await cdp.send('Runtime.evaluate', { expression: process.env.PEYRA_SHOT_EVAL, awaitPromise: true, returnByValue: true });
+        console.log(JSON.stringify(result.value ?? null));
+        await sleep(300);
+    }
 
     let clip;
     if (height === 0) {

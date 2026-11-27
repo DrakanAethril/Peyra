@@ -20,9 +20,11 @@
         <form method="post" action="{{ path('app_admin_teachers_add') }}" class="px-formline">
             <input type="hidden" name="_token" value="{{ csrf_token('admin-teachers-add') }}">
             <twig:Px:Field id="login" label="Identifiant de l’annuaire" :required="true" :error="error" hint="Vérifié dans l’annuaire à l’ajout.">
-                <twig:Px:Input id="login" value="{{ login }}" :required="true" :error="error" hint="1" autocomplete="off" autocapitalize="none" spellcheck="false" :autofocus="error is not null"/>
+                <div class="px-formline__control">
+                    <twig:Px:Input id="login" value="{{ login }}" :required="true" :error="error" hint="1" autocomplete="off" autocapitalize="none" spellcheck="false" :autofocus="error is not null"/>
+                    <twig:Px:Button type="submit" variant="primary" icon="user-plus">Ajouter</twig:Px:Button>
+                </div>
             </twig:Px:Field>
-            <twig:Px:Button type="submit" variant="primary" icon="user-plus">Ajouter</twig:Px:Button>
         </form>
     </twig:Px:Card>
 
@@ -62,7 +64,7 @@
                                 {% if row.removable %}
                                     <form method="post" action="{{ path('app_admin_teachers_revoke', {id: row.authorization.id}) }}">
                                         <input type="hidden" name="_token" value="{{ csrf_token('admin-teachers-revoke-' ~ row.authorization.id) }}">
-                                        <twig:Px:ConfirmButton label="Retirer" confirmLabel="Il ne pourra plus se connecter : retirer" size="sm" aria-describedby="revoke-note"/>
+                                        <twig:Px:ConfirmButton label="Retirer" confirmLabel="Confirmer le retrait" size="sm" aria-describedby="revoke-note"/>
                                     </form>
                                 {% endif %}
                             </td>
@@ -72,9 +74,11 @@
             </twig:Px:Table>
         {% endif %}
         <twig:block name="foot">
-            <p class="px-u-muted" id="revoke-note">Retirer un enseignant l’empêche de se connecter ; ses modèles, ses missions et ses corrections restent.</p>
+            {% if entries|filter(r => r.removable) is not empty %}
+                <p class="px-u-muted" id="revoke-note">Retirer un enseignant l’empêche de se connecter ; ses modèles, ses missions et ses corrections restent.</p>
+            {% endif %}
         </twig:block>
     </twig:Px:Card>
 {% endblock %}
 
-{% block facts %}<b>{{ entries|filter(r => r.removable)|length }}</b> autorisé{{ entries|filter(r => r.removable)|length > 1 ? 's' }} nommément{% endblock %}
+{% block facts %}{% set named = entries|filter(r => r.removable)|length %}<span>Autorisés nommément · <b>{{ named }}</b></span><span>Admis en tout · <b>{{ entries|length }}</b></span>{% endblock %}

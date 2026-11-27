@@ -9,6 +9,11 @@
         border-radius: var(--px-radius-lg);
     }
 
+    /* A card holding a picker lets its list out: the list is anchored under the field. */
+    .px-card:has(.px-picker) {
+        overflow: visible;
+    }
+
     .px-card__head {
         display: flex;
         align-items: center;
