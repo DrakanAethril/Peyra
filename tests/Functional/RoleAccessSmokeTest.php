@@ -6,8 +6,10 @@ namespace App\Tests\Functional;
 
 use App\Entity\Accounting\Journal;
 use App\Entity\Identity\User;
+use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\JournalType;
 use App\Enum\Dossier\DossierKind;
+use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Identity\SchoolYearRepository;
 use App\Service\Dossier\DossierContext;
@@ -138,9 +140,9 @@ final class RoleAccessSmokeTest extends WebTestCase
     }
 
     /**
-     * A student's dossier (lot 1, steps 1.1 and 1.2a): ines.morel holds it, prof.durand teaches her
+     * A student's dossier (lot 1, steps 1.1, 1.2a and 1.2b): ines.morel holds it, prof.durand teaches her
      * class this year, prof.martin - an administrator - does not: no administrator enters a
-     * student's dossier outside their classes. Its plan of accounts and its journals included.
+     * student's dossier outside their classes. Its plan of accounts, journals and third parties included.
      */
     public function testTheScreensOfADossier(): void
     {
@@ -165,6 +167,9 @@ final class RoleAccessSmokeTest extends WebTestCase
         $client->getContainer()->get(DossierContext::class)->within($saved, static function () use ($client, $saved): void {
             $bank = $client->getContainer()->get(AccountRepository::class)->findOneByNumber($saved, '512100');
             $client->getContainer()->get(EntityManagerInterface::class)->persist(new Journal($saved, 'BQ1', 'Crédit Coopératif', JournalType::Bank, $bank));
+            $scierie = new ThirdParty($saved, 'F0001', ThirdPartyKind::Supplier, 'Scierie du Haut-Forez');
+            $scierie->keepOn($client->getContainer()->get(AccountRepository::class)->findOneByNumber($saved, '401000'), '401SCIE');
+            $client->getContainer()->get(EntityManagerInterface::class)->persist($scierie);
             $client->getContainer()->get(EntityManagerInterface::class)->flush();
         });
         $dossier = (int) $saved->getId();
@@ -175,6 +180,9 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/accounting/accounts', '/accounting/accounts?class=6&q=achats', '/accounting/accounts/601000',
             '/accounting/accounts/new', '/accounting/accounts/import', '/accounting/accounts/export.csv',
             '/accounting/accounts/search?q=51', '/accounting/journals', '/accounting/journals/new', '/accounting/journals/BQ1',
+            '/accounting/third-parties', '/accounting/third-parties?kind=supplier&q=scie', '/accounting/third-parties/F0001',
+            '/accounting/third-parties/new', '/accounting/third-parties/import', '/accounting/third-parties/export.csv',
+            '/accounting/accounts/search?q=401S',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
             $actual = [];

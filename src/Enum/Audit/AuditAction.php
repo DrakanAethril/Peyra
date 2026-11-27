@@ -49,6 +49,18 @@ enum AuditAction: string
     /** A journal deleted. */
     case JournalDeleted = 'accounting.journal_deleted';
 
+    /** A third party created. */
+    case ThirdPartyCreated = 'third_party.created';
+
+    /** A third party changed (any field of its fiche). */
+    case ThirdPartyChanged = 'third_party.changed';
+
+    /** A third party deleted. */
+    case ThirdPartyDeleted = 'third_party.deleted';
+
+    /** Third parties imported from a CSV file. */
+    case ThirdPartiesImported = 'third_party.imported';
+
     public function label(): string
     {
         return match ($this) {
@@ -65,6 +77,10 @@ enum AuditAction: string
             self::JournalCreated => 'Journal créé',
             self::JournalChanged => 'Journal modifié',
             self::JournalDeleted => 'Journal supprimé',
+            self::ThirdPartyCreated => 'Tiers créé',
+            self::ThirdPartyChanged => 'Tiers modifié',
+            self::ThirdPartyDeleted => 'Tiers supprimé',
+            self::ThirdPartiesImported => 'Tiers importés',
         };
     }
 }

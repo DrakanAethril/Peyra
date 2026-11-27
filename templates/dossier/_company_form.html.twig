@@ -3,7 +3,7 @@
  # field). Posted to the same address; F10 saves (the page head's button).
  #}
 {% set company_choices = company_options() %}
-<form method="post" action="{{ path('app_dossier_company', {dossier: dossier.id}) }}" class="px-stack" id="company-form" novalidate>
+<form method="post" action="{{ path('app_dossier_company', {dossier: dossier.id}) }}" class="px-stack" id="company-form" novalidate data-controller="focus-error">
     <input type="hidden" name="_token" value="{{ csrf_token('dossier-company-' ~ dossier.id) }}">
     {% if draft.errors is not empty %}
         <twig:Px:Alert tone="danger">La fiche n’est pas enregistrée : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>

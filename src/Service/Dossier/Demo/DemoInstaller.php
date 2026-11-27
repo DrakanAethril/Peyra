@@ -9,6 +9,7 @@ use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\SchoolYear;
 use App\Entity\Identity\User;
+use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Audit\AuditAction;
 use App\Enum\Dossier\DossierKind;
@@ -20,6 +21,8 @@ use App\Service\Accounting\Chart\ReferenceCharts;
 use App\Service\Audit\AuditTrail;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Exercises;
+use App\Service\ThirdParty\ThirdPartyRules;
+use App\Service\ThirdParty\ThirdPartySheet;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -73,6 +76,7 @@ final readonly class DemoInstaller
     {
         $file = DemoCompanyFile::read($this->directory.'/company.yaml');
         $chartFile = DemoChartFile::read($this->directory);
+        $thirdPartyFile = DemoThirdPartyFile::read($this->directory.'/third_parties.yaml');
         $dossier = new Dossier($kind, $file->company, $file->dossierDate, $owner, $year, $at, null);
         $dossier->comesFrom($template, null);
         $this->entityManager->persist($dossier);
@@ -89,6 +93,8 @@ final readonly class DemoInstaller
         $this->chartInstaller->install($dossier, $this->charts->forExerciseStartingOn($current ?? $file->dossierDate), $actor);
         $this->entityManager->flush();
         $this->context->within($dossier, fn () => $this->installChart($dossier, $chartFile));
+        $this->entityManager->flush();
+        $this->context->within($dossier, fn () => $this->installThirdParties($dossier, $thirdPartyFile));
         $this->auditTrail->record(
             AuditAction::DossierCreated,
             $actor,
@@ -100,6 +106,31 @@ final readonly class DemoInstaller
         $this->entityManager->flush();
 
         return $dossier;
+    }
+
+    /** Its third parties, each checked as the form checks it: a fault names the code and installs nothing. */
+    private function installThirdParties(Dossier $dossier, DemoThirdPartyFile $file): void
+    {
+        $codes = [];
+        $auxiliaries = [];
+        foreach ($file->drafts as $draft) {
+            $fields = ThirdPartyRules::check(
+                $draft,
+                fn (string $number) => $this->accounts->findOneByNumber($dossier, $number),
+                static fn (string $code): ?string => $codes[$code] ?? null,
+                static fn (string $code): ?string => $auxiliaries[$code] ?? null,
+            );
+            if (null === $fields) {
+                throw new \InvalidArgumentException(\sprintf('third_parties.yaml : %s : %s', $draft->code, implode(' ', $draft->errors)));
+            }
+            $codes[$draft->code] = $draft->name;
+            if (null !== $fields->auxiliaryCode) {
+                $auxiliaries[$fields->auxiliaryCode] = $draft->name;
+            }
+            $thirdParty = new ThirdParty($dossier, $draft->code, $fields->kind, $draft->name);
+            ThirdPartySheet::write($thirdParty, $draft, $fields);
+            $this->entityManager->persist($thirdParty);
+        }
     }
 
     /** The demonstration's own accounts over the reference copy, then its journals. */

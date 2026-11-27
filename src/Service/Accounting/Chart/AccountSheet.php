@@ -12,6 +12,7 @@ use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Audit\AuditAction;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\JournalRepository;
+use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Audit\AuditTrail;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -31,6 +32,7 @@ final readonly class AccountSheet
         private JournalRepository $journals,
         private ReferenceCharts $charts,
         private AuditTrail $auditTrail,
+        private ThirdPartyRepository $thirdParties,
     ) {
     }
 
@@ -57,6 +59,11 @@ final readonly class AccountSheet
                         $draft->errors['number'] = \sprintf('Ce compte est la contrepartie du journal %s : il reste un compte de %s.', $journal->getCode(), mb_strtolower($nature->label()));
                     }
                 }
+                foreach ($this->thirdParties->findByAccount($account) as $thirdParty) {
+                    if (!isset($draft->errors['number']) && !\in_array(AccountNature::of($draft->number), $thirdParty->getKind()->accountNatures(), true)) {
+                        $draft->errors['number'] = \sprintf('Le tiers %s est tenu sur ce compte : %s', $thirdParty->getCode(), lcfirst($thirdParty->getKind()->accountRule()));
+                    }
+                }
             }
             $draft->warning = $this->outsideChart($dossier, $draft->number);
         }
@@ -69,6 +76,11 @@ final readonly class AccountSheet
 
         if ($draft->collective && null === $fault && !AccountNumber::mayBeCollective($draft->number)) {
             $draft->errors['collective'] = 'Seul un compte de tiers (classe 4) est collectif.';
+        } elseif (null !== $account && $draft->collective !== $account->isCollective()) {
+            $carried = \count($this->thirdParties->findByAccount($account));
+            if ($carried > 0) {
+                $draft->errors['collective'] = self::collectiveRefusal($account->isCollective(), $carried);
+            }
         }
 
         return [] === $draft->errors;
@@ -126,12 +138,33 @@ final readonly class AccountSheet
         return true;
     }
 
+    /**
+     * Why an account that carries third parties keeps its « collectif » box as it is: their
+     * auxiliary codes exist because it is collective, and a general account has none.
+     */
+    public static function collectiveRefusal(bool $collective, int $carried): string
+    {
+        if ($collective) {
+            return 1 === $carried
+                ? 'Ce compte porte un tiers et son code auxiliaire : il reste collectif.'
+                : \sprintf('Ce compte porte %d tiers et leurs codes auxiliaires : il reste collectif.', $carried);
+        }
+
+        return \sprintf('Ce compte porte %s sans code auxiliaire : il reste un compte général.', 1 === $carried ? 'un tiers' : $carried.' tiers');
+    }
+
     /** Why the account may not leave the plan, or null when it may. */
     public function deletionRefusal(Account $account): ?string
     {
         $journals = $this->journals->findByCounterpart($account);
         if ([] !== $journals) {
             return \sprintf('Ce compte est la contrepartie du journal %s : changez d’abord la contrepartie du journal.', $journals[0]->getCode());
+        }
+        $thirdParties = $this->thirdParties->findByAccount($account);
+        if ([] !== $thirdParties) {
+            return 1 === \count($thirdParties)
+                ? \sprintf('Ce compte porte le tiers %s : placez-le d’abord sur un autre compte.', $thirdParties[0]->getCode())
+                : \sprintf('Ce compte porte %d tiers (%s…) : placez-les d’abord sur un autre compte.', \count($thirdParties), $thirdParties[0]->getCode());
         }
 
         return null;

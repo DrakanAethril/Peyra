@@ -41,7 +41,7 @@
 
     <div class="px-split px-split--even">
         {% if can_edit %}
-            <form method="post" action="{{ account ? path('app_accounting_account', {dossier: dossier.id, number: account.number}) : path('app_accounting_account_new', {dossier: dossier.id}) }}" id="{{ form_id }}" novalidate>
+            <form method="post" action="{{ account ? path('app_accounting_account', {dossier: dossier.id, number: account.number}) : path('app_accounting_account_new', {dossier: dossier.id}) }}" id="{{ form_id }}" novalidate data-controller="focus-error">
                 <input type="hidden" name="_token" value="{{ csrf_token(account ? 'dossier-account-' ~ account.id : 'dossier-account-new-' ~ dossier.id) }}">
                 <twig:Px:Card title="Compte">
                     <div class="px-fieldgrid">
@@ -76,6 +76,9 @@
                     <dt>Classe</dt><dd>{{ shown_number|first }}{% if class_label %} · {{ class_label }}{% endif %}</dd>
                     <dt>Nature</dt><dd>{{ nature.label }}</dd>
                     <dt>Compte du plan</dt><dd>{% if root %}<span class="px-u-code">{{ root.number }}</span> · {{ root.label }}{% else %}<span class="px-u-muted">aucun compte du plan de référence</span>{% endif %}</dd>
+                    {% if third_party_count > 0 %}
+                        <dt>Tiers</dt><dd><a class="px-link" href="{{ path('app_third_parties', {dossier: dossier.id, account: account.number}) }}">{{ third_party_count }} {{ third_party_count > 1 ? 'tiers tenus' : 'tiers tenu' }} sur ce compte</a></dd>
+                    {% endif %}
                     {% if counterpart_of is not empty %}
                         <dt>Contrepartie de</dt><dd>{% for journal in counterpart_of %}<a class="px-link px-u-code" href="{{ path('app_accounting_journal', {dossier: dossier.id, code: journal.code}) }}">{{ journal.code }}</a> {{ journal.label }}{{ not loop.last ? ', ' : '' }}{% endfor %}</dd>
                     {% endif %}

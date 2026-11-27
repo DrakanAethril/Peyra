@@ -1,0 +1,158 @@
+{#
+ # The fiche of a third party (gabarit F): identity, account, details and payment terms, four
+ # cards one under the other, saved with F10. Its account is picked with F4 among the third parties'
+ # accounts; on a collective account its auxiliary code is given when left empty. Whoever only
+ # reads sees the facts alone. A due date is shown at the dossier's date, never the computer's.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set settings_current = 'third_parties' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set dossier_title = third_party ? 'Tiers ' ~ third_party.code : 'Nouveau tiers' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}, {combo: 'F4', verb: 'Liste des comptes'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ third_party ? third_party.code ~ ' · ' ~ third_party.name : 'Nouveau tiers' }}" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_accounts', {dossier: dossier.id})},
+        {label: 'Tiers', href: path('app_third_parties', {dossier: dossier.id})},
+        {label: third_party ? third_party.code : 'Nouveau tiers', href: third_party ? path('app_third_party', {dossier: dossier.id, code: third_party.code}) : path('app_third_party_new', {dossier: dossier.id})},
+    ]">
+        <twig:block name="badge">{% if third_party %} <twig:Px:Badge :of="third_party.kind"/>{% endif %}</twig:block>
+        <twig:block name="actions">
+            {% if can_edit %}
+                {% if third_party %}<twig:Px:ConfirmButton label="Supprimer le tiers" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="third-party-delete"/>{% endif %}
+                <twig:Px:Button type="submit" variant="primary" form="third-party-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_settings_tabs.html.twig') }}
+
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">Le tiers n’est pas enregistré : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+
+    {% if can_edit %}
+        <form method="post" action="{{ third_party ? path('app_third_party', {dossier: dossier.id, code: third_party.code}) : path('app_third_party_new', {dossier: dossier.id}) }}" id="third-party-form" novalidate data-controller="focus-error">
+            <input type="hidden" name="_token" value="{{ csrf_token(third_party ? 'third-party-' ~ third_party.id : 'third-party-new-' ~ dossier.id) }}">
+            <div class="px-stack">
+                <twig:Px:Card title="Identité">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="code" label="Code" :required="true" hint="C… client, F… fournisseur, O… autre." :error="draft.error('code')">
+                            <twig:Px:Input id="code" value="{{ draft.code }}" :required="true" hint="1" :error="draft.error('code')" class="px-u-code" maxlength="12" autocomplete="off" spellcheck="false" autofocus/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="kind" label="Nature" :required="true" :error="draft.error('kind')">
+                            <twig:Px:Select id="kind" placeholder="Choisir la nature…" :options="kind_options" value="{{ draft.kind }}" :required="true" :error="draft.error('kind')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="name" label="Nom ou raison sociale" :required="true" :wide="true" :error="draft.error('name')">
+                            <twig:Px:Input id="name" value="{{ draft.name }}" :required="true" :error="draft.error('name')" maxlength="120" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="siren" label="SIREN" hint="9 chiffres." :error="draft.error('siren')">
+                            <twig:Px:Input id="siren" value="{{ draft.siren }}" hint="1" :error="draft.error('siren')" class="px-u-code" inputmode="numeric" maxlength="11" autocomplete="off" spellcheck="false"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="vatNumber" label="N° de TVA intracommunautaire" :error="draft.error('vatNumber')">
+                            <twig:Px:Input id="vatNumber" value="{{ draft.vatNumber }}" :error="draft.error('vatNumber')" class="px-u-code" placeholder="FR41512904337" maxlength="20" autocomplete="off" spellcheck="false"/>
+                        </twig:Px:Field>
+                        <div class="px-field px-field--wide">
+                            <span class="px-field__label">Personne</span>
+                            <label class="px-check"><input type="checkbox" name="individual" value="1"{% if draft.individual %} checked{% endif %}> <span>Particulier (ni SIREN ni numéro de TVA)</span></label>
+                        </div>
+                    </div>
+                </twig:Px:Card>
+
+                <twig:Px:Card title="Comptabilité">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="account" label="Compte" :wide="true" hint="Le collectif (401000, 411000) ou le compte du tiers (431000) ; F4 ouvre la liste. Vide : aucun compte." :error="draft.error('account')">
+                            <twig:Px:AccountPicker id="account" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" nature="{{ account_natures }}" value="{{ draft.account }}" accountLabel="{{ account_label ?? '' }}" hint="1" :error="draft.error('account')" listLabel="Comptes de tiers"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="auxiliaryCode" label="Code auxiliaire" :wide="true" hint="Sur un compte collectif seulement (401SCIE) ; laissé vide, il est proposé." :error="draft.error('auxiliaryCode')">
+                            <twig:Px:Input id="auxiliaryCode" value="{{ draft.auxiliaryCode }}" hint="1" :error="draft.error('auxiliaryCode')" class="px-u-code" maxlength="17" autocomplete="off" spellcheck="false"/>
+                        </twig:Px:Field>
+                    </div>
+                </twig:Px:Card>
+
+                <twig:Px:Card title="Coordonnées">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="street" label="Adresse" :wide="true" :error="draft.error('street')">
+                            <twig:Px:Input id="street" value="{{ draft.street }}" :error="draft.error('street')" maxlength="120" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="street2" label="Complément d’adresse" :wide="true" :error="draft.error('street2')">
+                            <twig:Px:Input id="street2" value="{{ draft.street2 }}" :error="draft.error('street2')" maxlength="120" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="postalCode" label="Code postal" :error="draft.error('postalCode')">
+                            <twig:Px:Input id="postalCode" value="{{ draft.postalCode }}" :error="draft.error('postalCode')" maxlength="10" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="city" label="Ville" :error="draft.error('city')">
+                            <twig:Px:Input id="city" value="{{ draft.city }}" :error="draft.error('city')" maxlength="80" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="country" label="Pays" hint="Deux lettres : FR, DE, BE." :error="draft.error('country')">
+                            <twig:Px:Input id="country" value="{{ draft.country }}" hint="1" :error="draft.error('country')" class="px-u-code" maxlength="2" autocomplete="off" spellcheck="false"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="contactName" label="Contact" :error="draft.error('contactName')">
+                            <twig:Px:Input id="contactName" value="{{ draft.contactName }}" :error="draft.error('contactName')" maxlength="120" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="email" label="Adresse électronique" :wide="true" :error="draft.error('email')">
+                            <twig:Px:Input id="email" value="{{ draft.email }}" :error="draft.error('email')" inputmode="email" maxlength="180" autocomplete="off" spellcheck="false"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="phone" label="Téléphone" :error="draft.error('phone')">
+                            <twig:Px:Input id="phone" value="{{ draft.phone }}" :error="draft.error('phone')" inputmode="tel" maxlength="30" autocomplete="off"/>
+                        </twig:Px:Field>
+                    </div>
+                </twig:Px:Card>
+
+                <twig:Px:Card title="Règlement">
+                    <div class="px-fieldgrid" data-controller="payment-terms" data-payment-terms-days-value="{{ ['net', 'net_end_of_month', 'end_of_month_net']|json_encode }}" data-payment-terms-day-value="{{ ['day_of_next_month']|json_encode }}">
+                        <twig:Px:Field id="termKind" label="Conditions de règlement" :required="true" :error="draft.error('termKind')">
+                            <twig:Px:Select id="termKind" placeholder="Choisir les conditions…" :options="term_options" value="{{ draft.termKind }}" :required="true" :error="draft.error('termKind')" data-payment-terms-target="kind" data-action="payment-terms#toggle"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="termDays" label="Nombre de jours (N)" :error="draft.error('termDays')" data-payment-terms-target="days">
+                            <twig:Px:Input id="termDays" value="{{ draft.termDays }}" :error="draft.error('termDays')" class="px-u-num" inputmode="numeric" maxlength="3" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="termDay" label="Jour du mois (J)" :error="draft.error('termDay')" data-payment-terms-target="day">
+                            <twig:Px:Input id="termDay" value="{{ draft.termDay }}" :error="draft.error('termDay')" class="px-u-num" inputmode="numeric" maxlength="2" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="paymentMethod" label="Mode de règlement" :required="true" :error="draft.error('paymentMethod')">
+                            <twig:Px:Select id="paymentMethod" placeholder="Choisir le mode…" :options="method_options" value="{{ draft.paymentMethod }}" :required="true" :error="draft.error('paymentMethod')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="note" label="Note" class="px-fieldgrid__full" :error="draft.error('note')">
+                            <twig:Px:Input id="note" :area="true" value="{{ draft.note }}" :error="draft.error('note')" rows="2" maxlength="500"/>
+                        </twig:Px:Field>
+                    </div>
+                    {% if third_party %}
+                        <p class="px-u-muted">{{ third_party.paymentTerms.label }} : une facture du {{ dossier.dossierDate|date_fr }} (date du dossier) échoit le <b>{{ third_party.paymentTerms.dueDate(dossier.dossierDate)|date_fr }}</b>.</p>
+                    {% endif %}
+                </twig:Px:Card>
+            </div>
+        </form>
+        {% if third_party %}
+            <form method="post" action="{{ path('app_third_party_delete', {dossier: dossier.id, code: third_party.code}) }}" id="third-party-delete" hidden>
+                <input type="hidden" name="_token" value="{{ csrf_token('third-party-delete-' ~ third_party.id) }}">
+            </form>
+        {% endif %}
+    {% else %}
+        <div class="px-split px-split--even">
+            <twig:Px:Card title="Identité et comptabilité">
+                <dl class="px-facts">
+                    <dt>Code</dt><dd class="px-u-code">{{ third_party.code }}</dd>
+                    <dt>Nature</dt><dd>{{ third_party.kind.label }}{% if third_party.individual %} · particulier{% endif %}</dd>
+                    <dt>Nom</dt><dd>{{ third_party.name }}</dd>
+                    <dt>SIREN</dt><dd class="px-u-code">{{ third_party.siren ?? '—' }}</dd>
+                    <dt>N° de TVA</dt><dd class="px-u-code">{{ third_party.vatNumber ?? '—' }}</dd>
+                    <dt>Compte</dt><dd>{% if third_party.account %}<span class="px-u-code">{{ third_party.account.number }}</span> {{ third_party.account.label }}{% else %}—{% endif %}</dd>
+                    <dt>Code auxiliaire</dt><dd class="px-u-code">{{ third_party.auxiliaryCode ?? '—' }}</dd>
+                </dl>
+            </twig:Px:Card>
+            <twig:Px:Card title="Coordonnées et règlement">
+                <dl class="px-facts">
+                    <dt>Adresse</dt><dd>{{ [third_party.street, third_party.street2, [third_party.postalCode, third_party.city]|filter(v => v)|join(' ')]|filter(v => v)|join(', ') ?: '—' }}{% if third_party.country != 'FR' %} ({{ third_party.country }}){% endif %}</dd>
+                    <dt>Contact</dt><dd>{{ [third_party.contactName, third_party.email, third_party.phone]|filter(v => v)|join(' · ') ?: '—' }}</dd>
+                    <dt>Conditions</dt><dd>{{ third_party.paymentTerms.label }}</dd>
+                    <dt>Mode</dt><dd>{{ third_party.paymentMethod.label }}</dd>
+                    {% if third_party.note %}<dt>Note</dt><dd>{{ third_party.note|nl2br }}</dd>{% endif %}
+                </dl>
+            </twig:Px:Card>
+        </div>
+    {% endif %}
+{% endblock %}
