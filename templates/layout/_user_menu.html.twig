@@ -1,0 +1,25 @@
+{#
+ # The avatar and its menu (design-ux.md § 2.1, « Avatar »; design-ui.md § 4.6, « Menu »), in the top
+ # bar of both shells. Only the entries whose screen exists are drawn: Mon profil, Mes dossiers, Mes
+ # missions, Mon passeport and Aide join it with their steps.
+ #}
+{% set me = app.user %}
+<div class="px-usermenu" data-controller="menu" data-action="keydown->menu#keydown">
+    <button type="button" class="px-usermenu__button" aria-haspopup="menu" aria-expanded="false" aria-controls="px-usermenu-panel"
+            data-menu-target="button" data-action="menu#toggle">
+        <twig:Px:Avatar name="{{ me.displayName }}" :me="true"/>
+        <span class="px-u-sr-only">Menu de {{ me.displayName }}</span>
+    </button>
+    <div class="px-popover px-usermenu__panel" id="px-usermenu-panel" data-menu-target="panel" hidden>
+        <div class="px-usermenu__who">
+            <b>{{ me.displayName }}</b>
+            <small>{{ me.kind.label }}{% if me.administrator %} · administrateur{% endif %} · {{ me.login }}</small>
+        </div>
+        <div class="px-menu__sep"></div>
+        <div class="px-menu" role="menu" aria-label="Menu de {{ me.displayName }}">
+            <a class="px-menu__item" role="menuitem" href="{{ path('app_about') }}"><twig:ux:icon name="info" aria-hidden="true"/>À propos</a>
+            <div class="px-menu__sep" role="separator"></div>
+            <a class="px-menu__item" role="menuitem" href="{{ logout_path() }}"><twig:ux:icon name="log-out" aria-hidden="true"/>Se déconnecter</a>
+        </div>
+    </div>
+</div>

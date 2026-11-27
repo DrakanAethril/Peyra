@@ -140,3 +140,21 @@
         }
     }
 }
+
+@layer px.layout {
+    /* A short form on one line: its fields, then its button, aligned on the fields' controls. */
+    .px-formline {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: var(--px-space-12);
+
+        & > .px-field {
+            flex: 0 1 360px;
+        }
+
+        & > .px-btn {
+            margin-block-start: calc(var(--px-fs-12) * 1.5 + var(--px-space-4));
+        }
+    }
+}

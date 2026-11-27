@@ -1,6 +1,7 @@
 # Peyra's development directory. Everything in it is invented, which is why it is versioned.
 # Loaded by the openldap service on an empty volume only (see compose.override.yaml).
-# The demonstration accounts are added at step 0.4.
+# The demonstration accounts (step 0.4) are listed in CLAUDE.md; their common password is
+# peyra-dev. Names with accents are base64-encoded (LDIF only allows ASCII in plain values).
 
 dn: dc=peyra,dc=lan
 objectClass: dcObject
@@ -27,3 +28,302 @@ objectClass: simpleSecurityObject
 cn: svc-peyra
 description: Compte de service de Peyra (lecture seule)
 userPassword: peyra-dev-svc
+
+dn: uid=prof.martin,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: prof.martin
+cn: Jean-Pierre Martin
+givenName: Jean-Pierre
+sn: Martin
+displayName: Jean-Pierre Martin
+mail: prof.martin@peyra.test
+uidNumber: 30001
+gidNumber: 30001
+homeDirectory: /home/prof.martin
+userPassword: peyra-dev
+
+dn: uid=prof.durand,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: prof.durand
+cn: Sophie Durand
+givenName: Sophie
+sn: Durand
+displayName: Sophie Durand
+mail: prof.durand@peyra.test
+uidNumber: 30002
+gidNumber: 30002
+homeDirectory: /home/prof.durand
+userPassword: peyra-dev
+
+dn: uid=prof.leroy,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: prof.leroy
+cn: Marc Leroy
+givenName: Marc
+sn: Leroy
+displayName: Marc Leroy
+mail: prof.leroy@peyra.test
+uidNumber: 30003
+gidNumber: 30003
+homeDirectory: /home/prof.leroy
+userPassword: peyra-dev
+
+dn: uid=lucas.bernard,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: lucas.bernard
+cn: Lucas Bernard
+givenName: Lucas
+sn: Bernard
+displayName: Lucas Bernard
+mail: lucas.bernard@peyra.test
+uidNumber: 40101
+gidNumber: 40101
+homeDirectory: /home/lucas.bernard
+userPassword: peyra-dev
+
+dn: uid=manon.chevalier,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: manon.chevalier
+cn: Manon Chevalier
+givenName: Manon
+sn: Chevalier
+displayName: Manon Chevalier
+mail: manon.chevalier@peyra.test
+uidNumber: 40102
+gidNumber: 40102
+homeDirectory: /home/manon.chevalier
+userPassword: peyra-dev
+
+dn: uid=theo.garnier,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: theo.garnier
+cn:: VGjDqW8gR2Fybmllcg==
+givenName:: VGjDqW8=
+sn: Garnier
+displayName:: VGjDqW8gR2Fybmllcg==
+mail: theo.garnier@peyra.test
+uidNumber: 40103
+gidNumber: 40103
+homeDirectory: /home/theo.garnier
+userPassword: peyra-dev
+
+dn: uid=ines.morel,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: ines.morel
+cn:: SW7DqHMgTW9yZWw=
+givenName:: SW7DqHM=
+sn: Morel
+displayName:: SW7DqHMgTW9yZWw=
+mail: ines.morel@peyra.test
+uidNumber: 40104
+gidNumber: 40104
+homeDirectory: /home/ines.morel
+userPassword: peyra-dev
+
+dn: uid=adam.roussel,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: adam.roussel
+cn: Adam Roussel
+givenName: Adam
+sn: Roussel
+displayName: Adam Roussel
+mail: adam.roussel@peyra.test
+uidNumber: 40105
+gidNumber: 40105
+homeDirectory: /home/adam.roussel
+userPassword: peyra-dev
+
+dn: uid=chloe.fabre,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: chloe.fabre
+cn:: Q2hsb8OpIEZhYnJl
+givenName:: Q2hsb8Op
+sn: Fabre
+displayName:: Q2hsb8OpIEZhYnJl
+mail: chloe.fabre@peyra.test
+uidNumber: 40106
+gidNumber: 40106
+homeDirectory: /home/chloe.fabre
+userPassword: peyra-dev
+
+dn: uid=yasmine.haddad,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: yasmine.haddad
+cn: Yasmine Haddad
+givenName: Yasmine
+sn: Haddad
+displayName: Yasmine Haddad
+mail: yasmine.haddad@peyra.test
+uidNumber: 40201
+gidNumber: 40201
+homeDirectory: /home/yasmine.haddad
+userPassword: peyra-dev
+
+dn: uid=louis.perret,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: louis.perret
+cn: Louis Perret
+givenName: Louis
+sn: Perret
+displayName: Louis Perret
+mail: louis.perret@peyra.test
+uidNumber: 40202
+gidNumber: 40202
+homeDirectory: /home/louis.perret
+userPassword: peyra-dev
+
+dn: uid=camille.dufour,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: camille.dufour
+cn: Camille Dufour
+givenName: Camille
+sn: Dufour
+displayName: Camille Dufour
+mail: camille.dufour@peyra.test
+uidNumber: 40203
+gidNumber: 40203
+homeDirectory: /home/camille.dufour
+userPassword: peyra-dev
+
+dn: uid=nathan.mercier,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: nathan.mercier
+cn: Nathan Mercier
+givenName: Nathan
+sn: Mercier
+displayName: Nathan Mercier
+mail: nathan.mercier@peyra.test
+uidNumber: 40204
+gidNumber: 40204
+homeDirectory: /home/nathan.mercier
+userPassword: peyra-dev
+
+dn: uid=lea.boyer,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: lea.boyer
+cn:: TMOpYSBCb3llcg==
+givenName:: TMOpYQ==
+sn: Boyer
+displayName:: TMOpYSBCb3llcg==
+mail: lea.boyer@peyra.test
+uidNumber: 40205
+gidNumber: 40205
+homeDirectory: /home/lea.boyer
+userPassword: peyra-dev
+
+dn: uid=sacha.lambert,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: sacha.lambert
+cn: Sacha Lambert
+givenName: Sacha
+sn: Lambert
+displayName: Sacha Lambert
+mail: sacha.lambert@peyra.test
+uidNumber: 40206
+gidNumber: 40206
+homeDirectory: /home/sacha.lambert
+userPassword: peyra-dev
+
+dn: uid=enzo.petit,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: enzo.petit
+cn: Enzo Petit
+givenName: Enzo
+sn: Petit
+displayName: Enzo Petit
+mail: enzo.petit@peyra.test
+uidNumber: 40901
+gidNumber: 40901
+homeDirectory: /home/enzo.petit
+userPassword: peyra-dev
+
+dn: uid=jules.martel,ou=users,dc=peyra,dc=lan
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: jules.martel
+cn: Jules Martel
+givenName: Jules
+sn: Martel
+displayName: Jules Martel
+mail: jules.martel@peyra.test
+uidNumber: 40903
+gidNumber: 40903
+homeDirectory: /home/jules.martel
+userPassword: peyra-dev
+
+dn: cn=teacher,ou=groups,dc=peyra,dc=lan
+objectClass: groupOfNames
+cn: teacher
+description: Enseignants (ROLE_TEACHER)
+member: uid=prof.martin,ou=users,dc=peyra,dc=lan
+member: uid=prof.durand,ou=users,dc=peyra,dc=lan
+member: uid=prof.leroy,ou=users,dc=peyra,dc=lan
+
+dn: cn=student,ou=groups,dc=peyra,dc=lan
+objectClass: groupOfNames
+cn: student
+description:: w4l0dWRpYW50cyAoUk9MRV9TVFVERU5UKQ==
+member: uid=lucas.bernard,ou=users,dc=peyra,dc=lan
+member: uid=manon.chevalier,ou=users,dc=peyra,dc=lan
+member: uid=theo.garnier,ou=users,dc=peyra,dc=lan
+member: uid=ines.morel,ou=users,dc=peyra,dc=lan
+member: uid=adam.roussel,ou=users,dc=peyra,dc=lan
+member: uid=chloe.fabre,ou=users,dc=peyra,dc=lan
+member: uid=yasmine.haddad,ou=users,dc=peyra,dc=lan
+member: uid=louis.perret,ou=users,dc=peyra,dc=lan
+member: uid=camille.dufour,ou=users,dc=peyra,dc=lan
+member: uid=nathan.mercier,ou=users,dc=peyra,dc=lan
+member: uid=lea.boyer,ou=users,dc=peyra,dc=lan
+member: uid=sacha.lambert,ou=users,dc=peyra,dc=lan
+member: uid=enzo.petit,ou=users,dc=peyra,dc=lan
+member: uid=jules.martel,ou=users,dc=peyra,dc=lan
+
+dn: cn=cg-1,ou=groups,dc=peyra,dc=lan
+objectClass: groupOfNames
+cn: cg-1
+description:: QlRTIENHLCAxcmUgYW5uw6ll
+member: uid=prof.martin,ou=users,dc=peyra,dc=lan
+member: uid=prof.durand,ou=users,dc=peyra,dc=lan
+member: uid=lucas.bernard,ou=users,dc=peyra,dc=lan
+member: uid=manon.chevalier,ou=users,dc=peyra,dc=lan
+member: uid=theo.garnier,ou=users,dc=peyra,dc=lan
+member: uid=ines.morel,ou=users,dc=peyra,dc=lan
+member: uid=adam.roussel,ou=users,dc=peyra,dc=lan
+member: uid=chloe.fabre,ou=users,dc=peyra,dc=lan
+member: uid=jules.martel,ou=users,dc=peyra,dc=lan
+
+dn: cn=cg-2,ou=groups,dc=peyra,dc=lan
+objectClass: groupOfNames
+cn: cg-2
+description:: QlRTIENHLCAyZSBhbm7DqWU=
+member: uid=prof.martin,ou=users,dc=peyra,dc=lan
+member: uid=yasmine.haddad,ou=users,dc=peyra,dc=lan
+member: uid=louis.perret,ou=users,dc=peyra,dc=lan
+member: uid=camille.dufour,ou=users,dc=peyra,dc=lan
+member: uid=nathan.mercier,ou=users,dc=peyra,dc=lan
+member: uid=lea.boyer,ou=users,dc=peyra,dc=lan
+member: uid=sacha.lambert,ou=users,dc=peyra,dc=lan
+member: uid=jules.martel,ou=users,dc=peyra,dc=lan
+
+dn: cn=sio-1,ou=groups,dc=peyra,dc=lan
+objectClass: groupOfNames
+cn: sio-1
+description:: QlRTIFNJTywgMXJlIGFubsOpZSAoaG9ycyBmaWxpw6hyZSA6IHJlZnVzw6kp
+member: uid=prof.leroy,ou=users,dc=peyra,dc=lan
+member: uid=enzo.petit,ou=users,dc=peyra,dc=lan

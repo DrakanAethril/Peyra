@@ -2,8 +2,31 @@
 framework:
     secret: '%env(APP_SECRET)%'
 
-    # Note that the session will be started ONLY if you read or write from it.
-    session: true
+    # Tokens kept in the session (the sign-in form, the sign-out link, every POST of a screen).
+    csrf_protection: true
+
+    # Started only when read or written. Stored under var/sessions, which compose.prod.yaml keeps
+    # on a volume so that a rebuilt container signs nobody out. The cookie dies with the browser
+    # (a shared classroom machine), and 8 hours without a request ends a session: a school day,
+    # the figure Formatool settled on.
+    session:
+        handler_id: null
+        save_path: '%kernel.project_dir%/var/sessions/%kernel.environment%'
+        cookie_lifetime: 0
+        gc_maxlifetime: 28800
+
+    # Sign-in attempts (App\Security\LdapAuthenticator): per address, generous enough for a class
+    # behind the school's single NAT address; per login, low enough to stop a guess at a password
+    # and high enough for a student who mistypes it a few times.
+    rate_limiter:
+        login_ip:
+            policy: sliding_window
+            limit: 150
+            interval: '15 minutes'
+        login_name:
+            policy: sliding_window
+            limit: 8
+            interval: '15 minutes'
 
     #esi: true
     #fragments: true
@@ -13,3 +36,9 @@ when@test:
         test: true
         session:
             storage_factory_id: session.storage.factory.mock_file
+        # The suite signs in hundreds of times from 127.0.0.1: counters live in memory, one kernel at
+        # a time (a test of the limit keeps its kernel, KernelBrowser::disableReboot()).
+        cache:
+            pools:
+                cache.rate_limiter:
+                    adapter: cache.adapter.array

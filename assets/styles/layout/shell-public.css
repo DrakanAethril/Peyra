@@ -81,3 +81,27 @@
         font-size: var(--px-fs-12);
     }
 }
+
+@layer px.layout {
+    .px-public__note {
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+        text-align: center;
+    }
+
+    .px-public__facts {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        gap: var(--px-space-6) var(--px-space-16);
+        margin: 0;
+
+        & dt {
+            color: var(--px-text-muted);
+        }
+
+        & dd {
+            margin: 0;
+            color: var(--px-text-strong);
+        }
+    }
+}

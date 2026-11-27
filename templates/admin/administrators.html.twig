@@ -1,0 +1,85 @@
+{#
+ # Administration › Administrateurs (design-ux.md § 3.6): since when, designated by whom or « liste
+ # d'amorçage »; « Désigner un administrateur » among the teachers; « Retirer » in two steps, never
+ # for a bootstrap administrator nor the last one - the line says why.
+ #}
+{% extends 'admin/_layout.html.twig' %}
+
+{% set admin_tab = 'administrators' %}
+{% set admin_title = 'Administrateurs' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Administrateurs" :trail="[
+        {label: 'Paramètres', href: path('app_admin_teachers')},
+        {label: 'Administration', href: path('app_admin_teachers')},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card title="Désigner un administrateur" meta="parmi les enseignants déjà connectés à Peyra">
+        <form method="post" action="{{ path('app_admin_administrators_designate') }}" class="px-formline">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin-administrators-designate') }}">
+            <twig:Px:Field id="designate" label="Enseignant" :required="true" :error="error" hint="Tapez deux lettres du nom ou de l’identifiant.">
+                <div class="px-picker" data-controller="user-picker" data-user-picker-url-value="{{ path('app_admin_administrators_candidates') }}">
+                    <input type="text" id="designate" name="user_label" value="{{ label }}" class="px-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="designate-list"
+                           aria-describedby="designate_hint{{ error ? ' designate_error' }}"{% if error %} aria-invalid="true" autofocus{% endif %} autocomplete="off" required
+                           data-user-picker-target="input" data-action="input->user-picker#search keydown->user-picker#keydown">
+                    <input type="hidden" name="user" value="" data-user-picker-target="value">
+                    <div class="px-popover px-picker__panel" data-user-picker-target="panel" hidden>
+                        <ul class="px-picker__list" id="designate-list" role="listbox" aria-label="Enseignants" data-user-picker-target="list"></ul>
+                        <p class="px-picker__foot"><twig:Px:Kbd combo="ArrowUp"/><twig:Px:Kbd combo="ArrowDown"/> choisir <twig:Px:Kbd combo="Enter"/> valider <twig:Px:Kbd combo="Escape"/> fermer</p>
+                    </div>
+                </div>
+            </twig:Px:Field>
+            <twig:Px:Button type="submit" variant="primary" icon="shield-check">Désigner</twig:Px:Button>
+        </form>
+    </twig:Px:Card>
+
+    {% if list_error %}
+        <twig:Px:Alert tone="danger">{{ list_error }}</twig:Px:Alert>
+    {% endif %}
+
+    <twig:Px:Card title="Administrateurs" meta="{{ rows|length }} {{ rows|length > 1 ? 'administrateurs' : 'administrateur' }}" :flush="true">
+        <twig:Px:Table caption="Administrateurs de Peyra">
+            <thead>
+                <tr>
+                    <th scope="col">Nom</th>
+                    <th scope="col">Identifiant</th>
+                    <th scope="col">Depuis</th>
+                    <th scope="col">Désigné par</th>
+                    <th scope="col"><span class="px-u-sr-only">Action</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr>
+                        <td>{{ row.user.displayName }}{% if row.user == app.user %} <span class="px-u-muted">(vous)</span>{% endif %}</td>
+                        <td class="px-u-code">{{ row.user.login }}</td>
+                        <td>{{ row.user.administratorSince ? row.user.administratorSince|date('d/m/Y') : '—' }}</td>
+                        <td>
+                            {% if row.bootstrap %}
+                                <twig:Px:Badge tone="info" label="Liste d’amorçage"/>
+                            {% elseif row.user.administratorDesignatedBy %}
+                                {{ row.user.administratorDesignatedBy.displayName }}
+                            {% else %}
+                                <span class="px-u-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-u-right">
+                            {% if row.refusal %}
+                                <span class="px-u-muted">{{ row.bootstrap ? 'Se retire dans la configuration du serveur' : 'Dernier administrateur' }}</span>
+                            {% else %}
+                                <form method="post" action="{{ path('app_admin_administrators_revoke', {id: row.user.id}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin-administrators-revoke-' ~ row.user.id) }}">
+                                    <twig:Px:ConfirmButton label="Retirer" confirmLabel="Confirmer le retrait" size="sm"/>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </twig:Px:Table>
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<b>{{ rows|length }}</b> administrateur{{ rows|length > 1 ? 's' }}{% endblock %}

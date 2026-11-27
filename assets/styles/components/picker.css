@@ -1,0 +1,69 @@
+/*
+ * The search pickers (design-ui.md § 4.6): a field and its anchored list. The user picker
+ * (user_picker_controller.js) is the first; the account picker (F4) reuses the same box at step 1.4.
+ */
+@layer px.components {
+    .px-picker {
+        position: relative;
+        display: grid;
+        min-width: 0;
+    }
+
+    .px-picker__panel {
+        inset-block-start: calc(100% + var(--px-space-4));
+        inset-inline-start: 0;
+        width: min(440px, 100%);
+        max-height: 320px;
+        overflow-y: auto;
+        padding: var(--px-space-4) 0;
+    }
+
+    .px-picker__list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .px-picker__option {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: var(--px-space-8);
+        min-height: 28px;
+        padding: 0 var(--px-space-10);
+        color: var(--px-text);
+        cursor: pointer;
+
+        & small {
+            color: var(--px-text-muted);
+            font-family: var(--px-font-mono);
+            font-size: var(--px-fs-12);
+        }
+
+        &:hover {
+            background: var(--px-surface-sunken);
+        }
+
+        &[aria-selected="true"] {
+            background: var(--px-action-soft);
+            box-shadow: inset 2px 0 0 var(--px-action);
+        }
+    }
+
+    .px-picker__empty {
+        padding: var(--px-space-6) var(--px-space-10);
+        color: var(--px-text-muted);
+    }
+
+    .px-picker__foot {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--px-space-6);
+        align-items: center;
+        margin-block-start: var(--px-space-4);
+        padding: var(--px-space-6) var(--px-space-10) var(--px-space-2);
+        border-block-start: 1px solid var(--px-border-row);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+    }
+}

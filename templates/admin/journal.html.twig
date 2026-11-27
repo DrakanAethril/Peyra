@@ -1,0 +1,44 @@
+{# Administration › Journal d'administration: every gesture of the administration screens, newest first. #}
+{% extends 'admin/_layout.html.twig' %}
+
+{% set admin_tab = 'journal' %}
+{% set admin_title = 'Journal d’administration' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Journal d’administration" :trail="[
+        {label: 'Paramètres', href: path('app_admin_teachers')},
+        {label: 'Administration', href: path('app_admin_teachers')},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card :flush="true">
+        {% if events is empty %}
+            <twig:Px:Empty icon="history" title="Aucun geste pour l’instant" text="Chaque ajout ou retrait d’un enseignant ou d’un administrateur s’inscrit ici."/>
+        {% else %}
+            <twig:Px:Table caption="Gestes d’administration, du plus récent au plus ancien">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Auteur</th>
+                        <th scope="col">Geste</th>
+                        <th scope="col">Concerné</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in events %}
+                        <tr>
+                            <td class="px-u-num">{{ event.occurredAt|date('d/m/Y H:i') }}</td>
+                            <td>{{ event.actor.displayName }}</td>
+                            <td>{{ event.action.label }}</td>
+                            <td>{{ event.subjectName }} <span class="px-u-code px-u-muted">{{ event.subjectLogin }}</span></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+        <twig:block name="foot"><twig:Px:Pager :total="total" :perPage="per_page" :page="page"/></twig:block>
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<b>{{ total }}</b> geste{{ total > 1 ? 's' }}{% endblock %}

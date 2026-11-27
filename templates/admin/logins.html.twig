@@ -1,0 +1,55 @@
+{#
+ # Administration › Journal des connexions: list template L (design-ux.md § 3.1), filters in GET,
+ # newest first, 50 lines a page.
+ #}
+{% extends 'admin/_layout.html.twig' %}
+
+{% set admin_tab = 'logins' %}
+{% set admin_title = 'Journal des connexions' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Journal des connexions" :trail="[
+        {label: 'Paramètres', href: path('app_admin_teachers')},
+        {label: 'Administration', href: path('app_admin_teachers')},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card :flush="true">
+        <twig:Px:Filters action="{{ path('app_admin_logins') }}" search="{{ search }}" searchLabel="Identifiant ou nom">
+            <twig:Px:FilterChip label="Toutes" href="{{ path('app_admin_logins', {q: search ?: null}) }}" :count="counts['']" :current="filter == ''"/>
+            <twig:Px:FilterChip label="Refusées" href="{{ path('app_admin_logins', {outcome: 'refused', q: search ?: null}) }}" :count="counts['refused']" :current="filter == 'refused'"/>
+            <twig:Px:FilterChip label="Réussies" href="{{ path('app_admin_logins', {outcome: 'succeeded', q: search ?: null}) }}" :count="counts['succeeded']" :current="filter == 'succeeded'"/>
+            {% if filter %}<input type="hidden" name="outcome" value="{{ filter }}">{% endif %}
+        </twig:Px:Filters>
+        {% if events is empty %}
+            <twig:Px:Empty icon="history" title="Aucune connexion" text="{{ search ? 'Aucune connexion ne correspond à cette recherche.' : 'Les connexions, réussies ou refusées, s’inscrivent ici.' }}"/>
+        {% else %}
+            <twig:Px:Table caption="Connexions, de la plus récente à la plus ancienne">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Identifiant saisi</th>
+                        <th scope="col">Nom</th>
+                        <th scope="col">Résultat</th>
+                        <th scope="col">Adresse</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in events %}
+                        <tr>
+                            <td class="px-u-num">{{ event.occurredAt|date('d/m/Y H:i:s') }}</td>
+                            <td class="px-u-code">{{ event.login }}</td>
+                            <td>{{ event.displayName ?? '—' }}</td>
+                            <td><twig:Px:Badge :of="event.outcome"/></td>
+                            <td class="px-u-code">{{ event.ip ?? '—' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+        <twig:block name="foot"><twig:Px:Pager :total="total" :perPage="per_page" :page="page"/></twig:block>
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<b>{{ total }}</b> connexion{{ total > 1 ? 's' }}{% endblock %}
