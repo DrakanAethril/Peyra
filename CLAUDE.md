@@ -94,7 +94,7 @@ docker compose -f compose.yaml -f compose.prod.yaml up --wait
 ```
 
 **Docker layer.** `compose.yaml` holds `php` (FrankenPHP + Caddy + the bundled Mercure hub) and
-`gotenberg`; `compose.override.yaml` (dev) adds `database` (MariaDB 11.4, no published port),
+`gotenberg`; `compose.override.yaml` (dev) adds `database` (MariaDB 11.8 as in production, no published port),
 `openldap` (the fictitious directory, `frankenphp/ldap/*.ldif`, loaded on an empty volume only) and
 `worker` behind a profile; `compose.prod.yaml` adds the production target and `worker`. The
 Compose project is `peyra`, images `peyra-php-dev` / `peyra-php-prod`, ports 8180 / 8143 (`.env`):
