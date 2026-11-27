@@ -16,8 +16,14 @@ final readonly class AdministrationJournal
     {
     }
 
-    public function record(\DateTimeImmutable $at, User $actor, AdministrationAction $action, string $subjectLogin, string $subjectName): void
+    public function record(\DateTimeImmutable $at, User $actor, AdministrationAction $action, string $subjectLogin, string $subjectName, ?string $detail = null): void
     {
-        $this->entityManager->persist(new AdministrationEvent($at, $actor, $action, $subjectLogin, $subjectName));
+        $this->entityManager->persist(new AdministrationEvent($at, $actor, $action, $subjectLogin, $subjectName, $detail));
+    }
+
+    /** A gesture about a student: the subject is their login and name. */
+    public function recordStudent(\DateTimeImmutable $at, User $actor, AdministrationAction $action, User $student, ?string $detail = null): void
+    {
+        $this->record($at, $actor, $action, $student->getLogin(), $student->getDisplayName(), $detail);
     }
 }

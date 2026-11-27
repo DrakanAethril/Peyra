@@ -10,6 +10,9 @@ namespace App\Service\Identity;
  */
 final readonly class DirectoryPerson
 {
+    /** « Nom Prénom » (`sn givenName`), the name lists sort on; the display name without a surname. */
+    public string $sortName;
+
     /** @param list<string> $groups the `cn` of every group naming the person as `member` */
     public function __construct(
         public string $dn,
@@ -18,6 +21,8 @@ final readonly class DirectoryPerson
         public string $displayName,
         public ?string $email,
         public array $groups,
+        ?string $sortName = null,
     ) {
+        $this->sortName = $sortName ?? $displayName;
     }
 }

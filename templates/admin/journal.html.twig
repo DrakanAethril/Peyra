@@ -14,7 +14,7 @@
 {% block page %}
     <twig:Px:Card :flush="true">
         {% if events is empty %}
-            <twig:Px:Empty icon="history" title="Aucun geste pour l’instant" text="Chaque ajout ou retrait d’un enseignant ou d’un administrateur s’inscrit ici."/>
+            <twig:Px:Empty icon="history" title="Aucun geste pour l’instant" text="Chaque geste sur les enseignants, les administrateurs, les années, les classes et le placement des étudiants s’inscrit ici."/>
         {% else %}
             <twig:Px:Table caption="Gestes d’administration, du plus récent au plus ancien">
                 <thead>
@@ -31,7 +31,7 @@
                             <td>{{ event.occurredAt|date('d/m/Y H:i') }}</td>
                             <td>{{ event.actor.displayName }}</td>
                             <td>{{ event.action.label }}</td>
-                            <td>{{ event.subjectName }} <span class="px-u-code px-u-muted">{{ event.subjectLogin }}</span></td>
+                            <td>{{ event.subjectName }}{% if event.subjectLogin != event.subjectName %} <span class="px-u-code px-u-muted">{{ event.subjectLogin }}</span>{% endif %}{% if event.detail %}<br><span class="px-u-muted">{{ event.detail }}</span>{% endif %}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
