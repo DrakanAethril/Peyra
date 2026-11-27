@@ -506,3 +506,31 @@
         font-weight: var(--px-fw-semibold);
     }
 }
+
+/* A file field (an import): the native control, its button drawn as a secondary button. */
+@layer px.components {
+    .px-input[type="file"] {
+        display: flex;
+        align-items: center;
+        padding: 3px;
+        color: var(--px-text-muted);
+        cursor: pointer;
+
+        &::file-selector-button {
+            min-height: calc(var(--px-control-md) - 8px);
+            margin-inline-end: var(--px-space-10);
+            padding: 0 var(--px-space-10);
+            border: 1px solid var(--px-border-strong);
+            border-radius: var(--px-radius-sm);
+            background: var(--px-surface);
+            color: var(--px-text);
+            font: inherit;
+            font-weight: var(--px-fw-semibold);
+            cursor: pointer;
+        }
+
+        &:hover::file-selector-button {
+            background: var(--px-surface-sunken);
+        }
+    }
+}

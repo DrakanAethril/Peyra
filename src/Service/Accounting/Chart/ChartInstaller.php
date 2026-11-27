@@ -7,7 +7,6 @@ namespace App\Service\Accounting\Chart;
 use App\Entity\Accounting\Account;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
-use App\Enum\Accounting\AccountNature;
 use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Audit\AuditAction;
 use App\Repository\Accounting\AccountRepository;
@@ -45,7 +44,7 @@ final readonly class ChartInstaller
                 $dossier,
                 $number,
                 $reference->label,
-                AccountNature::of($number)->isLettrableByDefault(),
+                AccountNumber::isLettrableByDefault($number),
                 AccountNumber::isCollectiveByDefault($number),
                 AccountOrigin::Reference,
             ));

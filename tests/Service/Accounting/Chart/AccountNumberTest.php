@@ -55,11 +55,12 @@ final class AccountNumberTest extends TestCase
 
     public function testThirdPartiesAccountsAreLettrableAndSuppliersAndCustomersCollective(): void
     {
-        self::assertTrue(AccountNature::of('401000')->isLettrableByDefault());
-        self::assertTrue(AccountNature::of('467000')->isLettrableByDefault());
-        self::assertFalse(AccountNature::of('445660')->isLettrableByDefault(), 'La TVA ne se lettre pas par défaut.');
-        self::assertFalse(AccountNature::of('512100')->isLettrableByDefault());
-        self::assertFalse(AccountNature::of('601000')->isLettrableByDefault());
+        self::assertTrue(AccountNumber::isLettrableByDefault('401000'));
+        self::assertTrue(AccountNumber::isLettrableByDefault('467000'));
+        self::assertFalse(AccountNumber::isLettrableByDefault('445660'), 'La TVA ne se lettre pas par défaut.');
+        self::assertFalse(AccountNumber::isLettrableByDefault('512100'));
+        self::assertFalse(AccountNumber::isLettrableByDefault('601000'));
+        self::assertFalse(AccountNumber::isLettrableByDefault('486000'), 'Les charges constatées d’avance ne se lettrent pas.');
 
         foreach (['401000', '403000', '404000', '409100', '411000', '413000', '416000', '419100'] as $collective) {
             self::assertTrue(AccountNumber::isCollectiveByDefault($collective), $collective);

@@ -42,6 +42,11 @@ final class AccountController extends AbstractController
         }
         $draft = new AccountDraft();
         $draft->number = AccountNumber::normalize(QueryValue::trimmed($request, 'number'));
+        if (null === AccountNumber::fault($draft->number)) {
+            // A number given in the address (« Créer le compte 411500 ») ticks its defaults.
+            $draft->lettrable = AccountNumber::isLettrableByDefault($draft->number);
+            $draft->collective = AccountNumber::isCollectiveByDefault($draft->number);
+        }
         $status = Response::HTTP_OK;
         if ($request->isMethod('POST')) {
             $this->read($request, $dossier, $draft);

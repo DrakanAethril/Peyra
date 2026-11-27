@@ -45,7 +45,7 @@
                 <input type="hidden" name="_token" value="{{ csrf_token(account ? 'dossier-account-' ~ account.id : 'dossier-account-new-' ~ dossier.id) }}">
                 <twig:Px:Card title="Compte">
                     <div class="px-fieldgrid">
-                        <twig:Px:Field id="number" label="Numéro" :required="true" hint="6 à 8 chiffres." :error="draft.error('number')">
+                        <twig:Px:Field id="number" label="Numéro" :required="true" :wide="true" hint="6 à 8 chiffres." :error="draft.error('number')">
                             <twig:Px:Input id="number" value="{{ draft.number }}" :required="true" hint="1" :error="draft.error('number')" class="px-u-code" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="8" autofocus/>
                         </twig:Px:Field>
                         <twig:Px:Field id="label" label="Intitulé" :required="true" :wide="true" :error="draft.error('label')">
@@ -83,7 +83,7 @@
             {% else %}
                 <p class="px-u-muted">La classe, la nature et le compte du plan qu’il subdivise se lisent dans son numéro.</p>
             {% endif %}
-            {% if account and deletion_refusal %}<p class="px-u-muted">{{ deletion_refusal }}</p>{% endif %}
+            {% if can_edit and account and deletion_refusal %}<p class="px-u-muted">{{ deletion_refusal }}</p>{% endif %}
         </twig:Px:Card>
     </div>
 

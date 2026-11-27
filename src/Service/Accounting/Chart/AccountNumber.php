@@ -42,6 +42,16 @@ final class AccountNumber
     }
 
     /**
+     * Lettrable by default (its entries are matched against each other, step 1.6): the third
+     * parties' accounts - suppliers, customers, staff, social bodies, partners and other debtors
+     * and creditors -, not the State's (VAT is cleared by declaration) nor the accruals (48).
+     */
+    public static function isLettrableByDefault(string $number): bool
+    {
+        return \in_array(substr($number, 0, 2), ['40', '41', '42', '43', '45', '46', '47'], true);
+    }
+
+    /**
      * Collective by default (« collectif »: each line names a third party): suppliers and customers,
      * their bills, their advances, doubtful customers.
      */

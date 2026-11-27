@@ -87,10 +87,4 @@ enum AccountNature: string
             self::Commitment => 'Engagement',
         };
     }
-
-    /** Whose entries are matched against each other (lettrage, step 1.6) unless the dossier says otherwise. */
-    public function isLettrableByDefault(): bool
-    {
-        return \in_array($this, [self::Supplier, self::Customer, self::Employee, self::SocialBody, self::OtherThirdParty], true);
-    }
 }

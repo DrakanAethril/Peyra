@@ -9,7 +9,6 @@ use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\SchoolYear;
 use App\Entity\Identity\User;
-use App\Enum\Accounting\AccountNature;
 use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Audit\AuditAction;
 use App\Enum\Dossier\DossierKind;
@@ -110,7 +109,7 @@ final readonly class DemoInstaller
         foreach ($file->accounts as $entry) {
             $account = $this->accounts->findOneByNumber($dossier, $entry['number']);
             if (null === $account) {
-                $account = new Account($dossier, $entry['number'], $entry['label'], AccountNature::of($entry['number'])->isLettrableByDefault(), AccountNumber::isCollectiveByDefault($entry['number']), AccountOrigin::Created);
+                $account = new Account($dossier, $entry['number'], $entry['label'], AccountNumber::isLettrableByDefault($entry['number']), AccountNumber::isCollectiveByDefault($entry['number']), AccountOrigin::Created);
                 $this->entityManager->persist($account);
             } else {
                 $account->describe($entry['number'], $entry['label'], $account->isLettrable(), $account->isCollective());

@@ -7,7 +7,6 @@ namespace App\Service\Accounting\Chart;
 use App\Entity\Accounting\Account;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
-use App\Enum\Accounting\AccountNature;
 use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Audit\AuditAction;
 use App\Repository\Accounting\AccountRepository;
@@ -108,7 +107,7 @@ final readonly class ChartImport
                     $dossier,
                     $line->number,
                     $line->label,
-                    $line->lettrable ?? AccountNature::of($line->number)->isLettrableByDefault(),
+                    $line->lettrable ?? AccountNumber::isLettrableByDefault($line->number),
                     $line->collective ?? AccountNumber::isCollectiveByDefault($line->number),
                     AccountOrigin::Imported,
                 ));
