@@ -96,7 +96,6 @@ final class JsonRequestPayload
         return is_numeric($value) ? (int) $value : $default;
     }
 
-
     /**
      * A calendar date as the date field posts it (« 2026-11-12 »), or null when absent or not a
      * real date. A day of the dossier, never an instant: no time, no zone.

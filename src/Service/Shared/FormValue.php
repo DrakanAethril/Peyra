@@ -49,7 +49,6 @@ final class FormValue
         return is_numeric($value) ? (int) $value : null;
     }
 
-
     /** A Money held by the field (a MoneyType-like field), or null for anything else. */
     public static function money(FormInterface $form, string $field): ?Money
     {
