@@ -7,6 +7,7 @@ namespace App\Controller\Banking;
 use App\Entity\Banking\BankStatement;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
+use App\Repository\Accounting\AccountRepository;
 use App\Repository\Banking\BankStatementRepository;
 use App\Repository\Dossier\ExerciseRepository;
 use App\Security\Voter\DossierRightVoter;
@@ -75,7 +76,7 @@ final class ReconciliationController extends AbstractController
     }
 
     #[Route('/{id}', name: 'app_bank_reconciliation_show', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function show(Dossier $dossier, int $id, Request $request, BankStatementRepository $statements, ReconciliationBoard $board, AssistanceLevels $assistance): Response
+    public function show(Dossier $dossier, int $id, Request $request, BankStatementRepository $statements, ReconciliationBoard $board, AssistanceLevels $assistance, AccountRepository $accounts): Response
     {
         $statement = $this->readableStatement($dossier, $id, $statements);
         $level = Assistance::at($assistance->for($dossier));
@@ -84,13 +85,18 @@ final class ReconciliationController extends AbstractController
         if (null !== $selected && null !== $view->lineLetter($selected)) {
             $selected = null;
         }
-        if (null === $selected && !$statement->isReconciled()) {
+        // At G and B the panel opens on the first line left to post that no pair proposed (mock-up 2:
+        // the bank's fees); at A and 0 the student chooses the line.
+        if (null === $selected && !$statement->isReconciled() && $level->proposesBankEntry()) {
             foreach ($view->report->toPost as $item) {
-                $selected = $view->line($item->id);
-                break;
+                if (!isset($view->proposedLines[$item->id])) {
+                    $selected = $view->line($item->id);
+                    break;
+                }
             }
         }
-        $others = array_values(array_filter($statements->findLatestFirst($dossier), fn (BankStatement $other): bool => $this->isGranted(DossierRightVoter::JOURNAL_READ, $other->getJournal())));
+
+        $rule = null === $selected ? null : ($view->rules[(int) $selected->getId()] ?? null);
 
         return $this->render('banking/reconciliation.html.twig', [
             'dossier' => $dossier,
@@ -98,9 +104,9 @@ final class ReconciliationController extends AbstractController
             'rec' => $view,
             'assistance' => $level,
             'selected' => $selected,
-            'selected_rule' => null === $selected ? null : ($view->rules[(int) $selected->getId()] ?? null),
+            'selected_rule' => $rule,
+            'selected_account' => null === $rule || 1 === preg_match('/[A-Z]/', $rule->getAccount()) ? null : $accounts->findOneByNumber($dossier, $rule->getAccount()),
             'validation_note' => ReconciliationRules::validationRefusal($view->report),
-            'other_statements' => $others,
             'can_point' => $this->isGranted(DossierRightVoter::JOURNAL_ENTER, $statement->getJournal()) && !$statement->isReconciled(),
             'can_validate' => $this->isGranted(DossierRightVoter::JOURNAL_VALIDATE, $statement->getJournal()),
             'last' => QueryValue::trimmed($request, 'last'),
@@ -221,7 +227,7 @@ final class ReconciliationController extends AbstractController
             $dossier->getName(),
             $title,
             null === $exercise ? 'Hors exercice' : 'Exercice '.$exercise->getCode(),
-            \sprintf('%s · %s · compte %s · au %s', $statement->getJournal()->getLabel(), $statement->getTitle(), $view->account->getNumber(), $statement->getEndsOn()->format('d/m/Y')),
+            \sprintf('%s · compte %s · au %s', $statement->getTitle(), $view->account->getNumber(), $statement->getEndsOn()->format('d/m/Y')),
             $dossier->getDossierDate(),
             Editions::student($dossier),
         );

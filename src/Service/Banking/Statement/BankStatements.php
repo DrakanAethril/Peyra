@@ -165,7 +165,7 @@ final readonly class BankStatements
     }
 
     /** The bank account's balance in the books before `from` - its à-nouveaux included -, for a first statement. */
-    private function booksBefore(Journal $journal, \DateTimeImmutable $from): Money
+    public function booksBefore(Journal $journal, \DateTimeImmutable $from): Money
     {
         $account = $journal->getCounterpartAccount() ?? throw new \LogicException('A bank journal has its account.');
         $start = $this->ledger->exerciseStart($journal->getDossier(), $from);

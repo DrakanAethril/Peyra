@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Service\Banking;
 
+use App\Entity\Banking\BankRule;
+use App\Entity\Dossier\Dossier;
 use App\Service\Accounting\Ledger\EntryLineDraft;
 use App\Service\Banking\Reconciliation\BankLineEntry;
 use App\Service\Banking\Rule\BankRuleMatch;
-use App\Entity\Banking\BankRule;
-use App\Entity\Dossier\Dossier;
 use App\Service\Shared\Money;
 use PHPUnit\Framework\TestCase;
 

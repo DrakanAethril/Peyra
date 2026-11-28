@@ -13,7 +13,7 @@
         <input type="hidden" name="line" value="{{ selected.id }}">
         <p>
             {% if selected_rule %}
-                Proposition : <b>{{ selected_rule.account }}</b>{% if selected_rule.vatRate %}, TVA {{ selected_rule.vatRate|replace({'.': ','}) }} %{% endif %}, journal {{ statement.journal.code }}, contrepartie {{ rec.account.number }} - règle « {{ selected_rule.pattern }} ».
+                Proposition : <b>{{ selected_rule.account }}{% if selected_account %} {{ selected_account.label }}{% endif %}</b>{% if selected_rule.vatRate %}, TVA {{ selected_rule.vatRate|replace({'.': ','}) }} %{% endif %}, journal {{ statement.journal.code }}, contrepartie {{ rec.account.number }} - règle « {{ selected_rule.pattern }} ».
             {% else %}
                 Aucune règle d’affectation ne reconnaît ce libellé : choisissez le compte. Journal {{ statement.journal.code }}, contrepartie {{ rec.account.number }}.
             {% endif %}

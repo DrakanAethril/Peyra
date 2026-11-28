@@ -25,6 +25,7 @@ use App\Enum\Sales\SalesDocumentType;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntrySubscriptionRepository;
+use App\Repository\Accounting\JournalRepository;
 use App\Repository\Identity\SchoolYearRepository;
 use App\Repository\Payroll\PayrollBodyRepository;
 use App\Service\Accounting\Ledger\EntryDraft;
@@ -35,6 +36,8 @@ use App\Service\Accounting\Subscription\SubscriptionSheet;
 use App\Service\Accounting\Template\TemplateDraft;
 use App\Service\Accounting\Template\TemplateLineDraft;
 use App\Service\Accounting\Template\TemplateSheet;
+use App\Service\Banking\Rule\BankRules;
+use App\Service\Banking\Statement\BankStatements;
 use App\Service\Document\Documents;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Restore\RestorePoints;
@@ -300,6 +303,13 @@ final class RoleAccessSmokeTest extends WebTestCase
             return [$document->getId(), $receipt->getId()];
         });
         $countId = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): ?int => $client->getContainer()->get(StockCounts::class)->open($saved, $saved->getDossierDate(), 'Dépôt principal', 'test')->getId());
+        [$statementId, $statementLineId, $ruleId] = $client->getContainer()->get(DossierContext::class)->within($saved, static function () use ($client, $saved): array {
+            $journal = $client->getContainer()->get(JournalRepository::class)->findOneByCode($saved, 'BQ1') ?? throw new \LogicException('BQ1');
+            $statement = $client->getContainer()->get(BankStatements::class)->import($journal, 1, new \DateTimeImmutable('2026-01-01'), new \DateTimeImmutable('2026-01-31'), Money::zero(), "20/01/2026;CHQ SCIERIE;10,00;\n31/01/2026;FRAIS TENUE DE COMPTE;24,00;\n", 'releve.csv', 'test');
+            $rule = $client->getContainer()->get(BankRules::class)->save($saved, null, 'FRAIS TENUE', '627800', '', '', 'test');
+
+            return [$statement->getId(), $statement->getLines()[1]->getId(), $rule->getId()];
+        });
         $dossier = (int) $saved->getId();
         $point = $client->getContainer()->get(RestorePoints::class)->pose($saved, 'Avant validation', $ines, new \DateTimeImmutable('2026-11-28 10:00'));
         $pointId = (int) $point->getId();
@@ -354,6 +364,9 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/sales/quote/new', '/sales/invoice/new', '/sales/documents/'.$salesId, '/sales/documents/'.$salesId.'.pdf',
             '/purchases/suppliers', '/purchases/suppliers?q=scie', '/purchases/price_request', '/purchases/purchase_order', '/purchases/receipt',
             '/purchases/purchase_order/new', '/purchases/invoices', '/purchases/invoices?view=uninvoiced', '/purchases/documents/'.$orderId, '/purchases/documents/'.$receiptId, '/purchases/documents/'.$orderId.'.pdf',
+            '/bank/statements', '/bank/statements?journal=BQ1', '/bank/statements/import', '/bank/statements/import?journal=BQ1', '/bank/statements/'.$statementId.'/export.csv',
+            '/bank/reconciliation/'.$statementId, '/bank/reconciliation/'.$statementId.'?line='.$statementLineId, '/bank/reconciliation/'.$statementId.'/state.pdf',
+            '/bank/rules', '/bank/rules/new?pattern=FRAIS', '/bank/rules/'.$ruleId,
             '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
@@ -389,6 +402,17 @@ final class RoleAccessSmokeTest extends WebTestCase
             $actual[$role] = $client->getResponse()->getStatusCode();
         }
         self::assertSame(['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302], $actual, '/documents/{id}/prepare');
+
+        // Banque › Rapprochement opens on the statement to reconcile.
+        $actual = [];
+        foreach (self::ACCOUNTS as $role => $login) {
+            self::ensureKernelShutdown();
+            $client = static::createClient();
+            $this->submitLogin($client, $login);
+            $client->request('GET', '/d/'.$dossier.'/bank/reconciliation');
+            $actual[$role] = $client->getResponse()->getStatusCode();
+        }
+        self::assertSame(['student' => 302, 'teacher' => 302, 'admin' => 404, 'refused' => 302], $actual, '/bank/reconciliation');
 
         // The waiting page sends on to the dashboard when no return is running.
         $actual = [];

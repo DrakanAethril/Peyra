@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Dossier\Search;
 
 use App\Entity\Dossier\Dossier;
+use App\Enum\Accounting\JournalType;
 use App\Repository\Accounting\JournalRepository;
 use App\Security\Voter\DossierRightVoter;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -34,7 +35,7 @@ final readonly class SearchScreens
         'app_accounting_edition_general_ledger', 'app_accounting_edition_trial_balance',
         'app_accounting_edition_third_party_balance', 'app_accounting_edition_aged_balance',
         'app_accounting_accounts', 'app_accounting_journals', 'app_third_parties', 'app_accounting_templates',
-        'app_accounting_subscriptions', 'app_closing_fec', 'app_dossier_company', 'app_dossier_users', 'app_dossier_audit',
+        'app_accounting_subscriptions', 'app_bank_statements', 'app_bank_reconciliation', 'app_bank_rules', 'app_closing_fec', 'app_dossier_company', 'app_dossier_users', 'app_dossier_audit',
         'app_dossier_restore_points', 'app_payroll_employees', 'app_payroll_register', 'app_payroll_items', 'app_payroll_bodies', 'app_payroll_establishment',
     ];
 
@@ -152,6 +153,9 @@ final readonly class SearchScreens
             $screen('app_third_parties', 'Tiers', self::SETTINGS, 'settings', 'clients fournisseurs'),
             $screen('app_accounting_templates', 'Modèles d’écriture', self::SETTINGS, 'settings', 'saisie f6'),
             $screen('app_accounting_subscriptions', 'Abonnements', self::SETTINGS, 'settings', 'loyer echeances generer'),
+            $screen('app_bank_statements', 'Relevés bancaires', 'Banque', 'landmark', 'releve banque importer csv'),
+            $screen('app_bank_reconciliation', 'Rapprochement bancaire', 'Banque', 'landmark', 'rapprocher pointer etat de rapprochement releve banque'),
+            $screen('app_bank_rules', 'Règles d’affectation', 'Banque', 'landmark', 'regle libelle compte rapprochement banque'),
             $screen('app_closing_fec', 'FEC', 'Immobilisations et clôture › Clôture', 'lock', 'fichier des ecritures comptables export controle fiscal conformite archivage telecharger'),
             ...$payroll,
             $screen('app_dossier_company', 'Société', 'Système d’information', 'database', 'entreprise siret dossier'),
@@ -183,6 +187,12 @@ final readonly class SearchScreens
             $action('app_accounting_entry', 'Nouvelle écriture', self::ENTRY, 'plus', 'creer saisir ajouter'),
             $action('app_dossier_restore_point_new', 'Poser un point de restauration', 'Système d’information', 'history', 'sauvegarde instantane'),
         ];
+        foreach ($this->journals->findByType($dossier, JournalType::Bank) as $journal) {
+            if ($this->authorization->isGranted(DossierRightVoter::JOURNAL_ENTER, $journal)) {
+                $actions[] = $action('app_bank_statement_import', 'Importer un relevé', 'Banque', 'upload', 'releve banque csv rapprochement');
+                break;
+            }
+        }
         if ($this->authorization->isGranted(DossierRightVoter::PAYROLL_ENTER, $dossier)) {
             $actions[] = $action('app_payroll_employee_new', 'Nouveau salarié', 'Paie et social', 'plus', 'creer ajouter embauche contrat');
         }

@@ -239,7 +239,7 @@
         {% elseif not statement.reconciled %}
             <twig:Px:Card title="Ligne sélectionnée">
                 <twig:block name="content">
-                    <p class="px-u-muted">Toutes les lignes du relevé sont pointées : il reste à valider le rapprochement.</p>
+                    <p class="px-u-muted">{{ report.toPost is empty ? 'Toutes les lignes du relevé sont pointées : il reste à valider le rapprochement.' : 'Une ligne « À comptabiliser » sans écriture dans les comptes ? Ouvrez-la (Entrée sur la ligne) pour passer son écriture.' }}</p>
                 </twig:block>
             </twig:Px:Card>
         {% else %}

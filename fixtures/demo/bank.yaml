@@ -1,0 +1,24 @@
+# Menuiserie Vasseur SARL - its bank (step 2.6a): the assignment rules, then the statements of the
+# Crédit Coopératif (BQ1, 512100). Each statement holds the account's movements of its days as the
+# books carry them (operations-2026.md § 2.1: the statements « reprennent exactement les mouvements
+# BQ1 »), but the documents in `omit` - not passed by the bank yet - and plus the `extra` lines - the
+# bank's operations the books do not hold yet. A `reconciled` statement is pointed movement by
+# movement and validated; the last one is left to reconcile: the students' work.
+
+rules:
+  - { pattern: 'FRAIS TENUE', account: '627800', label: 'Frais de tenue de compte' }
+  - { pattern: 'COMMISSION', account: '627800', label: 'Commission bancaire' }
+  - { pattern: 'STATION U', account: '606110', vat_rate: '20', label: 'Carburant' }
+
+statements:
+  - { journal: BQ1, number: 1, from: '2026-01-01', to: '2026-01-31', reconciled: true }
+  - { journal: BQ1, number: 2, from: '2026-02-01', to: '2026-02-28', reconciled: true }
+  - journal: BQ1
+    number: 3
+    from: '2026-03-01'
+    to: '2026-03-31'
+    reconciled: false
+    # The cheque to the Garage du Vizézy, issued on the 30/03, reaches the bank in April.
+    omit: [CHQ-7702164]
+    extra:
+      - { date: '2026-03-23', label: 'COMMISSION D INTERVENTION', amount: '-8.00' }
