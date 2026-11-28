@@ -1085,6 +1085,14 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   `DossierShellView::$documentsToProcess`), `…/new`, the sheet `…/{id}` (`Px:Viewer`: a picture zoomed
   by the page, a PDF by the browser's reader in a frame; F7 lays it over the window), `…/{id}/file`
   (the private storage's one door, inline or `?download=1`). Ctrl K's group « Pièces ».
+- **The generator** (step 2.1b, `src/Service/Document/Generator/`, teacher rail « Pièces »,
+  `/teacher/documents/generator/{template}`, a template the teacher may EDIT): a purchase invoice
+  described in data, checked by `InvoiceRules` and computed by `InvoiceCalculator` (both pure: VAT
+  once per rate on its bases; the faults are digit swaps), printed in its supplier's look
+  (`InvoiceCharter`: one of three `templates/document/invoice/` layouts, read from the code), then
+  `Documents::generated()` - read data = what it prints. `Document::$generation` keeps the operation
+  and its faults: answer key, no student screen shows it. The form is a GET (the preview's address);
+  « Générer » posts, its token as the button's value.
 
 ## Référentiel and assistance levels (built at step 2.8)
 
