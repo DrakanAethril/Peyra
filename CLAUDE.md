@@ -1465,9 +1465,11 @@ Reach for these rather than re-implement them; each has its test.
 - **Tests**: unit tests over pure services, one test per Voter, a functional smoke test that requests
   each main screen as a student and as a teacher. The accounting engine's invariants, the
   correction and payroll are tested on reference cases of each millésime. ParaTest for the suite.
-- **CI** (GitHub Actions, one job, on every push to `staging` and every pull request): `cs-check`,
-  `lint:yaml`, `lint:twig`, `lint:container`, PHPStan, migrations replayed from an empty database
-  then `doctrine:schema:validate`, the suite through ParaTest, then once more in one process. No repository secret. A push touching only `**.md`
+- **CI** (GitHub Actions, on every push to `staging` and every pull request): the job `Checks` runs
+  `cs-check`, `lint:yaml`, `lint:twig`, `lint:container`, PHPStan, migrations replayed from an empty
+  database then `doctrine:schema:validate`, the suite through ParaTest; beside it, on stacks of their
+  own, two jobs run the suite in one process, each on every other file of the sorted list (one job
+  took longer than the 30 minutes the run then had). No repository secret. A push touching only `**.md`
   may skip it — on the `push` trigger only, never on `pull_request`. A newer push cancels a pull
   request's run, **never a push to `staging`** (a group per run): two tracks push more often than
   a run lasts.
