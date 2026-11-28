@@ -36,7 +36,7 @@ final readonly class SearchScreens
         'app_accounting_edition_third_party_balance', 'app_accounting_edition_aged_balance',
         'app_accounting_accounts', 'app_accounting_journals', 'app_third_parties', 'app_accounting_templates',
         'app_accounting_subscriptions', 'app_bank_statements', 'app_bank_reconciliation', 'app_bank_rules', 'app_closing_fec', 'app_dossier_company', 'app_dossier_users', 'app_dossier_audit',
-        'app_dossier_restore_points', 'app_payment_proposal', 'app_payroll_employees', 'app_payroll_register', 'app_payroll_items', 'app_payroll_bodies', 'app_payroll_establishment',
+        'app_dossier_restore_points', 'app_due_schedule', 'app_payment_proposal', 'app_payroll_employees', 'app_payroll_register', 'app_payroll_items', 'app_payroll_bodies', 'app_payroll_establishment',
     ];
 
     /** What an empty search shows when nothing was opened yet. */
