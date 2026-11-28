@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Dossier\Demo;
 
 use App\Entity\Accounting\Account;
+use App\Entity\Accounting\Entry;
 use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Payroll\PayrollBody;
@@ -89,6 +90,7 @@ final readonly class DemoInstaller
         private Lettering $lettering,
         private ThirdPartyRepository $thirdParties,
         private PayrollPlanInstaller $payrollPlan,
+        private DemoPayroll $payroll,
         private EmployeeSheet $employees,
         private EmployeeRepository $employeeRepository,
         private HiringFormalities $hiring,
@@ -139,6 +141,7 @@ final readonly class DemoInstaller
         $salesFile = DemoSalesFile::read($this->directory.'/sales.yaml');
         $stockFile = DemoStockFile::read($this->directory.'/stock.yaml');
         $bankFile = DemoBankFile::read($this->directory.'/bank.yaml');
+        $payslipFile = DemoPayslipFile::read($this->directory.'/payslips.yaml');
         $dossier = new Dossier(DossierKind::Template, $file->company, $file->dossierDate, null, null, $at, null);
         $dossier->describeInLibrary($file->library['title'], $file->library['description'], $file->library['level'], $file->library['processes']);
         $this->entityManager->persist($dossier);
@@ -159,14 +162,20 @@ final readonly class DemoInstaller
         $this->context->within($dossier, fn () => $this->installThirdParties($dossier, $thirdPartyFile));
         $this->entityManager->flush();
         $dossierId = (int) $dossier->getId();
-        $this->installEntries($dossierId, $entryFile, $actor);
+        // The payroll before the entries: its payslips write their entries into the brouillard, validated with
+        // the quarter's by date (review 4.7a), so that each journal's numbering stays chronological.
+        $this->context->within($dossier, fn () => $this->installPayroll($dossier, $payrollFile, $actor));
+        $this->context->within($dossier, fn () => $this->installEmployees($dossier, $employeeFile, $actor));
+        $this->context->within($dossier, fn () => $this->installHiring($dossier, $hiringFile, $actor));
+        $payrollEntries = [];
+        $this->context->within($dossier, function () use ($dossier, $payslipFile, $actor, &$payrollEntries): void {
+            $payrollEntries = $this->payroll->install($dossier, $payslipFile, $actor);
+        });
+        $this->installEntries($dossierId, $entryFile, $actor, $payrollEntries);
         $dossier = $this->fresh($dossierId);
         $this->context->within($dossier, fn () => $this->installTemplates($dossier, $templateFile, $actor));
         $this->context->within($dossier, fn () => $this->installSubscriptions($dossier, $subscriptionFile, $actor, $at));
         $this->context->within($dossier, fn () => $this->installLetterings($dossier, $letteringFile, $actor));
-        $this->context->within($dossier, fn () => $this->installPayroll($dossier, $payrollFile, $actor));
-        $this->context->within($dossier, fn () => $this->installEmployees($dossier, $employeeFile, $actor));
-        $this->context->within($dossier, fn () => $this->installHiring($dossier, $hiringFile, $actor));
         $this->context->within($dossier, fn () => $this->installSales($dossier, $salesFile, $actor));
         $this->context->within($dossier, fn () => $this->installStock($dossier, $stockFile, $actor));
         $this->context->within($dossier, fn () => $this->installBank($dossier, $bankFile, $actor));
@@ -375,9 +384,15 @@ final readonly class DemoInstaller
      * date, as a person validating each month would). One the Ledger refuses names the entry and
      * stops the install.
      */
-    private function installEntries(int $dossierId, DemoEntryFile $file, string $actor): void
+    /**
+     * Its entries, drafted then validated with those the payroll wrote (`$alsoValidate`), all by date - each
+     * journal numbered in the order of its days.
+     *
+     * @param list<int> $alsoValidate
+     */
+    private function installEntries(int $dossierId, DemoEntryFile $file, string $actor, array $alsoValidate = []): void
     {
-        $toValidate = [];
+        $toValidate = $alsoValidate;
         foreach (array_chunk($file->entries, self::DRAFT_BATCH, true) as $batch) {
             $dossier = $this->fresh($dossierId);
             $this->context->within($dossier, function () use ($dossier, $batch, $actor, &$toValidate): void {
@@ -393,11 +408,15 @@ final readonly class DemoInstaller
                 }
             });
         }
+        $dossier = $this->fresh($dossierId);
+        $this->context->within($dossier, function () use (&$toValidate): void {
+            $toValidate = array_map(static fn (Entry $entry): int => (int) $entry->getId(), $this->entries->findBy(['id' => $toValidate], ['entryDate' => 'ASC', 'id' => 'ASC']));
+        });
         foreach (array_chunk($toValidate, self::VALIDATION_BATCH) as $batch) {
             $dossier = $this->fresh($dossierId);
             $this->context->within($dossier, function () use ($batch, $actor): void {
                 try {
-                    $this->ledger->validate($this->entries->findBy(['id' => $batch], ['id' => 'ASC']), $actor);
+                    $this->ledger->validate($this->entries->findBy(['id' => $batch], ['entryDate' => 'ASC', 'id' => 'ASC']), $actor);
                 } catch (EntryRefused $refusal) {
                     throw new \InvalidArgumentException('entries.yaml : '.implode(' ', $refusal->errors), 0, $refusal);
                 }

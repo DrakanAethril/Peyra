@@ -99,7 +99,7 @@ final readonly class PayslipSeverance
         $social = Money::euros($times('social_pss'));
         $socialExempt = $amount->compareTo($fully) > 0 ? Money::zero() : ($taxExempt->compareTo($social) < 0 ? $taxExempt : $social);
         if ($socialExempt->compareTo($amount) < 0) {
-            throw new \LogicException(\sprintf('Une part de l’indemnité de rupture (%s sur %s) est soumise à cotisations : le moteur de bulletin ne la calcule pas encore.', FrenchFormat::amountInEuros($amount->minus($socialExempt)), FrenchFormat::amountInEuros($amount)));
+            throw new \LogicException(\sprintf('Une part de l’indemnité de rupture (%s sur %s) est soumise à cotisations : ce cas est hors du périmètre de Peyra, qui calcule l’indemnité entièrement exonérée de cotisations (dans la limite fiscale et de deux plafonds annuels) seulement.', FrenchFormat::amountInEuros($amount->minus($socialExempt)), FrenchFormat::amountInEuros($amount)));
         }
         $notes[] = \sprintf('Cotisations sociales : exonérée dans la limite de l’exonération d’impôt et de %s PASS (%s) : %s exonérés.', FrenchFormat::number($regulatory->decimal(self::EXEMPTION_KEY, 'social_pss')), FrenchFormat::amountInEuros($social), FrenchFormat::amountInEuros($socialExempt));
         $kept = $legal->compareTo($socialExempt) < 0 ? $legal : $socialExempt;

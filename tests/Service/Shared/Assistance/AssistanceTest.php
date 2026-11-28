@@ -24,25 +24,25 @@ final class AssistanceTest extends TestCase
             'runsControls' => true, 'blocks' => true, 'allowsPartialLettering' => false, 'proposesLettering' => true,
             'opensGuidedEntry' => true, 'refusesAccountOutsideChart' => true, 'signalsAccountOutsideChart' => true,
             'requiresHiringDeclarationFields' => true, 'explainsPortalRejections' => true, 'flagsQuantityGaps' => true,
-            'calculatesPayslip' => true, 'signalsPayslipGaps' => false, 'blocksPayslipGaps' => false, 'startsPayslipEmpty' => false, 'showsStockValuation' => true, 'requiresStockGapReason' => true, 'proposesBankPointing' => true, 'proposesBankEntry' => true, 'blocksReconciliationGaps' => true, 'signalsReconciliationGaps' => true,
+            'calculatesPayslip' => true, 'controlsPayslip' => true, 'blocksPayslipControls' => false, 'startsPayslipEmpty' => false, 'showsStockValuation' => true, 'requiresStockGapReason' => true, 'proposesBankPointing' => true, 'proposesBankEntry' => true, 'blocksReconciliationGaps' => true, 'signalsReconciliationGaps' => true,
         ]];
         yield 'Contrôles bloquants' => [AssistanceLevel::Blocking, [
             'runsControls' => true, 'blocks' => true, 'allowsPartialLettering' => false, 'proposesLettering' => false,
             'opensGuidedEntry' => true, 'refusesAccountOutsideChart' => true, 'signalsAccountOutsideChart' => true,
             'requiresHiringDeclarationFields' => true, 'explainsPortalRejections' => false, 'flagsQuantityGaps' => false,
-            'calculatesPayslip' => false, 'signalsPayslipGaps' => true, 'blocksPayslipGaps' => true, 'startsPayslipEmpty' => false, 'showsStockValuation' => false, 'requiresStockGapReason' => true, 'proposesBankPointing' => false, 'proposesBankEntry' => true, 'blocksReconciliationGaps' => true, 'signalsReconciliationGaps' => true,
+            'calculatesPayslip' => true, 'controlsPayslip' => true, 'blocksPayslipControls' => true, 'startsPayslipEmpty' => false, 'showsStockValuation' => false, 'requiresStockGapReason' => true, 'proposesBankPointing' => false, 'proposesBankEntry' => true, 'blocksReconciliationGaps' => true, 'signalsReconciliationGaps' => true,
         ]];
         yield 'Avertissements' => [AssistanceLevel::Warnings, [
             'runsControls' => true, 'blocks' => false, 'allowsPartialLettering' => true, 'proposesLettering' => false,
             'opensGuidedEntry' => false, 'refusesAccountOutsideChart' => false, 'signalsAccountOutsideChart' => true,
             'requiresHiringDeclarationFields' => false, 'explainsPortalRejections' => false, 'flagsQuantityGaps' => false,
-            'calculatesPayslip' => false, 'signalsPayslipGaps' => true, 'blocksPayslipGaps' => false, 'startsPayslipEmpty' => false, 'showsStockValuation' => false, 'requiresStockGapReason' => false, 'proposesBankPointing' => false, 'proposesBankEntry' => false, 'blocksReconciliationGaps' => false, 'signalsReconciliationGaps' => true,
+            'calculatesPayslip' => true, 'controlsPayslip' => true, 'blocksPayslipControls' => false, 'startsPayslipEmpty' => false, 'showsStockValuation' => false, 'requiresStockGapReason' => false, 'proposesBankPointing' => false, 'proposesBankEntry' => false, 'blocksReconciliationGaps' => false, 'signalsReconciliationGaps' => true,
         ]];
         yield 'Aucun filet' => [AssistanceLevel::None, [
             'runsControls' => false, 'blocks' => false, 'allowsPartialLettering' => true, 'proposesLettering' => false,
             'opensGuidedEntry' => false, 'refusesAccountOutsideChart' => false, 'signalsAccountOutsideChart' => false,
             'requiresHiringDeclarationFields' => false, 'explainsPortalRejections' => false, 'flagsQuantityGaps' => false,
-            'calculatesPayslip' => false, 'signalsPayslipGaps' => false, 'blocksPayslipGaps' => false, 'startsPayslipEmpty' => true, 'showsStockValuation' => false, 'requiresStockGapReason' => false, 'proposesBankPointing' => false, 'proposesBankEntry' => false, 'blocksReconciliationGaps' => false, 'signalsReconciliationGaps' => false,
+            'calculatesPayslip' => false, 'controlsPayslip' => false, 'blocksPayslipControls' => false, 'startsPayslipEmpty' => true, 'showsStockValuation' => false, 'requiresStockGapReason' => false, 'proposesBankPointing' => false, 'proposesBankEntry' => false, 'blocksReconciliationGaps' => false, 'signalsReconciliationGaps' => false,
         ]];
     }
 
@@ -64,8 +64,8 @@ final class AssistanceTest extends TestCase
             'explainsPortalRejections' => $assistance->explainsPortalRejections(),
             'flagsQuantityGaps' => $assistance->flagsQuantityGaps(),
             'calculatesPayslip' => $assistance->calculatesPayslip(),
-            'signalsPayslipGaps' => $assistance->signalsPayslipGaps(),
-            'blocksPayslipGaps' => $assistance->blocksPayslipGaps(),
+            'controlsPayslip' => $assistance->controlsPayslip(),
+            'blocksPayslipControls' => $assistance->blocksPayslipControls(),
             'startsPayslipEmpty' => $assistance->startsPayslipEmpty(),
             'showsStockValuation' => $assistance->showsStockValuation(),
             'requiresStockGapReason' => $assistance->requiresStockGapReason(),

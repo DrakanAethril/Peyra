@@ -5,21 +5,22 @@
  # they showed, `shown[code.field]`: a changed cell is forced, an emptied one goes back to the
  # calculation. A value forced by hand is tinted and says « forcée ». The explanation travels in a
  # <template> that a click, F5 or Entrée on the line shows in the drawer (payslip_controller.js).
- # Where the student establishes the payslip (step 4.4c, `entry_check`, levels B, A and 0) a cell shows
- # only what was typed, one in gap says « à revoir » (never the value), the amounts of a line wait for
- # all its cells, and the drawer gives the regulatory value's source, not the calculation.
+ # Where the student establishes the payslip (`establishing`, level 0) a cell shows only what was typed,
+ # the amounts of a line wait for all its cells, and the drawer gives the regulatory value's source, not
+ # the calculation. On a calculated payslip a forced cell that differs from the tool's calculation says
+ # « à revoir » (`entry_check` gap, review 4.7), never the value.
  #}
 {% set open = open_cells[row.code] ?? [] %}
-{% set line_hidden = entry_check is not null and not entry_check.isLineComplete(row.code) %}
+{% set line_hidden = establishing and not entry_check.isLineComplete(row.code) %}
 {% macro cell(row, field, display, open, cells, errors, texts, check) %}
     {% set key = row.code ~ '.' ~ field %}
-    {% set forced = check is null and row.isForced(field) %}
+    {% set forced = (check is null or not check.typedByStudent) and row.isForced(field) %}
     {% set state = check is null ? null : check.state(key) %}
     {% if field in open %}
         {% set shown = texts[key] ?? '' %}
         <input class="px-payslip__cell{{ forced ? ' is-forced' : '' }}{{ state == 'gap' ? ' is-gap' : (state == 'missing' ? ' is-missing' : '') }}" form="payslip-elements" name="cell[{{ key }}]" value="{{ cells[key] ?? shown }}" aria-label="{{ row.label }} : {{ {base: 'base', employeeRate: 'taux salarié', employeeAmount: 'part salarié', employerRate: 'taux employeur', employerAmount: 'part employeur'}[field] }}{{ forced ? ' (valeur forcée)' : '' }}{{ state == 'gap' ? ' (à revoir)' : (state == 'missing' ? ' (à saisir)' : '') }}" autocomplete="off" inputmode="decimal" data-payslip-target="cell"{% if errors[key] is defined %} aria-invalid="true" title="{{ errors[key] }}"{% endif %}>
         <input type="hidden" form="payslip-elements" name="shown[{{ key }}]" value="{{ shown }}">
-        {% if errors[key] is defined %}<span class="px-field__error">{{ errors[key] }}</span>{% elseif state == 'gap' %}<span class="px-payslip__gap">à revoir</span>{% elseif forced %}<span class="px-payslip__forced">forcée</span>{% endif %}
+        {% if errors[key] is defined %}<span class="px-field__error">{{ errors[key] }}</span>{% elseif state == 'gap' %}<span class="px-payslip__gap">forcée, à revoir</span>{% elseif forced %}<span class="px-payslip__forced">forcée</span>{% endif %}
     {% elseif forced %}
         <span class="px-payslip__value is-forced">{{ display }}</span><span class="px-payslip__forced">forcée</span>
     {% else %}
@@ -36,9 +37,9 @@
     <td class="px-u-num">{{ _self.cell(row, 'employerAmount', line_hidden or row.employerAmount is null ? '' : row.employerAmount|amount, open, cells, errors, cell_texts, entry_check) }}</td>
     <template>
         <h3 class="px-u-strong">{{ row.code }} · {{ row.label }}</h3>
-        {% if entry_check is not null %}<p class="px-u-muted">Le bulletin est à établir : le calcul de l’outil sert au corrigé. Voici la valeur réglementaire que la rubrique lit.</p>{% endif %}
+        {% if establishing %}<p class="px-u-muted">Le bulletin est à établir : le calcul de l’outil sert au corrigé. Voici la valeur réglementaire que la rubrique lit.</p>{% endif %}
         <dl class="px-facts">
-            {% if entry_check is null %}
+            {% if not establishing %}
             <dt>Calcul</dt><dd>{{ row.explanation.formula }}</dd>
             <dt>Base</dt><dd>{{ row.explanation.base }}</dd>
             <dt>Taux</dt><dd>{{ row.explanation.rate }}</dd>
@@ -47,7 +48,7 @@
                 {% set source = row.explanation.source %}
                 <dt>Valeur réglementaire</dt><dd>{{ source.label }} · en vigueur au {{ source.effectiveFrom|date_fr }}{% if not source.verified %} · <twig:Px:Badge tone="warning" label="à vérifier"/>{% endif %}{% if source.url %} · <a class="px-link" href="{{ source.url }}" target="_blank" rel="noopener">source</a>{% endif %}</dd>
             {% endif %}
-            {% if entry_check is null %}{% for note in row.explanation.notes %}<dt>{{ loop.first ? 'À savoir' : '' }}</dt><dd>{{ note }}</dd>{% endfor %}{% endif %}
+            {% if not establishing %}{% for note in row.explanation.notes %}<dt>{{ loop.first ? 'À savoir' : '' }}</dt><dd>{{ note }}</dd>{% endfor %}{% endif %}
         </dl>
     </template>
 </tr>

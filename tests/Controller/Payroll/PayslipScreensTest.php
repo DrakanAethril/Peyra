@@ -153,8 +153,12 @@ final class PayslipScreensTest extends WebTestCase
         self::assertSelectorTextContains('main tbody', 'Validé');
     }
 
-    /** Level B (step 4.4c): the cells are the student's to type, a gap is said without its value, and the validation waits. */
-    public function testAPayslipTheStudentEstablishes(): void
+    /**
+     * Level B (review 4.7): the student enters the elements of the month and the tool calculates; the
+     * « Contrôles » card says what it checked, and a value typed in the payslip that differs from the
+     * calculation is a fault that stops the validation - said, never corrected.
+     */
+    public function testAPayslipCalculatedAndControlledAtLevelB(): void
     {
         [$client, $dossier] = $this->school(AssistanceLevel::Blocking);
         $payslip = $this->url($dossier, '/payroll/payslips/S010');
@@ -164,28 +168,33 @@ final class PayslipScreensTest extends WebTestCase
         $client->submit($form);
         $crawler = $client->followRedirect();
 
-        self::assertSelectorTextContains('main', 'Bulletin à établir');
+        self::assertSelectorTextNotContains('main', 'Bulletin à établir');
+        self::assertSame('151,67', $crawler->filter('#payslip-elements')->form()['cell[1000.base]']->getValue(), 'The calculation is shown.');
+        self::assertCount(4, $crawler->filter('.px-kpi'));
+        // 2 730,00 ÷ 151,67 = 17,9996 € an hour, above the SMIC of March 2026 (12,02 €).
+        self::assertSelectorTextContains('main', 'Salaire horaire de 17,9996 € au moins égal au SMIC (12,02 €)');
+        self::assertSelectorTextContains('main', 'Contrôles aucun défaut');
+
         $form = $crawler->filter('#payslip-elements')->form();
-        self::assertSame('', $form['cell[1000.base]']->getValue(), 'The calculation is not shown.');
-        self::assertSame('', $this->gross($crawler->filter('tr.px-table__subtotal')->first()->text()), 'Nor the gross pay before every cell is typed.');
-        self::assertCount(0, $crawler->filter('.px-kpi'));
-        self::assertStringNotContainsString('17,9996', (string) $client->getInternalResponse()->getContent());
-
-        $client->request('POST', $payslip.'/validate', ['_token' => $crawler->filter('form[action$="/validate"] input[name="_token"]')->attr('value')]);
-        $client->followRedirect();
-        self::assertSelectorTextContains('main', 'cellules du bulletin restent à saisir');
-
-        // 2 730,00 ÷ 151,67 = 17,9996: 151,67 is right, 18 is a gap - said, never corrected.
-        $form = $client->getCrawler()->filter('#payslip-elements')->form();
-        $form['cell[1000.base]'] = '151,67';
         $form['cell[1000.employeeRate]'] = '18';
         $client->submit($form);
         $crawler = $client->followRedirect();
-        self::assertCount(1, $crawler->filter('input.is-gap'));
         self::assertCount(1, $crawler->filter('input.is-gap[name="cell[1000.employeeRate]"]'));
-        self::assertSame('151,67', $crawler->filter('#payslip-elements')->form()['cell[1000.base]']->getValue());
-        self::assertSelectorTextContains('main', 'Une cellule diffère du calcul de l’outil');
-        self::assertStringNotContainsString('17,9996', (string) $client->getInternalResponse()->getContent());
+        self::assertSelectorTextContains('main', 'Contrôles un défaut, bloquant');
+        self::assertSelectorTextContains('main', 'Une valeur saisie dans le bulletin diffère du calcul de l’outil');
+
+        $client->request('POST', $payslip.'/validate', ['_token' => $crawler->filter('form[action$="/validate"] input[name="_token"]')->attr('value')]);
+        $crawler = $client->followRedirect();
+        self::assertSelectorTextContains('main', 'Un contrôle du bulletin est en défaut : revoyez-le avant de valider.');
+
+        // Emptied, the cell goes back to the calculation: the payslip validates.
+        $form = $crawler->filter('#payslip-elements')->form();
+        $form['cell[1000.employeeRate]'] = '';
+        $client->submit($form);
+        $crawler = $client->followRedirect();
+        $client->request('POST', $payslip.'/validate', ['_token' => $crawler->filter('form[action$="/validate"] input[name="_token"]')->attr('value')]);
+        $client->followRedirect();
+        self::assertSelectorTextContains('main', 'Validé');
     }
 
     /** Level 0 (step 4.4c): the payslip starts with no line, and the student adds and removes any rubrique. */

@@ -182,7 +182,8 @@ final class PayslipEndOfContractTest extends TestCase
         }
 
         $this->expectException(\LogicException::class);
-        // 2 × 30 000,00 = 60 000,00 exempt of 70 000,00: 10 000,00 would be subject to contributions.
+        // 2 × 30 000,00 = 60 000,00 exempt of 70 000,00: 10 000,00 would be subject to contributions, said as outside the scope.
+        $this->expectExceptionMessage('ce cas est hors du périmètre de Peyra');
         $this->conventional('2026', '70000.00', '30000.00');
     }
 
