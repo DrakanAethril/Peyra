@@ -13,7 +13,8 @@ use App\Enum\Dossier\DossierProfile;
  * one place they are written. The accountants validate their own journal and enter the payments,
  * the chief accountant validates them all and alone changes the dossier's settings - the
  * segregation of duties of P1.7: whoever enters an invoice does not create the supplier it is paid
- * to. No profile (an individual dossier, a teacher, a member not yet given one): every right.
+ * to. The payroll is the payroll manager's and the chief accountant's, closed to the two
+ * accountants (step 4.1). No profile (an individual dossier, a teacher, a member not yet given one): every right.
  */
 final class ProfileMatrix
 {
@@ -23,12 +24,12 @@ final class ProfileMatrix
             null, DossierProfile::ChiefAccountant => $area->topLevel(),
             DossierProfile::SupplierAccountant => match ($area) {
                 DossierArea::Purchases => AccessLevel::Validate,
-                DossierArea::Sales => AccessLevel::Closed,
+                DossierArea::Sales, DossierArea::Payroll => AccessLevel::Closed,
                 DossierArea::Treasury => AccessLevel::Enter,
                 DossierArea::General, DossierArea::Settings => AccessLevel::Read,
             },
             DossierProfile::CustomerAccountant => match ($area) {
-                DossierArea::Purchases => AccessLevel::Closed,
+                DossierArea::Purchases, DossierArea::Payroll => AccessLevel::Closed,
                 DossierArea::Sales => AccessLevel::Validate,
                 DossierArea::Treasury => AccessLevel::Enter,
                 DossierArea::General, DossierArea::Settings => AccessLevel::Read,
@@ -37,6 +38,7 @@ final class ProfileMatrix
                 DossierArea::Purchases, DossierArea::Sales => AccessLevel::Closed,
                 DossierArea::Treasury, DossierArea::Settings => AccessLevel::Read,
                 DossierArea::General => AccessLevel::Enter,
+                DossierArea::Payroll => AccessLevel::Validate,
             },
         };
     }

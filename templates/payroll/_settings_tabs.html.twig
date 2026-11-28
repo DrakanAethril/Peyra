@@ -1,0 +1,6 @@
+{# The views of Paramètres de paie (lot 4, step 4.1): plan de paie, organismes, établissement. #}
+<twig:Px:Tabs label="Paramètres de paie" :tabs="[
+    {label: 'Plan de paie', href: path('app_payroll_items', {dossier: dossier.id}), current: settings_current == 'items'},
+    {label: 'Organismes', href: path('app_payroll_bodies', {dossier: dossier.id}), current: settings_current == 'bodies'},
+    {label: 'Établissement', href: path('app_payroll_establishment', {dossier: dossier.id}), current: settings_current == 'establishment'},
+]"/>

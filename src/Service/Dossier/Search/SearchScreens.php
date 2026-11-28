@@ -14,7 +14,8 @@ use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
  * The screens and actions of a dossier the global search offers (Ctrl K, design-ux.md § 2.1): the
  * catalogue of what exists today - the dashboard, Comptabilité's screens (Saisie, one line per
  * journal, the guided entry when it is open to the person, À-nouveaux, Brouillard, Consultation,
- * Lettrage, Recherche d'écritures, the five editions, the five views of the settings), Immobilisations et clôture › FEC, Système d'information ›
+ * Lettrage, Recherche d'écritures, the five editions, the five views of the settings), Immobilisations et clôture › FEC, Paie et social's
+ * three views of its settings (to whoever reads the payroll), Système d'information ›
  * Société, Utilisateurs et droits, Piste d'audit - and, for whoever may change the dossier, the
  * actions that create (« Nouvelle écriture », « Nouveau compte »…). The search never offers a
  * module a mission closes, nor what a profile closes (a journal it does not open, the settings'
@@ -34,7 +35,7 @@ final readonly class SearchScreens
         'app_accounting_edition_third_party_balance', 'app_accounting_edition_aged_balance',
         'app_accounting_accounts', 'app_accounting_journals', 'app_third_parties', 'app_accounting_templates',
         'app_accounting_subscriptions', 'app_closing_fec', 'app_dossier_company', 'app_dossier_users', 'app_dossier_audit',
-        'app_dossier_restore_points',
+        'app_dossier_restore_points', 'app_payroll_items', 'app_payroll_bodies', 'app_payroll_establishment',
     ];
 
     /** What an empty search shows when nothing was opened yet. */
@@ -47,6 +48,7 @@ final readonly class SearchScreens
     private const string CONSULTATION = 'Comptabilité › Consultation';
     private const string EDITIONS = 'Comptabilité › Éditions';
     private const string SETTINGS = 'Comptabilité › Paramètres comptables';
+    private const string PAYROLL_SETTINGS = 'Paie et social › Paramètres de paie';
 
     public function __construct(
         private UrlGeneratorInterface $urls,
@@ -108,6 +110,12 @@ final readonly class SearchScreens
         }
         $items[] = $screen('app_accounting_opening', 'À-nouveaux', self::ENTRY, 'book-text', 'a nouveaux balance ouverture exercice an');
 
+        $payroll = !$this->authorization->isGranted(DossierRightVoter::PAYROLL_READ, $dossier) ? [] : [
+            $screen('app_payroll_items', 'Plan de paie', self::PAYROLL_SETTINGS, 'users', 'rubriques cotisations taux salaire'),
+            $screen('app_payroll_bodies', 'Organismes sociaux', self::PAYROLL_SETTINGS, 'users', 'urssaf retraite prevoyance mutuelle'),
+            $screen('app_payroll_establishment', 'Établissement', self::PAYROLL_SETTINGS, 'users', 'effectif accident du travail versement mobilite paie'),
+        ];
+
         return [
             ...$items,
             $screen('app_accounting_brouillard', 'Brouillard', 'Comptabilité', 'book-text', 'valider ecritures'),
@@ -125,6 +133,7 @@ final readonly class SearchScreens
             $screen('app_accounting_templates', 'Modèles d’écriture', self::SETTINGS, 'settings', 'saisie f6'),
             $screen('app_accounting_subscriptions', 'Abonnements', self::SETTINGS, 'settings', 'loyer echeances generer'),
             $screen('app_closing_fec', 'FEC', 'Immobilisations et clôture › Clôture', 'lock', 'fichier des ecritures comptables export controle fiscal conformite archivage telecharger'),
+            ...$payroll,
             $screen('app_dossier_company', 'Société', 'Système d’information', 'database', 'entreprise siret dossier'),
             $screen('app_dossier_users', 'Utilisateurs et droits', 'Système d’information', 'users', 'profils membres groupe matrice'),
             $screen('app_dossier_audit', 'Piste d’audit', 'Système d’information', 'history', 'historique journal qui quoi quand'),
@@ -153,6 +162,10 @@ final readonly class SearchScreens
             $action('app_accounting_entry', 'Nouvelle écriture', self::ENTRY, 'plus', 'creer saisir ajouter'),
             $action('app_dossier_restore_point_new', 'Poser un point de restauration', 'Système d’information', 'history', 'sauvegarde instantane'),
         ];
+        if ($this->authorization->isGranted(DossierRightVoter::PAYROLL_SETTINGS, $dossier)) {
+            $actions[] = $action('app_payroll_item_new', 'Nouvelle rubrique de paie', self::PAYROLL_SETTINGS, 'plus', 'creer ajouter cotisation');
+            $actions[] = $action('app_payroll_body_new', 'Nouvel organisme social', self::PAYROLL_SETTINGS, 'plus', 'creer ajouter urssaf retraite');
+        }
         if (!$this->authorization->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
             return $actions;
         }

@@ -17,6 +17,7 @@ use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntrySubscriptionRepository;
 use App\Repository\Identity\SchoolYearRepository;
+use App\Repository\Payroll\PayrollBodyRepository;
 use App\Service\Accounting\Ledger\EntryDraft;
 use App\Service\Accounting\Ledger\EntryLineDraft;
 use App\Service\Accounting\Ledger\Ledger;
@@ -29,6 +30,7 @@ use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Restore\RestorePoints;
 use App\Service\Dossier\Restore\RestoreRunner;
 use App\Service\Identity\SchoolClasses;
+use App\Service\Payroll\Plan\PayrollPlanInstaller;
 use App\Service\Shared\Money;
 use App\Tests\Support\BuildsSchool;
 use App\Tests\Support\RegulatoryFixtures;
@@ -209,6 +211,12 @@ final class RoleAccessSmokeTest extends WebTestCase
             $client->getContainer()->get(EntityManagerInterface::class)->flush();
         });
         $subscriptionId = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): ?int => $client->getContainer()->get(EntrySubscriptionRepository::class)->findByDossier($saved)[0]->getId());
+        $bodyId = $client->getContainer()->get(DossierContext::class)->within($saved, static function () use ($client, $saved): ?int {
+            $client->getContainer()->get(PayrollPlanInstaller::class)->installStandard($saved, 'test');
+            $client->getContainer()->get(EntityManagerInterface::class)->flush();
+
+            return $client->getContainer()->get(PayrollBodyRepository::class)->findByDossier($saved)[0]->getId();
+        });
         $entry = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): Entry => $client->getContainer()->get(Ledger::class)->draft($saved, new EntryDraft('BQ1', new \DateTimeImmutable('2026-01-20'), 'VIR-SCIE', 'Virement Scierie', [
             EntryLineDraft::debit('401000', Money::cents(1_000), '', 'F0001'),
             EntryLineDraft::credit('512100', Money::cents(1_000)),
@@ -246,6 +254,8 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/accounting/lettering?account=401000', '/accounting/opening', '/accounting/opening?exercise=2026',
             '/users', '/audit', '/audit?role=teacher&action=accounting.entry_validated&q=ACH', '/audit/export.csv', '/audit/export.xlsx',
             '/closing/fec', '/closing/fec?exercise=2026', '/closing/fec/download',
+            '/payroll/items', '/payroll/items/new', '/payroll/items/2200', '/payroll/bodies', '/payroll/bodies/new',
+            '/payroll/bodies/'.$bodyId, '/payroll/establishment',
             '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {

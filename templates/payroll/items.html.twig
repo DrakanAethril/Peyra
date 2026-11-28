@@ -1,0 +1,82 @@
+{#
+ # Paie et social › Paramètres de paie › Plan de paie (lot 4, step 4.1, gabarit L): the rubriques
+ # by family in the payslip's order, each rate read at the dossier's date with its source in its
+ # title (PayrollPlanView). An empty plan offers the standard one; N creates a rubrique.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set settings_current = 'items' %}
+{% set dossier_title = 'Plan de paie' %}
+{% set can_edit = is_granted('PAYROLL_SETTINGS', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouvelle rubrique'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Plan de paie" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_items', {dossier: dossier.id})},
+        {label: 'Paramètres de paie', href: path('app_payroll_items', {dossier: dossier.id})},
+        {label: 'Plan de paie', href: path('app_payroll_items', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button href="{{ path('app_payroll_item_new', {dossier: dossier.id}) }}" variant="primary" icon="plus" shortcut="N">Nouvelle rubrique</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('payroll/_settings_tabs.html.twig') }}
+
+    {% if families is empty %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="users" title="Le plan de paie est vide" text="Le plan de paie standard compte une rubrique par élément de brut, par cotisation et par retenue, sans convention collective. Ses taux légaux ne sont pas écrits : chacun nomme sa valeur réglementaire, lue à la date de la paie.">
+                <twig:block name="action">
+                    {% if can_edit %}
+                        <form method="post" action="{{ path('app_payroll_plan_install', {dossier: dossier.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('payroll-plan-install-' ~ dossier.id) }}">
+                            <twig:Px:Button type="submit" variant="primary">Installer le plan de paie standard</twig:Px:Button>
+                        </form>
+                    {% endif %}
+                </twig:block>
+            </twig:Px:Empty>
+        </twig:Px:Card>
+    {% else %}
+        <twig:Px:Card :flush="true">
+            <twig:Px:Table caption="Plan de paie de {{ dossier.name }}" :rows="true">
+                <thead>
+                    <tr>
+                        <th scope="col">Code</th>
+                        <th scope="col">Rubrique</th>
+                        <th scope="col">Assiette</th>
+                        <th scope="col" class="px-u-right">Taux salarial</th>
+                        <th scope="col" class="px-u-right">Taux patronal</th>
+                        <th scope="col">Conditions</th>
+                        <th scope="col">Organisme</th>
+                        <th scope="col">Ligne du bulletin</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for kind in kinds %}
+                        {% if families[kind.value] is defined %}
+                            <tr class="px-table__section"><th colspan="8" scope="rowgroup">{{ kind.heading }}</th></tr>
+                            {% for plan_row in families[kind.value] %}
+                                {% set payroll_item = plan_row.item %}
+                                <tr data-rows-target="row">
+                                    <td class="px-u-code"><a class="px-link" href="{{ path('app_payroll_item', {dossier: dossier.id, code: payroll_item.code}) }}">{{ payroll_item.code }}</a></td>
+                                    <td>{{ payroll_item.label }}{% if payroll_item.subtracts %} <span class="px-u-muted">(en déduction)</span>{% endif %}</td>
+                                    <td>{{ payroll_item.base.label }}{% if payroll_item.ceiling.short %} · {{ payroll_item.ceiling.short }}{% endif %}</td>
+                                    {% for side in [plan_row.employee, plan_row.employer] %}
+                                        <td class="{{ side.figure ? 'px-u-num' : 'px-u-right px-u-muted' }}"{% if side.source %} title="{{ side.source }}"{% endif %}>{% if side.missing %}<twig:Px:Badge tone="warning">{{ side.text }}</twig:Px:Badge>{% else %}{{ side.text }}{% endif %}</td>
+                                    {% endfor %}
+                                    <td>{{ [payroll_item.statusCondition.value != 'all' ? payroll_item.statusCondition.label : null, payroll_item.headcountCondition.value != 'all' ? payroll_item.headcountCondition.label : null, payroll_item.salaryCondition.value != 'always' ? payroll_item.salaryCondition.label : null]|filter(c => c is not null)|join(' · ') }}</td>
+                                    <td>{{ payroll_item.body ? payroll_item.body.name : '' }}</td>
+                                    <td>{{ payroll_item.payslipLine ? payroll_item.payslipLine.label : '' }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>Plan de paie · <b>{{ families|reduce((count, rows) => count + rows|length, 0) }}</b> rubriques</span><span>Taux lus au <b>{{ dossier.dossierDate|date_fr }}</b></span>{% endblock %}

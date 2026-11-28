@@ -4,14 +4,18 @@
 #
 # Une entrée :
 #
-#   - key: social.smic_hourly        # domaine.nom, en anglais et snake_case ; domaines : social, fiscal
+#   - key: social.smic_hourly        # domaine.nom, en anglais et snake_case ; domaines : social,
+# fiscal
 #     label: SMIC horaire brut       # le libellé affiché
-#     value: 12.02                   # un nombre, un texte, ou une structure (tableau, liste de tranches)
+#     value: 12.02                   # un nombre, un texte, ou une structure (tableau, liste de
+# tranches)
 #     unit: EUR/heure                # percent (6.90 = 6,90 %), EUR, EUR/mois, coefficient, text…
-#     effective_from: 2025-01-01     # date d’effet ; un changement déjà connu pour l’an prochain a sa place ici
+#     effective_from: 2025-01-01     # date d’effet ; un changement déjà connu pour l’an prochain a
+# sa place ici
 #     source_url: https://www.urssaf.fr/…   # la page officielle lue
 #     consulted_on: 2026-11-27       # le jour où elle a été lue
-#     verified: true                 # true seulement si la valeur a été lue sur la source ; sinon false
+#     verified: true                 # true seulement si la valeur a été lue sur la source ; sinon
+# false
 #     note: …                        # facultatif
 #
 # Une même clé peut revenir à plusieurs dates d'effet (SMIC de janvier et de juin). Corriger une
@@ -19,5 +23,616 @@
 # et garde l'ancienne dans l'historique ; elle ne touche jamais à une valeur saisie par un
 # administrateur. Les données préparées pour Peyra (sources, marques verified) entrent ici avec les
 # modules qui les lisent : TVA et fiscalité au lot 3, paie au lot 4.
+#
+# Les valeurs sociales (lot 4, étape 4.1) viennent des données préparées pour Peyra
+# (plan/donnees/reglementaire/social-2025.yaml, recherche du 27/11/2026), sources et marques
+# verified gardées. Écarts avec elles : les taux d'exemple d'accident du travail et de versement
+# mobilité n'y sont pas (ce sont des données de l'établissement, saisies dans Paie et social ›
+# Paramètres de paie) ; maladie et allocations familiales gardent leur taux réduit et son seuil,
+# mais leur taux plein se lit sous employer_rate comme en 2026 ; la majoration des heures
+# complémentaires est ajoutée (service-public, 28/11/2026).
 millesime: 2025
-entries: []
+consulted_on: 2026-11-27
+entries:
+  # --- SMIC -------------------------------------------------------------------------------------
+  - key: social.smic_hourly
+    label: SMIC horaire brut
+    value: 11.88
+    unit: EUR/heure
+    effective_from: 2024-11-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/montant-smic.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Historique 2025 de la page Urssaf (« au 1er janvier 2025 ») ; BOSS SMIC_H_METROP 11,88 du 01/11/2024 au 31/12/2025. Pas de revalorisation en cours d'année 2025.
+  - key: social.smic_monthly
+    label: SMIC mensuel brut (35 h, 151,67 h)
+    value: 1801.80
+    unit: EUR/mois
+    effective_from: 2024-11-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/montant-smic.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.smic_hourly_minor
+    label: SMIC horaire minoré des jeunes de moins de 18 ans sans 6 mois de pratique
+    value: {age_17_to_18: 10.69, under_17: 9.50}
+    unit: EUR/heure
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/montant-smic.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Mensuels 1 621,62 € et 1 441,44 €.
+  - key: social.minimum_garanti
+    label: Minimum garanti (MG)
+    value: 4.22
+    unit: EUR
+    effective_from: 2024-11-01
+    source_url: https://boss.gouv.fr/portail/accueil/table-des-parametres.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Table des paramètres du BOSS (CSV 202601, AEN_REPA_MG).
+
+  # --- Plafond de la sécurité sociale -------------------------------------------------------------
+  - key: social.pss_annual
+    label: Plafond annuel de la sécurité sociale (PASS)
+    value: 47100
+    unit: EUR/an
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/plafonds-securite-sociale.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Historique 2025 de la page Urssaf.
+  - key: social.pmss
+    label: Plafond mensuel de la sécurité sociale (PMSS)
+    value: 3925
+    unit: EUR/mois
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/plafonds-securite-sociale.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Trimestre 11 775 €, quinzaine 1 963 €, semaine 906 €.
+  - key: social.pss_daily
+    label: Plafond journalier de la sécurité sociale
+    value: 216
+    unit: EUR/jour
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/plafonds-securite-sociale.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.pss_hourly
+    label: Plafond horaire de la sécurité sociale
+    value: 29
+    unit: EUR/heure
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/plafonds-securite-sociale.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+
+  # --- Cotisations URSSAF ----------------------------------------------------------------------
+  - key: social.contrib.health
+    label: Assurance maladie, maternité, invalidité, décès
+    value:
+      base: brut_total
+      employee_rate: 0
+      employer_rate: 13.00
+      employer_rate_reduced: 7.00
+      reduced_rate_threshold_smic: 2.25
+      reduced_rate_threshold: "rémunération annuelle ≤ 2,25 SMIC (SMIC du 1er janvier 2025) - 4 054,14 €/mois, 48 648,60 €/an"
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/files/live/sites/urssaffr/files/autres/SUPPORT-WEBCONFERENCE-NOUVELLES-MESURES-2025.pdf
+    consulted_on: 2026-11-27
+    verified: true
+    note: >-
+      Seuil abaissé de 2,5 à 2,25 SMIC au 1er janvier 2025 (support Urssaf/CNOEC « Nouvelles mesures 2025 »).
+      BOSS : COT_AM_SS_METROP = 7 sur 2025. Exception : employeurs à exonération dégressive spécifique
+      (ZRR, ZFRR, JEI, Lodéom) - 2,5 SMIC au 31/12/2023. Taux plein 13 % au-delà du seuil.
+  - key: social.contrib.csa
+    label: Contribution solidarité autonomie (CSA)
+    value: {base: brut_total, employer_rate: 0.30}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/table-des-parametres.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: BOSS COT_SA_SS_METROP 0,3 en 2025.
+  - key: social.contrib.old_age_capped
+    label: Assurance vieillesse plafonnée
+    value: {base: brut, ceiling: PSS, employee_rate: 6.90, employer_rate: 8.55}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: false
+    note: >-
+      Taux lus sur la page Urssaf version 2026 ; aucun changement annoncé pour ces deux taux entre 2025 et 2026
+      (seule la part patronale déplafonnée a bougé). Le total patronal 2025 8,55 + 2,02 = 10,57 est confirmé par
+      le BOSS (COT_AV_SS_METROP 10,57 en 2025) ; la part salariale 2025 n'a pas été lue sur une page datée 2025.
+  - key: social.contrib.old_age_uncapped
+    label: Assurance vieillesse déplafonnée
+    value: {base: brut_total, employee_rate: 0.40, employer_rate: 2.02}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/actualites/informations-nouvelle-annee.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Part patronale 2,02 % lue (« passe de 2,02 % à 2,11 % » au 01/01/2026). Part salariale 0,40 % - même réserve que la vieillesse plafonnée (lue en version 2026 seulement).
+  - key: social.contrib.family
+    label: Allocations familiales
+    value:
+      base: brut_total
+      employer_rate: 5.25
+      employer_rate_reduced: 3.45
+      reduced_rate_threshold_smic: 3.3
+      reduced_rate_threshold: "rémunération annuelle ≤ 3,3 SMIC (SMIC du 1er janvier 2025) - 5 946,07 €/mois, 71 351,28 €/an"
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/files/live/sites/urssaffr/files/autres/SUPPORT-WEBCONFERENCE-NOUVELLES-MESURES-2025.pdf
+    consulted_on: 2026-11-27
+    verified: true
+    note: Seuil abaissé de 3,5 à 3,3 SMIC au 1er janvier 2025. BOSS COT_AF_SS_METROP 3,45 en 2025.
+  - key: social.contrib.work_accident
+    label: Accidents du travail - maladies professionnelles (AT/MP)
+    value: {base: brut_total, employer_rate: notified_per_company, mutualised_part_in_reduction: {"2025-01-01": 0.46, "2025-05-01": 0.50}}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/table-des-parametres.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Taux notifié par la Carsat. En 2025 les taux AT/MP de l'année ne sont entrés en vigueur qu'au 1er mai 2025 (support Urssaf 2025). Part mutualisée retenue dans la réduction générale - 0,46 puis 0,50 (BOSS COT_AT_SS_METROP).
+  - key: social.contrib.fnal
+    label: Fonds national d'aide au logement (FNAL)
+    value:
+      - {headcount: "< 50", base: brut, ceiling: PSS, employer_rate: 0.10}
+      - {headcount: ">= 50", base: brut_total, ceiling: none, employer_rate: 0.50}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/table-des-parametres.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: BOSS COT_FNAL_49 / COT_FNAL_50 en 2025. L'assiette (plafonnée / totale) est lue sur la page Urssaf 2026, sans changement connu.
+  - key: social.contrib.mobility
+    label: Versement mobilité
+    value: {headcount: ">= 11", base: brut_total, employer_rate: rate_of_territory}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: false
+    note: Règle (≥ 11 salariés, taux de l'AOM) lue en version 2026 ; taux 2,00 % = EXEMPLE pédagogique. Versement mobilité régional (max 0,15 %) créé par la LF 2025.
+  - key: social.contrib.social_dialogue
+    label: Contribution au dialogue social
+    value: {base: brut_total, employer_rate: 0.016}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: false
+    note: Lu en version 2026 ; taux inchangé de longue date, non relu sur une source datée 2025.
+  - key: social.contrib.unemployment
+    label: Contribution d'assurance chômage
+    value: {base: brut, ceiling: "4 PSS (188 400 €/an, 15 700 €/mois)", employee_rate: 0, employer_rate: 4.05}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/table-des-parametres.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: BOSS COT_CH_UN_METROP 4,05 du 01/01/2025 au 30/04/2025.
+  - key: social.contrib.unemployment
+    label: Contribution d'assurance chômage
+    value: {base: brut, ceiling: "4 PSS (188 400 €/an, 15 700 €/mois)", employee_rate: 0, employer_rate: 4.00}
+    unit: percent
+    effective_from: 2025-05-01
+    source_url: https://www.urssaf.fr/accueil/employeur/cotisations/liste-cotisations/assurance-chomage-ags.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: « 4,00 % à compter du 1er mai 2025 ».
+  - key: social.contrib.ags
+    label: Cotisation AGS (garantie des salaires)
+    value: {base: brut, ceiling: 4 PSS, employer_rate: 0.25}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.ags-garantie-salaires.org/experts-partenaires/professionnels-du-droit/documentation/fiche-ags
+    consulted_on: 2026-11-27
+    verified: true
+    note: Fiche de l'AGS (organisme gestionnaire, hors liste des domaines demandés) - « depuis le 1er janvier 2025 fixé à 0,25 % ». Taux maintenu par décisions du 26/06/2025 et du 16/12/2025 (résultats de recherche, non relus).
+  - key: social.contrib.csg_deductible
+    label: CSG déductible
+    value: {base: "98,25 % du brut dans la limite de 4 PASS, puis 100 %", employee_rate: 6.80}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/employeur/cotisations/liste-cotisations/csg-crds.html
+    consulted_on: 2026-11-27
+    verified: false
+    note: Taux et abattement lus en version 2026 ; inchangés depuis 2018 à notre connaissance, non relus sur une source datée 2025. Abattement plafonné à 4 PASS = 188 400 € en 2025.
+  - key: social.contrib.csg_non_deductible
+    label: CSG non déductible
+    value: {base: "98,25 % du brut dans la limite de 4 PASS", employee_rate: 2.40}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/employeur/cotisations/liste-cotisations/csg-crds.html
+    consulted_on: 2026-11-27
+    verified: false
+    note: Même réserve.
+  - key: social.contrib.crds
+    label: CRDS
+    value: {base: "98,25 % du brut dans la limite de 4 PASS", employee_rate: 0.50}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/employeur/cotisations/liste-cotisations/csg-crds.html
+    consulted_on: 2026-11-27
+    verified: false
+    note: Même réserve.
+  - key: social.contrib.vocational_training
+    label: Contribution à la formation professionnelle (CFP)
+    value:
+      - {headcount: "< 11", employer_rate: 0.55}
+      - {headcount: ">= 11", employer_rate: 1.00}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: false
+    note: Lu en version 2026 ; taux légaux inchangés depuis 2019 à notre connaissance.
+  - key: social.contrib.apprenticeship_tax
+    label: Taxe d'apprentissage
+    value: {principal_part: 0.59, balance_part: 0.09, total: 0.68}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: false
+    note: Lu en version 2026 ; inchangé à notre connaissance.
+  - key: social.contrib.forfait_social_prevoyance
+    label: Forfait social sur contributions patronales de prévoyance complémentaire
+    value:
+      - {headcount: "< 11", rate: 0}
+      - {headcount: ">= 11", rate: 8}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/employeur/cotisations/liste-cotisations/forfait-social.html
+    consulted_on: 2026-11-27
+    verified: false
+    note: Lu en version 2026 ; inchangé à notre connaissance.
+
+  # --- Agirc-Arrco ------------------------------------------------------------------------------
+  - key: social.agirc_arrco.tranches
+    label: Tranches Agirc-Arrco
+    value: {t1: "0 à 1 PSS (3 925 €/mois, 47 100 €/an)", t2: "1 à 8 PSS (jusqu'à 31 400 €/mois, 376 800 €/an)"}
+    unit: EUR
+    effective_from: 2025-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/liste-fiche-reglementaires/listes-area/liste-de-fiches-reglementaires/taux-de-cotisations.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Bornes = PSS 2025 (verified) × 1 et × 8.
+  - key: social.agirc_arrco.t1
+    label: Agirc-Arrco tranche 1 (taux appelé)
+    value: {calc_rate: 6.20, call_rate: 127, global_rate: 7.87, employee_rate: 3.15, employer_rate: 4.72}
+    unit: percent
+    effective_from: 2019-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/liste-fiche-reglementaires/listes-area/liste-de-fiches-reglementaires/taux-de-cotisations.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: La fiche réglementaire indique ces taux « depuis le 1er janvier 2019 » ; répartition 60/40 lue sur le barème 2026, identique.
+  - key: social.agirc_arrco.t2
+    label: Agirc-Arrco tranche 2 (taux appelé)
+    value: {calc_rate: 17.00, call_rate: 127, global_rate: 21.59, employee_rate: 8.64, employer_rate: 12.95}
+    unit: percent
+    effective_from: 2019-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/liste-fiche-reglementaires/listes-area/liste-de-fiches-reglementaires/taux-de-cotisations.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.agirc_arrco.ceg
+    label: Contribution d'équilibre général (CEG)
+    value:
+      - {base: T1, global_rate: 2.15, employee_rate: 0.86, employer_rate: 1.29}
+      - {base: T2, global_rate: 2.70, employee_rate: 1.08, employer_rate: 1.62}
+    unit: percent
+    effective_from: 2019-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/liste-fiche-reglementaires/listes-area/liste-de-fiches-reglementaires/taux-de-cotisations.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.agirc_arrco.cet
+    label: Contribution d'équilibre technique (CET)
+    value: {base: "T1 + T2 si salaire > PSS", global_rate: 0.35, employee_rate: 0.14, employer_rate: 0.21}
+    unit: percent
+    effective_from: 2019-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/liste-fiche-reglementaires/listes-area/liste-de-fiches-reglementaires/taux-de-cotisations.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.apec
+    label: Cotisation APEC (cadres)
+    value: {base: "dans la limite de 4 PSS (15 700 €/mois)", global_rate: 0.06, employee_rate: 0.024, employer_rate: 0.036}
+    unit: percent
+    effective_from: 2011-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/liste-fiche-reglementaires/listes-area/liste-de-fiches-reglementaires/taux-de-cotisations.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: « Depuis le 1er janvier 2011 … 0,06 % … 0,036 % pour l'employeur et 0,024 % pour le cadre ».
+  - key: social.executive_death_insurance_minimum
+    label: Prévoyance des cadres - cotisation minimale obligatoire
+    value: {base: T1, employer_rate: 1.50, employee_rate: 0}
+    unit: percent
+    effective_from: 2018-01-01
+    source_url: https://www.legifrance.gouv.fr/conv_coll/article/KALIARTI000036732016
+    consulted_on: 2026-11-27
+    verified: true
+    note: ANI du 17 novembre 2017, article 1er.
+
+  # --- Réduction générale 2025 ------------------------------------------------------------------
+  - key: social.general_reduction.parameters
+    label: Réduction générale des cotisations patronales (RGCP) - paramètres 2025
+    value:
+      formula: "C = (T ÷ 0,6) × (1,6 × SMIC annuel ÷ rémunération annuelle brute − 1)"
+      exit_threshold: 1.6 SMIC
+      smic_reference: "SMIC en vigueur au 1er janvier 2025 (11,88 €), même en cas de revalorisation"
+      smic_annual: "1 820 × SMIC horaire (temps plein), ajusté temps partiel / absences, majoré des HS et HC"
+      t_value: {fnal_0_10_lt_50: 0.3194, fnal_0_50_ge_50: 0.3234}
+      rounding: 4 décimales, au dix-millième le plus proche
+    unit: coefficient
+    effective_from: 2025-01-01
+    source_url: https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006073189/LEGISCTA000006185779/2025-10-03
+    consulted_on: 2026-11-27
+    verified: true
+    note: >-
+      Article D241-7 CSS (version du 7 avril 2025 au 1er janvier 2026). T de janvier à avril 2025 - 0,3194 / 0,3234
+      (chômage 4,05 %, AT mutualisé 0,46 %). « Moins de 50 / 50 et plus » = employeurs FNAL 0,10 % (1° de
+      l'article L. 813-5 CCH) / FNAL 0,50 % (2°). BOSS COT_RGD_T_49 31,94 et COT_RGD_T_50 32,34.
+  - key: social.general_reduction.parameters
+    label: Réduction générale des cotisations patronales - T à partir de mai 2025
+    value: {t_value: {fnal_0_10_lt_50: 0.3193, fnal_0_50_ge_50: 0.3233}}
+    unit: coefficient
+    effective_from: 2025-05-01
+    source_url: https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000051430146
+    consulted_on: 2026-11-27
+    verified: true
+    note: >-
+      Décret n° 2025-318 du 4 avril 2025, art. 1er 5° a et art. 5 - « 0,3194 » → « 0,3193 », « 0,3234 » →
+      « 0,3233 » pour les périodes d'emploi à compter du 1er mai 2025 (chômage 4,00 %, AT mutualisé 0,50 %).
+  - key: social.general_reduction.covered_contributions
+    label: Réduction générale 2025 - composition de T (calcul de contrôle)
+    value: {health: 7.00, old_age: 10.57, family: 3.45, work_accident_mutualised: "0,46 puis 0,50", agirc_arrco: 6.01, fnal: "0,10 / 0,50", csa: 0.30, unemployment: "4,05 puis 4,00"}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/table-des-parametres.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Taux lus dans la table du BOSS ; la somme (31,94 / 31,93 et 32,34 / 32,33) a été recalculée et retombe exactement sur T.
+
+  # --- Heures supplémentaires -------------------------------------------------------------------
+  - key: social.overtime.premium
+    label: Majorations légales des heures supplémentaires (à défaut d'accord)
+    value: {hours_36_to_43: 25, from_44: 50}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/exonerations/exonerations-heures-supplementai.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Règle légale (code du travail L3121-36), inchangée.
+  - key: social.overtime.complementary_premium
+    label: Majoration légale des heures complémentaires (temps partiel, à défaut d'accord de branche)
+    value: {up_to_one_tenth: 10, beyond_one_tenth: 25}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.service-public.gouv.fr/particuliers/vosdroits/F32428
+    consulted_on: 2026-11-28
+    verified: true
+    note: « 10 % pour chaque heure complémentaire accomplie dans la limite de 1/10e de la durée de travail fixé dans le contrat », « 25 % pour chaque heure accomplie au-delà de 1/10e (et dans la limite de 1/3) » (page vérifiée le 19/11/2026 ; règle stable, reprise telle quelle pour 2025 et 2026). Un accord de branche étendu peut fixer un autre taux, au moins 10 %.
+  - key: social.overtime.employee_reduction_rate
+    label: Réduction de cotisations salariales sur heures supplémentaires
+    value: {max_rate: 11.31}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/exonerations/exonerations-heures-supplementai.html
+    consulted_on: 2026-11-27
+    verified: false
+    note: Lu dans la version 2026 du BOSS ; 11,31 % = 6,90 + 0,40 + 3,15 + 0,86, taux identiques en 2025. Exonération d'IR des HS dans la limite de 7 500 €/an (non relue).
+  - key: social.overtime.employer_flat_deduction
+    label: Déduction forfaitaire patronale sur heures supplémentaires
+    value:
+      - {headcount: "< 20", amount_per_hour: 1.50}
+      - {headcount: "20 à 249", amount_per_hour: 0.50}
+      - {headcount: ">= 250", amount_per_hour: 0}
+    unit: EUR/heure
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/actualites/informations-nouvelle-annee.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Le BOSS décrit 1,50 € (< 20) et 0,50 € (≥ 20, heures à compter du 01/10/2022) ; l'Urssaf écrit que « le seuil de 250 salariés … est supprimé » au 1er janvier 2026, donc en 2025 les entreprises de 250 salariés et plus n'y avaient pas droit.
+
+  # --- Avantages en nature ----------------------------------------------------------------------
+  - key: social.benefit_in_kind.meal
+    label: Avantage en nature nourriture - cas général
+    value: {per_meal: 5.45, per_day_two_meals: 10.90}
+    unit: EUR
+    effective_from: 2025-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/table-des-parametres.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: BOSS AEN_REPA_UN 5,45 / AEN_REPA_JOURN 10,9 en 2025.
+  - key: social.benefit_in_kind.meal_voucher_exemption
+    label: Titres-restaurant - exonération maximale de la part patronale
+    value: {max_employer_share: 7.26, voucher_value_range: "12,10 € à 14,52 €"}
+    unit: EUR
+    effective_from: 2025-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/avantages-en-nature.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Historique 2025 de la page Urssaf.
+  - key: social.benefit_in_kind.housing_scale
+    label: Avantage en nature logement - barème forfaitaire mensuel
+    value:
+      - {gross_monthly_below: 1962.50, one_room: 78.70, per_room: 42.10}
+      - {from: 1962.50, to: 2354.99, one_room: 91.80, per_room: 58.90}
+      - {from: 2355.00, to: 2747.49, one_room: 104.80, per_room: 78.70}
+      - {from: 2747.50, to: 3532.49, one_room: 117.90, per_room: 98.20}
+      - {from: 3532.50, to: 4317.49, one_room: 144.50, per_room: 124.50}
+      - {from: 4317.50, to: 5102.49, one_room: 170.40, per_room: 150.40}
+      - {from: 5102.50, to: 5887.49, one_room: 196.80, per_room: 183.30}
+      - {from: 5887.50, one_room: 222.70, per_room: 209.60}
+    unit: EUR/mois
+    effective_from: 2025-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/table-des-parametres.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: BOSS AEN_LOG_T1…T8 (2025).
+  - key: social.benefit_in_kind.vehicle
+    label: Avantage en nature véhicule - évaluation forfaitaire annuelle
+    value:
+      from_2025_02_01: {purchased_5y_or_less: "15 % (20 % avec carburant)", purchased_over_5y: "10 % (15 % avec carburant)", leased: "50 % du coût global (67 % avec carburant)", electric: "abattement 70 % dans la limite de 4 582 €/an"}
+      before_2025_02_01: {purchased_5y_or_less: "9 % (12 % avec carburant)", purchased_over_5y: "6 % (9 % avec carburant)", leased: "30 % (40 % avec carburant)", electric: "abattement 50 % dans la limite de 2 000,30 €/an"}
+    unit: text
+    effective_from: 2025-02-01
+    source_url: https://www.urssaf.fr/files/live/sites/urssaffr/files/autres/SUPPORT-WEBCONFERENCE-NOUVELLES-MESURES-2025.pdf
+    consulted_on: 2026-11-27
+    verified: true
+    note: Arrêté du 25 février 2025 ; s'applique aux véhicules mis à disposition à compter du 1er février 2025, l'ancien barème restant pour les véhicules mis à disposition avant.
+
+  # --- Frais professionnels ---------------------------------------------------------------------
+  - key: social.expenses.meal_allowances
+    label: Indemnités de repas - limites d'exonération
+    value: {meal_at_workplace: 7.40, meal_on_travel_restaurant: 21.10, meal_on_travel_not_restaurant: 10.30}
+    unit: EUR/repas
+    effective_from: 2025-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/table-des-parametres.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: BOSS FNO_REST_INT / FNO_REST_RESTO / FNO_REST_EXT (2025).
+  - key: social.expenses.long_distance_travel
+    label: Grand déplacement en métropole - indemnités journalières (3 premiers mois)
+    value: {meal: 21.10, lodging_paris_92_93_94: 75.60, lodging_other: 56.10, after_15pct_cut: {paris: 64.30, other: 47.70}, after_30pct_cut: {paris: 53.00, other: 39.30}}
+    unit: EUR/jour
+    effective_from: 2025-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/table-des-parametres.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: BOSS FGD_REPA_METROP, FGD_LOG_PARIS*, FGD_LOG_AUTRE* (2025).
+  - key: social.expenses.telework
+    label: Indemnité forfaitaire de télétravail (hors accord)
+    value: {per_day: 2.70, monthly_cap: 59.40, per_month_for_1_day_week: 10.90}
+    unit: EUR
+    effective_from: 2025-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/table-des-parametres.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: BOSS FTT_MAXJ / FTT_LIMIT / FTT_MAXM (2025).
+
+  # --- Apprentis --------------------------------------------------------------------------------
+  - key: social.apprentice.employee_exemption
+    label: Apprentis - exonération des cotisations salariales et de CSG/CRDS
+    value:
+      contracts_until_2025_02_28: "cotisations salariales sur la part ≤ 79 % du SMIC (1 423,42 €) ; CSG/CRDS totalement exonérées"
+      contracts_from_2025_03_01: "cotisations salariales ET CSG/CRDS sur la part ≤ 50 % du SMIC (900,90 €)"
+    unit: percent of SMIC
+    effective_from: 2025-03-01
+    source_url: https://www.service-public.fr/particuliers/vosdroits/F2918
+    consulted_on: 2026-11-27
+    verified: true
+    note: Service-public distingue les contrats débutés « depuis le 1er mars 2025 » et « au plus tard le 28 février 2025 » (LFSS 2025). Montants en euros = calcul sur SMIC 1 801,80 €.
+  - key: social.apprentice.minimum_pay
+    label: Apprentis - rémunération minimale en % du SMIC
+    value:
+      year_1: {age_16_17: 27, age_18_20: 43, age_21_25: 53, age_26_plus: 100}
+      year_2: {age_16_17: 39, age_18_20: 51, age_21_25: 61, age_26_plus: 100}
+      year_3: {age_16_17: 55, age_18_20: 67, age_21_25: 78, age_26_plus: 100}
+    unit: percent of SMIC
+    effective_from: 2019-01-01
+    source_url: https://www.service-public.fr/particuliers/vosdroits/F2918
+    consulted_on: 2026-11-27
+    verified: false
+    note: Grille lue sur la page en vigueur (vérifiée le 08/09/2026) ; inchangée depuis la réforme de 2018 à notre connaissance, mais non relue sur une source datée 2025.
+
+  # --- IJSS -------------------------------------------------------------------------------------
+  - key: social.sick_pay.ijss
+    label: Indemnités journalières maladie (IJSS) - règle de calcul
+    value: {rate: "50 % du SJB", daily_base: "3 derniers salaires bruts ÷ 91,25", salary_cap: "1,8 SMIC", waiting_days: 3, max_daily_ijss_computed: 53.31}
+    unit: text
+    effective_from: 2025-01-01
+    source_url: https://www.service-public.fr/particuliers/vosdroits/F3053
+    consulted_on: 2026-11-27
+    verified: true
+    note: Arrêts ayant débuté avant le 1er avril 2025 - plafond 1,8 SMIC (lu). IJ max 53,31 € = calcul (1,8 × 1 801,80 × 3 / 91,25 × 50 %), non lu.
+  - key: social.sick_pay.ijss
+    label: Indemnités journalières maladie (IJSS) - règle de calcul
+    value: {rate: "50 % du SJB", daily_base: "3 derniers salaires bruts ÷ 91,25", salary_cap: "1,4 SMIC", waiting_days: 3, max_daily_ijss_computed: 41.47}
+    unit: text
+    effective_from: 2025-04-01
+    source_url: https://www.service-public.fr/particuliers/vosdroits/F3053
+    consulted_on: 2026-11-27
+    verified: true
+    note: Arrêts débutant à partir du 1er avril 2025 - plafond 1,4 SMIC (lu). IJ max 41,47 € = calcul (1,4 × 1 801,80 = 2 522,52 ; × 3 / 91,25 = 82,93 ; × 50 %), non lu.
+
+  # --- Prélèvement à la source ------------------------------------------------------------------
+  - key: social.withholding_tax.default_rate_grid
+    label: Prélèvement à la source - grille du taux par défaut (métropole, mensuelle)
+    value:
+      - {from: 0, to: 1591, rate: 0}
+      - {from: 1591, to: 1653, rate: 0.5}
+      - {from: 1653, to: 1759, rate: 1.3}
+      - {from: 1759, to: 1877, rate: 2.1}
+      - {from: 1877, to: 2006, rate: 2.9}
+      - {from: 2006, to: 2113, rate: 3.5}
+      - {from: 2113, to: 2253, rate: 4.1}
+      - {from: 2253, to: 2666, rate: 5.3}
+      - {from: 2666, to: 3052, rate: 7.5}
+      - {from: 3052, to: 3476, rate: 9.9}
+      - {from: 3476, to: 3913, rate: 11.9}
+      - {from: 3913, to: 4566, rate: 13.8}
+      - {from: 4566, to: 5475, rate: 15.8}
+      - {from: 5475, to: 6851, rate: 17.9}
+      - {from: 6851, to: 8557, rate: 20}
+      - {from: 8557, to: 11877, rate: 24}
+      - {from: 11877, to: 16086, rate: 28}
+      - {from: 16086, to: 25251, rate: 33}
+      - {from: 25251, to: 54088, rate: 38}
+      - {from: 54088, rate: 43}
+    unit: percent (bornes en EUR, borne basse incluse, borne haute exclue)
+    effective_from: 2025-01-01
+    source_url: https://bofip.impots.gouv.fr/bofip/11255-PGP.html/identifiant=BOI-BAREME-000037-20240228
+    consulted_on: 2026-11-27
+    verified: true
+    note: Grille « 2024 » (version BOFIP en vigueur du 28/02/2024 au 10/04/2025), restée applicable de janvier à avril 2025 faute de loi de finances (LF 2025 du 14 février 2025, ajustement au 1er mai 2025).
+  - key: social.withholding_tax.default_rate_grid
+    label: Prélèvement à la source - grille du taux par défaut (métropole, mensuelle)
+    value:
+      - {from: 0, to: 1620, rate: 0}
+      - {from: 1620, to: 1683, rate: 0.5}
+      - {from: 1683, to: 1791, rate: 1.3}
+      - {from: 1791, to: 1911, rate: 2.1}
+      - {from: 1911, to: 2042, rate: 2.9}
+      - {from: 2042, to: 2151, rate: 3.5}
+      - {from: 2151, to: 2294, rate: 4.1}
+      - {from: 2294, to: 2714, rate: 5.3}
+      - {from: 2714, to: 3107, rate: 7.5}
+      - {from: 3107, to: 3539, rate: 9.9}
+      - {from: 3539, to: 3983, rate: 11.9}
+      - {from: 3983, to: 4648, rate: 13.8}
+      - {from: 4648, to: 5574, rate: 15.8}
+      - {from: 5574, to: 6974, rate: 17.9}
+      - {from: 6974, to: 8711, rate: 20}
+      - {from: 8711, to: 12091, rate: 24}
+      - {from: 12091, to: 16376, rate: 28}
+      - {from: 16376, to: 25706, rate: 33}
+      - {from: 25706, to: 55062, rate: 38}
+      - {from: 55062, rate: 43}
+    unit: percent (bornes en EUR, borne basse incluse, borne haute exclue)
+    effective_from: 2025-05-01
+    source_url: https://bofip.impots.gouv.fr/bofip/11255-PGP.html/identifiant=BOI-BAREME-000037-20250410
+    consulted_on: 2026-11-27
+    verified: true
+    note: « à compter du 1er mai 2025 » (loi n° 2025-127 du 14 février 2025, art. 2).
+
+  - key: social.net_social_amount
+    label: Montant net social - définition
+    value: "Sommes brutes versées (salaires, primes, HS, avantages en nature, indemnités de rupture, part patronale santé/prévoyance…) diminuées des cotisations et contributions sociales obligatoires à la charge du salarié."
+    unit: text
+    effective_from: 2023-07-01
+    source_url: https://boss.gouv.fr/portail/accueil/bulletin-de-paie/montant-net-social.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Article R. 3243-1, 9° bis du code du travail.

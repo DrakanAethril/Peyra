@@ -6,10 +6,13 @@ namespace App\Tests\Security\Voter;
 
 use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Dossier;
+use App\Entity\Dossier\DossierMember;
 use App\Entity\Identity\User;
+use App\Enum\Dossier\DossierProfile;
 use App\Enum\Identity\AccountKind;
 use App\Repository\Accounting\JournalRepository;
 use App\Security\Voter\DossierRightVoter;
+use App\Service\Dossier\Rights\DossierRights;
 use App\Tests\Support\BuildsGroupDossier;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -40,10 +43,12 @@ final class DossierRightVoterTest extends KernelTestCase
         self::assertSame([true, false, false], $this->journal($people['ines'], $dossier, 'OD'));
         self::assertSame([true, false, false], $this->journal($people['ines'], $dossier, 'AN'));
         self::assertFalse($this->settings($people['ines'], $dossier));
+        self::assertSame([false, false], $this->payroll($people['ines'], $dossier), 'The payroll is closed to the accountants (step 4.1).');
 
         // theo, « Comptable clients ».
         self::assertSame([false, false, false], $this->journal($people['theo'], $dossier, 'ACH'));
         self::assertSame([true, true, true], $this->journal($people['theo'], $dossier, 'VTE'));
+        self::assertSame([false, false], $this->payroll($people['theo'], $dossier));
 
         // chloe has no profile, durand teaches the class: every right.
         foreach (['chloe', 'durand'] as $login) {
@@ -51,6 +56,7 @@ final class DossierRightVoterTest extends KernelTestCase
                 self::assertSame([true, true, true], $this->journal($people[$login], $dossier, $code), $login.' '.$code);
             }
             self::assertTrue($this->settings($people[$login], $dossier), $login);
+            self::assertSame([true, true], $this->payroll($people[$login], $dossier), $login);
         }
     }
 
@@ -64,6 +70,31 @@ final class DossierRightVoterTest extends KernelTestCase
 
         self::assertSame([false, false, false], $this->journal($stranger, $dossier, 'ACH'));
         self::assertFalse($this->settings($stranger, $dossier));
+        self::assertSame([false, false], $this->payroll($stranger, $dossier));
+    }
+
+    public function testThePayrollManagerKeepsThePayroll(): void
+    {
+        self::bootKernel();
+        [$dossier, $people] = $this->groupDossier();
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $member = $entityManager->getRepository(DossierMember::class)->findOneBy(['dossier' => $dossier, 'student' => $people['theo']]);
+        self::assertInstanceOf(DossierMember::class, $member);
+        $member->assignProfile(DossierProfile::PayrollManager);
+        $entityManager->flush();
+        self::getContainer()->get(DossierRights::class)->reset();
+
+        self::assertSame([true, true], $this->payroll($people['theo'], $dossier));
+        self::assertFalse($this->settings($people['theo'], $dossier), 'The accounting settings stay the chief’s.');
+    }
+
+    /** @return list<bool> PAYROLL_READ, PAYROLL_SETTINGS on the dossier */
+    private function payroll(User $user, Dossier $dossier): array
+    {
+        $token = new UsernamePasswordToken($user, 'main', $user->getRoles());
+        $voter = self::getContainer()->get(DossierRightVoter::class);
+
+        return array_map(static fn (string $attribute): bool => VoterInterface::ACCESS_GRANTED === $voter->vote($token, $dossier, [$attribute]), [DossierRightVoter::PAYROLL_READ, DossierRightVoter::PAYROLL_SETTINGS]);
     }
 
     /** @return list<bool> READ, ENTER, VALIDATE on the journal */

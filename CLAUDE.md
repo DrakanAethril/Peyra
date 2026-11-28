@@ -1077,6 +1077,24 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   the working member's for a group's - else « Avertissements ». The missions (2.9) slot theirs in
   between.
 
+## Payroll settings (built at step 4.1)
+
+- **Paie et social › Paramètres de paie** (`/d/{dossier}/payroll/items|bodies|establishment`,
+  `App\Controller\Payroll\*`): the plan de paie (`PayrollItem`, « rubriques »: family, base,
+  ceiling, a `PayrollRate` per side, conditions on status, headcount and bracket, the body and the
+  `PayslipLine` of the clarified payslip a contribution is summed under), the collecting bodies
+  (`PayrollBody`) and the establishment (`PayrollEstablishment`: headcount, work accident and
+  mobility rates, working time). `PayrollItemRules` is pure; `PayrollItemSheet` adds the code, the
+  body and **a regulatory value that reads at the dossier's date** - a rate the law fixes is never
+  written in a rubrique, it names its key and path (`social.agirc_arrco.ceg`, `0.employee_rate`).
+- **The standard plan is data**, `fixtures/payroll/standard-plan.yaml` (48 rubriques), installed by
+  `PayrollPlanInstaller` into an empty plan; `StandardPayrollPlanTest` reads every value it names
+  from `config/regulatory/2025.yaml` and `2026.yaml`. 2025's maladie and famille carry their full
+  rate under `employer_rate`, like 2026, the reduced one beside it for the engine.
+- **The area « Paie et social »** of `ProfileMatrix`: the payroll manager's and the chief
+  accountant's, closed to the two accountants; screens ask `DossierRightVoter::PAYROLL_READ` (the
+  rail hides the entry) and `PAYROLL_SETTINGS`.
+
 ## Cross-cutting building blocks (built at step 0.6a)
 
 Reach for these rather than re-implement them; each has its test.
@@ -1143,8 +1161,8 @@ Reach for these rather than re-implement them; each has its test.
   default. No rate is written in the code (lots 3 and 4).
 - **The millésime files** `config/regulatory/<année>.yaml` follow the prepared data's schema (plan,
   `donnees/reglementaire/LISEZ-MOI.md`); `RegulatoryFile` checks a file whole and names every fault.
-  2025 and 2026 ship **empty**: the fiscal values arrive at lot 3, the social ones at lot 4, from the
-  prepared data (whose `social-2026.yaml` needs one flow mapping quoted to be Symfony YAML).
+  The social values of 2025 and 2026 are in (step 4.1, from the prepared data); the fiscal ones
+  arrive at lot 3.
   `app:regulatory:sync` (`RegulatorySync`) only ever adds rows: what is missing, what a file changed
   (the older row kept), never over an administrator's value (reported « conservée »); a stable rule
   both files carry word for word is written once; one fault anywhere installs nothing.

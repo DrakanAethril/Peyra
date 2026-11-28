@@ -1,0 +1,53 @@
+{#
+ # Paie et social › Paramètres de paie › Organismes (lot 4, step 4.1, gabarit L): the collecting
+ # bodies of the dossier, fictitious like the employees. N creates one.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set settings_current = 'bodies' %}
+{% set dossier_title = 'Organismes sociaux' %}
+{% set can_edit = is_granted('PAYROLL_SETTINGS', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouvel organisme'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Organismes" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_items', {dossier: dossier.id})},
+        {label: 'Paramètres de paie', href: path('app_payroll_items', {dossier: dossier.id})},
+        {label: 'Organismes', href: path('app_payroll_bodies', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button href="{{ path('app_payroll_body_new', {dossier: dossier.id}) }}" variant="primary" icon="plus" shortcut="N">Nouvel organisme</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('payroll/_settings_tabs.html.twig') }}
+
+    <twig:Px:Card :flush="true">
+        {% if body_rows is empty %}
+            <twig:Px:Empty icon="building-2" title="Aucun organisme" text="Les cotisations sont versées à l’Urssaf, à la caisse de retraite complémentaire, à l’organisme de prévoyance et à la mutuelle de l’entreprise. Le plan de paie standard crée ceux qui manquent."/>
+        {% else %}
+            <twig:Px:Table caption="Organismes de {{ dossier.name }}" :rows="true">
+                <thead>
+                    <tr>
+                        <th scope="col">Organisme</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Référence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for body_row in body_rows %}
+                        <tr data-rows-target="row">
+                            <td><a class="px-link" href="{{ path('app_payroll_body', {dossier: dossier.id, id: body_row.id}) }}">{{ body_row.name }}</a></td>
+                            <td>{{ body_row.kind.label }}</td>
+                            <td class="px-u-code">{{ body_row.reference }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>Organismes · <b>{{ body_rows|length }}</b></span>{% endblock %}

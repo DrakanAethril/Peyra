@@ -1,0 +1,124 @@
+{#
+ # The fiche of a rubrique of the plan de paie (lot 4, step 4.1, gabarit F): its family, its place,
+ # its base and ceiling, the rate of each side and where it comes from - with what it reads at the
+ # dossier's date -, its conditions, its body and its line of the clarified payslip. F10 saves;
+ # whoever only reads sees the facts.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set settings_current = 'items' %}
+{% set can_edit = is_granted('PAYROLL_SETTINGS', dossier) %}
+{% set dossier_title = item ? 'Rubrique ' ~ item.code : 'Nouvelle rubrique' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ item ? item.code ~ ' · ' ~ item.label : 'Nouvelle rubrique' }}" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_items', {dossier: dossier.id})},
+        {label: 'Plan de paie', href: path('app_payroll_items', {dossier: dossier.id})},
+        {label: item ? item.code : 'Nouvelle rubrique', href: item ? path('app_payroll_item', {dossier: dossier.id, code: item.code}) : path('app_payroll_item_new', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}
+                {% if item %}<twig:Px:ConfirmButton label="Supprimer la rubrique" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="payroll-item-delete"/>{% endif %}
+                <twig:Px:Button type="submit" variant="primary" form="payroll-item-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('payroll/_settings_tabs.html.twig') }}
+
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">La rubrique n’est pas enregistrée : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+
+    {% if can_edit %}
+        <form method="post" action="{{ item ? path('app_payroll_item', {dossier: dossier.id, code: item.code}) : path('app_payroll_item_new', {dossier: dossier.id}) }}" id="payroll-item-form" novalidate data-controller="focus-error" class="px-stack">
+            <input type="hidden" name="_token" value="{{ csrf_token(item ? 'payroll-item-' ~ item.id : 'payroll-item-new-' ~ dossier.id) }}">
+            <div class="px-split px-split--even">
+                <twig:Px:Card title="Rubrique">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="code" label="Code" :required="true" hint="Quatre chiffres : 2200." :error="draft.error('code')">
+                            <twig:Px:Input id="code" value="{{ draft.code }}" :required="true" hint="1" :error="draft.error('code')" class="px-u-code" inputmode="numeric" maxlength="4" autocomplete="off" spellcheck="false" autofocus/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="sortOrder" label="Ordre" hint="Sa place dans le bulletin ; vide : le code." :error="draft.error('sortOrder')">
+                            <twig:Px:Input id="sortOrder" value="{{ draft.sortOrder }}" hint="1" :error="draft.error('sortOrder')" class="px-u-num" inputmode="numeric" maxlength="4" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="label" label="Intitulé" :required="true" :wide="true" :error="draft.error('label')">
+                            <twig:Px:Input id="label" value="{{ draft.label }}" :required="true" :error="draft.error('label')" maxlength="80" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="kind" label="Famille" :required="true" :error="draft.error('kind')">
+                            <twig:Px:Select id="kind" placeholder="Choisir la famille…" :options="kind_options" value="{{ draft.kind }}" :required="true" :error="draft.error('kind')"/>
+                        </twig:Px:Field>
+                        <div class="px-field px-fieldgrid__full">
+                            <label class="px-check"><input type="checkbox" name="subtracts" value="1"{% if draft.subtracts %} checked{% endif %}{% if draft.error('subtracts') %} aria-invalid="true" aria-describedby="subtracts_error"{% endif %}> <span>En déduction : une absence vient en moins du brut, une réduction en moins des cotisations</span></label>
+                            {% if draft.error('subtracts') %}<p class="px-field__error" id="subtracts_error"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ draft.error('subtracts') }}</p>{% endif %}
+                        </div>
+                    </div>
+                </twig:Px:Card>
+                <twig:Px:Card title="Assiette et conditions">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="base" :wide="true" label="Assiette" :required="true" :error="draft.error('base')">
+                            <twig:Px:Select id="base" placeholder="Choisir l’assiette…" :options="base_options" value="{{ draft.base }}" :required="true" :error="draft.error('base')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="ceiling" :wide="true" label="Plafonnement" :error="draft.error('ceiling')">
+                            <twig:Px:Select id="ceiling" :options="ceiling_options" value="{{ draft.ceiling }}" :error="draft.error('ceiling')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="status" :wide="true" label="Salariés" :error="draft.error('status')">
+                            <twig:Px:Select id="status" :options="status_options" value="{{ draft.status }}" :error="draft.error('status')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="headcount" :wide="true" label="Effectif" :error="draft.error('headcount')">
+                            <twig:Px:Select id="headcount" :options="headcount_options" value="{{ draft.headcount }}" :error="draft.error('headcount')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="salary" :wide="true" label="Tranche" :error="draft.error('salary')">
+                            <twig:Px:Select id="salary" :options="salary_options" value="{{ draft.salary }}" :error="draft.error('salary')"/>
+                        </twig:Px:Field>
+                    </div>
+                </twig:Px:Card>
+            </div>
+            <div class="px-split px-split--even">
+                <twig:Px:Card title="Taux salarial" meta="Le « taux » d’un élément de brut, d’un élément non soumis ou d’une retenue">
+                    {{ include('payroll/_rate_fields.html.twig', {side: 'employee', reading: readings ? readings.employee : null}) }}
+                </twig:Px:Card>
+                <twig:Px:Card title="Taux patronal" meta="Cotisations seulement">
+                    {{ include('payroll/_rate_fields.html.twig', {side: 'employer', reading: readings ? readings.employer : null}) }}
+                </twig:Px:Card>
+            </div>
+            <twig:Px:Card title="Organisme et bulletin" meta="Cotisations seulement">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="body" label="Organisme" :wide="true" :error="draft.error('body')">
+                        <twig:Px:Select id="body" placeholder="Aucun" :options="body_options" value="{{ draft.body }}" :error="draft.error('body')"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="line" label="Ligne du bulletin clarifié" :wide="true" :error="draft.error('line')">
+                        <twig:Px:Select id="line" placeholder="Aucune" :options="line_options" value="{{ draft.line }}" :error="draft.error('line')"/>
+                    </twig:Px:Field>
+                </div>
+            </twig:Px:Card>
+        </form>
+        {% if item %}
+            <form method="post" action="{{ path('app_payroll_item_delete', {dossier: dossier.id, code: item.code}) }}" id="payroll-item-delete" hidden>
+                <input type="hidden" name="_token" value="{{ csrf_token('payroll-item-delete-' ~ item.id) }}">
+            </form>
+        {% endif %}
+    {% else %}
+        <div class="px-split px-split--even">
+            <twig:Px:Card title="Rubrique">
+                <dl class="px-facts">
+                    <dt>Code</dt><dd class="px-u-code">{{ item.code }}</dd>
+                    <dt>Intitulé</dt><dd>{{ item.label }}</dd>
+                    <dt>Famille</dt><dd>{{ item.kind.label }}{% if item.subtracts %} · en déduction{% endif %}</dd>
+                    <dt>Assiette</dt><dd>{{ item.base.label }}{% if item.ceiling.short %} · {{ item.ceiling.label }}{% endif %}</dd>
+                    <dt>Conditions</dt><dd>{{ item.statusCondition.label }} · {{ item.headcountCondition.label }} · {{ item.salaryCondition.label }}</dd>
+                    {% if item.body %}<dt>Organisme</dt><dd>{{ item.body.name }}</dd><dt>Ligne du bulletin</dt><dd>{{ item.payslipLine.section.label }} › {{ item.payslipLine.label }}</dd>{% endif %}
+                </dl>
+            </twig:Px:Card>
+            <twig:Px:Card title="Taux au {{ dossier.dossierDate|date_fr }}">
+                <dl class="px-facts">
+                    <dt>Taux salarial</dt><dd>{{ readings.employee.text ?: '—' }}{% if readings.employee.source %} · {{ readings.employee.source }}{% endif %}</dd>
+                    <dt>Taux patronal</dt><dd>{{ readings.employer.text ?: '—' }}{% if readings.employer.source %} · {{ readings.employer.source }}{% endif %}</dd>
+                </dl>
+            </twig:Px:Card>
+        </div>
+    {% endif %}
+{% endblock %}
