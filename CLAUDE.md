@@ -1109,6 +1109,24 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   its agreement with sex and birth are checked, **never its key** (fictitious, key « 00 »).
   Writes ask `DossierRightVoter::PAYROLL_ENTER`. `fixtures/demo/employees.yaml`: S001-S011.
 
+## Hiring formalities and the social portal (built at step 4.2b)
+
+- **Salariés › {matricule} › Formalités** (`EmployeeFormalitiesController`): the DPAE, the contract
+  PDF, the information and prevention visit's day, one affiliation per `PayrollBody`; **Salariés ›
+  Registre unique du personnel** (`PersonnelRegister`, read from the fiches, screen and PDF).
+  `HiringFormalities` is the one door (audit trail); `HiringChecklist` (pure) says where each stands -
+  an employee hired before the dossier's first exercise is « Avant le dossier », not followed.
+- **The simulated social portal** (`/d/{dossier}/payroll/social-portal/dpae/{matricule}`): the DPAE
+  read from the fiche, checked by the pure `DpaeControls`, rejected with `PortalFault`s (code,
+  motive, explanation at level G: `Assistance::explainsPortalRejections()`) and nothing kept, or
+  accepted as a `HiringDeclaration` (frozen content, number, late or not) with the Urssaf
+  affiliation that day. The grey frame is `templates/portal/_frame.html.twig` (+ `portal.css`),
+  to `embed`: the tax portal and the DSN reuse it. The delays are regulatory values
+  (`social.hiring.*`, `HiringDelays`): **installing the demonstration needs `app:regulatory:sync`
+  first**, and a test that installs it syncs.
+- At G and B the fiche requires the DPAE's fields (`Assistance::requiresHiringDeclarationFields()`:
+  birth place, hour of hire).
+
 ## Cross-cutting building blocks (built at step 0.6a)
 
 Reach for these rather than re-implement them; each has its test.
