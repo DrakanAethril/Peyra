@@ -7,7 +7,6 @@ namespace App\Tests\Service\Assets;
 use App\Entity\Assets\FixedAsset;
 use App\Entity\Dossier\Dossier;
 use App\Enum\Accounting\EntryState;
-use App\Repository\Accounting\EntryRepository;
 use App\Repository\Assets\FixedAssetRepository;
 use App\Service\Assets\Dotation\DotationLine;
 use App\Service\Assets\FixedAssetPostings;
@@ -89,14 +88,17 @@ final class FixedAssetPostingsTest extends KernelTestCase
             self::assertSame([], $postings->dotationLines($this->dossier, $exercise, new \DateTimeImmutable('2026-12-31')), 'Tout est passé jusqu’au 31/12.');
             $entry = $postings->standing($this->dossier, 'DOT-2026-12-31')[0];
             // 681110: I02 377,77; 681120: the rest, 26 852,88 − 377,77 = 26 475,11; 787250: 592,84.
-            $amounts = [];
-            foreach ($entry->getLines() as $line) {
-                $amounts[$line->getAccount()->getNumber()] = ($amounts[$line->getAccount()->getNumber()] ?? 0) + $line->getDebit()->cents - $line->getCredit()->cents;
-            }
-            self::assertSame(37_777, $amounts['681110']);
-            self::assertSame(2_647_511, $amounts['681120']);
-            self::assertSame(59_284, $amounts['145000']);
-            self::assertSame(-59_284, $amounts['787250']);
+            $sum = static function (string $number) use ($entry): int {
+                $total = 0;
+                foreach ($entry->getLines() as $line) {
+                    if ($line->getAccount()->getNumber() === $number) {
+                        $total += $line->getDebit()->cents - $line->getCredit()->cents;
+                    }
+                }
+
+                return $total;
+            };
+            self::assertSame([59_284, 37_777, 2_647_511, -59_284], [$sum('145000'), $sum('681110'), $sum('681120'), $sum('787250')]);
 
             // The state of 2026: 225 200,00 at the opening, I13 (86 500,00) and I14 (6 000,00) in, I07 (21 500,00)
             // out: 296 200,00; depreciation 117 034,42 + 29 002,88 − 18 991,67 = 127 045,63.
