@@ -67,6 +67,6 @@ final readonly class ArticleSheet
 
     private static function write(Article $article, ArticleFields $fields): void
     {
-        $article->describe($fields->code, $fields->designation, $fields->unit, $fields->salePrice, $fields->vatRate, $fields->revenueAccount, $fields->stockTracked);
+        $article->describe($fields->code, $fields->designation, $fields->unit, $fields->salePrice, $fields->vatRate, $fields->revenueAccount, $fields->stockTracked, $fields->purchasePrice);
     }
 }

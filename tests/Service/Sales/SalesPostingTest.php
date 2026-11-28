@@ -26,6 +26,7 @@ use App\Service\Accounting\Gateway\AccountingGateway;
 use App\Service\Accounting\Ledger\Ledger;
 use App\Service\Audit\AuditTrail;
 use App\Service\Document\Processing\ProposedEntryCheck;
+use App\Service\Purchasing\Receipts;
 use App\Service\Regulatory\RegulatoryReader;
 use App\Service\Sales\SalesDocumentDraft;
 use App\Service\Sales\SalesDocuments;
@@ -194,6 +195,7 @@ final class SalesPostingTest extends KernelTestCase
             $container->get(AuditTrail::class),
             $container->get(RegulatoryReader::class),
             $posting,
+            $container->get(Receipts::class),
         );
 
         return [$documents, $posting];
@@ -208,7 +210,7 @@ final class SalesPostingTest extends KernelTestCase
         $draft->cashDiscount = $cashDiscount;
         $draft->vatOnReceipts = $vatOnReceipts;
         $draft->readLines([['article' => '', 'designation' => 'Prestation', 'unit' => 'heure', 'quantity' => $quantity, 'unitPrice' => '100,00', 'discount' => '', 'rate' => '20']]);
-        $fields = $documents->check($draft, $dossier) ?? throw new \LogicException(implode(' ', $draft->errors));
+        $fields = $documents->check($draft, $dossier, $type) ?? throw new \LogicException(implode(' ', $draft->errors));
         $document = $documents->create($dossier, $type, $fields, 'test');
         self::getContainer()->get(EntityManagerInterface::class)->flush();
 

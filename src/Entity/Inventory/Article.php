@@ -44,7 +44,11 @@ class Article implements DossierOwned
     #[ORM\Column(type: 'money', nullable: true)]
     private ?Money $salePrice = null;
 
-    /** VatRate's canonical text: « 20 », « 5.5 »; null when the article is not sold. */
+    /** The supplier's last price excluding tax: it fills a purchasing document's line (step 2.4); null when the article is not bought. */
+    #[ORM\Column(type: 'money', nullable: true)]
+    private ?Money $purchasePrice = null;
+
+    /** VatRate's canonical text: « 20 », « 5.5 »; null when the article is neither sold nor bought. */
     #[ORM\Column(length: 8, nullable: true)]
     private ?string $vatRate = null;
 
@@ -88,6 +92,11 @@ class Article implements DossierOwned
         return $this->salePrice;
     }
 
+    public function getPurchasePrice(): ?Money
+    {
+        return $this->purchasePrice;
+    }
+
     public function getVatRate(): ?string
     {
         return $this->vatRate;
@@ -104,8 +113,9 @@ class Article implements DossierOwned
     }
 
     /** ArticleSheet's write, every field at once. */
-    public function describe(string $code, string $designation, string $unit, ?Money $salePrice, ?string $vatRate, ?string $revenueAccount, bool $stockTracked): void
+    public function describe(string $code, string $designation, string $unit, ?Money $salePrice, ?string $vatRate, ?string $revenueAccount, bool $stockTracked, ?Money $purchasePrice = null): void
     {
+        $this->purchasePrice = $purchasePrice;
         $this->code = $code;
         $this->designation = $designation;
         $this->unit = $unit;

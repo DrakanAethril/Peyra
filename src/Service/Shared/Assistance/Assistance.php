@@ -85,4 +85,10 @@ final readonly class Assistance
     {
         return AssistanceLevel::Guided === $this->level;
     }
+
+    /** A receipt that differs from what its order left to receive is flagged (G: « écart de quantité signalé »). */
+    public function flagsQuantityGaps(): bool
+    {
+        return AssistanceLevel::Guided === $this->level;
+    }
 }

@@ -106,7 +106,7 @@ final class SalesDocumentsTest extends KernelTestCase
         $draft->customer = 'C0019';
         $draft->date = $date;
         $draft->readLines([['article' => '', 'designation' => 'Prestation', 'unit' => 'heure', 'quantity' => $quantity, 'unitPrice' => '100,00', 'discount' => '', 'rate' => '20']]);
-        $fields = $documents->check($draft, $dossier) ?? throw new \LogicException(implode(' ', $draft->errors));
+        $fields = $documents->check($draft, $dossier, $type) ?? throw new \LogicException(implode(' ', $draft->errors));
         $document = $documents->create($dossier, $type, $fields, 'test');
         self::getContainer()->get(EntityManagerInterface::class)->flush();
 

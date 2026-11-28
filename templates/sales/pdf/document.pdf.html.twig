@@ -3,7 +3,8 @@
  # delivery note (quantities, no prices), an invoice or a credit note. The customer is the one frozen
  # at the validation; a draft prints « Brouillon » in place of its number. An invoice carries the
  # mentions of article L441-9 of the Code de commerce (due date, terms, late penalties, the 40 €
- # recovery fee). Variables: company (Company), document (SalesDocument), customer
+ # recovery fee). A price request, a supplier order and a receipt (step 2.4) print the supplier in
+ # place of the customer; the request and the receipt print no prices. Variables: company (Company), document (SalesDocument), customer
  # ({name, lines, siren, vatNumber}), totals (SalesTotals).
  #}
 {% extends 'doc/_document.html.twig' %}
@@ -61,14 +62,14 @@
                 <dl class="sd__meta">
                     <dt>Numéro</dt><dd>{{ document.number ?? 'Brouillon' }}</dd>
                     <dt>Date</dt><dd>{{ document.date|date_fr }}</dd>
-                    {% if document.source %}<dt>{{ type.value == 'credit_note' ? 'Facture corrigée' : 'Suite de' }}</dt><dd>{{ document.source.number }}</dd>{% endif %}
-                    {% if document.reference %}<dt>Votre référence</dt><dd>{{ document.reference }}</dd>{% endif %}
+                    {% if document.source %}<dt>{{ type.value == 'credit_note' ? 'Facture corrigée' : (type.value == 'receipt' ? 'Commande' : 'Suite de') }}</dt><dd>{{ document.source.number }}</dd>{% endif %}
+                    {% if document.reference %}<dt>{{ type.value == 'receipt' ? 'Bon de livraison' : 'Votre référence' }}</dt><dd>{{ document.reference }}</dd>{% endif %}
                 </dl>
             </div>
         </header>
 
         <section class="sd__to">
-            <span class="sd__label">{{ type.value == 'delivery' ? 'Livré à' : (type.invoicing ? 'Facturé à' : 'Client') }}</span>
+            <span class="sd__label">{{ type.value == 'delivery' ? 'Livré à' : (type.invoicing ? 'Facturé à' : (type.value == 'receipt' ? 'Reçu de' : type.partyLabel)) }}</span>
             <b>{{ customer.name }}</b>
             {% for line in customer.lines %}<p>{{ line }}</p>{% endfor %}
             {% if customer.siren %}<p class="sd__small">SIREN {{ customer.siren }}</p>{% endif %}
@@ -147,6 +148,10 @@
                 <p>En cas de retard de paiement, pénalités au taux de trois fois le taux d’intérêt légal.</p>
                 <p>Indemnité forfaitaire pour frais de recouvrement due en cas de retard : 40 €.</p>
             </footer>
+        {% elseif type.value == 'purchase_order' %}
+            <footer class="sd__terms"><p>Merci de rappeler le numéro de cette commande sur votre bon de livraison et sur votre facture.</p></footer>
+        {% elseif type.value == 'price_request' %}
+            <footer class="sd__terms"><p>Merci de nous adresser votre meilleur prix et votre délai pour les quantités ci-dessus.</p></footer>
         {% elseif type.value == 'quote' %}
             <footer class="sd__terms"><p>Devis valable un mois à compter de sa date. Bon pour accord : date, signature et cachet du client.</p></footer>
         {% endif %}

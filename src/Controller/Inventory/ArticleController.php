@@ -112,6 +112,7 @@ final class ArticleController extends AbstractController
         $draft->designation = PostValue::trimmed($request, 'designation');
         $draft->unit = PostValue::trimmed($request, 'unit');
         $draft->salePrice = PostValue::trimmed($request, 'salePrice');
+        $draft->purchasePrice = PostValue::trimmed($request, 'purchasePrice');
         $draft->vatRate = PostValue::trimmed($request, 'vatRate');
         $draft->revenueAccount = PostValue::trimmed($request, 'revenueAccount');
         $draft->stockTracked = '1' === PostValue::trimmed($request, 'stockTracked');

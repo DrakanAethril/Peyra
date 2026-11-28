@@ -18,6 +18,8 @@ use App\Repository\Sales\SalesSequenceRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Accounting\Template\VatRate;
 use App\Service\Audit\AuditTrail;
+use App\Service\Purchasing\ReceiptProgress;
+use App\Service\Purchasing\Receipts;
 use App\Service\Regulatory\MissingRegulatoryValue;
 use App\Service\Regulatory\RegulatoryReader;
 use App\Service\Shared\FrenchFormat;
@@ -38,6 +40,10 @@ use Doctrine\ORM\EntityManagerInterface;
  * draft, frozen on it at its validation; once validated, an invoicing document goes to the books
  * (SalesPosting::validated()).
  *
+ * Step 2.4: the same door serves the purchasing side - a price request, a supplier order, its
+ * receipts. An order is received in as many receipts as it takes, each one opened on what is left
+ * (Receipts), one draft at a time.
+ *
  * @phpstan-import-type CustomerPrint from SalesDocument
  */
 final readonly class SalesDocuments
@@ -54,6 +60,7 @@ final readonly class SalesDocuments
         private AuditTrail $auditTrail,
         private RegulatoryReader $regulatory,
         private SalesPosting $posting,
+        private Receipts $receipts,
     ) {
     }
 
@@ -148,15 +155,12 @@ final readonly class SalesDocuments
     }
 
     /** What may be saved, or null with the draft's errors filled. */
-    public function check(SalesDocumentDraft $draft, Dossier $dossier): ?SalesDocumentFields
+    public function check(SalesDocumentDraft $draft, Dossier $dossier, SalesDocumentType $type): ?SalesDocumentFields
     {
         return SalesDocumentRules::check(
+            $type,
             $draft,
-            function (string $code) use ($dossier): ?bool {
-                $thirdParty = $this->thirdParties->findOneByCode($dossier, $code);
-
-                return null === $thirdParty ? null : ThirdPartyKind::Customer === $thirdParty->getKind();
-            },
+            fn (string $code): ?ThirdPartyKind => $this->thirdParties->findOneByCode($dossier, $code)?->getKind(),
             fn (string $code): bool => null !== $this->articles->findOneByCode($dossier, $code),
         );
     }
@@ -277,6 +281,14 @@ final readonly class SalesDocuments
 
             return null;
         }
+        if (SalesDocumentType::Receipt === $into) {
+            $open = $this->receipts->openDraft($document);
+            if (null !== $open) {
+                return \sprintf('Une réception de %s est en brouillon : validez-la ou supprimez-la avant d’en ouvrir une autre.', $document->getNumber() ?? '');
+            }
+
+            return [] === ReceiptProgress::toReceive($this->receipts->progress($document)) ? \sprintf('La commande %s est entièrement reçue.', $document->getNumber() ?? '') : null;
+        }
         if (SalesDocumentType::CreditNote !== $into) {
             foreach ($this->documents->findMadeFrom($document) as $made) {
                 if (SalesDocumentType::Deposit !== $made->getType()) {
@@ -291,7 +303,8 @@ final readonly class SalesDocuments
     /**
      * The next document of the chain, a draft carrying the same customer and lines, dated the
      * dossier's date - its cash discount and VAT on receipt with it. A deposit invoice takes
-     * `percent` of each VAT rate's base of the order instead, one line per rate.
+     * `percent` of each VAT rate's base of the order instead, one line per rate; a receipt, what the
+     * order has left to receive.
      */
     public function transform(SalesDocument $document, SalesDocumentType $into, User|string $by, ?BigDecimal $percent = null): SalesDocument
     {
@@ -300,9 +313,11 @@ final readonly class SalesDocuments
         }
         $dossier = $document->getDossier();
         $next = new SalesDocument($dossier, $into, $document->getCustomer(), $dossier->getDossierDate(), $document);
-        $lines = SalesDocumentType::Deposit === $into
-            ? self::depositLines($document, $percent ?? throw new \LogicException('A deposit takes a percentage of the order.'))
-            : $document->getLines();
+        $lines = match ($into) {
+            SalesDocumentType::Deposit => self::depositLines($document, $percent ?? throw new \LogicException('A deposit takes a percentage of the order.')),
+            SalesDocumentType::Receipt => ReceiptProgress::toReceive($this->receipts->progress($document)),
+            default => $document->getLines(),
+        };
         $next->rewrite($document->getCustomer(), $dossier->getDossierDate(), null, $document->getReference(), $lines, $into->takesCashDiscount() ? $document->getCashDiscount() : null, $document->isVatOnReceipts());
         $next->recordHistory('created', $dossier->getDossierDate(), self::name($by), \sprintf('Brouillon ouvert depuis %s', $document->getNumber() ?? ''));
         $document->recordHistory('transformed', $dossier->getDossierDate(), self::name($by), \sprintf('Transformation en %s', mb_strtolower($into->label())));
@@ -312,9 +327,12 @@ final readonly class SalesDocuments
         return $next;
     }
 
-    /** Sent to the customer - simulated: nothing leaves the application, the history says it went. */
+    /** Sent to the customer or the supplier - simulated: nothing leaves the application, the history says it went. */
     public function send(SalesDocument $document, User|string $by): void
     {
+        if (!$document->getType()->isSent()) {
+            throw new \LogicException('A receipt stays in the company.');
+        }
         $dossier = $document->getDossier();
         $document->markSent($dossier->getDossierDate());
         $customer = $document->getCustomer();
@@ -389,7 +407,7 @@ final readonly class SalesDocuments
 
     private function customer(Dossier $dossier, string $code): ThirdParty
     {
-        return $this->thirdParties->findOneByCode($dossier, $code) ?? throw new \LogicException('A checked document names a customer of the dossier.');
+        return $this->thirdParties->findOneByCode($dossier, $code) ?? throw new \LogicException('A checked document names a third party of the dossier.');
     }
 
     private static function name(User|string $by): string
