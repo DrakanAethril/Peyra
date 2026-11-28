@@ -34,7 +34,9 @@ jobs:
   checks:
     name: Checks
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The job itself lasts about a quarter of an hour; the margin absorbs a slow runner. At 30
+    # minutes, when it still carried the single-process pass, it was cut and the run said nothing.
+    timeout-minutes: 60
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -164,11 +166,71 @@ jobs:
       - name: Run the test suite
         run: docker compose exec -T -e APP_ENV=test php vendor/bin/paratest --processes=4
 
-      # The same suite in one process, on the database the migrations were replayed into: ParaTest
-      # gives every file its own process, so a test that leaks global state (an environment
-      # variable unset, a static) breaks the files after it only here. Half a minute.
-      - name: Run the test suite in one process
-        run: docker compose exec -T -e APP_ENV=test -e TEST_TOKEN=ci php bin/phpunit
+      - name: Dump service logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
+
+  # The same suite in one process, on a stack of its own, beside the job above rather than after
+  # it: ParaTest gives every test file its own process, so a test that leaks global state (an
+  # environment variable unset, a static) breaks the files after it only here. In one job it took
+  # longer than the whole of Checks; cut in two halves of the sorted file list (every other file,
+  # so each half crosses every directory), each run in one process, both in parallel, the run
+  # stays under twenty minutes. A leak is caught by the files after it in its own half.
+  single-process:
+    name: Tests in one process (${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Write .env.dev.local
+        run: cp .env.dev.local.example .env.dev.local
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # Reads the cache Checks writes, never writes it: two jobs writing one scope at once race.
+      - name: Build Docker images
+        uses: docker/bake-action@v7
+        with:
+          pull: true
+          load: true
+          source: .
+          files: |
+            compose.yaml
+            compose.override.yaml
+          set: |
+            *.cache-from=type=gha,scope=${{github.ref}}
+            *.cache-from=type=gha,scope=refs/heads/staging
+
+      - name: Start services
+        env:
+          COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ github.token }}"}}'
+        run: docker compose up --wait --no-build
+
+      - name: Install the import map's vendor files
+        run: docker compose exec -T php bin/console importmap:install
+
+      - name: Create the test database and run the migrations
+        run: |
+          docker compose exec -T -e APP_ENV=test -e TEST_TOKEN=ci php bin/console doctrine:database:create --if-not-exists
+          docker compose exec -T -e APP_ENV=test -e TEST_TOKEN=ci php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+          docker compose exec -T -e APP_ENV=test -e TEST_TOKEN=ci php bin/console cache:warmup
+
+      # The list is sorted explicitly (LC_ALL=C): an order read from the file system would differ
+      # from one runner to the next, and a leak found once could hide the next time.
+      - name: Run half of the test suite in one process
+        run: |
+          files="$(find tests -name '*Test.php' | LC_ALL=C sort | awk -v shard=${{ matrix.shard }} 'NR % 2 == shard % 2')"
+          echo "$(echo "$files" | wc -l) test files"
+          docker compose exec -T -e APP_ENV=test -e TEST_TOKEN=ci php bin/phpunit $files
 
       - name: Dump service logs on failure
         if: failure()
