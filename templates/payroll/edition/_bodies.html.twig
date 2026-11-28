@@ -1,0 +1,57 @@
+{# The cotisations by body (step 4.5): each body's rubriques and what is owed to it - the general reduction in its Urssaf and its complementary pension shares. #}
+{% import 'payroll/edition/_macros.html.twig' as m %}
+{% set pdf = pdf|default(false) %}
+{% set num = pdf ? 'px-doc__num' : 'px-u-num' %}
+{% set sub = pdf ? 'px-doc__subtotal' : 'px-table__subtotal' %}
+{% set states = statements.bodies %}
+{% set cells %}
+    <thead>
+        <tr>
+            <th scope="col">Rubrique</th>
+            <th scope="col">Intitulé</th>
+            <th scope="col" class="{{ num }}">Base</th>
+            <th scope="col" class="{{ num }}">Part salariale</th>
+            <th scope="col" class="{{ num }}">Part patronale</th>
+            <th scope="col" class="{{ num }}">Total</th>
+        </tr>
+    </thead>
+    {% for state in states %}
+        <tbody>
+            <tr class="{{ sub }}"><th scope="rowgroup" colspan="6">{{ state.body ? state.body.name ~ ' · ' ~ state.body.kind.label ~ (state.body.reference ? ' · ' ~ state.body.reference : '') ~ ' · compte ' ~ state.body.owedAccount : 'Cotisations sans organisme' }}</th></tr>
+            {% for row in state.rows %}
+                {% set params = {dossier: dossier.id, month: statements.month|date('Y-m'), item: row.key, from: 'bodies'} %}
+                <tr>
+                    <td class="px-u-code">{{ row.key }}</td>
+                    <td>{{ row.label }}</td>
+                    <td class="{{ num }}">{{ m.base(row) }}</td>
+                    <td class="{{ num }}">{{ m.drill(row.employee, params, pdf) }}</td>
+                    <td class="{{ num }}">{{ m.drill(row.employer, params, pdf) }}</td>
+                    <td class="{{ num }}">{{ row.total|amount }}</td>
+                </tr>
+            {% endfor %}
+            {% set params = {dossier: dossier.id, month: statements.month|date('Y-m'), body: state.key, from: 'bodies'} %}
+            <tr class="{{ sub }}">
+                <th scope="row" colspan="3">Dû {{ state.body ? 'à ' ~ state.body.name : '' }}</th>
+                <td class="{{ num }}">{{ state.employee|amount }}</td>
+                <td class="{{ num }}">{{ state.employer|amount }}</td>
+                <td class="{{ num }}">{{ m.drill(state.total, params, pdf) }}</td>
+            </tr>
+        </tbody>
+    {% endfor %}
+    <tfoot>
+        <tr>
+            <th scope="row" colspan="3">Total des cotisations</th>
+            <td class="{{ num }}">{{ statements.totals.employee|amount }}</td>
+            <td class="{{ num }}">{{ statements.totals.employer|amount }}</td>
+            <td class="{{ num }}">{{ statements.totals.employee.plus(statements.totals.employer)|amount }}</td>
+        </tr>
+    </tfoot>
+{% endset %}
+{% if pdf %}
+    <table class="px-doc__table">
+        <colgroup><col style="width: 10%"><col><col style="width: 14%"><col style="width: 14%"><col style="width: 14%"><col style="width: 14%"></colgroup>
+        {{ cells }}
+    </table>
+{% else %}
+    <twig:Px:Table caption="Cotisations par organisme {{ statements.month|of_period }}" density="compact">{{ cells }}</twig:Px:Table>
+{% endif %}

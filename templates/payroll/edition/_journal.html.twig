@@ -1,0 +1,42 @@
+{# The journal de paie (step 4.5): each rubrique summed over the month's validated payslips, family by family. On screen (Px:Table) and on paper (`pdf`). #}
+{% import 'payroll/edition/_macros.html.twig' as m %}
+{% set pdf = pdf|default(false) %}
+{% set num = pdf ? 'px-doc__num' : 'px-u-num' %}
+{% set sub = pdf ? 'px-doc__subtotal' : 'px-table__subtotal' %}
+{% set headings = {gross: 'Éléments de brut', contribution: 'Cotisations et contributions', not_subject: 'Éléments non soumis', deduction: 'Retenues sur le net'} %}
+{% set cells %}
+    <thead>
+        <tr>
+            <th scope="col">Rubrique</th>
+            <th scope="col">Intitulé</th>
+            <th scope="col" class="{{ num }}">Base</th>
+            <th scope="col" class="{{ num }}">Part salariale</th>
+            <th scope="col" class="{{ num }}">Part patronale</th>
+            <th scope="col" class="{{ num }}">Bulletins</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for family, family_rows in statements.journal %}
+            <tr class="{{ sub }}"><th scope="rowgroup" colspan="6">{{ headings[family] }}</th></tr>
+            {% for row in family_rows %}
+                {% set params = {dossier: dossier.id, month: statements.month|date('Y-m'), item: row.key, from: 'journal'} %}
+                <tr>
+                    <td class="px-u-code">{{ row.key }}</td>
+                    <td>{{ row.label }}</td>
+                    <td class="{{ num }}">{{ m.base(row) }}</td>
+                    <td class="{{ num }}">{{ m.drill(row.employee, params, pdf) }}</td>
+                    <td class="{{ num }}">{{ family == 'contribution' ? m.drill(row.employer, params, pdf) : '' }}</td>
+                    <td class="{{ num }}">{{ row.numbers|length }}</td>
+                </tr>
+            {% endfor %}
+        {% endfor %}
+    </tbody>
+{% endset %}
+{% if pdf %}
+    <table class="px-doc__table">
+        <colgroup><col style="width: 10%"><col><col style="width: 14%"><col style="width: 14%"><col style="width: 14%"><col style="width: 9%"></colgroup>
+        {{ cells }}
+    </table>
+{% else %}
+    <twig:Px:Table caption="Journal de paie {{ statements.month|of_period }}" density="compact">{{ cells }}</twig:Px:Table>
+{% endif %}

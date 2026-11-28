@@ -1,0 +1,7 @@
+{# The month of pay a payroll state reads (step 4.5): a GET form over the months that have a validated payslip. Takes `month_route`. #}
+<form method="get" action="{{ path(month_route, {dossier: dossier.id}) }}" class="px-cluster">
+    <twig:Px:Field id="month" label="Mois de paie">
+        <twig:Px:Select id="month" name="month" value="{{ month|date('Y-m') }}" :options="months|map(m => {value: m|date('Y-m'), label: m|period|capitalize})"/>
+    </twig:Px:Field>
+    <twig:Px:Button type="submit">Afficher</twig:Px:Button>
+</form>

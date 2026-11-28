@@ -1,6 +1,7 @@
 # Menuiserie Vasseur SARL - paramètres de paie (lot 4, étape 4.1), d'après
 # plan/donnees/demo/societe.yaml (« social ») et salaries.yaml (« entreprise »). Tout est fictif :
 # les organismes, leurs références et le taux d'accident du travail (celui de la maquette 4).
+# Chaque organisme autre que l'Urssaf a son sous-compte de 437 (accounts.yaml), que l'écriture de paie crédite.
 # Le dossier reçoit le plan de paie standard (fixtures/payroll/standard-plan.yaml), versé à ces
 # organismes, puis ses rubriques propres ci-dessous. Format : App\Service\Dossier\Demo\DemoPayrollFile.
 
@@ -12,9 +13,9 @@ establishment:
 
 bodies:
   - {kind: urssaf, name: Urssaf Rhône-Alpes (simulée), reference: FICTIF-URSSAF-0142}
-  - {kind: retirement, name: Caisse de retraite Loire-Forez (fictive), reference: FICTIF-RC-0142}
-  - {kind: provident, name: Prévoyance Forez Mutuelle (fictive), reference: FICTIF-PREV-0142}
-  - {kind: health, name: Mutuelle des Monts du Forez (fictive), reference: FICTIF-SANTE-0142}
+  - {kind: retirement, name: Caisse de retraite Loire-Forez (fictive), reference: FICTIF-RC-0142, account: '437100'}
+  - {kind: provident, name: Prévoyance Forez Mutuelle (fictive), reference: FICTIF-PREV-0142, account: '437300'}
+  - {kind: health, name: Mutuelle des Monts du Forez (fictive), reference: FICTIF-SANTE-0142, account: '437200'}
 
 items:
   # Complémentaire santé du contrat de l'entreprise : forfait de 56,00 € par mois, moitié chacun.

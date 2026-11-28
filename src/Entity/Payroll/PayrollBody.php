@@ -38,12 +38,22 @@ class PayrollBody implements DossierOwned
     #[ORM\Column(length: 40)]
     private string $reference;
 
-    public function __construct(Dossier $dossier, PayrollBodyKind $kind, string $name, string $reference)
+    /** The account its contributions are owed on (431000, 437100…), step 4.5; null: its kind's (PayrollBodyKind::defaultAccount()). */
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $account = null;
+
+    /** The charge account of the employer's contributions paid to it (645100…), step 4.5; null: its kind's. */
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $chargeAccount = null;
+
+    public function __construct(Dossier $dossier, PayrollBodyKind $kind, string $name, string $reference, ?string $account = null, ?string $chargeAccount = null)
     {
         $this->dossier = $dossier;
         $this->kind = $kind;
         $this->name = $name;
         $this->reference = $reference;
+        $this->account = $account;
+        $this->chargeAccount = $chargeAccount;
     }
 
     public function getId(): ?int
@@ -66,11 +76,36 @@ class PayrollBody implements DossierOwned
         return $this->reference;
     }
 
+    /** As typed on the fiche; null when it takes its kind's. */
+    public function getAccount(): ?string
+    {
+        return $this->account;
+    }
+
+    public function getChargeAccount(): ?string
+    {
+        return $this->chargeAccount;
+    }
+
+    /** The account its contributions are owed on, its kind's when it names none. */
+    public function owedAccount(): string
+    {
+        return $this->account ?? $this->kind->defaultAccount();
+    }
+
+    /** The charge account of the employer's contributions paid to it, its kind's when it names none. */
+    public function employerChargeAccount(): string
+    {
+        return $this->chargeAccount ?? $this->kind->defaultChargeAccount();
+    }
+
     /** PayrollBodySheet is the caller. */
-    public function describe(PayrollBodyKind $kind, string $name, string $reference): void
+    public function describe(PayrollBodyKind $kind, string $name, string $reference, ?string $account = null, ?string $chargeAccount = null): void
     {
         $this->kind = $kind;
         $this->name = $name;
         $this->reference = $reference;
+        $this->account = $account;
+        $this->chargeAccount = $chargeAccount;
     }
 }

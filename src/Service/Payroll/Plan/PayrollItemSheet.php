@@ -9,6 +9,7 @@ use App\Entity\Identity\User;
 use App\Entity\Payroll\PayrollItem;
 use App\Entity\Payroll\PayrollRate;
 use App\Enum\Audit\AuditAction;
+use App\Repository\Accounting\AccountRepository;
 use App\Repository\Payroll\PayrollBodyRepository;
 use App\Repository\Payroll\PayrollItemRepository;
 use App\Service\Audit\AuditTrail;
@@ -33,6 +34,7 @@ final readonly class PayrollItemSheet
         private PayrollItemRepository $items,
         private PayrollBodyRepository $bodies,
         private RegulatoryReader $regulatory,
+        private AccountRepository $accounts,
         private AuditTrail $auditTrail,
     ) {
     }
@@ -55,6 +57,9 @@ final readonly class PayrollItemSheet
             if (null !== $same && $same !== $item) {
                 $draft->errors['code'] = \sprintf('La rubrique %s existe déjà : %s.', $draft->code, $same->getLabel());
             }
+        }
+        if (null !== $spec?->account && null === $this->accounts->findOneByNumber($dossier, $spec->account)) {
+            $draft->errors['account'] = \sprintf('Le compte %s n’est pas au plan comptable du dossier.', $spec->account);
         }
         if (null !== $spec) {
             $snapshot = $this->regulatory->at($dossier->getDossierDate());

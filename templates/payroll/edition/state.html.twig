@@ -1,0 +1,53 @@
+{#
+ # Paie et social › Éditions (step 4.5, gabarit R; design-ux.md § 3.2): one of the four states of a
+ # month of pay - journal de paie, livre de paie, cotisations par organisme, état des charges -, read on
+ # its validated payslips; an amount opens the détail of the payslips it sums. « Aperçu PDF ».
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'editions' %}
+{% set titles = {journal: 'Journal de paie', book: 'Livre de paie', bodies: 'Cotisations par organisme', charges: 'État des charges sociales'} %}
+{% set dossier_title = titles[edition_current] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ titles[edition_current] }}{{ month ? ' ' ~ month|of_period : '' }}" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Éditions', href: path('app_payroll_edition_journal', {dossier: dossier.id})},
+        {label: titles[edition_current], href: path('app_payroll_edition_' ~ edition_current, {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if statements and not statements.empty %}
+                <twig:Px:Button href="{{ path('app_payroll_edition_pdf', {dossier: dossier.id, view: edition_current, month: month|date('Y-m')}) }}" icon="printer" target="_blank" data-turbo="false">Aperçu PDF</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('payroll/edition/_tabs.html.twig') }}
+    {% if not month %}
+        <twig:Px:Empty icon="file-text" title="Aucun bulletin validé dans ce dossier." text="Les éditions de la paie se lisent sur les bulletins validés : validez les bulletins du mois dans Bulletins."/>
+    {% else %}
+        {{ include('payroll/edition/_month_choice.html.twig', {month_route: 'app_payroll_edition_' ~ edition_current}) }}
+        <twig:Px:Card :flush="true">
+            {{ include('payroll/edition/_' ~ edition_current ~ '.html.twig') }}
+        </twig:Px:Card>
+        {% set totals = statements.totals %}
+        <twig:Px:Card title="Totaux du mois">
+            <twig:block name="content">
+                <dl class="px-facts">
+                    <dt>Salaire brut</dt><dd class="px-u-num">{{ totals.gross|amount_eur }}</dd>
+                    <dt>Cotisations salariales</dt><dd class="px-u-num">{{ totals.employee|amount_eur }}</dd>
+                    <dt>Cotisations patronales</dt><dd class="px-u-num">{{ totals.employer|amount_eur }}</dd>
+                    <dt>Net imposable</dt><dd class="px-u-num">{{ totals.netTaxable|amount_eur }}</dd>
+                    <dt>Impôt prélevé à la source</dt><dd class="px-u-num">{{ totals.withholding|amount_eur }}</dd>
+                    <dt>Net à payer</dt><dd class="px-u-num">{{ totals.netPay|amount_eur }}</dd>
+                    <dt>Coût employeur</dt><dd class="px-u-num">{{ totals.cost|amount_eur }}</dd>
+                </dl>
+                <p class="px-u-muted">Lus sur les {{ statements.payslips|length }} bulletins validés du mois : le <a class="px-link" href="{{ path('app_payroll_edition_book', {dossier: dossier.id, month: month|date('Y-m')}) }}">livre de paie</a> les détaille salarié par salarié.</p>
+            </twig:block>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}{% if month %}<span>Mois de paie · <b>{{ month|period }}</b></span><span>Bulletins validés · <b>{{ statements.payslips|length }}</b></span>{% endif %}{% endblock %}

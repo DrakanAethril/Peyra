@@ -1,0 +1,8 @@
+{# The amounts of the payroll's states (step 4.5): on screen an amount leads to the détail of the payslips it sums; on paper, and for zero, it is only printed. #}
+{% macro drill(amount, params, pdf) -%}
+    {%- if pdf or amount.isZero -%}{{ amount|amount_cell }}{%- else -%}<a class="px-table__drill" href="{{ path('app_payroll_edition_detail', params) }}">{{ amount|amount }}</a>{%- endif -%}
+{%- endmacro %}
+
+{% macro base(row) -%}
+    {%- if row.base is not null -%}{{ row.baseUnit ? row.baseUnit.format(row.base) : row.base }}{%- endif -%}
+{%- endmacro %}

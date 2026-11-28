@@ -70,4 +70,22 @@ final readonly class AccountingGateway
 
         return $this->ledger->draft($dossier, $entry->entry, $actor, $origin, $entry->module->value);
     }
+
+    /**
+     * A module takes back the entry it asked for (the payroll, when a payslip of a month posted is
+     * cancelled; design-ux.md § 4.7, point 6): still in the brouillard, it is deleted; validated, it is
+     * reversed on `$on` - the reversal is returned. Refused like any gesture of the Ledger.
+     *
+     * @throws EntryRefused
+     */
+    public function withdraw(Entry $entry, \DateTimeImmutable $on, User|string $actor): ?Entry
+    {
+        if (!$entry->isValidated()) {
+            $this->ledger->discard($entry, $actor);
+
+            return null;
+        }
+
+        return $this->ledger->reverse($entry, $on, $actor);
+    }
 }

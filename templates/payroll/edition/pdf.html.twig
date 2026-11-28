@@ -1,0 +1,7 @@
+{# A payroll state on paper (step 4.5): a state's header (doc/_report), the table of the view, the month's totals. #}
+{% extends 'doc/_report.html.twig' %}
+
+{% block content %}
+    {{ include('payroll/edition/_' ~ edition_current ~ '.html.twig', {pdf: true}) }}
+    <p class="px-doc__legal">Lu sur les {{ statements.payslips|length }} bulletins validés {{ statements.month|of_period }}. Document fictif établi par Peyra, PGI pédagogique : la société et les salariés sont inventés.</p>
+{% endblock %}

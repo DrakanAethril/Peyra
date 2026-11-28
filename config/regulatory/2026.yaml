@@ -693,6 +693,19 @@ entries:
       L3141-24 à L3141-31). Règle stable, reprise telle quelle pour 2025 et 2026. Le dixième d'un congé est la
       part des jours pris sur les jours acquis.
 
+  - key: social.paid_leave.reference_period
+    label: Congés payés - début de la période de référence, à défaut d'accord (provision pour congés payés)
+    value: {start_month: 6, start_day: 1}
+    unit: date
+    effective_from: 2026-01-01
+    source_url: https://www.service-public.gouv.fr/particuliers/vosdroits/F2258
+    consulted_on: 2026-11-28
+    verified: true
+    note: >-
+      « En l'absence de convention ou d'accord, la période de référence est fixée du 1er juin de l'année
+      précédente au 31 mai de l'année en cours » (code du travail R3141-4). Lu par la provision pour congés
+      payés (étape 4.5) : les congés acquis depuis ce jour et non encore pris.
+
   # --- Indemnités journalières maladie ----------------------------------------------------------
   - key: social.sick_pay.ijss
     label: Indemnités journalières maladie (IJSS) - règle de calcul

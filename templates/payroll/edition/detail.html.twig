@@ -1,0 +1,59 @@
+{#
+ # The détail of an amount of a payroll state (step 4.5): the validated payslips of the month a rubrique,
+ # a body or a line of the clarified payslip sums, each one's shares, each opening the payslip's PDF.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'editions' %}
+{% set dossier_title = detail_title %}
+{% set back_route = back in ['journal', 'bodies', 'charges'] ? 'app_payroll_edition_' ~ back : 'app_payroll_edition_journal' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ detail_title }} · {{ month|period }}" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Éditions', href: path(back_route, {dossier: dossier.id, month: month|date('Y-m')})},
+        {label: 'Détail', href: app.request.requestUri},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    <p><a class="px-link" href="{{ path(back_route, {dossier: dossier.id, month: month|date('Y-m')}) }}">Retour à l’édition</a></p>
+    <twig:Px:Card :flush="true">
+        {% if detail_rows is empty %}
+            <twig:Px:Empty icon="file-text" title="Aucun bulletin validé ne porte ce montant." text="Le détail se lit sur les bulletins validés du mois."/>
+        {% else %}
+            <twig:Px:Table caption="{{ detail_title }}, {{ month|period }} : les bulletins" density="compact">
+                <thead>
+                    <tr>
+                        <th scope="col">Matricule</th>
+                        <th scope="col">Salarié</th>
+                        <th scope="col" class="px-u-num">Base</th>
+                        <th scope="col" class="px-u-num">Part salariale</th>
+                        <th scope="col" class="px-u-num">Part patronale</th>
+                        <th scope="col" class="px-u-num">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in detail_rows %}
+                        <tr>
+                            <td class="px-u-code"><a class="px-link" href="{{ path('app_payroll_employee_payslip_pdf', {dossier: dossier.id, number: row.key, month: month|date('Y-m')}) }}" target="_blank" data-turbo="false">{{ row.key }}</a></td>
+                            <td>{{ row.label }}</td>
+                            <td class="px-u-num">{% if row.base is not null %}{{ row.baseUnit ? row.baseUnit.format(row.base) : row.base }}{% endif %}</td>
+                            <td class="px-u-num">{{ row.employee|amount_cell }}</td>
+                            <td class="px-u-num">{{ row.employer|amount_cell }}</td>
+                            <td class="px-u-num">{{ row.total|amount }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th scope="row" colspan="3">Total · {{ detail_rows|length }} bulletin{{ detail_rows|length > 1 ? 's' : '' }}</th>
+                        <td class="px-u-num">{{ detail_rows|map(r => r.employee.cents)|reduce((a, b) => a + b, 0)|amount }}</td>
+                        <td class="px-u-num">{{ detail_rows|map(r => r.employer.cents)|reduce((a, b) => a + b, 0)|amount }}</td>
+                        <td class="px-u-num">{{ detail_rows|map(r => r.total.cents)|reduce((a, b) => a + b, 0)|amount }}</td>
+                    </tr>
+                </tfoot>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}

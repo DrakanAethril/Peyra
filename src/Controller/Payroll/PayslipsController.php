@@ -23,6 +23,8 @@ use App\Service\Payroll\Payslip\PayslipElementsRules;
 use App\Service\Payroll\Payslip\PayslipLineCells;
 use App\Service\Payroll\Payslip\PayslipView;
 use App\Service\Payroll\Plan\PayrollItemSpec;
+use App\Service\Payroll\Statement\PayrollPosting;
+use App\Service\Payroll\Statement\PayrollStatementsReader;
 use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\Pdf\PdfRenderer;
@@ -74,13 +76,14 @@ final class PayslipsController extends AbstractController
     }
 
     #[Route('/close', name: 'app_payroll_payslips_close', methods: ['POST'])]
-    public function close(Dossier $dossier, Request $request, PayslipBook $book, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
+    public function close(Dossier $dossier, Request $request, PayslipBook $book, PayrollPosting $posting, PayrollStatementsReader $statements, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $this->mayEnter($dossier, $request, 'payroll-close-'.$dossier->getId());
         $month = $book->month($dossier);
         $refusal = $book->close($dossier, $me);
         if (null === $refusal) {
             $entityManager->flush();
+            $posting->monthClosed($dossier, $statements->of($dossier, $month), $me);
             $this->addFlash('status', \sprintf('Paie %s close : %s s’ouvre.', FrenchFormat::ofPeriod($month), FrenchFormat::period($book->month($dossier))));
         } else {
             $this->addFlash('payslip_fault', $refusal);
@@ -223,10 +226,12 @@ final class PayslipsController extends AbstractController
     }
 
     #[Route('/{number}/cancel', name: 'app_payroll_payslip_cancel', requirements: ['number' => '[A-Z0-9]{1,10}'], methods: ['POST'])]
-    public function cancel(Dossier $dossier, string $number, Request $request, PayslipBook $book, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
+    public function cancel(Dossier $dossier, string $number, Request $request, PayslipBook $book, PayrollPosting $posting, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $payslip = $this->stored($dossier, $number, $request, $book, 'payslip-cancel-');
-        $refusal = $book->cancel($payslip, $me);
+        // The month's entry, if the payroll wrote one, goes first: deleted or reversed (step 4.5); refused, the payslip stays validated.
+        $refusal = $payslip->isValidated() && $payslip->getMonth() == $book->month($dossier) ? $posting->withdraw($dossier, $payslip->getMonth(), $me) : null;
+        $refusal ??= $book->cancel($payslip, $me);
         if (null === $refusal) {
             $entityManager->flush();
             $this->addFlash('status', \sprintf('Validation du bulletin de %s annulée : il se modifie et se valide de nouveau.', $payslip->getEmployee()->getFullName()));

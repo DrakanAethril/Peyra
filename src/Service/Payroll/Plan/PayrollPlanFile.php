@@ -28,10 +28,11 @@ use Symfony\Component\Yaml\Yaml;
  *       salary: always                    # optional, SalaryCondition
  *       body: urssaf                      # a contribution's: PayrollBodyKind
  *       line: social_security_capped      # a contribution's: PayslipLine
+ *       account: '641200'                 # optional: its account in the payroll's entry, else PayrollAccounts' default
  */
 final class PayrollPlanFile
 {
-    private const array FIELDS = ['code', 'label', 'kind', 'order', 'subtracts', 'benefit_in_kind', 'base', 'ceiling', 'employee', 'employer', 'status', 'headcount', 'salary', 'body', 'line'];
+    private const array FIELDS = ['code', 'label', 'kind', 'order', 'subtracts', 'benefit_in_kind', 'base', 'ceiling', 'employee', 'employer', 'status', 'headcount', 'salary', 'body', 'line', 'account'];
 
     /**
      * The standard plan's file: its default body names by kind and its items.
@@ -103,6 +104,7 @@ final class PayrollPlanFile
             $draft->headcount = self::text($entry, 'headcount', $at, 'all');
             $draft->salary = self::text($entry, 'salary', $at, 'always');
             $draft->line = self::text($entry, 'line', $at, '');
+            $draft->account = self::text($entry, 'account', $at, '');
             $bodyKind = self::text($entry, 'body', $at, '');
             $body = '' === $bodyKind ? null : (PayrollBodyKind::tryFrom($bodyKind) ?? throw new \InvalidArgumentException($at.'.body : type d’organisme inconnu « '.$bodyKind.' ».'));
             $items[] = ['draft' => $draft, 'body' => $body];

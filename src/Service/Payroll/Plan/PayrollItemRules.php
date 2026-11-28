@@ -34,12 +34,15 @@ use Brick\Math\BigDecimal;
  *   needs - a regulatory key of the social domain and its path, a percent above 0 up to 100 with
  *   four decimals at most, an amount;
  * - a contribution has a rate on one side at least, its body and its line of the clarified payslip;
- *   nothing else has either; what is not entered as an amount has its rate.
+ *   nothing else has either; what is not entered as an amount has its rate;
+ * - its account in the payroll's entry (step 4.5), digits only, or none for the default.
  */
 final class PayrollItemRules
 {
     private const string KEY = '/^social(\.[a-z0-9_]+)+$/';
     private const string PATH = '/^[a-z0-9_]+(\.[a-z0-9_]+)*$/';
+    /** An account number of the dossier's chart: digits, ten at most. */
+    public const string ACCOUNT = '/^[1-8]\d{2,9}$/';
 
     /**
      * @param PayrollBody|null $body the body the draft names, found by the caller (null when it names none)
@@ -52,7 +55,7 @@ final class PayrollItemRules
         $draft->code = trim($draft->code);
         $draft->label = trim((string) preg_replace('/\s+/u', ' ', $draft->label));
         $draft->sortOrder = trim($draft->sortOrder);
-        foreach (['employeeKey', 'employeePath', 'employerKey', 'employerPath'] as $field) {
+        foreach (['employeeKey', 'employeePath', 'employerKey', 'employerPath', 'account'] as $field) {
             $draft->{$field} = trim($draft->{$field});
         }
 
@@ -139,12 +142,16 @@ final class PayrollItemRules
             }
         }
 
+        if ('' !== $draft->account && 1 !== preg_match(self::ACCOUNT, $draft->account)) {
+            $draft->errors['account'] = 'Un numéro de compte s’écrit en chiffres (641100).';
+        }
+
         if ([] !== $draft->errors || null === $kind || null === $base || null === $ceiling || null === $employee || null === $employer
             || null === $status || null === $headcount || null === $salary || null === $sortOrder) {
             return null;
         }
 
-        return new PayrollItemSpec($draft->code, $draft->label, $kind, $sortOrder, $draft->subtracts, $base, $ceiling, $employee, $employer, $status, $headcount, $salary, $body, $line, $draft->benefitInKind);
+        return new PayrollItemSpec($draft->code, $draft->label, $kind, $sortOrder, $draft->subtracts, $base, $ceiling, $employee, $employer, $status, $headcount, $salary, $body, $line, $draft->benefitInKind, '' === $draft->account ? null : $draft->account);
     }
 
     /** @param 'employee'|'employer' $side */
