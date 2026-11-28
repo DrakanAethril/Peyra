@@ -47,6 +47,7 @@ final class S3BucketPolicyTest extends TestCase
         'CompleteMultipartUpload' => ['s3:PutObject'],
         'CopyObject' => ['s3:GetObject', 's3:PutObject'],
         'ListObjectsV2' => ['s3:ListBucket'],
+        'ListObjects' => ['s3:ListBucket'],
         'DeleteObject' => ['s3:DeleteObject'],
         'DeleteObjects' => ['s3:DeleteObject'],
     ];
@@ -200,7 +201,7 @@ final class S3BucketPolicyTest extends TestCase
         return Create::promiseFor(new Result(match ($command->getName()) {
             'HeadObject' => ['ContentLength' => 16, 'ContentType' => 'application/pdf', 'LastModified' => $modified],
             'GetObject' => ['Body' => Utils::streamFor('%PDF-1.7 facture'), 'ContentLength' => 16],
-            'ListObjectsV2' => ['IsTruncated' => false, 'Contents' => [
+            'ListObjectsV2', 'ListObjects' => ['IsTruncated' => false, 'Contents' => [
                 ['Key' => $prefix.'dossiers/7/pieces/0123456789abcdef0123456789abcdef.pdf', 'Size' => 16, 'LastModified' => $modified],
             ]],
             'CreateMultipartUpload' => ['UploadId' => 'envoi-fictif'],
