@@ -259,6 +259,17 @@ enum AuditAction: string
 
     case BankRuleDeleted = 'banking.rule_deleted';
 
+    /** A payment recorded, deleted, lettered; cheques remitted; a bill handed to the bank (step 2.6b). */
+    case PaymentRecorded = 'banking.payment_recorded';
+
+    case PaymentDeleted = 'banking.payment_deleted';
+
+    case PaymentLettered = 'banking.payment_lettered';
+
+    case ChequesDeposited = 'banking.cheques_deposited';
+
+    case BillRemitted = 'banking.bill_remitted';
+
     /** A commercial document drafted, changed, deleted while a draft, validated, sent, transformed (step 2.3). */
     case SalesDocumentCreated = 'sales.document_created';
 
@@ -368,6 +379,11 @@ enum AuditAction: string
             self::BankReconciliationReopened => 'Rapprochement rouvert',
             self::BankRuleSaved => 'Règle d’affectation enregistrée',
             self::BankRuleDeleted => 'Règle d’affectation supprimée',
+            self::PaymentRecorded => 'Règlement enregistré',
+            self::PaymentDeleted => 'Règlement supprimé',
+            self::PaymentLettered => 'Règlement lettré',
+            self::ChequesDeposited => 'Chèques remis en banque',
+            self::BillRemitted => 'Effet remis à la banque',
             self::SalesDocumentCreated => 'Document commercial créé',
             self::SalesDocumentChanged => 'Document commercial modifié',
             self::SalesDocumentDeleted => 'Brouillon de document commercial supprimé',

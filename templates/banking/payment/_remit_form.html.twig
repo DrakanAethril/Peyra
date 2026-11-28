@@ -1,0 +1,32 @@
+{#
+ # A bill in the portfolio handed to the bank (step 2.6b): for collection - the bank credits it at its
+ # due date, a line of the statement posted from the reconciliation (511300) -, or for discount - the
+ # bank credits it now, less its interest, its commission and the commission's VAT, all in one entry.
+ #}
+<form method="post" action="{{ path('app_payment_remit', {dossier: dossier.id, id: payment.id}) }}" id="remit-form" data-turbo="false" novalidate data-controller="focus-error">
+    <input type="hidden" name="_token" value="{{ csrf_token('payment-' ~ dossier.id) }}">
+    <twig:Px:Card title="Remettre l’effet à la banque">
+        <twig:block name="actions">
+            <twig:Px:Button type="submit" variant="primary" size="sm" icon="landmark" shortcut="Ctrl+Enter">Remettre</twig:Px:Button>
+        </twig:block>
+        {% if errors.remit is defined %}<twig:Px:Alert tone="danger">{{ errors.remit }}</twig:Px:Alert>{% endif %}
+        <twig:Px:Segmented legend="Remise" name="kind" :options="[{value: 'collection', label: 'À l’encaissement'}, {value: 'discount', label: 'À l’escompte'}]" value="{{ remittance.kind }}" hint="À l’escompte, la banque crédite l’effet tout de suite, moins ses agios."/>
+        <div class="px-fieldgrid">
+            <twig:Px:Field id="remit-journal" label="Journal de banque" :required="true" :error="errors.journal ?? null">
+                <twig:Px:Select id="remit-journal" name="journal" placeholder="Choisir un journal…" :options="bank_journals|map(j => {value: j.code, label: j.code ~ ' · ' ~ j.label})" value="{{ remittance.journal }}" :required="true" :error="errors.journal ?? null"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="remit-date" label="Date de la remise" :required="true" :error="errors.date ?? null">
+                <twig:Px:DateInput id="remit-date" name="date" :value="remittance.date" :reference="dossier.dossierDate" :required="true" :error="errors.date ?? null"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="interest" label="Intérêts d’escompte" :error="errors.interest ?? null" hint="À l’escompte seulement.">
+                <twig:Px:AmountInput id="interest" :value="remittance.interest" hint="1" :error="errors.interest ?? null"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="commission" label="Commission (HT)" :error="errors.commission ?? null">
+                <twig:Px:AmountInput id="commission" :value="remittance.commission" :error="errors.commission ?? null"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="commissionVat" label="TVA sur la commission" :error="errors.commissionVat ?? null">
+                <twig:Px:AmountInput id="commissionVat" :value="remittance.commissionVat" :error="errors.commissionVat ?? null"/>
+            </twig:Px:Field>
+        </div>
+    </twig:Px:Card>
+</form>

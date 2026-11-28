@@ -1,0 +1,106 @@
+{#
+ # A payment's fiche (step 2.6b; design-ux.md § 3.2, « Règlements », gabarit F): what was paid, the
+ # invoices it settles and the VAT on receipts it moved, its entry (in the brouillard, validated,
+ # or « à saisir » under « Laisser saisir »), « Lettrer avec la facture » once the entries are
+ # validated; a cheque's remittance; a bill's remittance to the bank, for collection or for
+ # discount, with its own entry. « Supprimer » while nothing of it is validated or remitted.
+ #}
+{% extends payment_layout %}
+
+{% set sales_tab = 'payments' %}
+{% set inventory_tab = 'payments' %}
+{% set dossier_title = payment.direction.label ~ ' ' ~ payment.reference %}
+{% set back = path('app_payment', {dossier: dossier.id, direction: slug, id: payment.id}) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ payment.direction.label }} {{ payment.reference }}" :trail="[
+        {label: direction.value == 'receipt' ? 'Ventes' : 'Achats et stocks', href: path('app_payments', {dossier: dossier.id, direction: slug})},
+        {label: 'Règlements', href: path('app_payments', {dossier: dossier.id, direction: slug})},
+        {label: payment.reference, href: back},
+    ]">
+        <twig:block name="actions">
+            {% if can_enter and lettering_refusal is null %}
+                <twig:Px:Button type="submit" form="letter-form" variant="primary" icon="link-2">Lettrer avec {{ payment.allocations|length > 1 ? 'les factures' : 'la facture' }}</twig:Px:Button>
+            {% endif %}
+            {% if can_enter and payment.deposit is null and payment.remittance is null and not (payment.entry and payment.entry.validated) %}
+                <twig:Px:ConfirmButton label="Supprimer" confirmLabel="Supprimer le règlement et son écriture" icon="trash-2" form="delete-form"/>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <form method="post" action="{{ path('app_payment_letter', {dossier: dossier.id, direction: slug, id: payment.id}) }}" id="letter-form" hidden><input type="hidden" name="_token" value="{{ csrf_token('payment-' ~ dossier.id) }}"></form>
+    <form method="post" action="{{ path('app_payment_delete', {dossier: dossier.id, direction: slug, id: payment.id}) }}" id="delete-form" hidden><input type="hidden" name="_token" value="{{ csrf_token('payment-' ~ dossier.id) }}"></form>
+    {% for message in app.flashes('payment_fault') %}<twig:Px:Alert tone="danger">{{ message }}</twig:Px:Alert>{% endfor %}
+    <div class="px-split">
+        <div class="px-stack">
+            <twig:Px:Card title="Règlement">
+                <twig:block name="actions"><twig:Px:Badge :of="payment.state"/></twig:block>
+                <dl class="px-facts">
+                    <dt>{{ direction.value == 'receipt' ? 'Client' : 'Fournisseur' }}</dt><dd><span class="px-u-code">{{ payment.thirdParty.code }}</span> {{ payment.thirdParty.name }}</dd>
+                    <dt>Mode</dt><dd>{{ payment.method.label }}</dd>
+                    <dt>Journal</dt><dd><span class="px-u-code">{{ payment.journal.code }}</span> {{ payment.journal.label }}</dd>
+                    <dt>Date</dt><dd>{{ payment.paidOn|date_fr }}</dd>
+                    <dt>Référence</dt><dd class="px-u-code">{{ payment.reference }}</dd>
+                    <dt>Montant</dt><dd class="px-u-num">{{ payment.amount|amount_eur }}</dd>
+                    {% if payment.dueOn %}<dt>Échéance</dt><dd>{{ payment.dueOn|date_fr }}</dd>{% endif %}
+                    {% if payment.deposit %}<dt>Remise</dt><dd><span class="px-u-code">{{ payment.deposit.reference }}</span> du {{ payment.deposit.depositedOn|date_fr }}</dd>{% endif %}
+                    {% if payment.remittance %}<dt>Banque</dt><dd>{{ payment.remittance.label }} le {{ payment.remittedOn|date_fr }}, journal <span class="px-u-code">{{ payment.remittanceJournal.code }}</span></dd>{% endif %}
+                </dl>
+            </twig:Px:Card>
+
+            <twig:Px:Card :flush="true" title="Factures réglées">
+                {% if payment.allocations is empty %}
+                    <twig:Px:Empty icon="file-text" title="Règlement sans facture" text="Il reste au compte du tiers : lettrez-le depuis la consultation du compte quand sa facture arrive."/>
+                {% else %}
+                    <twig:Px:Table caption="Factures réglées par {{ payment.reference }}">
+                        <thead><tr>
+                            <th scope="col">Pièce</th><th scope="col" class="px-u-num">Date</th><th scope="col">Libellé</th>
+                            <th scope="col" class="px-u-right">Réglé</th>{% if direction.value == 'receipt' %}<th scope="col" class="px-u-right">TVA exigible</th>{% endif %}
+                        </tr></thead>
+                        <tbody>
+                            {% for allocation in payment.allocations %}
+                                <tr>
+                                    <td class="px-u-code">{{ allocation.invoice.document }}</td>
+                                    <td class="px-u-num">{{ allocation.invoice.entryDate|date('d/m/Y') }}</td>
+                                    <td class="px-u-fill">{{ allocation.invoice.label }}</td>
+                                    <td class="px-u-num">{{ allocation.amount|amount }}</td>
+                                    {% if direction.value == 'receipt' %}<td class="px-u-num">{{ allocation.vatTransferred|amount_cell }}</td>{% endif %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                {% endif %}
+                <twig:block name="foot">{% if lettering_refusal and payment.allocations is not empty %}<p class="px-field__hint">{{ lettering_refusal }}</p>{% endif %}</twig:block>
+            </twig:Px:Card>
+
+            {% if bank_journals is not empty and can_enter %}
+                {{ include('banking/payment/_remit_form.html.twig') }}
+            {% endif %}
+        </div>
+        <div class="px-stack">
+            {% if payment.entry %}
+                {{ include('document/_written_entry.html.twig', {entry: payment.entry, back_path: back}) }}
+            {% else %}
+                <twig:Px:Card title="Écriture">
+                    <p>À vous de la saisir dans le journal {{ payment.journal.code }}, pièce <span class="px-u-code">{{ payment.reference }}</span>, au {{ payment.paidOn|date_fr }}.</p>
+                    <twig:Px:Button href="{{ path('app_accounting_entry', {dossier: dossier.id, journal: payment.journal.code, period: payment.paidOn|date('Y-m-01')}) }}" icon="arrow-right">Saisir dans le journal {{ payment.journal.code }}</twig:Px:Button>
+                </twig:Px:Card>
+            {% endif %}
+            {% if payment.remittance %}
+                {% if payment.remittanceEntry %}
+                    {{ include('document/_written_entry.html.twig', {entry: payment.remittanceEntry, back_path: back}) }}
+                {% else %}
+                    <twig:Px:Card title="Écriture de la remise">
+                        <p>À vous de la saisir dans le journal {{ payment.remittanceJournal.code }}, pièce <span class="px-u-code">{{ payment.reference }}</span>, au {{ payment.remittedOn|date_fr }}.</p>
+                    </twig:Px:Card>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block status %}
+    {%- for message in app.flashes('status') %}<span>{{ message }}</span>{% else %}<span>{{ payment.thirdParty.name }} · <b>{{ payment.amount|amount_eur }}</b></span>{% endfor -%}
+{% endblock %}
