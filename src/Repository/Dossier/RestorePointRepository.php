@@ -42,16 +42,16 @@ final class RestorePointRepository extends ServiceEntityRepository
 
     /**
      * The points that count against a dossier's limit (design-ux.md § 4.9): every one, whatever its
-     * state, but its « État de départ » (RestorePointOrigin::countsAgainstLimit()).
+     * state, but its « État de départ » and « Rendu » points (RestorePointOrigin::countsAgainstLimit()).
      */
     public function countAgainstLimit(Dossier $dossier): int
     {
         return (int) $this->createQueryBuilder('p')
             ->select('COUNT(p.id)')
             ->andWhere('p.dossier = :dossier')
-            ->andWhere('p.origin <> :start')
+            ->andWhere('p.origin NOT IN (:outside)')
             ->setParameter('dossier', $dossier)
-            ->setParameter('start', RestorePointOrigin::Start)
+            ->setParameter('outside', array_values(array_map(static fn (RestorePointOrigin $origin): string => $origin->value, array_filter(RestorePointOrigin::cases(), static fn (RestorePointOrigin $origin): bool => !$origin->countsAgainstLimit()))))
             ->getQuery()
             ->getSingleScalarResult();
     }

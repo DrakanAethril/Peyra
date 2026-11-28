@@ -31,6 +31,19 @@ final class MissionAssignmentRepository extends ServiceEntityRepository
         return $this->findOneBy(['mission' => $mission, 'distribution' => $distribution]);
     }
 
+    /** « Mission 3 »: the rank of a giving among the missions given to its distribution, by date. */
+    public function rankOf(MissionAssignment $assignment): int
+    {
+        $count = $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->andWhere('a.distribution = :distribution')->setParameter('distribution', $assignment->getDistribution())
+            ->andWhere('a.givenAt < :at OR (a.givenAt = :at AND a.id <= :id)')
+            ->setParameter('at', $assignment->getGivenAt())->setParameter('id', $assignment->getId())
+            ->getQuery()->getSingleScalarResult();
+
+        return is_numeric($count) ? (int) $count : 1;
+    }
+
     /** The mission a dossier plays now: the latest given to the distribution that made it. */
     public function findCurrentFor(Dossier $dossier): ?MissionAssignment
     {

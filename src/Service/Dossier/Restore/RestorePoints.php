@@ -123,7 +123,7 @@ final readonly class RestorePoints
     public function delete(RestorePoint $point, User $by): void
     {
         if (!$point->getOrigin()->countsAgainstLimit() && !$by->isTeacher()) {
-            throw new RestoreRefused('Le point « État de départ » est celui de votre enseignant : il ne se supprime pas.');
+            throw new RestoreRefused(RestorePointOrigin::Submitted === $point->getOrigin() ? 'Le point « Rendu » est celui que votre enseignant corrige : il ne se supprime pas.' : 'Le point « État de départ » est celui de votre enseignant : il ne se supprime pas.');
         }
         if ($point->isPreparing()) {
             throw new RestoreRefused('Ce point est en préparation : vous pourrez le supprimer dans un instant.');

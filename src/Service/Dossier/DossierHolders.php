@@ -33,7 +33,7 @@ final readonly class DossierHolders
         return match ($dossier->getKind()) {
             DossierKind::Student => null === $dossier->getOwner() ? [] : [$dossier->getOwner()],
             DossierKind::Group => $this->members->findStudents($dossier),
-            DossierKind::Template, DossierKind::Snapshot => [],
+            DossierKind::Template, DossierKind::Snapshot, DossierKind::AnswerKey => [],
         };
     }
 

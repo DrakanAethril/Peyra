@@ -11,15 +11,19 @@ use App\Entity\Mission\MissionAssignment;
 use App\Enum\Accounting\AccountingBehaviour;
 use App\Enum\Accounting\AssistanceLevel;
 use App\Enum\Mission\MissionModule;
+use App\Enum\Mission\MissionTaskCheck;
 use App\Repository\Document\DocumentRepository;
+use App\Repository\Dossier\DistributionCopyRepository;
 use App\Repository\Dossier\DistributionRepository;
 use App\Repository\Mission\MissionAssignmentRepository;
+use App\Repository\Mission\MissionProgressRepository;
 use App\Repository\Mission\MissionRepository;
 use App\Security\Voter\DistributionVoter;
 use App\Security\Voter\DossierVoter;
 use App\Service\Document\Documents;
 use App\Service\Document\Preparation\PiecePreparation;
 use App\Service\Dossier\DossierContext;
+use App\Service\Mission\AnswerKey\AnswerKeyStatus;
 use App\Service\Mission\MissionAssignments;
 use App\Service\Mission\MissionRefused;
 use App\Service\Mission\MissionSheet;
@@ -39,7 +43,8 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * F à onglets, F10 on each): Général (title, statement, modules open), Tâches (ordered: ↑ ↓ move a task,
  * an empty row adds one), Pièces (the template's pièces, the dossier's date each arrives on, its errors
  * to spot), Référentiel (the activities aimed at), Réglages (level, behaviour, guided entry), Distributions
- * (given to which, « Donner la mission »). The answer key and the student's side are step 2.9b.
+ * (given to which, « Donner la mission », and who handed it in, step 2.9b). The answer key is
+ * MissionAnswerKeyController's tab.
  */
 #[Route('/teacher/library/missions/{id}', requirements: ['id' => '\d+'])]
 final class MissionController extends AbstractController
@@ -67,7 +72,7 @@ final class MissionController extends AbstractController
         return $this->tab($mission, $request, 'tasks', $form, function () use ($request, $mission, $sheet, $me, &$form): void {
             $tasks = [];
             foreach (PostValue::rows($request, 'tasks') as $row) {
-                $task = ['title' => $row['title'] ?? '', 'instruction' => str_replace("\r\n", "\n", $row['instruction'] ?? '')];
+                $task = ['key' => $row['key'] ?? '', 'title' => $row['title'] ?? '', 'instruction' => str_replace("\r\n", "\n", $row['instruction'] ?? ''), 'check' => $row['check'] ?? MissionTaskCheck::Declared->value];
                 if ('' !== $task['title'] || '' !== $task['instruction']) {
                     $tasks[] = $task;
                 }
@@ -82,7 +87,7 @@ final class MissionController extends AbstractController
             }
             $form = ['tasks' => $tasks];
             $sheet->setTasks($mission, $tasks, $me);
-        });
+        }, ['check_options' => array_map(static fn (MissionTaskCheck $check): array => ['value' => $check->value, 'label' => $check->label()], MissionTaskCheck::cases())]);
     }
 
     #[Route('/documents', name: 'app_mission_documents', methods: ['GET', 'POST'])]
@@ -179,7 +184,7 @@ final class MissionController extends AbstractController
     }
 
     #[Route('/assignments', name: 'app_mission_assignments', methods: ['GET', 'POST'])]
-    public function assignments(int $id, Request $request, MissionRepository $missions, MissionAssignmentRepository $assignments, DistributionRepository $distributions, MissionAssignments $giving, ClockInterface $clock, #[CurrentUser] User $me): Response
+    public function assignments(int $id, Request $request, MissionRepository $missions, MissionAssignmentRepository $assignments, DistributionRepository $distributions, DistributionCopyRepository $copies, MissionProgressRepository $progresses, AnswerKeyStatus $answerKeys, MissionAssignments $giving, ClockInterface $clock, #[CurrentUser] User $me): Response
     {
         $mission = $this->mission($id, $missions);
         $now = $clock->now();
@@ -221,11 +226,44 @@ final class MissionController extends AbstractController
             'mission' => $mission,
             'mission_tab' => 'assignments',
             'given' => $given,
+            'handed' => $this->handed($given, $copies, $progresses),
+            'answer_key_recorded' => $answerKeys->isRecorded($mission),
             'distribution_options' => array_map(static fn (Distribution $one): array => ['value' => (string) $one->getId(), 'label' => $one->getTitle().' · '.$one->getSchoolClass()->getName()], $open),
             'form' => $form,
             'errors' => $errors,
             'now' => $now,
         ], new Response(status: $status));
+    }
+
+    /**
+     * Who handed the mission in (step 2.9b), per giving: each dossier the distribution made - its
+     * student, or its group -, the moment it was handed in, null before.
+     *
+     * @param list<MissionAssignment> $given
+     *
+     * @return array<int, list<array{name: string, dossier: int, submittedAt: ?\DateTimeImmutable}>>
+     */
+    private function handed(array $given, DistributionCopyRepository $copies, MissionProgressRepository $progresses): array
+    {
+        $submitted = [];
+        foreach ($progresses->findByAssignments($given) as $progress) {
+            $submitted[(int) $progress->getAssignment()->getId()][(int) $progress->getDossier()->getId()] = $progress->getSubmittedAt();
+        }
+        $handed = [];
+        foreach ($given as $one) {
+            $rows = [];
+            foreach ($copies->findByDistribution($one->getDistribution()) as $copy) {
+                $dossier = $copy->getDossier();
+                if (null === $dossier) {
+                    continue;
+                }
+                $rows[] = ['name' => $copy->getStudent()?->getSortName() ?? (string) $copy->getGroupName(), 'dossier' => (int) $dossier->getId(), 'submittedAt' => $submitted[(int) $one->getId()][(int) $dossier->getId()] ?? null];
+            }
+            usort($rows, static fn (array $a, array $b): int => strcmp($a['name'], $b['name']));
+            $handed[(int) $one->getId()] = $rows;
+        }
+
+        return $handed;
     }
 
     /**

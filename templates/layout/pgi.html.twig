@@ -7,6 +7,7 @@
  #   topbar_start, topbar_search, topbar_end
  #   module_tabs                a Px:ModuleTabs (absent on a dashboard)
  #   page_head                  a Px:PageHead
+ #   page_banner                the first line of the page, above its cards (the mission banner)
  #   page                       the cards
  #   status                     the status bar's facts
  #   foot                       a Px:ActionFoot, in place of the status bar (a run through a series)
@@ -24,6 +25,7 @@
     {%- set topbar_end_html %}{{ block('topbar_end') }}{% endset -%}
     {%- set module_tabs_html %}{{ block('module_tabs') }}{% endset -%}
     {%- set page_head_html %}{{ block('page_head') }}{% endset -%}
+    {%- set page_banner_html %}{{ block('page_banner') }}{% endset -%}
     {%- set page_html %}{{ block('page') }}{% endset -%}
     {%- set status_html %}{{ block('status') }}{% endset -%}
     {%- set foot_html %}{{ block('foot') }}{% endset -%}
@@ -36,6 +38,7 @@
         topbar_end: topbar_end_html,
         module_tabs: module_tabs_html,
         page_head: page_head_html,
+        page_banner: page_banner_html,
         page: page_html,
         status: status_html,
         foot: foot_html,
@@ -53,6 +56,7 @@
 {% block topbar_end %}{% endblock %}
 {% block module_tabs %}{% endblock %}
 {% block page_head %}{% endblock %}
+{% block page_banner %}{% endblock %}
 {% block page %}{% endblock %}
 {% block status %}{% endblock %}
 {% block foot %}{% endblock %}

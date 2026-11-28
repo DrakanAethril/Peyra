@@ -24,7 +24,9 @@ use App\Entity\Identity\SchoolYear;
 use App\Entity\Identity\TeacherClass;
 use App\Entity\Identity\User;
 use App\Entity\Mission\Mission;
+use App\Entity\Mission\MissionAnswerKey;
 use App\Entity\Mission\MissionAssignment;
+use App\Entity\Mission\MissionProgress;
 use App\Entity\Regulatory\RegulatoryValue;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
@@ -58,6 +60,10 @@ final class DossierOwnedEntitiesTest extends KernelTestCase
         // A teacher's mission of the library, played on a template, and the distributions it is given
         // to (step 2.9a): a pedagogical object above the dossiers, never a dossier's content.
         Mission::class, MissionAssignment::class,
+        // A mission's answer key (its teacher's copy and what was read from it) and where each dossier
+        // stands on its mission (tasks ticked, handed in) (step 2.9b): a return to a restore point
+        // never takes them back, a copy never carries them.
+        MissionAnswerKey::class, MissionProgress::class,
         // A FEC being written into a new template (step 1.10b): a teacher's gesture on the library.
         FecImportJob::class,
     ];

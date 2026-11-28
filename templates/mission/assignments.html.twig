@@ -19,6 +19,7 @@
                         <th scope="col">Classe</th>
                         <th scope="col" class="px-u-num">Donnée le</th>
                         <th scope="col" class="px-u-num">À rendre le</th>
+                        <th scope="col" class="px-u-num">Rendue</th>
                     </tr></thead>
                     <tbody>
                         {% for one in given %}
@@ -27,13 +28,42 @@
                                 <td>{{ one.distribution.schoolClass.name }}</td>
                                 <td class="px-u-num">{{ one.givenAt|date('d/m/Y H:i') }}</td>
                                 <td class="px-u-num">{{ one.dueAt|date('d/m/Y H:i') }}{% if one.dueAt < now %} <twig:Px:Badge tone="neutral">échue</twig:Px:Badge>{% endif %}</td>
+                                {% set rows = handed[one.id] ?? [] %}
+                                <td class="px-u-num">{{ rows|filter(r => r.submittedAt is not null)|length }} sur {{ rows|length }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
                 </twig:Px:Table>
             {% endif %}
         </twig:Px:Card>
+        {% for one in given %}
+            {% set handed_rows = handed[one.id] ?? [] %}
+            <twig:Px:Card :flush="true" title="Rendus · {{ one.distribution.title }}" meta="{{ handed_rows|filter(r => r.submittedAt is not null)|length }} sur {{ handed_rows|length }}">
+                {% if handed_rows is empty %}
+                    <twig:Px:Empty icon="folder-open" title="Aucun dossier" text="Les dossiers de cette distribution ne sont pas encore prêts."/>
+                {% else %}
+                    <twig:Px:Table caption="Rendus de la mission pour {{ one.distribution.title }}">
+                        <thead><tr>
+                            <th scope="col">Étudiant ou groupe</th>
+                            <th scope="col">Rendu</th>
+                        </tr></thead>
+                        <tbody>
+                            {% for row in handed_rows %}
+                                <tr>
+                                    <td class="px-u-fill"><a class="px-link" href="{{ path('app_dossier_dashboard', {dossier: row.dossier}) }}">{{ row.name }}</a></td>
+                                    <td class="px-u-nowrap">
+                                        {% if row.submittedAt %}<twig:Px:Badge tone="success">Rendue</twig:Px:Badge> <span class="px-u-num">le {{ row.submittedAt|date('d/m/Y à H:i') }}</span>{% if row.submittedAt > one.dueAt %} <twig:Px:Badge tone="warning">en retard</twig:Px:Badge>{% endif %}
+                                        {% else %}<twig:Px:Badge tone="neutral">Pas rendue</twig:Px:Badge>{% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                {% endif %}
+            </twig:Px:Card>
+        {% endfor %}
         <twig:Px:Card title="Donner la mission">
+            {% if not answer_key_recorded %}<twig:Px:Alert tone="warning">Sans corrigé, la correction comparée ne proposera rien.</twig:Px:Alert>{% endif %}
             {% if distribution_options is empty %}
                 <p class="px-u-muted">Aucune de vos distributions de {{ mission.template ? mission.template.libraryTitle : 'son dossier modèle' }} n’attend cette mission. {% if mission.template %}<a class="px-link" href="{{ path('app_library_distribute', {dossier: mission.template.id}) }}">Distribuer le dossier modèle</a>{% endif %}</p>
             {% else %}

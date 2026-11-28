@@ -28,6 +28,7 @@
         {label: 'Général', href: path('app_mission', {id: mission.id}), current: mission_tab == 'general'},
         {label: 'Tâches', href: path('app_mission_tasks', {id: mission.id}), current: mission_tab == 'tasks'},
         {label: 'Pièces', href: path('app_mission_documents', {id: mission.id}), current: mission_tab == 'documents'},
+        {label: 'Corrigé', href: path('app_mission_answer_key', {id: mission.id}), current: mission_tab == 'answer_key'},
         {label: 'Référentiel', href: path('app_mission_referential', {id: mission.id}), current: mission_tab == 'referential'},
         {label: 'Réglages', href: path('app_mission_settings', {id: mission.id}), current: mission_tab == 'settings'},
         {label: 'Distributions', href: path('app_mission_assignments', {id: mission.id}), current: mission_tab == 'assignments'},

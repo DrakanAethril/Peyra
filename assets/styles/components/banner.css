@@ -1,4 +1,4 @@
-/* Inline alerts (design-ui.md § 4.13). The mission banner and the toast come with their steps. */
+/* Inline alerts (design-ui.md § 4.13) and the mission banner (§ 4.3, step 2.9b). The toast comes with its step. */
 @layer px.components {
     .px-alert {
         display: flex;
@@ -66,5 +66,92 @@
         border-color: var(--px-danger-border);
 
         & > svg { color: var(--px-danger-text); }
+    }
+
+    /* The mission banner: first line of the page, the task's text opens the mission panel (Alt+M). */
+    .px-mission {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-10);
+        padding: var(--px-space-6) var(--px-space-12);
+        background: var(--px-mission-bg);
+        border: 1px solid var(--px-mission-border);
+        border-radius: var(--px-radius-lg);
+        color: var(--px-mission-text);
+        font-size: var(--px-fs-13);
+
+        & > svg {
+            flex: none;
+            width: var(--px-icon);
+            height: var(--px-icon);
+        }
+
+        & p {
+            min-width: 0;
+        }
+
+        & b {
+            color: var(--px-mission-strong);
+        }
+    }
+
+    .px-mission__open {
+        padding: 0;
+        border: 0;
+        background: none;
+        color: inherit;
+        font: inherit;
+        text-align: start;
+        text-decoration: underline;
+        text-decoration-color: var(--px-mission-border);
+        text-underline-offset: 2px;
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+            color: var(--px-mission-strong);
+            text-decoration-color: currentcolor;
+        }
+    }
+
+    .px-mission__steps {
+        display: flex;
+        flex: none;
+        gap: 3px;
+        margin-inline-start: auto;
+
+        & li {
+            width: 22px;
+            height: 5px;
+            border-radius: var(--px-radius-pill);
+            background: var(--px-mission-track);
+        }
+
+        & li.is-done {
+            background: var(--px-success);
+        }
+
+        & li.is-current {
+            background: var(--px-action);
+        }
+    }
+
+    /* The mission panel's tasks (design-ux.md § 2.3). */
+    .px-mission-tasks {
+        display: grid;
+        gap: var(--px-space-12);
+
+        & > li {
+            display: grid;
+            gap: var(--px-space-4);
+        }
+    }
+
+    .px-mission-tasks__head {
+        display: flex;
+        align-items: baseline;
+        gap: var(--px-space-8);
+        color: var(--px-text-strong);
+        font-weight: var(--px-fw-semibold);
     }
 }

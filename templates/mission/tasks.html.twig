@@ -1,7 +1,8 @@
 {#
- # Mission › Tâches (step 2.9a): the tasks in their order - an intitulé and a consigne each -, ↑ ↓ to
- # move one (the form is saved with the move), the empty row at the end to add one; a row left empty
- # is dropped.
+ # Mission › Tâches (step 2.9a): the tasks in their order - an intitulé and a consigne each, and what
+ # ticks it on the student's side (step 2.9b: the student, or what they did) -, ↑ ↓ to move one (the
+ # form is saved with the move), the empty row at the end to add one; a row left empty is dropped. A
+ # task's key travels hidden: what a student ticked follows the task when it moves.
  #}
 {% extends 'mission/_layout.html.twig' %}
 
@@ -9,13 +10,17 @@
     <form method="post" action="{{ path('app_mission_tasks', {id: mission.id}) }}" id="mission-form" class="px-stack" novalidate data-controller="focus-error">
         <input type="hidden" name="_token" value="{{ csrf_token('mission-' ~ mission.id) }}">
         {% if errors.tasks is defined %}<twig:Px:Alert tone="danger">{{ errors.tasks }}</twig:Px:Alert>{% endif %}
-        {% set rows = form.tasks|merge([{title: '', instruction: ''}]) %}
+        {% set rows = form.tasks|merge([{key: '', title: '', instruction: '', check: 'declared'}]) %}
         {% for i, task in rows %}
             {% set last = loop.last %}
             <twig:Px:Card title="{{ last ? 'Nouvelle tâche' : 'Tâche ' ~ (i + 1) }}">
+                <input type="hidden" name="tasks[{{ i }}][key]" value="{{ task.key ?? '' }}">
                 <div class="px-fieldgrid">
                     <twig:Px:Field id="task-{{ i }}-title" label="Intitulé" :wide="true" :error="errors['task.' ~ i ~ '.title'] ?? null">
                         <twig:Px:Input id="task-{{ i }}-title" name="tasks[{{ i }}][title]" value="{{ task.title }}" :error="errors['task.' ~ i ~ '.title'] ?? null" maxlength="160" autocomplete="off"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="task-{{ i }}-check" label="Cochée quand" :wide="true" :error="errors['task.' ~ i ~ '.check'] ?? null">
+                        <twig:Px:Select id="task-{{ i }}-check" name="tasks[{{ i }}][check]" :options="check_options" value="{{ task.check ?? 'declared' }}" :error="errors['task.' ~ i ~ '.check'] ?? null"/>
                     </twig:Px:Field>
                     <twig:Px:Field id="task-{{ i }}-instruction" label="Consigne" class="px-fieldgrid__full" :error="errors['task.' ~ i ~ '.instruction'] ?? null">
                         <twig:Px:Input id="task-{{ i }}-instruction" name="tasks[{{ i }}][instruction]" :area="true" value="{{ task.instruction }}" :error="errors['task.' ~ i ~ '.instruction'] ?? null" rows="3" maxlength="2000"/>

@@ -28,7 +28,8 @@ use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
  * Who enters a dossier (lot 1, step 1.1): the student or the group's members; the teachers of a
  * class of theirs this year, every year's dossiers; the teacher who distributed it, reading; a
  * template's author and its shares; the common library for every teacher, changed by the
- * administrators; nobody else - administrators included - and nobody into a restore point.
+ * administrators; a mission's answer key copy for its teacher alone (step 2.9b); nobody else -
+ * administrators included - and nobody into a restore point.
  */
 final class DossierVoterTest extends KernelTestCase
 {
@@ -166,6 +167,19 @@ final class DossierVoterTest extends KernelTestCase
         $admin->makeAdministrator(new \DateTimeImmutable('2026-01-01'), null);
 
         self::assertSame([false, false, false], $this->votes($admin, $this->dossier(DossierKind::Snapshot, null)));
+    }
+
+    public function testAMissionsAnswerKeyCopyIsItsTeachersAlone(): void
+    {
+        $author = $this->account(AccountKind::Teacher, 'author');
+        $admin = $this->account(AccountKind::Teacher, 'admin');
+        $admin->makeAdministrator(new \DateTimeImmutable('2026-01-01'), null);
+        $student = $this->account(AccountKind::Student, 'manon');
+        $copy = $this->dossier(DossierKind::AnswerKey, $author);
+
+        self::assertSame([true, true, true], $this->votes($author, $copy));
+        self::assertSame([false, false, false], $this->votes($admin, $copy));
+        self::assertSame([false, false, false], $this->votes($student, $copy));
     }
 
     public function testOtherSubjectsAndAttributesAbstain(): void
