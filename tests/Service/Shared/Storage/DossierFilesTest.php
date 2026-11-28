@@ -101,7 +101,8 @@ final class DossierFilesTest extends KernelTestCase
         self::assertStringContainsString('VIR;-2622,00', $files->read($dossier, $key));
         $kernel = self::$kernel;
         self::assertNotNull($kernel);
-        self::assertFileExists($kernel->getCacheDir().'/storage/'.$key, 'The test environment writes under the cache, never to the development volume.');
+        $token = getenv('TEST_TOKEN');
+        self::assertFileExists($kernel->getCacheDir().'/storage'.(\is_string($token) ? $token : '').'/'.$key, 'The test environment writes under the cache, never to the development volume.');
 
         $this->expectException(UploadRefusal::class);
         $files->storeUpload($dossier, 'pieces', new UploadedFile($path, 'releve.csv', 'text/csv', null, true), UploadPolicy::platform()->restrictTo('pdf'));

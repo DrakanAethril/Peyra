@@ -42,7 +42,8 @@ final class DossierCopierDoorTest extends TestCase
         }
 
         self::assertSame([], $offenders, 'Un dossier se copie par DossierCopier et s’efface par DossierEraser, seuls.');
-        self::assertSame(array_keys(self::DOORS), array_keys($seen), 'Le scanner doit voir les deux portes.');
+        ksort($seen);
+        self::assertSame(['copyAll', 'deleteAll'], array_keys($seen), 'Le scanner doit voir les deux portes.');
     }
 
     /** @return list<array{int, string}> */

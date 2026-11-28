@@ -983,7 +983,8 @@ Reach for these rather than re-implement them; each has its test.
   storage: keys `dossiers/<id>/<category>/<random>.<ext>`, every reading takes the dossier and
   refuses a key outside its prefix, `copyAll()` copies a dossier's prefix and answers the key map.
   `documents.storage` is `documents.local` (`var/storage`, the `app_storage` volume shared by `php`
-  and `worker`; under the cache in test) or `documents.s3`, by `PEYRA_STORAGE`. `UploadPolicy`:
+  and `worker`; under the cache in test, one directory per ParaTest process - `storage<TEST_TOKEN>` -
+  since each process numbers its dossiers in its own database) or `documents.s3`, by `PEYRA_STORAGE`. `UploadPolicy`:
   one platform rule (20 Mo, pdf/images/csv/txt/ofx/xml/xlsx/ods), narrowed per field with
   `restrictTo()` / `limitedTo()`, never widened; the type is sniffed from the bytes.
   **On S3, Peyra sends no ACL**: Flysystem puts `private` on every write and copy, which would need
