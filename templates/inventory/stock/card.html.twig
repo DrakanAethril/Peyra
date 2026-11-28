@@ -86,7 +86,7 @@
     {% if article_places|length > 1 or (article_places|length == 1 and article_places[0].location != main_location) %}
         <twig:Px:Card title="Par dépôt au {{ at|date_fr }}">
             <dl class="px-facts">
-                {% for place in article_places %}<dt>{{ place.location }}</dt><dd class="px-u-num">{{ place.quantity|quantity(place.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }} {{ article.unit }}</dd>{% endfor %}
+                {% for place in article_places %}<dt>{{ place.location }}</dt><dd>{{ place.quantity|quantity(place.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }} {{ article.unit }}</dd>{% endfor %}
             </dl>
         </twig:Px:Card>
     {% endif %}

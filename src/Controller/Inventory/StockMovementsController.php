@@ -94,7 +94,7 @@ final class StockMovementsController extends AbstractController
             if (null !== $fields) {
                 try {
                     $stock->record($dossier, $fields, $me);
-                    $this->addFlash('status', \sprintf('%s de %s enregistrée.', $fields->kind->label(), $fields->article));
+                    $this->addFlash('status', \sprintf('Mouvement enregistré : %s de %s.', mb_strtolower($fields->kind->label()), $fields->article));
 
                     return $this->redirectToRoute('app_inventory_stock_card', ['dossier' => $dossier->getId(), 'code' => $fields->article], Response::HTTP_SEE_OTHER);
                 } catch (StockShortage $shortage) {

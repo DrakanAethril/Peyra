@@ -60,12 +60,12 @@
                             <tr data-rows-target="row">
                                 <td>{{ movement.date|date_fr }}</td>
                                 <td class="px-u-code"><a class="px-link" href="{{ path('app_inventory_stock_card', {dossier: dossier.id, code: item.code}) }}">{{ item.code }}</a></td>
-                                <td class="px-u-fill" title="{{ item.designation }}">{{ item.designation }}</td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ item.designation }}">{{ item.designation }}</td>
                                 <td><twig:Px:Badge :of="movement.kind"/></td>
-                                <td>{{ movement.location }}{% if movement.toLocation %} → {{ movement.toLocation }}{% endif %}</td>
-                                <td class="px-u-num">{{ movement.kind.value == 'transfer' ? '' : (signed.isNegative ? '−' : '') ~ signed.abs|quantity(signed.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }} {{ item.unit }}</td>
+                                <td class="px-u-nowrap">{{ movement.location }}{% if movement.toLocation %} → {{ movement.toLocation }}{% endif %}</td>
+                                <td class="px-u-num px-u-nowrap">{{ (signed.isNegative ? '−' : '') ~ signed.abs|quantity(signed.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }} {{ item.unit }}</td>
                                 <td class="px-u-num">{{ values[movement.id] is defined and values[movement.id] is not null ? values[movement.id]|amount : '' }}</td>
-                                <td>
+                                <td class="px-u-fill">
                                     {% if movement.salesDocument %}
                                         <a class="px-link" href="{{ path('app_sales_document', {dossier: dossier.id, side: movement.salesDocument.type.side, id: movement.salesDocument.id}) }}">{{ movement.label }}</a>
                                     {% else %}{{ movement.label }}{% endif %}

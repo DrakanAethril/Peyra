@@ -33,11 +33,11 @@
                 <dt>Article</dt><dd>{{ article.designation }}</dd>
                 <dt>Méthode</dt><dd>{{ article.valuationMethod.label }}</dd>
                 {% for place in article_places %}
-                    <dt>{{ place.location }}</dt><dd class="px-u-num">{{ place.quantity|quantity(place.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }} {{ article.unit }}</dd>
+                    <dt>{{ place.location }}</dt><dd>{{ place.quantity|quantity(place.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }} {{ article.unit }}</dd>
                 {% else %}
-                    <dt>Quantité</dt><dd class="px-u-num">0 {{ article.unit }}</dd>
+                    <dt>Quantité</dt><dd>0 {{ article.unit }}</dd>
                 {% endfor %}
-                {% if next_cost %}<dt>Prochaine sortie</dt><dd class="px-u-num">{{ next_cost|amount_eur }} l’unité ({{ article.valuationMethod.shortLabel }})</dd>{% endif %}
+                {% if next_cost %}<dt>Prochaine sortie</dt><dd>{{ next_cost|amount_eur }} l’unité ({{ article.valuationMethod.shortLabel }})</dd>{% endif %}
             </dl>
         </twig:Px:Card>
     {% endif %}

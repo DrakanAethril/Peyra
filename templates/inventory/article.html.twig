@@ -84,7 +84,7 @@
                 <dt>Taux de TVA</dt><dd>{{ article.vatRate is not null ? article.vatRate|percent : '—' }}</dd>
                 <dt>Compte de produits</dt><dd class="px-u-code">{{ article.revenueAccount ?? '—' }}</dd>
                 <dt>Stock</dt><dd>{{ article.stockTracked ? 'Suivi, ' ~ article.valuationMethod.label : 'Non suivi' }}</dd>
-                {% if article.stockTracked and article.minimumStock is not null %}<dt>Stock minimum</dt><dd class="px-u-num">{{ article.minimumStock|quantity(3) }} {{ article.unit }}</dd>{% endif %}
+                {% if article.stockTracked and article.minimumStock is not null %}<dt>Stock minimum</dt><dd class="px-u-num">{{ article.minimumStock|quantity(article.minimumStock.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }} {{ article.unit }}</dd>{% endif %}
             </dl>
         </twig:Px:Card>
     {% endif %}

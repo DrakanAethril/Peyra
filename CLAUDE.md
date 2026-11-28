@@ -1144,6 +1144,18 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   `InvoiceMatch`): its lines join `PieceProcessing::controls()` before the mentions. Stock entries at the
   receipt wait for 2.5.
 
+## Stocks (built at step 2.5a)
+
+- **`StockMovement`** (entry, exit, transfer, adjustment; quantity three decimals, an adjustment's signed; a storage
+  place as text, `MAIN_LOCATION` « Dépôt principal », and a transfer's destination) is written by `StockMovements`
+  alone: by hand under `PURCHASES_ENTER`, and inside `SalesDocuments::validate()` for a delivery note (exits) or a
+  receipt (entries at the line's net). **A stock never goes below zero** on any day, per place (`StockBalances`): a
+  delivery note is refused while it lacks stock. Inventaire intermittent: a movement writes no entry (lot 3 books
+  the variation).
+- **Only an entry stores its value**: exits are valued by replaying the article's movements (pure
+  `StockValuation`: CMUP after each entry, CMUP of the month, PEPS - `Article::$valuationMethod`), read by
+  `StockReader` (fiche de stock, état du stock, list values). An article with movements keeps its method and stays.
+
 ## Référentiel and assistance levels (built at step 2.8)
 
 - **The référentiel is versioned data**, `config/referential/bts-cg.yaml` (edition 2014: four exams,
