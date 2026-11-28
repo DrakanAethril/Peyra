@@ -1,0 +1,43 @@
+{#
+ # Paie et social › Déclarations › DSN du mois (step 4.6; lot 4 § 4.6, reduced on 2026-11-28): the DSN's
+ # preparatory state of a month, read only and never deposited - its consistency checks, then its blocks,
+ # each amount opening the validated payslip it comes from. « Aperçu PDF ».
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'declarations' %}
+{% set dossier_title = 'DSN du mois' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="DSN{{ month ? ' ' ~ month|of_period : '' }} · état préparatoire" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Déclarations', href: path('app_payroll_declarations', {dossier: dossier.id})},
+        {label: 'DSN du mois', href: path('app_payroll_declarations', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if preparation %}
+                <twig:Px:Button href="{{ path('app_payroll_declarations_pdf', {dossier: dossier.id, month: month|date('Y-m')}) }}" icon="printer" target="_blank" data-turbo="false">Aperçu PDF</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('payroll/declaration/_tabs.html.twig') }}
+    {% if not month %}
+        <twig:Px:Empty icon="file-text" title="Aucun bulletin validé dans ce dossier." text="L’état préparatoire de la DSN se lit sur les bulletins validés du mois : validez-les dans Bulletins."/>
+    {% elseif missing %}
+        <twig:Px:Alert tone="warning">L’état préparatoire ne s’établit pas : une valeur réglementaire manque ({{ missing }}).</twig:Px:Alert>
+    {% else %}
+        {{ include('payroll/edition/_month_choice.html.twig', {month_route: 'app_payroll_declarations'}) }}
+        <twig:Px:Alert tone="info">État préparatoire, en lecture seule : ce que la DSN {{ month|of_period }} déclarerait, lu sur les {{ preparation.individuals|length }} bulletins validés du mois. Rien n’est déposé. Un montant ouvre le bulletin dont il vient.</twig:Px:Alert>
+        <twig:Px:Card title="Contrôles de cohérence">
+            <twig:block name="content">
+                <twig:Px:Checks :items="preparation.controls|map(c => {state: c.holds ? 'passed' : 'warning', text: c.label ~ ' : ' ~ c.finding})"/>
+            </twig:block>
+        </twig:Px:Card>
+        {{ include('payroll/declaration/_dsn_blocks.html.twig') }}
+    {% endif %}
+{% endblock %}
+
+{% block facts %}{% if preparation %}<span>Mois de paie · <b>{{ month|period }}</b></span><span>Échéance · <b>{{ due_on|date_fr }}</b></span><span>Contrôles · <b>{{ preparation.holds ? 'passés' : 'à revoir' }}</b></span>{% endif %}{% endblock %}

@@ -27,6 +27,7 @@ use App\Service\Payroll\Plan\PayrollItemSpec;
 final class PayrollAccounts
 {
     public const string NET_PAY = '421000';
+    public const string WITHHOLDING = '442100';
 
     /** The account the rubrique's amount is charged on (gross, not subject, an employer's share) or credited to (a deduction). */
     public static function of(PayrollItemSpec $spec): string
@@ -40,7 +41,7 @@ final class PayrollAccounts
             PayrollItemKind::Gross => $spec->benefitInKind ? '641400' : '641100',
             PayrollItemKind::NotSubject => '625100',
             PayrollItemKind::Deduction => match ($spec->base) {
-                PayrollBase::NetTaxable => '442100',
+                PayrollBase::NetTaxable => self::WITHHOLDING,
                 PayrollBase::BenefitsInKind => '649000',
                 default => '425000',
             },

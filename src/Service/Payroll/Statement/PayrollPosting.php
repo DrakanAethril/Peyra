@@ -171,8 +171,9 @@ final readonly class PayrollPosting
     }
 
     /**
-     * What the month leaves to pay: the net salaries (421000), then what each body is owed, each with the
-     * pièce of its payment. The withholding tax is paid with the DSN (step 4.6).
+     * What the month leaves to pay: the net salaries (421000), then what each body is owed, then the
+     * withholding tax paid back to the tax office with the DSN (step 4.6: the account the plan's tax
+     * rubrique credits, 442100), each with the pièce of its payment.
      *
      * @return list<array{key: string, label: string, account: string, amount: Money, document: string}>
      */
@@ -195,6 +196,8 @@ final readonly class PayrollPosting
             $code = self::bodyCode($body->getKind()).($kinds[$body->getKind()->value] > 1 ? '-'.$state['key'] : '');
             $payments[] = ['key' => 'body-'.$state['key'], 'label' => $body->getName().' · cotisations '.FrenchFormat::ofPeriod($month), 'account' => $body->owedAccount(), 'amount' => $state['total'], 'document' => 'COT-'.$code.'-'.$period];
         }
+
+        $payments[] = ['key' => 'withholding', 'label' => 'Prélèvement à la source '.FrenchFormat::ofPeriod($month), 'account' => $statements->withholdingAccount, 'amount' => $statements->totals()['withholding'], 'document' => 'PAS-'.$period];
 
         return array_values(array_filter($payments, static fn (array $payment): bool => $payment['amount']->isPositive()));
     }

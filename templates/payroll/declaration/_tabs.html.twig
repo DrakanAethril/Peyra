@@ -1,0 +1,6 @@
+{# The views of Paie et social › Déclarations (step 4.6): the DSN's preparatory state of a month, then the échéancier social. Keeps the month shown. #}
+{% set month_query = month is defined and month ? {month: month|date('Y-m')} : {} %}
+<twig:Px:Tabs label="Déclarations sociales" :tabs="[
+    {label: 'DSN du mois', href: path('app_payroll_declarations', {dossier: dossier.id}|merge(month_query)), current: declaration_current == 'dsn'},
+    {label: 'Échéancier social', href: path('app_payroll_declarations_schedule', {dossier: dossier.id}), current: declaration_current == 'schedule'},
+]"/>

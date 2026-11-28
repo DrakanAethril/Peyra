@@ -354,6 +354,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/payroll/employees/S001/absences', '/payroll/employees/S001/year-to-date?year=2026',
             '/payroll/editions', '/payroll/editions/book', '/payroll/editions/bodies', '/payroll/editions/charges', '/payroll/editions/provision',
             '/payroll/editions/journal.pdf', '/payroll/editions/detail?item=1000', '/payroll/entries',
+            '/payroll/declarations', '/payroll/declarations/dsn.pdf', '/payroll/declarations/schedule', '/payroll/payslips/export.xlsx',
             '/documents', '/documents?state=to_process&q=fa', '/documents/new', '/documents/'.$documentId, '/documents/'.$documentId.'/file',
             '/inventory/articles', '/inventory/articles?q=fen', '/inventory/articles/new', '/inventory/articles/PF001',
             '/inventory/stock', '/inventory/stock?view=below&at=2026-01-31', '/inventory/stock/export.csv', '/inventory/stock/movements',
