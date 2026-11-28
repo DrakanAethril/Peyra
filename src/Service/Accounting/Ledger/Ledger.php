@@ -149,6 +149,19 @@ final readonly class Ledger
 
         $this->transactional(function () use ($entries, $actor): void {
             $this->lockJournals($entries);
+            // Read again under the journals' lock: another request may have validated some of
+            // these drafts since they were loaded (two people validating one brouillard), and a
+            // stale draft would be numbered - and its number rewritten - a second time.
+            $validated = [];
+            foreach ($entries as $entry) {
+                $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
+                if ($entry->isValidated()) {
+                    $validated['entry.'.$entry->getId()] = \sprintf('L’écriture %s est déjà validée.', $entry->getNumberLabel());
+                }
+            }
+            if ([] !== $validated) {
+                throw new EntryRefused($validated);
+            }
             $last = [];
             foreach ($entries as $entry) {
                 $key = $entry->getJournal()->getId().'-'.$entry->getExercise()->getId();

@@ -98,6 +98,13 @@ class Dossier
      * the company's name when empty), what it is for, the year it is written for and the processes
      * of the référentiel it covers. Kept on the other kinds as it was copied, never shown there.
      */
+    /**
+     * A template a FEC is being written into, in the background (step 1.10b): nobody opens it, the
+     * library does not list it, until the import's last pass.
+     */
+    #[ORM\Column]
+    private bool $importing = false;
+
     #[ORM\Column(length: 120, nullable: true)]
     private ?string $libraryTitle = null;
 
@@ -245,6 +252,21 @@ class Dossier
     {
         $this->company = $source->company;
         $this->chartCode = $source->chartCode;
+    }
+
+    public function isImporting(): bool
+    {
+        return $this->importing;
+    }
+
+    public function markImporting(): void
+    {
+        $this->importing = true;
+    }
+
+    public function markImported(): void
+    {
+        $this->importing = false;
     }
 
     /** The card's title, or the company's name when it has none. */

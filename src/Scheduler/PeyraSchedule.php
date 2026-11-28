@@ -33,6 +33,8 @@ final class PeyraSchedule implements ScheduleProviderInterface
             // Restore points and returns a request left half done (step 1.8b): usually nothing.
             ->add(RecurringMessage::every('1 minute', new RunCommandMessage('app:restore-points:advance')))
             // The dossiers of a distribution a request left waiting (step 1.8c): usually nothing.
-            ->add(RecurringMessage::every('1 minute', new RunCommandMessage('app:distribution:advance')));
+            ->add(RecurringMessage::every('1 minute', new RunCommandMessage('app:distribution:advance')))
+            // The passes of a FEC import a request left (step 1.10b): usually nothing.
+            ->add(RecurringMessage::every('1 minute', new RunCommandMessage('app:fec-import:advance')));
     }
 }

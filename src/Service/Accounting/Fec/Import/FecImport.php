@@ -5,23 +5,26 @@ declare(strict_types=1);
 namespace App\Service\Accounting\Fec\Import;
 
 use App\Entity\Accounting\Account;
-use App\Entity\Accounting\EntryLine;
+use App\Entity\Accounting\Entry;
+use App\Entity\Accounting\FecImportJob;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Accounting\EntryOrigin;
+use App\Enum\Accounting\EntryState;
+use App\Enum\Accounting\FecImportStage;
 use App\Enum\Accounting\JournalType;
 use App\Enum\Audit\AuditAction;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntryRepository;
+use App\Repository\Accounting\FecImportJobRepository;
 use App\Service\Accounting\Fec\FecConformity;
+use App\Service\Accounting\Fec\FecDocument;
 use App\Service\Accounting\Fec\FecFinding;
 use App\Service\Accounting\Fec\FecReader;
 use App\Service\Accounting\Journal\JournalDraft;
 use App\Service\Accounting\Journal\JournalSheet;
-use App\Service\Accounting\Ledger\EntryDraft;
-use App\Service\Accounting\Ledger\EntryLineDraft;
 use App\Service\Accounting\Ledger\EntryRefused;
 use App\Service\Accounting\Ledger\Ledger;
 use App\Service\Accounting\Lettering\Lettering;
@@ -29,37 +32,47 @@ use App\Service\Accounting\Lettering\LetteringRefused;
 use App\Service\Audit\AuditTrail;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Library\TemplateFactory;
-use App\Service\Dossier\Library\TemplateStart;
 use App\Service\Shared\FrenchFormat;
-use App\Service\ThirdParty\ThirdPartyDraft;
 use App\Service\ThirdParty\ThirdPartyRules;
 use App\Service\ThirdParty\ThirdPartySheet;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * « Nouveau dossier modèle › Depuis un FEC » (lot 1, step 1.9b; design-ux.md § 3.3): a template of
- * the teacher's own made from another tool's FEC - its plan, journals, third parties and validated
- * entries, its lettering.
+ * « Nouveau dossier modèle › Depuis un FEC » (lot 1, steps 1.9b and 1.10b; design-ux.md § 3.3): a
+ * template of the teacher's own made from another tool's FEC - its plan, journals, third parties
+ * and validated entries, its lettering -, up to MAX_ENTRIES entries, written in the background.
  *
- * In order: the template's fields (TemplateFactory::prepare()), the file's form and balance
- * (FecConformity, without the name nor the sequence: Peyra numbers what it validates), what the file
- * makes of a template (FecImportReading); then, in one transaction, the template opened with its
- * exercise and reference chart, the file's accounts added or given its label and boxes, its
- * journals through JournalSheet, its third parties through ThirdPartyRules, its entries drafted
- * then validated through the Ledger (Peyra's numbers, validated on the dossier's date), its letters
- * through Lettering. **A refused file writes nothing**: every fault, whichever door finds it, comes
- * back on the line of the file that carries it, and the transaction is rolled back.
+ * **`launch()`, in the request, refuses a file before anything is written**: the template's fields
+ * (TemplateFactory::prepare()), the file's form and balance (FecConformity, without the name nor
+ * the sequence: Peyra numbers what it validates), what the file makes of a template
+ * (FecImportReading), then what the doors would refuse of it (FecImportRehearsal: ThirdPartyRules
+ * and EntryRules over the template built in memory). Only then, in one transaction, the template is
+ * opened - hidden while it fills (`Dossier::$importing`) - and the import recorded with its file.
+ *
+ * **`pass()` is one pass of the background** (FecImportRunner, under the import's lock), in one
+ * transaction, rolled back whole when it stops - the next pass starts again where it was: the plan,
+ * journals and third parties; then a batch of entries drafted through the Ledger in date order;
+ * then a batch validated (Peyra's numbers, validated on the dossier's date); then a batch of groups
+ * lettered through Lettering. The last one shows the template in the library.
  */
 final readonly class FecImport
 {
+    /** A small company's whole exercise, written in the background (about 15 ms an entry). */
+    public const int MAX_ENTRIES = 10000;
+
+    /**
+     * Entries drafted, or validated, in one pass; lettering groups lettered in one pass: a few
+     * seconds each, so that a request's budget after its answer (FecImportWorkListener) ends well
+     * within PHP's time limit.
+     */
+    public const int PASS_ENTRIES = 250;
+    public const int PASS_LETTERINGS = 100;
+
     /**
      * Entries drafted, entries validated, groups lettered between two clearings of the entity
      * manager: each draft and each lettering flushes, and a flush looks at every entity managed.
      */
     private const int DRAFT_BATCH = 5;
-
-    /** Every entry goes through the Ledger, about a hundredth of a second each: a teaching template is a few months of a small company. */
-    public const int MAX_ENTRIES = 1000;
     private const int VALIDATION_BATCH = 200;
     private const int LETTERING_BATCH = 10;
 
@@ -71,13 +84,14 @@ final readonly class FecImport
         private Ledger $ledger,
         private Lettering $lettering,
         private EntryRepository $entries,
+        private FecImportJobRepository $jobs,
         private DossierContext $context,
         private AuditTrail $auditTrail,
     ) {
     }
 
-    /** The template made, or null with the draft's faults written. */
-    public function import(FecImportDraft $draft, User $by, \DateTimeImmutable $at): ?FecImportResult
+    /** The import recorded, its template opened and hidden; or null with the draft's faults written. */
+    public function launch(FecImportDraft $draft, User $by, \DateTimeImmutable $at): ?FecImportJob
     {
         $draft->findings = [];
         $start = $this->factory->prepare($draft->template);
@@ -97,7 +111,7 @@ final readonly class FecImport
         }
         if ($report->entries > self::MAX_ENTRIES) {
             $draft->findings = [new FecFinding(null, null, \sprintf(
-                'Un FEC importé compte %s écritures au plus ; celui-ci en compte %s. Pour un dossier modèle, gardez une partie de l’exercice (un trimestre, par exemple).',
+                'Un FEC importé compte %s écritures au plus ; celui-ci en compte %s. Pour un dossier modèle, gardez une partie de l’exercice (quelques mois, par exemple).',
                 FrenchFormat::number(self::MAX_ENTRIES),
                 FrenchFormat::number($report->entries),
             ))];
@@ -110,43 +124,94 @@ final readonly class FecImport
 
             return null;
         }
+        $findings = FecImportRehearsal::check($start, $plan);
+        if ([] !== $findings) {
+            usort($findings, static fn (FecFinding $a, FecFinding $b): int => ($a->line ?? \PHP_INT_MAX) <=> ($b->line ?? \PHP_INT_MAX));
+            $draft->findings = $findings;
+
+            return null;
+        }
+
+        $fileName = $draft->fileName ?? 'FEC';
+
+        return $this->entityManager->wrapInTransaction(function () use ($start, $draft, $plan, $fileName, $by, $at): FecImportJob {
+            $template = $this->factory->open($start, $draft->template->title, \sprintf('depuis le FEC %s', $fileName), $by, $at);
+            $template->markImporting();
+            $job = new FecImportJob($by, $template, $fileName, (string) $draft->bytes, $start->exerciseStart, \count($plan->entries), \count($plan->journals), \count($plan->thirdParties), \count($plan->letterings), $plan->zeroLines, $plan->lettersLeft, $at);
+            $this->entityManager->persist($job);
+            $this->entityManager->flush();
+
+            return $job;
+        });
+    }
+
+    /**
+     * One pass of an import still pending, in one transaction (a fault rolls it back and is thrown
+     * to the caller, FecImportRunner, which stops the import). The entity manager is cleared on the
+     * way: entities loaded before are detached after.
+     *
+     * @param int $size entries drafted or validated in this pass (lettering groups: PASS_LETTERINGS)
+     *
+     * @return bool whether passes are left
+     */
+    public function pass(int $jobId, \DateTimeImmutable $at, int $size = self::PASS_ENTRIES): bool
+    {
+        $job = $this->jobs->find($jobId);
+        if (null === $job || !$job->isPending()) {
+            return false;
+        }
+        $templateId = $job->getTemplate()?->getId() ?? throw new \LogicException('A pending import has its template.');
+        $byId = (int) $job->getAuthor()->getId();
+        $document = FecReader::read($job->bytes());
+        if (!$document instanceof FecDocument) {
+            throw new \LogicException('A launched FEC reads.');
+        }
+        $plan = FecImportReading::read($document, $job->getExerciseStart());
+        $stage = $job->getStage();
+        $position = $job->getPosition();
 
         $connection = $this->entityManager->getConnection();
         $connection->beginTransaction();
         try {
-            $result = $this->write($start, $plan, $draft, $by, $at);
+            $done = match ($stage) {
+                FecImportStage::Setup => $this->setUp($templateId, $plan, $job->getFileName(), $byId),
+                FecImportStage::Drafts => $this->draftEntries($templateId, $plan, $byId, $position, $size),
+                FecImportStage::Validation => $this->validateEntries($templateId, $byId, $size),
+                FecImportStage::Lettering => $this->letter($templateId, $plan, $byId, $position, self::PASS_LETTERINGS),
+            };
+            [$template] = $this->fresh($templateId, $byId);
+            $job = $this->jobs->find($jobId) ?? throw new \LogicException('The import is being run.');
+            if (FecImportStage::Setup === $stage) {
+                $job->setUp($done);
+            } else {
+                $job->advance($done);
+            }
+            if ($job->isThrough()) {
+                $template->markImported();
+                $job->finish($at);
+            }
+            $this->entityManager->flush();
             $connection->commit();
 
-            return $result;
-        } catch (FecImportRefused $refused) {
-            $connection->rollBack();
-            $this->entityManager->clear();
-            $draft->findings = $refused->findings;
-
-            return null;
+            return $job->isPending();
         } catch (\Throwable $failure) {
             $connection->rollBack();
             throw $failure;
         }
     }
 
-    private function write(TemplateStart $start, FecImportPlan $plan, FecImportDraft $draft, User $by, \DateTimeImmutable $at): FecImportResult
+    /** The template's plan, journals and third parties; answers how many accounts were added. */
+    private function setUp(int $templateId, FecImportPlan $plan, string $fileName, int $byId): int
     {
-        $fileName = $draft->fileName ?? 'FEC';
-        $template = $this->factory->open($start, $draft->template->title, \sprintf('depuis le FEC %s', $fileName), $by, $at);
-        $created = $this->context->within($template, function () use ($template, $plan, $fileName, $by): int {
+        [$template, $by] = $this->fresh($templateId, $byId);
+
+        return $this->context->within($template, function () use ($template, $plan, $fileName, $by): int {
             $created = $this->accounts($template, $plan, $fileName, $by);
             $this->journals($template, $plan, $by);
             $this->thirdParties($template, $plan, $fileName, $by);
 
             return $created;
         });
-        $templateId = (int) $template->getId();
-        $byId = (int) $by->getId();
-        $lineIds = $this->entries($templateId, $plan, $byId);
-        $this->letter($templateId, $plan, $lineIds, $byId);
-
-        return new FecImportResult($this->fresh($templateId, $byId)[0], \count($lineIds), $created, \count($plan->journals), \count($plan->thirdParties), \count($plan->letterings), $plan->zeroLines, $plan->lettersLeft);
     }
 
     /**
@@ -219,15 +284,7 @@ final readonly class FecImport
     {
         $findings = [];
         foreach ($plan->thirdParties as $read) {
-            $thirdParty = new ThirdPartyDraft();
-            $thirdParty->code = $read->code;
-            $thirdParty->kind = $read->kind->value;
-            $thirdParty->name = $read->name;
-            $thirdParty->account = $read->account;
-            $thirdParty->auxiliaryCode = $read->auxiliaryCode;
-            $thirdParty->termKind = 'net';
-            $thirdParty->termDays = '30';
-            $thirdParty->paymentMethod = 'transfer';
+            $thirdParty = FecImportRehearsal::thirdPartyDraft($read);
             $fields = ThirdPartyRules::check(
                 $thirdParty,
                 fn (string $number): ?Account => $this->accounts->findOneByNumber($template, $number),
@@ -256,44 +313,38 @@ final readonly class FecImport
     }
 
     /**
-     * The file's entries drafted in date order (the file's order within a day), then validated in
-     * that order - Peyra numbers them so -, a batch at a time.
+     * The file's entries in the order they are drafted - by date, the file's order within a day -,
+     * hence the order of their ids: the k-th entry of the template is the k-th of this list.
      *
-     * @return array<int, list<int>> by the entry's index in the plan, the ids of its lines
+     * @return list<int> indexes in the plan
      */
-    private function entries(int $templateId, FecImportPlan $plan, int $byId): array
+    private static function order(FecImportPlan $plan): array
+    {
+        $order = array_keys($plan->entries);
+        usort($order, static fn (int $a, int $b): int => [$plan->entries[$a]->date, $a] <=> [$plan->entries[$b]->date, $b]);
+
+        return $order;
+    }
+
+    /** Entries drafted from `$from`, `$size` at most; answers how many. */
+    private function draftEntries(int $templateId, FecImportPlan $plan, int $byId, int $from, int $size): int
     {
         $opening = [];
         foreach ($plan->journals as $journal) {
             $opening[$journal->code] = JournalType::Opening === $journal->type;
         }
-        $order = array_keys($plan->entries);
-        usort($order, static fn (int $a, int $b): int => [$plan->entries[$a]->date, $a] <=> [$plan->entries[$b]->date, $b]);
-
+        $slice = \array_slice(self::order($plan), $from, $size);
         $findings = [];
-        $entryIds = [];
-        $lineIds = [];
-        foreach (array_chunk($order, self::DRAFT_BATCH) as $batch) {
+        foreach (array_chunk($slice, self::DRAFT_BATCH) as $batch) {
             [$template, $by] = $this->fresh($templateId, $byId);
-            $this->context->within($template, function () use ($template, $by, $batch, $plan, $opening, &$findings, &$entryIds, &$lineIds): void {
+            $this->context->within($template, function () use ($template, $by, $batch, $plan, $opening, &$findings): void {
                 foreach ($batch as $index) {
                     $read = $plan->entries[$index];
-                    $lines = array_map(
-                        static fn (FecImportLine $line): EntryLineDraft => new EntryLineDraft($line->account, $line->thirdParty, $line->label, $line->debit, $line->credit),
-                        $read->lines,
-                    );
                     try {
-                        $entry = $this->ledger->draft(
-                            $template,
-                            new EntryDraft($read->journal, $read->date, $read->document, $read->label, $lines),
-                            $by,
-                            ($opening[$read->journal] ?? false) ? EntryOrigin::Opening : EntryOrigin::Manual,
-                        );
-                        $entryIds[] = (int) $entry->getId();
-                        $lineIds[$index] = array_map(static fn (EntryLine $line): int => (int) $line->getId(), $entry->getLines());
+                        $this->ledger->draft($template, FecImportRehearsal::entryDraft($read), $by, ($opening[$read->journal] ?? false) ? EntryOrigin::Opening : EntryOrigin::Manual);
                     } catch (EntryRefused $refused) {
                         foreach ($refused->errors as $key => $error) {
-                            $findings[] = self::entryFinding($read, $key, $error);
+                            $findings[] = FecImportRehearsal::entryFinding($read, $key, $error);
                         }
                     }
                 }
@@ -301,7 +352,19 @@ final readonly class FecImport
         }
         self::refuseUnlessEmpty($findings);
 
-        foreach (array_chunk($entryIds, self::VALIDATION_BATCH) as $batch) {
+        return \count($slice);
+    }
+
+    /** The oldest drafts validated, `$size` at most, in their order; answers how many. */
+    private function validateEntries(int $templateId, int $byId, int $size): int
+    {
+        [$template] = $this->fresh($templateId, $byId);
+        /** @var list<int> $ids */
+        $ids = $this->context->within($template, fn (): array => array_map(
+            static fn (Entry $entry): int => (int) $entry->getId(),
+            $this->entries->findBy(['state' => EntryState::Draft], ['id' => 'ASC'], $size),
+        ));
+        foreach (array_chunk($ids, self::VALIDATION_BATCH) as $batch) {
             [$template, $by] = $this->fresh($templateId, $byId);
             $this->context->within($template, function () use ($batch, $by): void {
                 $entries = $this->entries->findBy(['id' => $batch], ['id' => 'ASC']);
@@ -312,24 +375,24 @@ final readonly class FecImport
                 }
             });
         }
-        ksort($lineIds);
 
-        return $lineIds;
+        return \count($ids);
     }
 
-    /**
-     * Each group of the file lettered as a whole.
-     *
-     * @param array<int, list<int>> $lineIds by the entry's index in the plan
-     */
-    private function letter(int $templateId, FecImportPlan $plan, array $lineIds, int $byId): void
+    /** The file's lettering groups from `$from`, `$size` at most, each lettered as a whole; answers how many. */
+    private function letter(int $templateId, FecImportPlan $plan, int $byId, int $from, int $size): int
     {
+        $groups = \array_slice($plan->letterings, $from, $size);
+        if ([] === $groups) {
+            return 0;
+        }
+        $lineIds = $this->lineIds($templateId, $plan, $byId);
         $findings = [];
-        foreach (array_chunk($plan->letterings, self::LETTERING_BATCH) as $batch) {
+        foreach (array_chunk($groups, self::LETTERING_BATCH) as $batch) {
             [$template, $by] = $this->fresh($templateId, $byId);
             $this->context->within($template, function () use ($template, $by, $batch, $plan, $lineIds, &$findings): void {
                 foreach ($batch as $group) {
-                    $ids = array_map(static fn (array $member): int => $lineIds[$member[0]][$member[1]], $group);
+                    $ids = array_map(static fn (array $member): int => $lineIds[$member[0]][$member[1]] ?? throw new \LogicException('Every line of the plan was written.'), $group);
                     try {
                         $this->lettering->letter($template, $ids, $by);
                     } catch (LetteringRefused $refused) {
@@ -339,30 +402,36 @@ final readonly class FecImport
             });
         }
         self::refuseUnlessEmpty($findings);
+
+        return \count($groups);
     }
 
-    /** A fault of the Ledger, under its key, on the line of the file it names. */
-    private static function entryFinding(FecImportEntry $entry, string $key, string $error): FecFinding
+    /**
+     * The ids of the template's lines by the entry's index in the plan, in the order of its lines:
+     * entries and lines were written in the plan's order.
+     *
+     * @return array<int, list<int>>
+     */
+    private function lineIds(int $templateId, FecImportPlan $plan, int $byId): array
     {
-        if (1 === preg_match('/^line\.(\d+)\.(\w+)$/', $key, $parts)) {
-            $zone = match ($parts[2]) {
-                'account' => 'CompteNum',
-                'thirdParty' => 'CompAuxNum',
-                'label' => 'EcritureLib',
-                'amount' => 'Debit',
-                default => null,
-            };
-
-            return new FecFinding($entry->lines[(int) $parts[1]]->fecLine ?? $entry->line, $zone, $error);
+        [$template] = $this->fresh($templateId, $byId);
+        /** @var list<array{entry: int|string, id: int|string}> $rows */
+        $rows = $this->context->within($template, fn (): array => $this->entityManager
+            ->createQuery('SELECT IDENTITY(l.entry) AS entry, l.id AS id FROM App\Entity\Accounting\EntryLine l ORDER BY l.entry ASC, l.id ASC')
+            ->getArrayResult());
+        $byEntry = [];
+        foreach ($rows as $row) {
+            $byEntry[(int) $row['entry']][] = (int) $row['id'];
+        }
+        $order = self::order($plan);
+        $lineIds = [];
+        foreach (array_values($byEntry) as $rank => $ids) {
+            if (isset($order[$rank])) {
+                $lineIds[$order[$rank]] = $ids;
+            }
         }
 
-        return new FecFinding($entry->line, match ($key) {
-            'journal' => 'JournalCode',
-            'date' => 'EcritureDate',
-            'document' => 'PieceRef',
-            'label' => 'EcritureLib',
-            default => null,
-        }, $error);
+        return $lineIds;
     }
 
     /** @param list<FecFinding> $findings */

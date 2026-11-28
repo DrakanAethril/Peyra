@@ -1,0 +1,62 @@
+{#
+ # The progress of a FEC's import into a new template (step 1.10b): the stage reached and the bar,
+ # redrawn live (the import's private topic) and asked again every two seconds while passes are
+ # left; once done, what the template received and the way to it; stopped, why, with « Relancer »
+ # and « Abandonner ». The passes go on when the page is left.
+ #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'templates' %}
+{% set library_title = 'Import d’un FEC' %}
+{% set page_url = path('app_library_fec_import', {id: job.id}) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Import de {{ job.fileName }}" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Dossiers modèles', href: path('app_library')},
+        {label: 'Nouveau dossier modèle', href: path('app_library_new')},
+        {label: 'Import d’un FEC', href: page_url},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    {% set live_url = fec_import_live_url(job) %}
+    {% if live_url %}<div hidden data-controller="dossier-live" data-dossier-live-url-value="{{ live_url }}"></div>{% endif %}
+
+    <turbo-frame id="fec-import-progress" target="_top" class="px-stack">
+        <div hidden data-controller="live-frame" data-live-frame-frame-value="fec-import-progress" data-live-frame-events-value="{{ ['progress']|json_encode }}" data-live-frame-poll-value="{{ job.pending ? 2000 : 0 }}"></div>
+        {% set count = job.entries|quantity(0) ~ (job.entries > 1 ? ' écritures' : ' écriture') %}
+        {% if job.state.value == 'done' %}
+            {% set template = job.template %}
+            <twig:Px:Alert tone="success" title="Le modèle est prêt">
+                {{ template ? template.libraryTitle : 'Le modèle' }} a reçu {{ count }} validées, {{ job.journals }} {{ job.journals > 1 ? 'journaux' : 'journal' }}, {{ job.thirdParties }} tiers, {{ job.accountsCreated }} {{ job.accountsCreated > 1 ? 'comptes ajoutés' : 'compte ajouté' }} au plan et {{ job.letterings }} {{ job.letterings > 1 ? 'lettrages' : 'lettrage' }}.
+            </twig:Px:Alert>
+            {% if template %}<p><twig:Px:Button variant="primary" icon="folder-open" href="{{ path('app_library_template', {dossier: template.id}) }}">Ouvrir le modèle</twig:Px:Button></p>{% endif %}
+        {% elseif job.state.value == 'failed' %}
+            <twig:Px:Alert tone="danger" title="L’import s’est arrêté">{{ job.failure }} Le modèle n’est pas dans la bibliothèque.</twig:Px:Alert>
+            <div class="px-cluster">
+                <form method="post" action="{{ path('app_library_fec_import_retry', {id: job.id}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('fec-import-' ~ job.id) }}">
+                    <twig:Px:Button type="submit" variant="primary" icon="rotate-cw">Relancer</twig:Px:Button>
+                </form>
+                <form method="post" action="{{ path('app_library_fec_import_abandon', {id: job.id}) }}" id="fec-import-abandon">
+                    <input type="hidden" name="_token" value="{{ csrf_token('fec-import-' ~ job.id) }}">
+                    <twig:Px:ConfirmButton label="Abandonner l’import" confirmLabel="Confirmer l’abandon" icon="trash-2" type="submit"/>
+                </form>
+            </div>
+        {% endif %}
+
+        <twig:Px:Card title="{{ job.pending ? job.stage.label : job.state.label }}" meta="{{ count }} · {{ job.journals }} {{ job.journals > 1 ? 'journaux' : 'journal' }} · {{ job.thirdParties }} tiers">
+            <progress class="px-distribution-bar" max="100" value="{{ job.percent }}" aria-label="Import fait">{{ job.percent }} %</progress>
+            {% if job.pending %}
+                <p>
+                    <twig:Px:Badge :of="job.state"/>
+                    {% if job.stage.value != 'setup' %}{{ job.stage.label }} : <span class="px-u-code">{{ job.position|quantity(0) }}</span> sur <span class="px-u-code">{{ job.stageTotal|quantity(0) }}</span>.{% endif %}
+                </p>
+                <p class="px-u-muted">Vous pouvez quitter cette page : l’import continue. Le modèle rejoint la bibliothèque une fois toutes ses écritures validées.</p>
+            {% endif %}
+        </twig:Px:Card>
+    </turbo-frame>
+{% endblock %}
+
+{% block facts %}<span>Import · <b>{{ job.percent }} %</b></span>{% endblock %}
