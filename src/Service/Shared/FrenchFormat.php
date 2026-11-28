@@ -143,6 +143,14 @@ final class FrenchFormat
         return self::MONTHS[(int) $date->format('n')].' '.$date->format('Y');
     }
 
+    /** « de mars 2026 », « d’avril 2026 »: the month after « de », elided before a vowel. */
+    public static function ofPeriod(\DateTimeInterface $date): string
+    {
+        $period = self::period($date);
+
+        return (\in_array((int) $date->format('n'), [4, 8, 10], true) ? 'd’' : 'de ').$period;
+    }
+
     /** « 10 h 42 », a real time of day. */
     public static function clock(\DateTimeInterface $time): string
     {

@@ -8,6 +8,7 @@ use App\Entity\Accounting\Entry;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\DossierOwned;
 use App\Entity\Identity\User;
+use App\Entity\Payroll\PayrollMonthClosure;
 use App\Enum\Accounting\EntryState;
 use App\Enum\Document\DocumentType;
 use App\Enum\Dossier\CopyKind;
@@ -29,6 +30,8 @@ use App\Service\Dossier\Copy\DossierEraser;
 use App\Service\Dossier\Demo\DemoInstaller;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\DossierDates;
+use App\Service\Payroll\Engine\PayslipAdjustments;
+use App\Service\Payroll\Engine\PayslipForcing;
 use App\Service\Payroll\Payslip\PayslipBook;
 use App\Service\Payroll\Payslip\PayslipElements;
 use App\Service\Regulatory\RegulatorySync;
@@ -84,9 +87,13 @@ final class DossierCopierTest extends KernelTestCase
             // A reversal: an entry pointing at another of its table.
             $validated = array_values(array_filter($entries->findInJournalPeriod($purchases, $march), static fn (Entry $entry): bool => EntryState::Validated === $entry->getState()))[0];
             self::getContainer()->get(Ledger::class)->reverse($validated, new \DateTimeImmutable('2026-03-31'), $this->teacher);
-            // A payslip of the month with its elements (step 4.4a).
+            // A payslip of the month with its elements and a value forced (step 4.4a), validated - frozen - after a month closed (step 4.4b).
             $lefevre = self::getContainer()->get(EmployeeRepository::class)->findOneByNumber($this->source, 'S003') ?? throw new \LogicException('The demonstration has S003.');
-            self::getContainer()->get(PayslipBook::class)->record($lefevre, new \DateTimeImmutable('2026-03-01'), new PayslipElements(rates: ['1010' => BigDecimal::of('3')]));
+            $entityManager->persist(new PayrollMonthClosure($this->source, new \DateTimeImmutable('2026-02-01'), new \DateTimeImmutable('2026-02-28')));
+            $book = self::getContainer()->get(PayslipBook::class);
+            $payslip = $book->record($lefevre, new \DateTimeImmutable('2026-03-01'), new PayslipElements(rates: ['1010' => BigDecimal::of('3')]), new PayslipAdjustments(forced: ['1000' => new PayslipForcing(base: BigDecimal::of('140'))]));
+            $entityManager->flush();
+            self::assertNull($book->validate($payslip, $this->teacher));
             $entityManager->flush();
         });
         self::getContainer()->get(DossierDates::class)->move($this->source, new \DateTimeImmutable('2026-02-28'), $this->teacher, $at);

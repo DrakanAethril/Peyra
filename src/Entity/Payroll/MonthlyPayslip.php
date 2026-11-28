@@ -13,9 +13,12 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * An employee's payslip of one month (step 4.4a), à la manière de Sage: the elements of the month
- * entered on it - as PayslipElementsRules normalised them, see PayslipElements - and where it stands.
- * The lines are not stored: the engine calculates them from the elements, the fiche and the plan at
- * every reading. One per employee and month; PayslipBook is the one writer.
+ * entered on it - as PayslipElementsRules normalised them, see PayslipElements - what was changed by
+ * hand on its lines (step 4.4b, PayslipAdjustments::toArray()) and where it stands. Until it is
+ * validated its lines are not stored: the engine calculates them at every reading. Validated, the
+ * payslip is frozen whole (`frozen`, PayslipSnapshot) on the dossier's date, and only that is read
+ * again; sent to the employee (simulated), it keeps the day. One per employee and month; PayslipBook is
+ * the one writer.
  */
 #[ORM\Entity(repositoryClass: MonthlyPayslipRepository::class)]
 #[ORM\Table(name: 'monthly_payslip')]
@@ -43,6 +46,22 @@ class MonthlyPayslip implements DossierOwned
     /** @var array<string, mixed> the elements of the month, PayslipElements::toArray() */
     #[ORM\Column(type: Types::JSON)]
     private array $elements = [];
+
+    /** @var array<string, mixed> what was changed by hand, PayslipAdjustments::toArray() */
+    #[ORM\Column(type: Types::JSON)]
+    private array $adjustments = [];
+
+    /** @var array<string, mixed>|null the payslip as validated, PayslipSnapshot::toArray() */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $frozen = null;
+
+    /** The dossier's date on the day it was validated. */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $validatedOn = null;
+
+    /** The dossier's date on the day it was sent to the employee (simulated: nothing leaves). */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $sentOn = null;
 
     public function __construct(Employee $employee, \DateTimeImmutable $month)
     {
@@ -77,10 +96,72 @@ class MonthlyPayslip implements DossierOwned
         return $this->elements;
     }
 
-    /** @param array<string, mixed> $elements */
-    public function calculated(array $elements): void
+    /** @return array<string, mixed> */
+    public function getAdjustments(): array
     {
+        return $this->adjustments;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function getFrozen(): ?array
+    {
+        return $this->frozen;
+    }
+
+    public function getValidatedOn(): ?\DateTimeImmutable
+    {
+        return $this->validatedOn;
+    }
+
+    public function getSentOn(): ?\DateTimeImmutable
+    {
+        return $this->sentOn;
+    }
+
+    public function isValidated(): bool
+    {
+        return PayslipStatus::Validated === $this->status;
+    }
+
+    /**
+     * @param array<string, mixed> $elements
+     * @param array<string, mixed> $adjustments
+     */
+    public function calculated(array $elements, array $adjustments, bool $changedByHand): void
+    {
+        if ($this->isValidated()) {
+            throw new \LogicException('A validated payslip is not calculated again.');
+        }
         $this->elements = $elements;
-        $this->status = PayslipStatus::Calculated;
+        $this->adjustments = $adjustments;
+        $this->status = $changedByHand ? PayslipStatus::Modified : PayslipStatus::Calculated;
+    }
+
+    /** @param array<string, mixed> $frozen */
+    public function validate(array $frozen, \DateTimeImmutable $on): void
+    {
+        if ($this->isValidated()) {
+            throw new \LogicException('This payslip is already validated.');
+        }
+        $this->frozen = $frozen;
+        $this->validatedOn = $on;
+        $this->status = PayslipStatus::Validated;
+    }
+
+    /** Back to its elements and adjustments, calculated again at the next reading; the audit trail keeps what was validated. */
+    public function cancelValidation(bool $changedByHand): void
+    {
+        $this->frozen = null;
+        $this->validatedOn = null;
+        $this->sentOn = null;
+        $this->status = $changedByHand ? PayslipStatus::Modified : PayslipStatus::Calculated;
+    }
+
+    public function send(\DateTimeImmutable $on): void
+    {
+        if (!$this->isValidated()) {
+            throw new \LogicException('Only a validated payslip is sent.');
+        }
+        $this->sentOn ??= $on;
     }
 }

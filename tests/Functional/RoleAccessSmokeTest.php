@@ -42,6 +42,9 @@ use App\Service\Dossier\Restore\RestoreRunner;
 use App\Service\Identity\SchoolClasses;
 use App\Service\Inventory\ArticleDraft;
 use App\Service\Inventory\ArticleSheet;
+use App\Service\Payroll\Engine\PayslipAdjustments;
+use App\Service\Payroll\Payslip\PayslipBook;
+use App\Service\Payroll\Payslip\PayslipElements;
 use App\Service\Payroll\Plan\PayrollPlanInstaller;
 use App\Service\Regulatory\RegulatorySync;
 use App\Service\Sales\SalesDocumentDraft;
@@ -234,13 +237,19 @@ final class RoleAccessSmokeTest extends WebTestCase
 
             return $client->getContainer()->get(PayrollBodyRepository::class)->findByDossier($saved)[0]->getId();
         });
-        $client->getContainer()->get(DossierContext::class)->within($saved, static function () use ($client, $saved): void {
+        $client->getContainer()->get(DossierContext::class)->within($saved, static function () use ($client, $saved, $ines): void {
             $entityManager = $client->getContainer()->get(EntityManagerInterface::class);
             $client->getContainer()->get(RegulatorySync::class)->run(new \DateTimeImmutable('2026-11-28 10:00'));
             $entityManager->persist(new PayrollEstablishment($saved, '8.69', '2.1', null, '151.67'));
             $paul = new Employee($saved, 'S001', 'Vasseur', 'Paul', Sex::Male, new \DateTimeImmutable('1988-02-11'), ContractType::Permanent, new \DateTimeImmutable('2012-09-03'));
             $entityManager->persist($paul);
             $entityManager->persist(new EmploymentTerms($paul, new \DateTimeImmutable('2012-09-03'), 'Chef d’atelier', '', true, WorkingTime::FullTime, '151.67', Money::cents(465_000)));
+            $entityManager->flush();
+            // A validated payslip, for its PDF (step 4.4b).
+            $book = $client->getContainer()->get(PayslipBook::class);
+            $payslip = $book->record($paul, $book->month($saved), PayslipElements::fromArray([]), PayslipAdjustments::none());
+            $entityManager->flush();
+            self::assertNull($book->validate($payslip, $ines));
             $entityManager->flush();
         });
         $entry = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): Entry => $client->getContainer()->get(Ledger::class)->draft($saved, new EntryDraft('BQ1', new \DateTimeImmutable('2026-01-20'), 'VIR-SCIE', 'Virement Scierie', [
@@ -314,7 +323,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/payroll/employees/S001?from=2012-09-03',
             '/payroll/employees/register', '/payroll/employees/register.pdf', '/payroll/employees/S001/formalities',
             '/payroll/employees/S001/contract.pdf', '/payroll/social-portal/dpae/S001', '/payroll/employees/S001/exit',
-            '/payroll/payslips', '/payroll/payslips/S001',
+            '/payroll/payslips', '/payroll/payslips/S001', '/payroll/payslips/S001/payslip.pdf',
             '/documents', '/documents?state=to_process&q=fa', '/documents/new', '/documents/'.$documentId, '/documents/'.$documentId.'/file',
             '/inventory/articles', '/inventory/articles?q=fen', '/inventory/articles/new', '/inventory/articles/PF001',
             '/sales/customers', '/sales/customers?q=gir', '/sales/quote', '/sales/order', '/sales/invoice', '/sales/credit_note', '/sales/deposit',

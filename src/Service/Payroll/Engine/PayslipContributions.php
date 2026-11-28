@@ -52,6 +52,8 @@ use Brick\Math\RoundingMode;
  *   contribution stands on.
  *
  * Every share is its base times its rate, rounded half up to the cent on its own (DECISIONS 4.3b).
+ * What was changed by hand (step 4.4b) applies as each line is made, so that a base read from another
+ * line reads the value forced on it.
  * A rubrique whose base is nil, or whose sides have nothing to apply, makes no line.
  */
 final class PayslipContributions
@@ -131,7 +133,7 @@ final class PayslipContributions
         for ($phase = 0; $phase <= 3; ++$phase) {
             foreach ($applicable as $spec) {
                 if (self::phase($spec) === $phase) {
-                    $row = $self->row($spec);
+                    $row = $input->adjustments->apply($spec, $self->row($spec));
                     if (null !== $row) {
                         $self->done[$spec->code] = $row;
                     }
@@ -150,10 +152,16 @@ final class PayslipContributions
 
     private function applies(PayrollItemSpec $spec): bool
     {
-        return PayrollItemKind::Contribution === $spec->kind
-            && $spec->status->holds($this->input->employee->executive)
+        $adjustments = $this->input->adjustments;
+        if (PayrollItemKind::Contribution !== $spec->kind || $adjustments->removes($spec->code)) {
+            return false;
+        }
+
+        return $adjustments->adds($spec->code) || (
+            $spec->status->holds($this->input->employee->executive)
             && $spec->headcount->holds($this->input->establishment->headcount)
-            && (SalaryCondition::Always === $spec->salary || $this->aboveCeiling());
+            && (SalaryCondition::Always === $spec->salary || $this->aboveCeiling())
+        );
     }
 
     /** The salary exceeds the ceiling: the month's alone, or the year's against the year's ceilings. */

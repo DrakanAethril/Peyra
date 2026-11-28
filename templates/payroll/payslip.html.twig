@@ -1,17 +1,22 @@
 {#
- # Paie et social › Bulletins › an employee (step 4.4a, gabarit X, maquette 4; design-ux.md § 4.7):
- # the employees of the month on the left (↑ ↓ in the list), the « Éléments du mois » card under it
- # (saved and calculated at once, F10 or F9), the payslip in the middle - one row per rubrique under
- # the sections of the clarified model, a click or F5 shows its calculation in the drawer - and the
- # four figures under it. Ctrl ↑ / Ctrl ↓: previous, next employee; held while the elements are changed
- # and not saved. The calculation is the engine's alone; the screen calculates nothing.
+ # Paie et social › Bulletins › an employee (steps 4.4a and 4.4b, gabarit X, maquette 4; design-ux.md
+ # § 4.7): the employees of the month on the left (↑ ↓ in the list), the « Éléments du mois » card
+ # under it, the payslip in the middle - one row per rubrique under the sections of the clarified
+ # model, its base and rate cells typed in (Entrée, Tab), a value forced set apart, Inser adds a
+ # rubrique and Ctrl+Suppr removes one, a click or F5 shows a line's calculation in the drawer - and
+ # the four figures under it. F10 or F9 saves and calculates; « Valider le bulletin » (Ctrl+Entrée,
+ # confirmation bar) freezes it; validated, it prints, is sent (simulated) or cancelled. Ctrl ↑ /
+ # Ctrl ↓: previous, next employee; held while something typed is not saved. The calculation is the
+ # engine's alone; the screen calculates nothing.
  #}
 {% extends 'payroll/_layout.html.twig' %}
 
 {% set payroll_tab = 'payslips' %}
 {% set dossier_title = 'Bulletin de ' ~ employee.fullName %}
-{% set can_edit = is_granted('PAYROLL_ENTER', dossier) %}
-{% set status_keys = [{combo: 'F5', verb: 'détail du calcul'}]|merge(can_edit ? [{combo: 'F9', verb: 'calculer'}] : [])|merge([{combo: 'Ctrl+ArrowUp', verb: 'salarié précédent'}, {combo: 'Ctrl+ArrowDown', verb: 'salarié suivant'}]) %}
+{% set validated = status.value == 'validated' %}
+{% set can_enter = is_granted('PAYROLL_ENTER', dossier) %}
+{% set can_edit = can_enter and not validated %}
+{% set status_keys = [{combo: 'F5', verb: 'détail du calcul'}]|merge(can_edit ? [{combo: 'F9', verb: 'calculer'}, {combo: 'Insert', verb: 'ajouter une rubrique'}, {combo: 'Ctrl+Delete', verb: 'retirer la rubrique'}] : [])|merge(can_edit and status.toValidate ? [{combo: 'Ctrl+Enter', verb: 'valider'}] : [])|merge([{combo: 'Ctrl+ArrowUp', verb: 'salarié précédent'}, {combo: 'Ctrl+ArrowDown', verb: 'salarié suivant'}]) %}
 
 {% block page_head %}
     <twig:Px:PageHead title="{{ employee.fullName }}" :trail="[
@@ -20,24 +25,65 @@
         {label: month|period|capitalize, href: path('app_payroll_payslips', {dossier: dossier.id})},
     ]">
         <twig:block name="actions">
-            <twig:Px:Badge :of="status"/>
-            {% if previous %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: previous.registrationNumber}) }}" icon="chevron-up" shortcut="Ctrl+ArrowUp" data-payslip-leave="">Précédent</twig:Px:Button>{% endif %}
-            {% if next %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: next.registrationNumber}) }}" icon="chevron-down" shortcut="Ctrl+ArrowDown" data-payslip-leave="">Suivant</twig:Px:Button>{% endif %}
-            {% if payslip_view %}<twig:Px:Button shortcut="F5" data-payslip-explain="">Détail d’une rubrique</twig:Px:Button>{% endif %}
-            {% if can_edit %}<twig:Px:Button type="submit" form="payslip-elements" variant="primary" shortcut="F9 F10">{{ status.value == 'todo' ? 'Calculer le bulletin' : 'Recalculer' }}</twig:Px:Button>{% endif %}
+            <div class="px-entry-confirmable" data-controller="confirm-bar">
+                <div class="px-entry-actions" data-confirm-bar-target="actions">
+                    <twig:Px:Badge :of="status"/>
+                    {% if payslip and payslip.sentOn %}<twig:Px:Badge tone="neutral" label="Envoyé le {{ payslip.sentOn|date_fr }}"/>{% endif %}
+                    {% if previous %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: previous.registrationNumber}) }}" icon="chevron-up" shortcut="Ctrl+ArrowUp" data-payslip-leave="">Précédent</twig:Px:Button>{% endif %}
+                    {% if next %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: next.registrationNumber}) }}" icon="chevron-down" shortcut="Ctrl+ArrowDown" data-payslip-leave="">Suivant</twig:Px:Button>{% endif %}
+                    {% if payslip_view %}<twig:Px:Button shortcut="F5" data-payslip-explain="">Détail d’une rubrique</twig:Px:Button>{% endif %}
+                    {% if validated %}
+                        <twig:Px:Button href="{{ path('app_payroll_payslip_pdf', {dossier: dossier.id, number: employee.registrationNumber}) }}" icon="file-text" target="_blank">{{ payslip.sentOn ? 'Duplicata PDF' : 'Aperçu PDF' }}</twig:Px:Button>
+                        {% if can_enter %}
+                            {% if not payslip.sentOn %}
+                                <form method="post" action="{{ path('app_payroll_payslip_send', {dossier: dossier.id, number: employee.registrationNumber}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('payslip-send-' ~ employee.id) }}">
+                                    <twig:Px:Button type="submit" icon="send">Envoyer au salarié</twig:Px:Button>
+                                </form>
+                            {% endif %}
+                            <twig:Px:Button data-action="confirm-bar#open">Annuler le bulletin</twig:Px:Button>
+                        {% endif %}
+                    {% elseif can_edit %}
+                        {% if payslip_view %}<twig:Px:Button icon="plus" shortcut="Insert" data-px-open="payslip-add">Ajouter une rubrique</twig:Px:Button>{% endif %}
+                        <twig:Px:Button type="submit" form="payslip-elements" :variant="status.toValidate ? 'secondary' : 'primary'" shortcut="F9 F10">{{ status.value == 'todo' ? 'Calculer le bulletin' : 'Recalculer' }}</twig:Px:Button>
+                        {% if status.toValidate %}<twig:Px:Button variant="primary" shortcut="Ctrl+Enter" data-action="confirm-bar#open" data-payslip-leave="">Valider le bulletin</twig:Px:Button>{% endif %}
+                    {% endif %}
+                </div>
+                {% if validated and can_enter %}
+                    <form class="px-confirmbar" method="post" action="{{ path('app_payroll_payslip_cancel', {dossier: dossier.id, number: employee.registrationNumber}) }}" role="alertdialog" aria-labelledby="payslip-cancel-text" hidden data-confirm-bar-target="bar" data-action="keydown->confirm-bar#keydown">
+                        <input type="hidden" name="_token" value="{{ csrf_token('payslip-cancel-' ~ employee.id) }}">
+                        <p id="payslip-cancel-text">Annuler le bulletin de {{ employee.fullName }} ? Il redevient modifiable ; le journal garde le bulletin validé.</p>
+                        <twig:Px:Button variant="quiet" data-action="confirm-bar#close">Garder le bulletin</twig:Px:Button>
+                        <twig:Px:Button type="submit" variant="primary" data-confirm-bar-target="confirm">Annuler le bulletin</twig:Px:Button>
+                    </form>
+                {% elseif can_edit and status.toValidate %}
+                    <form class="px-confirmbar" method="post" action="{{ path('app_payroll_payslip_validate', {dossier: dossier.id, number: employee.registrationNumber}) }}" role="alertdialog" aria-labelledby="payslip-validate-text" hidden data-confirm-bar-target="bar" data-action="keydown->confirm-bar#keydown">
+                        <input type="hidden" name="_token" value="{{ csrf_token('payslip-validate-' ~ employee.id) }}">
+                        <p id="payslip-validate-text">Valider le bulletin de {{ employee.fullName }} ? Il ne pourra plus être modifié, seulement annulé tant que {{ month|period }} n’est pas clos.</p>
+                        <twig:Px:Button variant="quiet" data-action="confirm-bar#close">Annuler</twig:Px:Button>
+                        <twig:Px:Button type="submit" variant="primary" data-confirm-bar-target="confirm">Valider le bulletin</twig:Px:Button>
+                    </form>
+                {% endif %}
+            </div>
         </twig:block>
     </twig:Px:PageHead>
 {% endblock %}
 
 {% block page %}
-    <div data-controller="payslip">
+    <div data-controller="payslip" data-action="input->payslip#changed">
         <div data-payslip-target="unsaved" tabindex="-1" hidden>
-            <twig:Px:Alert tone="warning">Les éléments du mois ont changé : enregistrez d’abord le bulletin (F10) avant de passer à un autre salarié.</twig:Px:Alert>
+            <twig:Px:Alert tone="warning">Le bulletin a changé : enregistrez-le d’abord (F10) avant de le valider ou de passer à un autre salarié.</twig:Px:Alert>
         </div>
+        {% for message in app.flashes('payslip_fault') %}<twig:Px:Alert tone="danger">{{ message }}</twig:Px:Alert>{% endfor %}
         {% if errors.calculation is defined %}
             <twig:Px:Alert tone="danger" title="Le bulletin ne se calcule pas">{{ errors.calculation }}</twig:Px:Alert>
+        {% elseif errors.remove is defined %}
+            <twig:Px:Alert tone="danger">{{ errors.remove }}</twig:Px:Alert>
         {% elseif errors is not empty %}
-            <twig:Px:Alert tone="danger">Le bulletin n’est pas calculé : {{ errors|length > 1 ? errors|length ~ ' éléments sont à corriger' : 'un élément est à corriger' }}.</twig:Px:Alert>
+            <twig:Px:Alert tone="danger">Le bulletin n’est pas calculé : {{ errors|length > 1 ? errors|length ~ ' saisies sont à corriger' : 'une saisie est à corriger' }}.</twig:Px:Alert>
+        {% endif %}
+        {% if validated %}
+            <twig:Px:Alert tone="success">Bulletin validé le {{ payslip.validatedOn|date_fr }} : il est figé, ses lignes ne bougent plus. « Annuler le bulletin » le rend modifiable tant que {{ month|period }} n’est pas clos.</twig:Px:Alert>
         {% endif %}
         {% if not has_establishment %}
             <twig:Px:Alert tone="warning" actionLabel="Renseigner l’établissement" actionHref="{{ path('app_payroll_establishment', {dossier: dossier.id}) }}">L’établissement n’est pas renseigné : son effectif et ses taux décident des cotisations.</twig:Px:Alert>
@@ -48,7 +94,7 @@
         <div class="px-split px-split--payslip">
             <div class="px-stack">
                 <twig:Px:Card title="Salariés" meta="{{ employee_rows|length }} bulletin{{ employee_rows|length > 1 ? 's' : '' }}" :flush="true">
-                    <twig:Px:Table caption="Salariés de {{ month|period }}" density="compact" :rows="true">
+                    <twig:Px:Table caption="Salariés {{ month|of_period }}" density="compact" :rows="true">
                         <tbody>
                             {% for other in employee_rows %}
                                 {% set other_terms = other.termsAt(pay_day) %}
@@ -61,7 +107,7 @@
                     </twig:Px:Table>
                 </twig:Px:Card>
                 <twig:Px:Card title="Éléments du mois" :flush="true">
-                    <form method="post" id="payslip-elements" action="{{ path('app_payroll_payslip', {dossier: dossier.id, number: employee.registrationNumber}) }}" novalidate data-controller="focus-error" data-action="input->payslip#changed submit->payslip#saving">
+                    <form method="post" id="payslip-elements" action="{{ path('app_payroll_payslip', {dossier: dossier.id, number: employee.registrationNumber}) }}" novalidate data-controller="focus-error" data-payslip-target="form" data-action="submit->payslip#saving">
                         <input type="hidden" name="_token" value="{{ csrf_token('payslip-' ~ employee.id) }}">
                         <twig:Px:Table caption="Éléments du mois de {{ employee.fullName }}" density="compact">
                             <tbody>
@@ -142,10 +188,26 @@
                 {% endif %}
             </div>
         </div>
+        {% if can_edit and payslip_view %}
+            <twig:Px:Dialog id="payslip-add" title="Ajouter une rubrique">
+                <twig:block name="content">
+                    {% if addable is empty %}
+                        <p>Toutes les rubriques du plan de paie sont sur le bulletin.</p>
+                    {% else %}
+                        <p class="px-u-muted">Une rubrique du plan de paie que le bulletin ne porte pas : retirée, hors de ses conditions, ou sans élément ce mois-ci. Ajoutée, sa ligne se saisit dans le bulletin.</p>
+                        <div class="px-payslip__add">
+                            {% for spec in addable %}
+                                <twig:Px:Button type="submit" form="payslip-elements" name="add" value="{{ spec.code }}" variant="quiet" :autofocus="loop.first"><span class="px-u-code">{{ spec.code }}</span> {{ spec.label }} · {{ spec.kind.label|lower }}</twig:Px:Button>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </twig:block>
+            </twig:Px:Dialog>
+        {% endif %}
         <twig:Px:Drawer id="payslip-detail" title="Détail du calcul" data-payslip-target="drawer">
             <twig:block name="content"><div data-payslip-target="detail"></div></twig:block>
         </twig:Px:Drawer>
     </div>
 {% endblock %}
 
-{% block facts %}<span>Mois de paie · <b>{{ month|period }}</b></span><span>Jour de paie · <b>{{ pay_day|date_fr }}</b></span>{% if result %}<span>Brut · <b>{{ result.gross|amount }}</b></span>{% endif %}{% endblock %}
+{% block facts %}<span>Mois de paie · <b>{{ month|period }}</b></span><span>Jour de paie · <b>{{ pay_day|date_fr }}</b></span>{% if result %}<span>Brut · <b>{{ result.gross|amount }}</b></span><span>Cumul brut de l’année · <b>{{ result.yearToDate.gross|amount }}</b></span>{% endif %}{% endblock %}

@@ -1,0 +1,65 @@
+/*
+ * The payslip as a grid à la manière de Sage (step 4.4b; design-ux.md § 4.7, design-ui.md § 4.18):
+ * the base and rate cells of a line are fields without border, a ring inside when in edit, figures at
+ * the end; a value forced by hand is set apart - amber tint and bold, « forcée » under it for a
+ * reader without colour -; a line added by hand carries its badge. The line in focus is the current
+ * one (Ctrl+Suppr, F5 act on it).
+ */
+@layer px.components {
+    .px-payslip__cell {
+        display: block;
+        width: 100%;
+        min-width: 64px;
+        height: 26px;
+        padding: 0 var(--px-space-6);
+        background: transparent;
+        border: 0;
+        border-radius: var(--px-radius-sm);
+        color: var(--px-text);
+        font: inherit;
+        font-variant-numeric: tabular-nums;
+        text-align: end;
+        outline: none;
+
+        &:hover {
+            box-shadow: inset 0 0 0 1px var(--px-border-strong);
+        }
+
+        &:focus {
+            background: var(--px-surface);
+            box-shadow: var(--px-ring-inset);
+        }
+
+        &[aria-invalid="true"] {
+            box-shadow: inset 0 0 0 2px var(--px-danger);
+        }
+    }
+
+    .px-payslip__cell.is-forced,
+    .px-payslip__value.is-forced {
+        background: var(--px-warning-tint);
+        color: var(--px-warning-text);
+        font-weight: var(--px-fw-semibold);
+    }
+
+    .px-payslip__forced {
+        display: block;
+        color: var(--px-warning-text);
+        font-size: var(--px-fs-11);
+    }
+
+    .px-payslip__line:focus-within > * {
+        background: var(--px-action-soft);
+    }
+
+    .px-payslip__line > td:has(> .px-payslip__cell) {
+        padding-block: 0;
+    }
+
+    .px-payslip__add {
+        display: grid;
+        gap: var(--px-space-4);
+        max-height: 360px;
+        overflow: auto;
+    }
+}
