@@ -47,11 +47,9 @@ class BankStatement implements DossierOwned
     #[ORM\Column(type: Types::DATE_IMMUTABLE)]
     private \DateTimeImmutable $endsOn;
 
+    /** The balance the bank brought forward from its previous statement (« solde précédent »); the closing one is read from the lines. */
     #[ORM\Column(type: 'money')]
-    private Money $openingBalance;
-
-    #[ORM\Column(type: 'money')]
-    private Money $closingBalance;
+    private Money $broughtForward;
 
     /** The dossier's date it was imported on. */
     #[ORM\Column(type: Types::DATE_IMMUTABLE)]
@@ -77,8 +75,7 @@ class BankStatement implements DossierOwned
         $this->number = $number;
         $this->startsOn = $startsOn;
         $this->endsOn = $endsOn;
-        $this->openingBalance = $openingBalance;
-        $this->closingBalance = $openingBalance;
+        $this->broughtForward = $openingBalance;
         $this->importedOn = $importedOn;
         $this->source = $source;
         $this->lines = new ArrayCollection();
@@ -117,12 +114,13 @@ class BankStatement implements DossierOwned
 
     public function getOpeningBalance(): Money
     {
-        return $this->openingBalance;
+        return $this->broughtForward;
     }
 
+    /** What the bank prints at the foot: the balance brought forward plus the lines. */
     public function getClosingBalance(): Money
     {
-        return $this->closingBalance;
+        return Money::sum([$this->broughtForward, ...array_map(static fn (BankStatementLine $line): Money => $line->getAmount(), $this->lines->toArray())]);
     }
 
     public function getImportedOn(): \DateTimeImmutable
@@ -151,12 +149,11 @@ class BankStatement implements DossierOwned
         return array_values($this->lines->toArray());
     }
 
-    /** A line read from the file; the closing balance follows. */
+    /** A line read from the file. */
     public function addLine(\DateTimeImmutable $date, string $label, Money $amount): BankStatementLine
     {
         $line = new BankStatementLine($this, $this->lines->count() + 1, $date, $label, $amount);
         $this->lines->add($line);
-        $this->closingBalance = $this->closingBalance->plus($amount);
 
         return $line;
     }
