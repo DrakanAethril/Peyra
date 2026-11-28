@@ -1003,7 +1003,17 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   header (or Montant/Sens), zones, required zones, formats, paired zones, entries contiguous, one
   day, balanced, in the exercise, numbering without a gap per journal, chronological order of
   validation after the leading reprise. **`FecReader`** (tab or `|`, UTF-8 or ISO 8859-15, BOM
-  dropped) is the reader the FEC import (1.9b) starts from.
+  dropped) is the reader the FEC import starts from.
+- **Import into a new template** (step 1.9b, Bibliothèque › Nouveau dossier modèle › Depuis un FEC,
+  `/teacher/library/new/fec`): `FecImport` checks the fields (`TemplateFactory::prepare()`), the
+  file (`FecConformity::check()` without name nor sequence), reads it with the pure
+  `FecImportReading` (rules in its docblock), then writes in **one transaction** through the usual
+  doors - `TemplateFactory::open()`, `JournalSheet`, `ThirdPartyRules`, `Ledger::draft()` then
+  `validate()` in date order, `Lettering::letter()` per group - and rolls everything back on the
+  first refusal, each fault on its line. It works in batches with the entity manager **cleared**
+  between them (a flush per draft over a growing unit of work made 500 entries take 90 s): entities
+  loaded before an import are detached after it. 1 000 entries at most (`MAX_ENTRIES`). The
+  demonstration's FEC imported then exported again gives back the same bytes (`FecImportTest`).
 
 ## Cross-cutting building blocks (built at step 0.6a)
 
