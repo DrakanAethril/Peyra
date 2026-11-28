@@ -4,14 +4,18 @@
 #
 # Une entrée :
 #
-#   - key: social.smic_hourly        # domaine.nom, en anglais et snake_case ; domaines : social, fiscal
+#   - key: social.smic_hourly        # domaine.nom, en anglais et snake_case ; domaines : social,
+# fiscal
 #     label: SMIC horaire brut       # le libellé affiché
-#     value: 12.02                   # un nombre, un texte, ou une structure (tableau, liste de tranches)
+#     value: 12.02                   # un nombre, un texte, ou une structure (tableau, liste de
+# tranches)
 #     unit: EUR/heure                # percent (6.90 = 6,90 %), EUR, EUR/mois, coefficient, text…
-#     effective_from: 2026-01-01     # date d’effet ; un changement déjà connu pour l’an prochain a sa place ici
+#     effective_from: 2026-01-01     # date d’effet ; un changement déjà connu pour l’an prochain a
+# sa place ici
 #     source_url: https://www.urssaf.fr/…   # la page officielle lue
 #     consulted_on: 2026-11-27       # le jour où elle a été lue
-#     verified: true                 # true seulement si la valeur a été lue sur la source ; sinon false
+#     verified: true                 # true seulement si la valeur a été lue sur la source ; sinon
+# false
 #     note: …                        # facultatif
 #
 # Une même clé peut revenir à plusieurs dates d'effet (SMIC de janvier et de juin). Corriger une
@@ -19,5 +23,685 @@
 # et garde l'ancienne dans l'historique ; elle ne touche jamais à une valeur saisie par un
 # administrateur. Les données préparées pour Peyra (sources, marques verified) entrent ici avec les
 # modules qui les lisent : TVA et fiscalité au lot 3, paie au lot 4.
+#
+# Les valeurs sociales (lot 4, étape 4.1) viennent des données préparées pour Peyra
+# (plan/donnees/reglementaire/social-2026.yaml, recherche du 27/11/2026), sources et marques
+# verified gardées. Écarts avec elles : les taux d'exemple d'accident du travail et de versement
+# mobilité n'y sont pas (ce sont des données de l'établissement, saisies dans Paie et social ›
+# Paramètres de paie) ; le plafond de l'assurance chômage est mis entre guillemets (une virgule dans
+# une table en ligne) ; la majoration des heures complémentaires est ajoutée (service-public,
+# 28/11/2026).
 millesime: 2026
-entries: []
+consulted_on: 2026-11-27
+entries:
+  # --- SMIC -------------------------------------------------------------------------------------
+  - key: social.smic_hourly
+    label: SMIC horaire brut
+    value: 12.02
+    unit: EUR/heure
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/montant-smic.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Du 1er janvier au 31 mai 2026.
+  - key: social.smic_hourly
+    label: SMIC horaire brut
+    value: 12.31
+    unit: EUR/heure
+    effective_from: 2026-06-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/montant-smic.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Revalorisation automatique en cours d'année (inflation ≥ 2 %). Confirmé aussi sur service-public.fr F2300 (vérifié le 01/06/2026).
+  - key: social.smic_monthly
+    label: SMIC mensuel brut (35 h, 151,67 h)
+    value: 1823.03
+    unit: EUR/mois
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/montant-smic.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Du 1er janvier au 31 mai 2026.
+  - key: social.smic_monthly
+    label: SMIC mensuel brut (35 h, 151,67 h)
+    value: 1867.02
+    unit: EUR/mois
+    effective_from: 2026-06-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/montant-smic.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Annuel correspondant 22 404,20 € (service-public.fr F2300).
+  - key: social.smic_hourly_minor
+    label: SMIC horaire minoré des jeunes de moins de 18 ans sans 6 mois de pratique
+    value: {age_17_to_18: 10.82, under_17: 9.62}
+    unit: EUR/heure
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/montant-smic.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Abattements de 10 % (17-18 ans) et 20 % (moins de 17 ans).
+  - key: social.smic_hourly_minor
+    label: SMIC horaire minoré des jeunes de moins de 18 ans sans 6 mois de pratique
+    value: {age_17_to_18: 11.08, under_17: 9.85}
+    unit: EUR/heure
+    effective_from: 2026-06-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/montant-smic.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.minimum_garanti
+    label: Minimum garanti (MG)
+    value: 4.25
+    unit: EUR
+    effective_from: 2026-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/table-des-parametres.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Table des paramètres du BOSS (CSV 202601, code AEN_REPA_MG). Le MG a été revalorisé au 1er juin 2026 avec le SMIC (repas HCR passé de 4,25 € à 4,35 € sur urssaf.fr), mais la valeur exacte du MG au 01/06/2026 n'a pas été lue.
+
+  # --- Plafond de la sécurité sociale -------------------------------------------------------------
+  - key: social.pss_annual
+    label: Plafond annuel de la sécurité sociale (PASS)
+    value: 48060
+    unit: EUR/an
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/plafonds-securite-sociale.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Arrêté du 22 décembre 2025 (JORFTEXT000053143451).
+  - key: social.pmss
+    label: Plafond mensuel de la sécurité sociale (PMSS)
+    value: 4005
+    unit: EUR/mois
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/plafonds-securite-sociale.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Trimestre 12 015 €, quinzaine 2 003 €, semaine 924 €.
+  - key: social.pss_daily
+    label: Plafond journalier de la sécurité sociale
+    value: 220
+    unit: EUR/jour
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/plafonds-securite-sociale.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.pss_hourly
+    label: Plafond horaire de la sécurité sociale
+    value: 30
+    unit: EUR/heure
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/plafonds-securite-sociale.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+
+  # --- Cotisations URSSAF ----------------------------------------------------------------------
+  - key: social.contrib.health
+    label: Assurance maladie, maternité, invalidité, décès
+    value: {base: brut_total, ceiling: none, employee_rate: 0, employer_rate: 13.00}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/actualites/informations-nouvelle-annee.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: >-
+      En 2026 la réduction du taux maladie (taux réduit 7 % sous 2,25 SMIC) est SUPPRIMÉE pour les employeurs
+      de droit commun : elle est fondue dans la RGDU. Taux unique 13 %. Le taux réduit 7 % ne subsiste que pour
+      les employeurs bénéficiant d'exonérations zonées (ZRR/ZFRR, ZRD, ZFU), Lodéom, AAD prestataires (seuil
+      2,5 SMIC au 31/12/2023). Attention : la page « Taux de cotisations secteur privé » d'urssaf.fr affiche
+      encore « taux réduit 7 % / taux plein 13 % » ; le BOSS (COT_AM_SS_METROP = 13 au 01/01/2026) et
+      l'actualité Urssaf du 1er janvier 2026 confirment 13 %. Alsace-Moselle : +1,30 % salarié.
+  - key: social.contrib.health_alsace_moselle_employee
+    label: Cotisation maladie supplémentaire salarié Alsace-Moselle (57, 67, 68)
+    value: {base: brut_total, employee_rate: 1.30}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Hors cas général ; à ignorer pour un établissement de droit commun.
+  - key: social.contrib.csa
+    label: Contribution solidarité autonomie (CSA)
+    value: {base: brut_total, employer_rate: 0.30}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.contrib.old_age_capped
+    label: Assurance vieillesse plafonnée
+    value: {base: brut, ceiling: PSS (tranche A), employee_rate: 6.90, employer_rate: 8.55}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.contrib.old_age_uncapped
+    label: Assurance vieillesse déplafonnée
+    value: {base: brut_total, ceiling: none, employee_rate: 0.40, employer_rate: 2.11}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Part patronale passée de 2,02 % à 2,11 % au 1er janvier 2026 (décret n° 2025-1446 du 31/12/2025, actualité Urssaf).
+  - key: social.contrib.family
+    label: Allocations familiales
+    value: {base: brut_total, employer_rate: 5.25}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/actualites/informations-nouvelle-annee.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: >-
+      Taux réduit 3,45 % (sous 3,3 SMIC) SUPPRIMÉ en 2026 pour le droit commun (fondu dans la RGDU) ; il ne
+      subsiste que pour les employeurs à exonérations zonées/Lodéom/AAD (seuil 3,5 SMIC au 31/12/2023). La page
+      des taux urssaf.fr affiche encore « 3,45 % / 5,25 % ». BOSS : COT_AF_SS_METROP = 5,25 au 01/01/2026.
+  - key: social.contrib.work_accident
+    label: Accidents du travail - maladies professionnelles (AT/MP)
+    value: {base: brut_total, employer_rate: notified_per_company}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: >-
+      Taux notifié chaque année par la Carsat à chaque établissement (taux collectif par code risque pour les
+      moins de 20 salariés, mixte de 20 à 149, individuel à partir de 150). Part mutualisée retenue dans la
+      RGDU : plafonnée à 0,49 % en 2026.
+  - key: social.contrib.fnal
+    label: Fonds national d'aide au logement (FNAL)
+    value:
+      - {headcount: "< 50", base: brut, ceiling: PSS, employer_rate: 0.10}
+      - {headcount: ">= 50", base: brut_total, ceiling: none, employer_rate: 0.50}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.contrib.mobility
+    label: Versement mobilité
+    value: {headcount: ">= 11", base: brut_total, employer_rate: rate_of_territory}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Dû à partir de 11 salariés ; taux fixé par l'autorité organisatrice de la mobilité (outil de recherche sur urssaf.fr). Possible versement mobilité régional (max 0,15 %).
+  - key: social.contrib.social_dialogue
+    label: Contribution au dialogue social
+    value: {base: brut_total, employer_rate: 0.016}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.contrib.unemployment
+    label: Contribution d'assurance chômage
+    value: {base: brut, ceiling: "4 PSS (192 240 €/an, 16 020 €/mois)", employee_rate: 0, employer_rate: 4.00}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/employeur/cotisations/liste-cotisations/assurance-chomage-ags.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Pas de part salariale. Bonus-malus (2,95 % à 5 %) pour certains secteurs à partir de 11 salariés.
+  - key: social.contrib.ags
+    label: Cotisation AGS (garantie des salaires)
+    value: {base: brut, ceiling: 4 PSS, employer_rate: 0.25}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: 0,03 % pour les intérimaires des entreprises de travail temporaire.
+  - key: social.contrib.csg_deductible
+    label: CSG déductible (« non imposable »)
+    value: {base: "98,25 % du brut (+ part patronale prévoyance/santé sans abattement)", employee_rate: 6.80}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: L'abattement de 1,75 % ne s'applique que dans la limite de 4 PASS (192 240 € en 2026) ; au-delà, assiette = 100 %. La contribution patronale de complémentaire santé/prévoyance entre dans l'assiette sans abattement.
+  - key: social.contrib.csg_non_deductible
+    label: CSG non déductible (« imposable »)
+    value: {base: "98,25 % du brut", employee_rate: 2.40}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.contrib.crds
+    label: CRDS
+    value: {base: "98,25 % du brut", employee_rate: 0.50}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Non déductible du revenu imposable.
+  - key: social.csg_abatement
+    label: Abattement pour frais professionnels sur l'assiette CSG/CRDS
+    value: {rate: 1.75, limit: 4 PASS}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/employeur/cotisations/liste-cotisations/csg-crds.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: « La réduction de 1,75 % ne s'applique toutefois que dans la limite de 4 plafonds annuels de la Sécurité sociale. »
+  - key: social.contrib.vocational_training
+    label: Contribution à la formation professionnelle (CFP)
+    value:
+      - {headcount: "< 11", base: brut_total, employer_rate: 0.55}
+      - {headcount: ">= 11", base: brut_total, employer_rate: 1.00}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Plus 1 % CPF-CDD sur les salaires des CDD.
+  - key: social.contrib.apprenticeship_tax
+    label: Taxe d'apprentissage
+    value: {base: brut_total, principal_part: 0.59, balance_part: 0.09, total: 0.68}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Part principale mensuelle en DSN, solde annuel. Alsace-Moselle 0,44 % sans solde. Contribution supplémentaire à l'apprentissage (≥ 250 salariés) non couverte.
+  - key: social.contrib.forfait_social_prevoyance
+    label: Forfait social sur contributions patronales de prévoyance complémentaire
+    value:
+      - {headcount: "< 11", rate: 0}
+      - {headcount: ">= 11", rate: 8}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/employeur/cotisations/liste-cotisations/forfait-social.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Taux général du forfait social 20 % ; 8 % sur les contributions patronales de prévoyance complémentaire (santé et prévoyance collectives exonérées de cotisations) pour les entreprises de 11 salariés et plus ; non dû en dessous de 11 salariés.
+
+  # --- Retraite complémentaire Agirc-Arrco ------------------------------------------------------
+  - key: social.agirc_arrco.tranches
+    label: Tranches Agirc-Arrco
+    value: {t1: "0 à 1 PSS (4 005 €/mois, 48 060 €/an)", t2: "1 à 8 PSS (jusqu'à 32 040 €/mois, 384 480 €/an)"}
+    unit: EUR
+    effective_from: 2026-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/baremes/listes-area/baremes-1/cotisations-au-regime-agirc-arrco-en-2026.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.agirc_arrco.t1
+    label: Retraite complémentaire Agirc-Arrco tranche 1 (taux appelé)
+    value: {base: T1, calc_rate: 6.20, call_rate: 127, global_rate: 7.87, employee_rate: 3.15, employer_rate: 4.72}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/baremes/listes-area/baremes-1/cotisations-au-regime-agirc-arrco-en-2026.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Taux de calcul des points 6,20 % (3,72 / 2,48) × pourcentage d'appel 127 % = 7,87 %. Répartition 60/40 sauf dispositions particulières.
+  - key: social.agirc_arrco.t2
+    label: Retraite complémentaire Agirc-Arrco tranche 2 (taux appelé)
+    value: {base: T2, calc_rate: 17.00, call_rate: 127, global_rate: 21.59, employee_rate: 8.64, employer_rate: 12.95}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/baremes/listes-area/baremes-1/cotisations-au-regime-agirc-arrco-en-2026.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Taux de calcul 17 % (10,20 / 6,80).
+  - key: social.agirc_arrco.ceg
+    label: Contribution d'équilibre général (CEG)
+    value:
+      - {base: T1, global_rate: 2.15, employee_rate: 0.86, employer_rate: 1.29}
+      - {base: T2, global_rate: 2.70, employee_rate: 1.08, employer_rate: 1.62}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/baremes/listes-area/baremes-1/cotisations-au-regime-agirc-arrco-en-2026.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Non génératrice de droits.
+  - key: social.agirc_arrco.cet
+    label: Contribution d'équilibre technique (CET)
+    value: {base: "T1 + T2", global_rate: 0.35, employee_rate: 0.14, employer_rate: 0.21, condition: "due seulement si le salaire excède la tranche 1 (le PSS)"}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/baremes/listes-area/baremes-1/cotisations-au-regime-agirc-arrco-en-2026.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Appréciée sur la rémunération annuelle (régularisation progressive) selon la fiche réglementaire Agirc-Arrco.
+  - key: social.agirc_arrco.call_rate
+    label: Pourcentage d'appel Agirc-Arrco
+    value: 127
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/liste-fiche-reglementaires/listes-area/liste-de-fiches-reglementaires/taux-de-cotisations.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Article 36 de l'ANI ; inchangé depuis le 1er janvier 2019. Taux appelés arrondis au centième.
+  - key: social.apec
+    label: Cotisation APEC (cadres)
+    value: {base: "T1 + T2 dans la limite de 4 PSS (16 020 €/mois)", global_rate: 0.06, employee_rate: 0.024, employer_rate: 0.036}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/baremes/listes-area/baremes-1/cotisations-au-regime-agirc-arrco-en-2026.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: La page Agirc-Arrco écrit « 192 400 € par an » ; 4 × 48 060 = 192 240 € (coquille de la source).
+  - key: social.executive_death_insurance_minimum
+    label: Prévoyance des cadres - cotisation minimale obligatoire
+    value: {base: T1, employer_rate: 1.50, employee_rate: 0}
+    unit: percent
+    effective_from: 2018-01-01
+    source_url: https://www.legifrance.gouv.fr/conv_coll/article/KALIARTI000036732016
+    consulted_on: 2026-11-27
+    verified: true
+    note: ANI du 17 novembre 2017, article 1er (en vigueur étendu) - « à leur charge exclusive, égale à 1,50 % de la tranche de rémunération inférieure au plafond », affectée par priorité au décès.
+
+  # --- Réduction générale (RGDU) -----------------------------------------------------------------
+  - key: social.rgdu.parameters
+    label: Réduction générale dégressive unique (RGDU) - paramètres
+    value:
+      t_min: 0.0200
+      t_delta: {lt_50: 0.3781, ge_50: 0.3821}
+      coefficient_max: {lt_50: 0.3981, ge_50: 0.4021}
+      exponent_p: 1.75
+      exit_threshold: 3 SMIC
+      formula: "C = Tmin + Tdelta × [ ½ × (3 × SMIC annuel ÷ rémunération annuelle brute − 1) ]^P"
+      rounding: 4 décimales
+    unit: coefficient
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/employeur/beneficier-exonerations/reduction-generale-cotisation.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: >-
+      Lu sur urssaf.fr (mis à jour 13/07/2026) et dans la table des paramètres du BOSS (COT_RGDU_Tmin = 2,
+      Tdelta 37,81 / 38,21). Arrondi à 4 décimales : règle lue pour 2025 (D241-7) et appliquée par les exemples
+      Urssaf 2026, non relue dans le texte 2026. Voir LISEZ-MOI.md pour la formule détaillée et l'exemple.
+  - key: social.rgdu.smic_reference
+    label: RGDU - SMIC de référence et seuil après la revalorisation de juin 2026
+    value:
+      before_2026_06: "3 × SMIC annuel au 1er janvier 2026 (12,02 €)"
+      from_2026_06: "2,9293 × SMIC annuel au 1er juin 2026 (12,31 €) - formule équivalente"
+    unit: text
+    effective_from: 2026-06-01
+    source_url: https://www.urssaf.fr/accueil/employeur/beneficier-exonerations/reduction-generale-cotisation.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: >-
+      L'Urssaf : « En 2026, la valeur du Smic à prendre en compte est celle en vigueur au 1er janvier 2026 » ;
+      deux formules équivalentes (3 × SMIC janvier, ou 2,9293 × SMIC juin). Exception : salariés dont le contrat
+      a pris fin entre le 1er et le 30 juin 2026. Contradiction apparente avec l'actualité Urssaf « nouvelle
+      année » (« les éventuelles revalorisations sont prises en compte ») : la page réduction générale, plus
+      précise, fait foi ici.
+  - key: social.rgdu.covered_contributions
+    label: RGDU - cotisations et taux couverts (métropole)
+    value: {health: 13.00, old_age: 10.66, family: 5.25, work_accident_mutualised: 0.49, agirc_arrco: 6.01, fnal: "0,10 (< 50) / 0,50 (>= 50)", csa: 0.30, unemployment: 4.00}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/employeur/beneficier-exonerations/reduction-generale-cotisation.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Somme = 39,81 % (< 50) ou 40,21 % (>= 50) = coefficient maximal. Agirc-Arrco 6,01 % = 4,72 % (T1) + 1,29 % (CEG T1).
+  - key: social.rgdu.allocation
+    label: RGDU - imputation Urssaf / retraite complémentaire
+    value:
+      lt_50: {urssaf: "réduction × 0,3380 / 0,3981", agirc_arrco: "réduction × 0,0601 / 0,3981"}
+      ge_50: {urssaf: "réduction × 0,3420 / 0,4021", agirc_arrco: "réduction × 0,0601 / 0,4021"}
+    unit: formula
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/employeur/beneficier-exonerations/reduction-generale-cotisation.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: ""
+  - key: social.reduced_rates_health_family_abolished
+    label: Réductions de taux maladie (7 %) et allocations familiales (3,45 %) - suppression
+    value: {health_reduced_rate_general_case: abolished, family_reduced_rate_general_case: abolished}
+    unit: text
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/actualites/informations-nouvelle-annee.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Art. 18 LFSS 2025 et art. 40 LFSS 2026. Exceptions listées dans la note de social.contrib.health.
+
+  # --- Heures supplémentaires -------------------------------------------------------------------
+  - key: social.overtime.premium
+    label: Majorations légales des heures supplémentaires (à défaut d'accord)
+    value: {hours_36_to_43: 25, from_44: 50}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/exonerations/exonerations-heures-supplementai.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: « 25 % pour les 8 premières heures de la semaine et 50 % pour les suivantes ». Heures complémentaires (temps partiel) 10 % jusqu'à 1/10e puis 25 %. Un accord peut prévoir au moins 10 %.
+  - key: social.overtime.complementary_premium
+    label: Majoration légale des heures complémentaires (temps partiel, à défaut d'accord de branche)
+    value: {up_to_one_tenth: 10, beyond_one_tenth: 25}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.service-public.gouv.fr/particuliers/vosdroits/F32428
+    consulted_on: 2026-11-28
+    verified: true
+    note: « 10 % pour chaque heure complémentaire accomplie dans la limite de 1/10e de la durée de travail fixé dans le contrat », « 25 % pour chaque heure accomplie au-delà de 1/10e (et dans la limite de 1/3) » (page vérifiée le 19/11/2026 ; règle stable, reprise telle quelle pour 2025 et 2026). Un accord de branche étendu peut fixer un autre taux, au moins 10 %.
+  - key: social.overtime.employee_reduction_rate
+    label: Réduction de cotisations salariales sur heures supplémentaires
+    value: {max_rate: 11.31, composition: "6,90 + 0,40 vieillesse + 3,15 + 0,86 Agirc-Arrco T1/CEG", cadre_example_below_pss: 11.45}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://boss.gouv.fr/portail/accueil/exonerations/exonerations-heures-supplementai.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: >-
+      Taux = somme des taux salariaux vieillesse effectivement dus, plafonné à 11,31 % (7,30 % base + 4,01 %
+      complémentaire). Au-delà du PSS : taux moyen effectif dans la limite de 11,31 %. Exonération d'impôt sur
+      le revenu des HS dans la limite annuelle de 7 500 € (valeur non relue pendant cette recherche).
+  - key: social.overtime.employer_flat_deduction
+    label: Déduction forfaitaire patronale sur heures supplémentaires
+    value:
+      - {headcount: "< 20", amount_per_hour: 1.50}
+      - {headcount: ">= 20", amount_per_hour: 0.50}
+    unit: EUR/heure
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/actualites/informations-nouvelle-annee.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Seuil de 250 salariés supprimé au 1er janvier 2026 (art. 21 LFSS 2026) - tout employeur éligible à la RGDU. Aussi par jour de repos racheté en forfait jours (montant × 7). CTP 004.
+
+  # --- Avantages en nature ----------------------------------------------------------------------
+  - key: social.benefit_in_kind.meal
+    label: Avantage en nature nourriture - cas général
+    value: {per_meal: 5.50, per_day_two_meals: 11.00}
+    unit: EUR
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/avantages-en-nature.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: BOSS AEN_REPA_UN 5,5 / AEN_REPA_JOURN 11. Hôtels-cafés-restaurants (1 MG par repas) - 4,25 € puis 4,35 € au 1er juin 2026.
+  - key: social.benefit_in_kind.meal_voucher_exemption
+    label: Titres-restaurant - exonération maximale de la part patronale
+    value: {max_employer_share: 7.32, voucher_value_range: "12,20 € à 14,64 €"}
+    unit: EUR
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/avantages-en-nature.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Participation patronale entre 50 % et 60 % de la valeur du titre.
+  - key: social.benefit_in_kind.housing_scale
+    label: Avantage en nature logement - barème forfaitaire mensuel
+    value:
+      - {gross_monthly_below: 2002.50, one_room: 79.70, per_room: 42.60}
+      - {from: 2002.50, to: 2402.99, one_room: 93.00, per_room: 59.70}
+      - {from: 2403.00, to: 2803.49, one_room: 106.20, per_room: 79.70}
+      - {from: 2803.50, to: 3604.49, one_room: 119.40, per_room: 99.50}
+      - {from: 3604.50, to: 4405.49, one_room: 146.40, per_room: 126.10}
+      - {from: 4405.50, to: 5206.49, one_room: 172.60, per_room: 152.40}
+      - {from: 5206.50, to: 6007.49, one_room: 199.40, per_room: 185.70}
+      - {from: 6007.50, one_room: 225.60, per_room: 212.30}
+    unit: EUR/mois
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/avantages-en-nature.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: « Par pièce principale (si plusieurs pièces) ». Tranches exprimées en fraction du PMSS. Option possible pour la valeur locative réelle.
+  - key: social.benefit_in_kind.vehicle
+    label: Avantage en nature véhicule - évaluation forfaitaire annuelle (mise à disposition depuis le 1er février 2025)
+    value:
+      purchased_5y_or_less: {without_fuel: "15 % du coût d'achat", with_fuel: "20 % du coût d'achat (ou 15 % + carburant réel)"}
+      purchased_over_5y: {without_fuel: "10 % du coût d'achat", with_fuel: "15 % du coût d'achat (ou 10 % + carburant réel)"}
+      leased: {without_fuel: "50 % du coût global annuel", with_fuel: "67 % du coût global (ou 50 % + carburant réel)"}
+      electric: "abattement 70 % dans la limite de 4 641,60 €/an (si score environnemental du bonus)"
+      before_2025_02_01: "9 % / 12 %, 6 % / 9 %, 30 % / 40 % ; électrique : abattement 50 % dans la limite de 2 026,30 €/an"
+    unit: text
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/avantages-en-nature.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Arrêté du 25 février 2025. Avantage location plafonné à celui d'un achat.
+
+  # --- Frais professionnels ---------------------------------------------------------------------
+  - key: social.expenses.meal_allowances
+    label: Indemnités de repas - limites d'exonération
+    value: {meal_at_workplace: 7.50, meal_on_travel_restaurant: 21.40, meal_on_travel_not_restaurant: 10.40}
+    unit: EUR/repas
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/frais-professionnels.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Sur le lieu de travail (contraint) ; en déplacement contraint au restaurant ; en déplacement non contraint de manger au restaurant.
+  - key: social.expenses.long_distance_travel
+    label: Grand déplacement en métropole - indemnités journalières (3 premiers mois)
+    value: {meal: 21.40, lodging_paris_92_93_94: 76.60, lodging_other: 56.80, decrease: "−15 % du 4e au 24e mois, −30 % du 25e au 72e mois"}
+    unit: EUR/jour
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/frais-professionnels.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Logement après abattement 15 % - 65,10 / 48,30 ; après 30 % - 53,60 / 39,80 (BOSS FGD_LOG_*).
+  - key: social.expenses.telework
+    label: Indemnité forfaitaire de télétravail (hors accord)
+    value: {per_day: 2.70, monthly_cap: 59.40, per_month_for_1_day_week: 11.00}
+    unit: EUR
+    effective_from: 2026-01-01
+    source_url: https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/frais-professionnels.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Accord collectif - 3,30 €/jour dans la limite de 72,60 €/mois.
+
+  # --- Apprentis --------------------------------------------------------------------------------
+  - key: social.apprentice.employee_exemption
+    label: Apprentis - exonération des cotisations salariales et de CSG/CRDS
+    value: {contracts_from_2025_03_01: "part du salaire ≤ 50 % du SMIC (933,51 € au 01/06/2026)", contracts_until_2025_02_28: "cotisations salariales ≤ 79 % du SMIC, exonération totale de CSG/CRDS"}
+    unit: percent of SMIC
+    effective_from: 2026-01-01
+    source_url: https://www.service-public.fr/particuliers/vosdroits/F2918
+    consulted_on: 2026-11-27
+    verified: true
+    note: Page vérifiée le 08/09/2026. 50 % du SMIC = 911,52 € de janvier à mai 2026, 933,51 € à partir de juin 2026. Salaire exonéré d'impôt sur le revenu dans la limite du SMIC annuel.
+  - key: social.apprentice.minimum_pay
+    label: Apprentis - rémunération minimale en % du SMIC
+    value:
+      year_1: {age_16_17: 27, age_18_20: 43, age_21_25: 53, age_26_plus: 100}
+      year_2: {age_16_17: 39, age_18_20: 51, age_21_25: 61, age_26_plus: 100}
+      year_3: {age_16_17: 55, age_18_20: 67, age_21_25: 78, age_26_plus: 100}
+    unit: percent of SMIC
+    effective_from: 2026-01-01
+    source_url: https://www.service-public.fr/particuliers/vosdroits/F2918
+    consulted_on: 2026-11-27
+    verified: true
+    note: De 21 ans à 25 ans et 26 ans et plus - le plus élevé du % du SMIC et du % du minimum conventionnel. Moins de 16 ans = 16-17 ans.
+
+  # --- Indemnités journalières maladie ----------------------------------------------------------
+  - key: social.sick_pay.ijss
+    label: Indemnités journalières maladie (IJSS) - règle de calcul
+    value:
+      rate: "50 % du salaire journalier de base"
+      daily_base: "total des 3 derniers salaires bruts ÷ 91,25"
+      salary_cap: "1,4 SMIC mensuel (arrêts débutant à partir du 1er avril 2025)"
+      waiting_days: 3
+      max_daily_ijss: 42.97
+    unit: text
+    effective_from: 2026-06-01
+    source_url: https://www.service-public.fr/particuliers/vosdroits/F3053
+    consulted_on: 2026-11-27
+    verified: true
+    note: >-
+      Plafond 1,4 × 1 867,02 = 2 613,82 € → SJB max 85,93 € → IJ max 42,97 € (SMIC de juin 2026). Avec le SMIC
+      de janvier 2026 (1 823,03 €) le calcul donne 41,95 € (calcul, non lu).
+      Pas de carence si reprise < 48 h entre deux arrêts, ni pour les ALD.
+
+  # --- Prélèvement à la source ------------------------------------------------------------------
+  - key: social.withholding_tax.default_rate_grid
+    label: Prélèvement à la source - grille du taux par défaut (métropole, mensuelle)
+    value:
+      - {from: 0, to: 1620, rate: 0}
+      - {from: 1620, to: 1683, rate: 0.5}
+      - {from: 1683, to: 1791, rate: 1.3}
+      - {from: 1791, to: 1911, rate: 2.1}
+      - {from: 1911, to: 2042, rate: 2.9}
+      - {from: 2042, to: 2151, rate: 3.5}
+      - {from: 2151, to: 2294, rate: 4.1}
+      - {from: 2294, to: 2714, rate: 5.3}
+      - {from: 2714, to: 3107, rate: 7.5}
+      - {from: 3107, to: 3539, rate: 9.9}
+      - {from: 3539, to: 3983, rate: 11.9}
+      - {from: 3983, to: 4648, rate: 13.8}
+      - {from: 4648, to: 5574, rate: 15.8}
+      - {from: 5574, to: 6974, rate: 17.9}
+      - {from: 6974, to: 8711, rate: 20}
+      - {from: 8711, to: 12091, rate: 24}
+      - {from: 12091, to: 16376, rate: 28}
+      - {from: 16376, to: 25706, rate: 33}
+      - {from: 25706, to: 55062, rate: 38}
+      - {from: 55062, rate: 43}
+    unit: percent (bornes en EUR, borne basse incluse, borne haute exclue)
+    effective_from: 2026-01-01
+    source_url: https://bofip.impots.gouv.fr/bofip/11255-PGP.html/identifiant=BOI-BAREME-000037-20250410
+    consulted_on: 2026-11-27
+    verified: true
+    note: Grille du 1er mai 2025, toujours en vigueur de janvier à avril 2026 (la version BOFIP du 10/04/2025 est restée en vigueur jusqu'au 07/04/2026 ; nouvelle grille à compter du 1er mai 2026).
+  - key: social.withholding_tax.default_rate_grid
+    label: Prélèvement à la source - grille du taux par défaut (métropole, mensuelle)
+    value:
+      - {from: 0, to: 1635, rate: 0}
+      - {from: 1635, to: 1698, rate: 0.5}
+      - {from: 1698, to: 1807, rate: 1.3}
+      - {from: 1807, to: 1928, rate: 2.1}
+      - {from: 1928, to: 2060, rate: 2.9}
+      - {from: 2060, to: 2170, rate: 3.5}
+      - {from: 2170, to: 2315, rate: 4.1}
+      - {from: 2315, to: 2738, rate: 5.3}
+      - {from: 2738, to: 3135, rate: 7.5}
+      - {from: 3135, to: 3571, rate: 9.9}
+      - {from: 3571, to: 4019, rate: 11.9}
+      - {from: 4019, to: 4690, rate: 13.8}
+      - {from: 4690, to: 5624, rate: 15.8}
+      - {from: 5624, to: 7037, rate: 17.9}
+      - {from: 7037, to: 8789, rate: 20}
+      - {from: 8789, to: 12200, rate: 24}
+      - {from: 12200, to: 16523, rate: 28}
+      - {from: 16523, to: 25937, rate: 33}
+      - {from: 25937, to: 55558, rate: 38}
+      - {from: 55558, rate: 43}
+    unit: percent (bornes en EUR, borne basse incluse, borne haute exclue)
+    effective_from: 2026-05-01
+    source_url: https://bofip.impots.gouv.fr/bofip/11255-PGP.html/identifiant=BOI-BAREME-000037-20260706
+    consulted_on: 2026-11-27
+    verified: true
+    note: Grille « à compter du 1er mai 2026 » (versions BOFIP du 07/04/2026 et du 06/07/2026, identiques pour la métropole).
+
+  # --- Montant net social -----------------------------------------------------------------------
+  - key: social.net_social_amount
+    label: Montant net social - définition
+    value: "Ensemble des sommes brutes (salaires, primes, HS, avantages en nature, indemnités de rupture, part patronale santé/prévoyance, IJSS subrogées nettes…) diminuées des cotisations et contributions sociales obligatoires à la charge du salarié."
+    unit: text
+    effective_from: 2023-07-01
+    source_url: https://boss.gouv.fr/portail/accueil/bulletin-de-paie/montant-net-social.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: Article R. 3243-1, 9° bis du code du travail ; affichage obligatoire depuis les paies de juillet 2023. Ni l'assiette fiscale, ni l'assiette sociale.

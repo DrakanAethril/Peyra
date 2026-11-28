@@ -7,6 +7,8 @@ namespace App\Service\Dossier\Demo;
 use App\Entity\Accounting\Account;
 use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Dossier;
+use App\Entity\Payroll\PayrollBody;
+use App\Entity\Payroll\PayrollEstablishment;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Audit\AuditAction;
@@ -29,6 +31,9 @@ use App\Service\Accounting\Template\TemplateSheet;
 use App\Service\Audit\AuditTrail;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Exercises;
+use App\Service\Payroll\Employee\EmployeeSheet;
+use App\Service\Payroll\Plan\PayrollPlanInstaller;
+use App\Service\Payroll\Settings\PayrollEstablishmentRules;
 use App\Service\ThirdParty\ThirdPartyRules;
 use App\Service\ThirdParty\ThirdPartySheet;
 use Doctrine\ORM\EntityManagerInterface;
@@ -67,6 +72,8 @@ final readonly class DemoInstaller
         private SubscriptionRun $subscriptionRun,
         private Lettering $lettering,
         private ThirdPartyRepository $thirdParties,
+        private PayrollPlanInstaller $payrollPlan,
+        private EmployeeSheet $employees,
         private EntryRepository $entries,
         #[Autowire('%kernel.project_dir%/fixtures/demo')]
         private string $directory,
@@ -100,6 +107,8 @@ final readonly class DemoInstaller
         $templateFile = DemoTemplateFile::read($this->directory.'/templates.yaml');
         $subscriptionFile = DemoSubscriptionFile::read($this->directory.'/subscriptions.yaml');
         $letteringFile = DemoLetteringFile::read($this->directory.'/letterings.yaml');
+        $payrollFile = DemoPayrollFile::read($this->directory.'/payroll.yaml');
+        $employeeFile = DemoEmployeeFile::read($this->directory.'/employees.yaml');
         $dossier = new Dossier(DossierKind::Template, $file->company, $file->dossierDate, null, null, $at, null);
         $dossier->describeInLibrary($file->library['title'], $file->library['description'], $file->library['level'], $file->library['processes']);
         $this->entityManager->persist($dossier);
@@ -125,6 +134,8 @@ final readonly class DemoInstaller
         $this->context->within($dossier, fn () => $this->installTemplates($dossier, $templateFile, $actor));
         $this->context->within($dossier, fn () => $this->installSubscriptions($dossier, $subscriptionFile, $actor, $at));
         $this->context->within($dossier, fn () => $this->installLetterings($dossier, $letteringFile, $actor));
+        $this->context->within($dossier, fn () => $this->installPayroll($dossier, $payrollFile, $actor));
+        $this->context->within($dossier, fn () => $this->installEmployees($dossier, $employeeFile, $actor));
         $this->auditTrail->inDossier(
             $dossier,
             AuditAction::DossierCreated,
@@ -135,6 +146,45 @@ final readonly class DemoInstaller
         $this->entityManager->flush();
 
         return $dossier;
+    }
+
+    /**
+     * Its payroll settings (step 4.1): the establishment and the bodies, then the standard plan de
+     * paie - paid to those bodies - and its own rubriques, each checked by the fiche's rules.
+     */
+    private function installPayroll(Dossier $dossier, DemoPayrollFile $file, string $actor): void
+    {
+        $fields = PayrollEstablishmentRules::check($file->establishment) ?? throw new \InvalidArgumentException('payroll.yaml : establishment : '.implode(' ', $file->establishment->errors));
+        $this->entityManager->persist(new PayrollEstablishment($dossier, $fields->headcount, $fields->workAccidentRate, $fields->mobilityRate, $fields->monthlyHours));
+        foreach ($file->bodies as $body) {
+            $this->entityManager->persist(new PayrollBody($dossier, $body['kind'], $body['name'], $body['reference']));
+        }
+        $this->entityManager->flush();
+        $this->payrollPlan->installStandard($dossier, $actor);
+        $this->entityManager->flush();
+        $this->payrollPlan->install($dossier, $file->items, [], 'payroll.yaml');
+        $this->entityManager->flush();
+    }
+
+    /**
+     * Its employees (step 4.2a), through the fiche's own door: each hired with its first terms, then
+     * each later terms from its day. A fault names the matricule and installs nothing more.
+     */
+    private function installEmployees(Dossier $dossier, DemoEmployeeFile $file, string $actor): void
+    {
+        foreach ($file->employees as $drafts) {
+            $employee = null;
+            foreach ($drafts as $draft) {
+                $fields = $this->employees->check($draft, $dossier, $employee)
+                    ?? throw new \InvalidArgumentException(\sprintf('employees.yaml : %s (%s) : %s', $draft->registrationNumber, $draft->termsFrom, implode(' ', $draft->errors)));
+                if (null === $employee) {
+                    $employee = $this->employees->create($dossier, $fields, $actor);
+                } else {
+                    $this->employees->update($employee, $fields, $actor);
+                }
+                $this->entityManager->flush();
+            }
+        }
     }
 
     /** Its letterings, each an automatic lettering of one account: one that finds nothing installs nothing more. */

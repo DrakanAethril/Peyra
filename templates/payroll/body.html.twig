@@ -1,0 +1,63 @@
+{# The fiche of a collecting body (lot 4, step 4.1, gabarit F): its kind, name and reference. F10 saves. #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set settings_current = 'bodies' %}
+{% set can_edit = is_granted('PAYROLL_SETTINGS', dossier) %}
+{% set dossier_title = body ? body.name : 'Nouvel organisme' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ body ? body.name : 'Nouvel organisme' }}" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Organismes', href: path('app_payroll_bodies', {dossier: dossier.id})},
+        {label: body ? body.name : 'Nouvel organisme', href: body ? path('app_payroll_body', {dossier: dossier.id, id: body.id}) : path('app_payroll_body_new', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}
+                {% if body and deletion_refusal is null %}<twig:Px:ConfirmButton label="Supprimer l’organisme" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="payroll-body-delete"/>{% endif %}
+                <twig:Px:Button type="submit" variant="primary" form="payroll-body-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('payroll/_settings_tabs.html.twig') }}
+
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">L’organisme n’est pas enregistré : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+
+    {% if can_edit %}
+        <form method="post" action="{{ body ? path('app_payroll_body', {dossier: dossier.id, id: body.id}) : path('app_payroll_body_new', {dossier: dossier.id}) }}" id="payroll-body-form" novalidate data-controller="focus-error">
+            <input type="hidden" name="_token" value="{{ csrf_token(body ? 'payroll-body-' ~ body.id : 'payroll-body-new-' ~ dossier.id) }}">
+            <twig:Px:Card title="Organisme">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="kind" label="Type" :required="true" :error="draft.error('kind')">
+                        <twig:Px:Select id="kind" placeholder="Choisir le type…" :options="kind_options" value="{{ draft.kind }}" :required="true" :error="draft.error('kind')" autofocus/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="name" label="Nom" :required="true" :wide="true" :error="draft.error('name')">
+                        <twig:Px:Input id="name" value="{{ draft.name }}" :required="true" :error="draft.error('name')" maxlength="80" autocomplete="off"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="reference" label="Référence" hint="Numéro de compte Urssaf, numéro d’adhérent ou de contrat (fictif)." :error="draft.error('reference')">
+                        <twig:Px:Input id="reference" value="{{ draft.reference }}" hint="1" :error="draft.error('reference')" class="px-u-code" maxlength="40" autocomplete="off" spellcheck="false"/>
+                    </twig:Px:Field>
+                </div>
+                {% if body and deletion_refusal %}<p class="px-u-muted">{{ deletion_refusal }}</p>{% endif %}
+            </twig:Px:Card>
+        </form>
+        {% if body and deletion_refusal is null %}
+            <form method="post" action="{{ path('app_payroll_body_delete', {dossier: dossier.id, id: body.id}) }}" id="payroll-body-delete" hidden>
+                <input type="hidden" name="_token" value="{{ csrf_token('payroll-body-delete-' ~ body.id) }}">
+            </form>
+        {% endif %}
+    {% else %}
+        <twig:Px:Card title="Organisme">
+            <dl class="px-facts">
+                <dt>Type</dt><dd>{{ body.kind.label }}</dd>
+                <dt>Nom</dt><dd>{{ body.name }}</dd>
+                <dt>{{ body.kind.referenceLabel }}</dt><dd class="px-u-code">{{ body.reference ?: '—' }}</dd>
+            </dl>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}

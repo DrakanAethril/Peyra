@@ -23,7 +23,11 @@ use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
  *   parties, the entry templates, the subscriptions;
  * - JOURNAL_READ (a journal): see its entry screen - a journal the profile closes is not offered;
  * - JOURNAL_ENTER: enter in it (pending work, drafts, F6, the opening balance);
- * - JOURNAL_VALIDATE: validate and reverse its entries.
+ * - JOURNAL_VALIDATE: validate and reverse its entries;
+ * - PAYROLL_READ (a dossier): open Paie et social - closed to a profile that does not read the
+ *   payroll, whose rail then has no such entry;
+ * - PAYROLL_SETTINGS: change the payroll's settings - the establishment, the bodies, the plan de paie;
+ * - PAYROLL_ENTER: enter the payroll - the employees (step 4.2a).
  *
  * The doors hold the same rules (Ledger, Lettering refuse a gesture the profile does not allow);
  * a refusal of a screen reads as a 404.
@@ -36,6 +40,9 @@ final class DossierRightVoter extends Voter
     public const string JOURNAL_READ = 'JOURNAL_READ';
     public const string JOURNAL_ENTER = 'JOURNAL_ENTER';
     public const string JOURNAL_VALIDATE = 'JOURNAL_VALIDATE';
+    public const string PAYROLL_READ = 'PAYROLL_READ';
+    public const string PAYROLL_SETTINGS = 'PAYROLL_SETTINGS';
+    public const string PAYROLL_ENTER = 'PAYROLL_ENTER';
 
     public function __construct(private readonly DossierVoter $dossiers, private readonly DossierRights $rights)
     {
@@ -43,7 +50,7 @@ final class DossierRightVoter extends Voter
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        return (self::SETTINGS === $attribute && $subject instanceof Dossier)
+        return (\in_array($attribute, [self::SETTINGS, self::PAYROLL_READ, self::PAYROLL_SETTINGS, self::PAYROLL_ENTER], true) && $subject instanceof Dossier)
             || (\in_array($attribute, [self::JOURNAL_READ, self::JOURNAL_ENTER, self::JOURNAL_VALIDATE], true) && $subject instanceof Journal);
     }
 
@@ -56,6 +63,8 @@ final class DossierRightVoter extends Voter
         $dossier = $subject instanceof Journal ? $subject->getDossier() : $subject;
         [$area, $wanted] = match ($attribute) {
             self::SETTINGS => [DossierArea::Settings, AccessLevel::Enter],
+            self::PAYROLL_READ => [DossierArea::Payroll, AccessLevel::Read],
+            self::PAYROLL_SETTINGS, self::PAYROLL_ENTER => [DossierArea::Payroll, AccessLevel::Enter],
             self::JOURNAL_READ => [null, AccessLevel::Read],
             self::JOURNAL_ENTER => [null, AccessLevel::Enter],
             default => [null, AccessLevel::Validate],

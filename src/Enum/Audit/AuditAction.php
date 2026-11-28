@@ -144,6 +144,33 @@ enum AuditAction: string
     /** A distribution withdrawn by a teacher: its dossiers deleted (their trails stay). */
     case DistributionWithdrawn = 'distribution.withdrawn';
 
+    /** The establishment of the payroll set (headcount, work accident and mobility rates, working time; step 4.1). */
+    case PayrollEstablishmentChanged = 'payroll.establishment_changed';
+
+    /** A collecting body created, changed or deleted. */
+    case PayrollBodyCreated = 'payroll.body_created';
+
+    case PayrollBodyChanged = 'payroll.body_changed';
+
+    case PayrollBodyDeleted = 'payroll.body_deleted';
+
+    /** The standard plan de paie installed in an empty plan. */
+    case PayrollPlanInstalled = 'payroll.plan_installed';
+
+    /** An item of the plan de paie created, changed or deleted. */
+    case PayrollItemCreated = 'payroll.item_created';
+
+    case PayrollItemChanged = 'payroll.item_changed';
+
+    case PayrollItemDeleted = 'payroll.item_deleted';
+
+    /** An employee created, changed (their contract's terms from a day on included) or deleted (step 4.2a). */
+    case EmployeeCreated = 'payroll.employee_created';
+
+    case EmployeeChanged = 'payroll.employee_changed';
+
+    case EmployeeDeleted = 'payroll.employee_deleted';
+
     public function label(): string
     {
         return match ($this) {
@@ -192,6 +219,17 @@ enum AuditAction: string
             self::DistributionCopyFailed => 'Copie d’une distribution en échec',
             self::DistributionCopyRetried => 'Copie d’une distribution relancée',
             self::DistributionWithdrawn => 'Distribution retirée',
+            self::PayrollEstablishmentChanged => 'Établissement de la paie modifié',
+            self::PayrollBodyCreated => 'Organisme social créé',
+            self::PayrollBodyChanged => 'Organisme social modifié',
+            self::PayrollBodyDeleted => 'Organisme social supprimé',
+            self::PayrollPlanInstalled => 'Plan de paie installé',
+            self::PayrollItemCreated => 'Rubrique de paie créée',
+            self::PayrollItemChanged => 'Rubrique de paie modifiée',
+            self::PayrollItemDeleted => 'Rubrique de paie supprimée',
+            self::EmployeeCreated => 'Salarié créé',
+            self::EmployeeChanged => 'Salarié modifié',
+            self::EmployeeDeleted => 'Salarié supprimé',
         };
     }
 }

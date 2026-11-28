@@ -12,7 +12,9 @@ use App\Enum\ThirdParty\ThirdPartyKind;
  * dossier a profile opens or closes. The journals go by their type; the dossier's settings - the
  * fiche société, the plan, the journals, the third parties, the entry templates and the
  * subscriptions - are one area, kept apart from the entries (segregation of duties, P1.7). The
- * modules of the later lots add their areas here, and ProfileMatrix gives each its levels.
+ * modules of the later lots add their areas here, and ProfileMatrix gives each its levels: « Paie
+ * et social » (step 4.1) is the payroll manager's, read by nobody else of the group but the chief
+ * accountant - salaries are not the accounts payable clerk's business.
  */
 enum DossierArea: string
 {
@@ -21,6 +23,7 @@ enum DossierArea: string
     case Treasury = 'treasury';
     case General = 'general';
     case Settings = 'settings';
+    case Payroll = 'payroll';
 
     public function label(): string
     {
@@ -30,6 +33,7 @@ enum DossierArea: string
             self::Treasury => 'Banque et caisse',
             self::General => 'Opérations diverses et à-nouveaux',
             self::Settings => 'Paramètres du dossier',
+            self::Payroll => 'Paie et social',
         };
     }
 
@@ -42,10 +46,11 @@ enum DossierArea: string
             self::Treasury => 'journaux de banque et de caisse',
             self::General => 'opérations diverses, à-nouveaux, lettrage des autres comptes',
             self::Settings => 'société, plan de comptes, journaux, tiers, modèles, abonnements',
+            self::Payroll => 'paramètres de paie : établissement, organismes, plan de paie',
         };
     }
 
-    /** The highest level it knows: the settings are changed, never validated. */
+    /** The highest level it knows: the settings are changed, never validated (a payslip is: step 4.4). */
     public function topLevel(): AccessLevel
     {
         return self::Settings === $this ? AccessLevel::Enter : AccessLevel::Validate;

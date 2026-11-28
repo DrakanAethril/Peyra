@@ -1,0 +1,217 @@
+{#
+ # The fiche of an employee (lot 4, step 4.2a, gabarit F): civil status, contract, the terms from a
+ # day on (« À compter du »: the day shown corrects its terms, another day starts new ones) and the
+ # withholding rate, saved with F10; then the history, one line per terms, each one opened with
+ # `?from=`. Whoever only reads the payroll sees the facts. Dates are the dossier's, never the
+ # computer's.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'employees' %}
+{% set can_edit = is_granted('PAYROLL_ENTER', dossier) %}
+{% set dossier_title = employee ? employee.fullName : 'Nouveau salarié' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+{% set editing_other = employee and shown_terms != current_terms %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ employee ? employee.registrationNumber ~ ' · ' ~ employee.fullName : 'Nouveau salarié' }}" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Salariés', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: employee ? employee.registrationNumber : 'Nouveau salarié', href: employee ? path('app_payroll_employee', {dossier: dossier.id, number: employee.registrationNumber}) : path('app_payroll_employee_new', {dossier: dossier.id})},
+    ]">
+        <twig:block name="badge">{% if employee %} <twig:Px:Badge :of="employee.contractType"/> <twig:Px:Badge :of="employee.stateAt(dossier.dossierDate)"/>{% endif %}</twig:block>
+        <twig:block name="actions">
+            {% if can_edit %}
+                {% if employee %}<twig:Px:ConfirmButton label="Supprimer le salarié" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="employee-delete"/>{% endif %}
+                <twig:Px:Button type="submit" variant="primary" form="employee-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">Le salarié n’est pas enregistré : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+    {% if collective_hours is null and can_edit %}
+        <twig:Px:Alert tone="warning">L’horaire collectif de l’établissement n’est pas renseigné : un salarié à temps plein le travaille. <a class="px-link" href="{{ path('app_payroll_establishment', {dossier: dossier.id}) }}">Renseigner l’établissement</a></twig:Px:Alert>
+    {% endif %}
+
+    {% if can_edit %}
+        <form method="post" action="{{ employee ? path('app_payroll_employee', {dossier: dossier.id, number: employee.registrationNumber, from: shown_terms.effectiveFrom|date('Y-m-d')}) : path('app_payroll_employee_new', {dossier: dossier.id}) }}" id="employee-form" novalidate data-controller="focus-error employee-contract">
+            <input type="hidden" name="_token" value="{{ csrf_token(employee ? 'employee-' ~ employee.id : 'employee-new-' ~ dossier.id) }}">
+            <div class="px-stack">
+                <twig:Px:Card title="État civil">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="registrationNumber" label="Matricule" :required="true" hint="S001, S002…" :error="draft.error('registrationNumber')">
+                            <twig:Px:Input id="registrationNumber" value="{{ draft.registrationNumber }}" :required="true" hint="1" :error="draft.error('registrationNumber')" class="px-u-code" maxlength="10" autocomplete="off" spellcheck="false" autofocus/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="lastName" label="Nom" :required="true" :error="draft.error('lastName')">
+                            <twig:Px:Input id="lastName" value="{{ draft.lastName }}" :required="true" :error="draft.error('lastName')" maxlength="80" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="firstName" label="Prénom" :required="true" :error="draft.error('firstName')">
+                            <twig:Px:Input id="firstName" value="{{ draft.firstName }}" :required="true" :error="draft.error('firstName')" maxlength="80" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="sex" label="Sexe" :required="true" :error="draft.error('sex')">
+                            <twig:Px:Select id="sex" placeholder="Choisir…" :options="sex_options" value="{{ draft.sex }}" :required="true" :error="draft.error('sex')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="birthDate" label="Date de naissance" :required="true" :error="draft.error('birthDate')">
+                            <twig:Px:DateInput id="birthDate" :reference="dossier.dossierDate" :value="draft.date('birthDate')" :required="true" :error="draft.error('birthDate')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="birthPlace" label="Lieu de naissance" hint="Commune et département : Montbrison (42)." :error="draft.error('birthPlace')">
+                            <twig:Px:Input id="birthPlace" value="{{ draft.birthPlace }}" hint="1" :error="draft.error('birthPlace')" maxlength="80" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="nationality" label="Nationalité" :required="true" :error="draft.error('nationality')">
+                            <twig:Px:Input id="nationality" value="{{ draft.nationality }}" :required="true" :error="draft.error('nationality')" maxlength="40" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="nir" label="N° de sécurité sociale" hint="15 caractères, fictif : sa clé n’est pas contrôlée." :error="draft.error('nir')">
+                            <twig:Px:Input id="nir" value="{{ draft.nirShown }}" hint="1" :error="draft.error('nir')" class="px-u-code" maxlength="21" autocomplete="off" spellcheck="false"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="street" label="Adresse" :wide="true" :error="draft.error('street')">
+                            <twig:Px:Input id="street" value="{{ draft.street }}" :error="draft.error('street')" maxlength="120" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="postalCode" label="Code postal" :error="draft.error('postalCode')">
+                            <twig:Px:Input id="postalCode" value="{{ draft.postalCode }}" :error="draft.error('postalCode')" maxlength="10" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="city" label="Ville" :error="draft.error('city')">
+                            <twig:Px:Input id="city" value="{{ draft.city }}" :error="draft.error('city')" maxlength="80" autocomplete="off"/>
+                        </twig:Px:Field>
+                    </div>
+                </twig:Px:Card>
+
+                <twig:Px:Card title="Contrat">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="contractType" label="Type de contrat" :required="true" :wide="true" :error="draft.error('contractType')">
+                            <twig:Px:Select id="contractType" placeholder="Choisir le contrat…" :options="contract_options" value="{{ draft.contractType }}" :required="true" :error="draft.error('contractType')" data-action="employee-contract#toggle"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="hiredOn" label="Date d’entrée" :required="true" :error="draft.error('hiredOn')">
+                            <twig:Px:DateInput id="hiredOn" :reference="dossier.dossierDate" :value="draft.date('hiredOn')" :required="true" :error="draft.error('hiredOn')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="contractEndsOn" label="Fin du contrat" :required="true" :error="draft.error('contractEndsOn')" data-employee-contract-target="field" data-when="contractType:fixed_term,apprenticeship">
+                            <twig:Px:DateInput id="contractEndsOn" :reference="dossier.dossierDate" :value="draft.date('contractEndsOn')" :error="draft.error('contractEndsOn')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="fixedTermReason" label="Motif de recours au CDD" :required="true" :wide="true" :error="draft.error('fixedTermReason')" data-employee-contract-target="field" data-when="contractType:fixed_term">
+                            <twig:Px:Input id="fixedTermReason" value="{{ draft.fixedTermReason }}" :error="draft.error('fixedTermReason')" maxlength="160" autocomplete="off" placeholder="Accroissement temporaire d’activité"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="diploma" label="Diplôme préparé" :required="true" :wide="true" :error="draft.error('diploma')" data-employee-contract-target="field" data-when="contractType:apprenticeship">
+                            <twig:Px:Input id="diploma" value="{{ draft.diploma }}" :error="draft.error('diploma')" maxlength="120" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="trainingCentre" label="Centre de formation (CFA)" :wide="true" :error="draft.error('trainingCentre')" data-employee-contract-target="field" data-when="contractType:apprenticeship">
+                            <twig:Px:Input id="trainingCentre" value="{{ draft.trainingCentre }}" :error="draft.error('trainingCentre')" maxlength="120" autocomplete="off"/>
+                        </twig:Px:Field>
+                    </div>
+                </twig:Px:Card>
+
+                <twig:Px:Card title="Conditions du contrat" meta="{{ employee ? (editing_other ? 'Conditions du ' ~ shown_terms.effectiveFrom|date_fr : 'En vigueur au ' ~ dossier.dossierDate|date_fr) : 'À l’embauche' }}">
+                    <div class="px-fieldgrid">
+                        {% if employee %}
+                            <twig:Px:Field id="termsFrom" label="À compter du" :required="true" hint="Le jour affiché corrige ces conditions ; un autre jour en ouvre de nouvelles dans l’historique." :error="draft.error('termsFrom')">
+                                <twig:Px:DateInput id="termsFrom" :reference="dossier.dossierDate" :value="draft.date('termsFrom')" :required="true" hint="1" :error="draft.error('termsFrom')"/>
+                            </twig:Px:Field>
+                        {% endif %}
+                        <twig:Px:Field id="jobTitle" label="Emploi" :required="true" :wide="true" :error="draft.error('jobTitle')">
+                            <twig:Px:Input id="jobTitle" value="{{ draft.jobTitle }}" :required="true" :error="draft.error('jobTitle')" maxlength="80" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="classification" label="Classification" :wide="true" hint="Aucune convention collective n’est appliquée : niveau interne." :error="draft.error('classification')">
+                            <twig:Px:Input id="classification" value="{{ draft.classification }}" hint="1" :error="draft.error('classification')" maxlength="120" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="status" label="Statut" :required="true" :error="draft.error('status')">
+                            <twig:Px:Select id="status" placeholder="Choisir…" :options="status_options" value="{{ draft.status }}" :required="true" :error="draft.error('status')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="workingTime" label="Temps de travail" :required="true" hint="{{ collective_hours ? 'Temps plein : ' ~ (collective_hours|hours) ~ ' par mois.' : '' }}" :error="draft.error('workingTime')">
+                            <twig:Px:Select id="workingTime" placeholder="Choisir…" :options="time_options" value="{{ draft.workingTime }}" :required="true" hint="{{ collective_hours ? '1' : '' }}" :error="draft.error('workingTime')" data-action="employee-contract#toggle"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="monthlyHours" label="Horaire mensuel" :required="true" hint="En heures : 104 pour 24 heures par semaine." :error="draft.error('monthlyHours')" data-employee-contract-target="field" data-when="workingTime:part_time">
+                            <twig:Px:Input id="monthlyHours" value="{{ draft.monthlyHours|replace({'.': ','}) }}" hint="1" :error="draft.error('monthlyHours')" class="px-u-num" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="baseSalary" label="Salaire de base mensuel" :required="true" :error="draft.error('baseSalary')">
+                            <twig:Px:AmountInput id="baseSalary" :value="draft.baseSalary" unit="€" :required="true" :error="draft.error('baseSalary')"/>
+                        </twig:Px:Field>
+                    </div>
+                    {% if shown_terms %}<p class="px-u-muted">Taux horaire : <span class="px-u-num">{{ shown_terms.hourlyRate|quantity(4) }}</span> € ({{ shown_terms.baseSalary|amount }} ÷ {{ shown_terms.monthlyHours|hours }}).</p>{% endif %}
+                </twig:Px:Card>
+
+                <twig:Px:Card title="Prélèvement à la source">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="withholdingRate" label="Taux transmis" hint="En %, celui du compte rendu de la DSN ; vide : le taux neutre s’applique." :error="draft.error('withholdingRate')">
+                            <twig:Px:Input id="withholdingRate" value="{{ draft.withholdingRate|replace({'.': ','}) }}" hint="1" :error="draft.error('withholdingRate')" class="px-u-num" autocomplete="off"/>
+                        </twig:Px:Field>
+                    </div>
+                </twig:Px:Card>
+            </div>
+        </form>
+        {% if employee %}
+            <form method="post" action="{{ path('app_payroll_employee_delete', {dossier: dossier.id, number: employee.registrationNumber}) }}" id="employee-delete" hidden>
+                <input type="hidden" name="_token" value="{{ csrf_token('employee-delete-' ~ employee.id) }}">
+            </form>
+        {% endif %}
+    {% else %}
+        {% set terms = shown_terms %}
+        <div class="px-split px-split--even">
+            <twig:Px:Card title="État civil et contrat">
+                <dl class="px-facts">
+                    <dt>Matricule</dt><dd class="px-u-code">{{ employee.registrationNumber }}</dd>
+                    <dt>Nom</dt><dd>{{ employee.sortName }} · {{ employee.sex.label }}</dd>
+                    <dt>Naissance</dt><dd>{{ employee.birthDate|date_fr }}{% if employee.birthPlace %} à {{ employee.birthPlace }}{% endif %} · {{ employee.nationality }}</dd>
+                    <dt>Sécurité sociale</dt><dd class="px-u-code">{{ draft.nirShown ?: '—' }}</dd>
+                    <dt>Adresse</dt><dd>{{ [employee.street, [employee.postalCode, employee.city]|filter(v => v)|join(' ')]|filter(v => v)|join(', ') ?: '—' }}</dd>
+                    <dt>Contrat</dt><dd>{{ employee.contractType.longLabel }}, entrée le {{ employee.hiredOn|date_fr }}{% if employee.contractEndsOn %}, fin le {{ employee.contractEndsOn|date_fr }}{% endif %}</dd>
+                    {% if employee.fixedTermReason %}<dt>Motif</dt><dd>{{ employee.fixedTermReason }}</dd>{% endif %}
+                    {% if employee.diploma %}<dt>Diplôme préparé</dt><dd>{{ employee.diploma }}{% if employee.trainingCentre %} · {{ employee.trainingCentre }}{% endif %}</dd>{% endif %}
+                </dl>
+            </twig:Px:Card>
+            <twig:Px:Card title="Conditions du contrat" meta="{{ editing_other ? 'Conditions du ' ~ terms.effectiveFrom|date_fr : 'En vigueur au ' ~ dossier.dossierDate|date_fr }}">
+                <dl class="px-facts">
+                    <dt>Emploi</dt><dd>{{ terms.jobTitle }}</dd>
+                    <dt>Classification</dt><dd>{{ terms.classification ?: '—' }}</dd>
+                    <dt>Statut</dt><dd>{{ terms.statusLabel }}</dd>
+                    <dt>Temps de travail</dt><dd>{{ terms.workingTime.label }}, {{ terms.monthlyHours|hours }} par mois</dd>
+                    <dt>Salaire de base</dt><dd class="px-u-num">{{ terms.baseSalary|amount_eur }}</dd>
+                    <dt>Taux horaire</dt><dd class="px-u-num">{{ terms.hourlyRate|quantity(4) }}</dd>
+                    <dt>Prélèvement à la source</dt><dd>{{ employee.withholdingRate is not null ? employee.withholdingRate|percent : 'Aucun taux transmis : taux neutre' }}</dd>
+                </dl>
+            </twig:Px:Card>
+        </div>
+    {% endif %}
+
+    {% if employee %}
+        <twig:Px:Card title="Historique" meta="{{ history|length }} {{ history|length > 1 ? 'conditions' : 'condition' }}" :flush="true">
+            <twig:Px:Table caption="Historique du contrat de {{ employee.fullName }}">
+                <thead>
+                    <tr>
+                        <th scope="col" class="px-u-num">À compter du</th>
+                        <th scope="col">Changements</th>
+                        <th scope="col">Emploi</th>
+                        <th scope="col" class="px-u-num">Salaire de base</th>
+                        <th scope="col">État</th>
+                        <th scope="col"><span class="px-u-sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in history %}
+                        {% set day = row.terms.effectiveFrom|date('Y-m-d') %}
+                        <tr{% if row.terms == shown_terms %} aria-current="true"{% endif %}>
+                            <td class="px-u-num"><a class="px-link" href="{{ path('app_payroll_employee', {dossier: dossier.id, number: employee.registrationNumber, from: day}) }}">{{ row.terms.effectiveFrom|date_fr }}</a></td>
+                            <td>{{ row.changes is empty ? 'Aucun changement' : row.changes|join(' · ') }}</td>
+                            <td>{{ row.terms.jobTitle }}</td>
+                            <td class="px-u-num">{{ row.terms.baseSalary|amount }}</td>
+                            <td>{% if row.when == 'current' %}<twig:Px:Badge tone="info" label="En vigueur"/>{% elseif row.when == 'upcoming' %}<twig:Px:Badge tone="warning" label="À venir"/>{% endif %}</td>
+                            <td>
+                                {% if can_edit and not loop.first %}
+                                    <twig:Px:ConfirmButton label="Supprimer" confirmLabel="Confirmer" size="sm" icon="trash-2" form="terms-delete-{{ row.terms.id }}"/>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+        {% if can_edit %}
+            {% for row in history|slice(1) %}
+                <form method="post" action="{{ path('app_payroll_employee_terms_delete', {dossier: dossier.id, number: employee.registrationNumber, from: row.terms.effectiveFrom|date('Y-m-d')}) }}" id="terms-delete-{{ row.terms.id }}" hidden>
+                    <input type="hidden" name="_token" value="{{ csrf_token('employee-terms-delete-' ~ row.terms.id) }}">
+                </form>
+            {% endfor %}
+        {% endif %}
+    {% endif %}
+{% endblock %}

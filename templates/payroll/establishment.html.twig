@@ -1,0 +1,80 @@
+{#
+ # Paie et social › Paramètres de paie › Établissement (lot 4, step 4.1, gabarit F): the SIRET and
+ # the APE code of the fiche société, then what the law leaves to each employer - the headcount
+ # the thresholds read, the work accident rate notified, the mobility payment rate, the collective
+ # working time. F10 saves.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set settings_current = 'establishment' %}
+{% set can_edit = is_granted('PAYROLL_SETTINGS', dossier) %}
+{% set dossier_title = 'Établissement' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Établissement" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Paramètres de paie', href: path('app_payroll_items', {dossier: dossier.id})},
+        {label: 'Établissement', href: path('app_payroll_establishment', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button type="submit" variant="primary" form="payroll-establishment-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('payroll/_settings_tabs.html.twig') }}
+
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">L’établissement n’est pas enregistré : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% elseif establishment is null %}
+        <twig:Px:Alert tone="info">L’établissement n’est pas encore renseigné : la paie lit son effectif et son taux d’accident du travail.</twig:Px:Alert>
+    {% endif %}
+
+    <div class="px-split px-split--even">
+        <twig:Px:Card title="Identification" meta="Fiche société">
+            <dl class="px-facts">
+                <dt>Raison sociale</dt><dd>{{ dossier.name }}</dd>
+                <dt>SIRET</dt><dd class="px-u-code">{{ dossier.company.siret }}</dd>
+                <dt>Code APE</dt><dd class="px-u-code">{{ dossier.company.nafCode ?: '—' }}</dd>
+                <dt>Adresse</dt><dd>{{ dossier.company.street }}, {{ dossier.company.postalCode }} {{ dossier.company.city }}</dd>
+            </dl>
+            {% if is_granted('DOSSIER_SETTINGS', dossier) %}<p><a class="px-link" href="{{ path('app_dossier_company', {dossier: dossier.id}) }}">Modifier la fiche société</a></p>{% endif %}
+        </twig:Px:Card>
+        {% if can_edit %}
+            <form method="post" action="{{ path('app_payroll_establishment', {dossier: dossier.id}) }}" id="payroll-establishment-form" novalidate data-controller="focus-error">
+                <input type="hidden" name="_token" value="{{ csrf_token('payroll-establishment-' ~ dossier.id) }}">
+                <twig:Px:Card title="Paie">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="headcount" label="Effectif moyen" :required="true" hint="Les seuils de 11, 20 et 50 salariés le lisent : 8,69." :error="draft.error('headcount')">
+                            <twig:Px:Input id="headcount" value="{{ draft.headcount }}" :required="true" hint="1" :error="draft.error('headcount')" class="px-u-num" autocomplete="off" autofocus/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="monthlyHours" label="Horaire collectif mensuel" :required="true" hint="En heures : 151,67 pour 35 heures par semaine." :error="draft.error('monthlyHours')">
+                            <twig:Px:Input id="monthlyHours" value="{{ draft.monthlyHours }}" :required="true" hint="1" :error="draft.error('monthlyHours')" class="px-u-num" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="workAccidentRate" label="Taux d’accident du travail" :required="true" hint="En %, notifié chaque année par la Carsat." :error="draft.error('workAccidentRate')">
+                            <twig:Px:Input id="workAccidentRate" value="{{ draft.workAccidentRate }}" :required="true" hint="1" :error="draft.error('workAccidentRate')" class="px-u-num" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="mobilityRate" label="Taux de versement mobilité" hint="En %, celui du territoire ; vide si aucun n’est dû." :error="draft.error('mobilityRate')">
+                            <twig:Px:Input id="mobilityRate" value="{{ draft.mobilityRate }}" hint="1" :error="draft.error('mobilityRate')" class="px-u-num" autocomplete="off"/>
+                        </twig:Px:Field>
+                    </div>
+                </twig:Px:Card>
+            </form>
+        {% else %}
+            <twig:Px:Card title="Paie">
+                {% if establishment %}
+                    <dl class="px-facts">
+                        <dt>Effectif moyen</dt><dd>{{ draft.headcount }}</dd>
+                        <dt>Horaire collectif mensuel</dt><dd>{{ draft.monthlyHours }} h</dd>
+                        <dt>Taux d’accident du travail</dt><dd>{{ draft.workAccidentRate }} %</dd>
+                        <dt>Taux de versement mobilité</dt><dd>{{ draft.mobilityRate ? draft.mobilityRate ~ ' %' : 'non dû' }}</dd>
+                    </dl>
+                {% else %}
+                    <twig:Px:Empty icon="building-2" title="Pas encore renseigné"/>
+                {% endif %}
+            </twig:Px:Card>
+        {% endif %}
+    </div>
+{% endblock %}

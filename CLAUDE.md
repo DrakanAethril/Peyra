@@ -101,7 +101,7 @@ Application commands (`src/Command/`). **Three are scheduled** (`app:restore-poi
 | `app:regulatory:sync [--dry-run]` | Installs the millésime files `config/regulatory/<année>.yaml`; only ever adds rows, never over an administrator's value. **Every deploy runs it** |
 | `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
-| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, the first quarter in every journal with drafts at the end of March, seven entry templates, two subscriptions, three suppliers lettered; date 31/03/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
+| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, the first quarter in every journal with drafts at the end of March, seven entry templates, two subscriptions, three suppliers lettered, the payroll settings and eleven employees; date 31/03/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
 | `app:dev:dossiers` | **Development and test only.** Distributes Menuiserie Vasseur (the common library's template, installed first if missing) to each class of the current year - every student who holds no copy of it yet -, then as one shared dossier to `ines.morel` (Comptable fournisseurs), `theo.garnier` (Comptable clients) and `chloe.fabre` (Chef comptable) when enrolled in one class; the copies are made at once. Sign the students in first: their first sign-in places them |
 | `app:distribution:advance` | **Scheduled every minute.** Makes the dossiers of the distributions a request left waiting (a worker restarted), one copy per pass under its own lock; usually finds nothing |
 | `app:fec-import:advance` | **Scheduled every minute.** Runs the passes of the FEC imports a request left (the page's 12 s budget, a worker restarted); a pass that fails stops its import, never retried on its own |
@@ -1084,6 +1084,38 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   the working member's for a group's - else « Avertissements ». The missions (2.9) slot theirs in
   between.
 
+## Payroll settings (built at step 4.1)
+
+- **Paie et social › Paramètres de paie** (`/d/{dossier}/payroll/items|bodies|establishment`,
+  `App\Controller\Payroll\*`): the plan de paie (`PayrollItem`, « rubriques »: family, base,
+  ceiling, a `PayrollRate` per side, conditions on status, headcount and bracket, the body and the
+  `PayslipLine` of the clarified payslip a contribution is summed under), the collecting bodies
+  (`PayrollBody`) and the establishment (`PayrollEstablishment`: headcount, work accident and
+  mobility rates, working time). `PayrollItemRules` is pure; `PayrollItemSheet` adds the code, the
+  body and **a regulatory value that reads at the dossier's date** - a rate the law fixes is never
+  written in a rubrique, it names its key and path (`social.agirc_arrco.ceg`, `0.employee_rate`).
+- **The standard plan is data**, `fixtures/payroll/standard-plan.yaml` (48 rubriques), installed by
+  `PayrollPlanInstaller` into an empty plan; `StandardPayrollPlanTest` reads every value it names
+  from `config/regulatory/2025.yaml` and `2026.yaml`. 2025's maladie and famille carry their full
+  rate under `employer_rate`, like 2026, the reduced one beside it for the engine.
+- **The area « Paie et social »** of `ProfileMatrix`: the payroll manager's and the chief
+  accountant's, closed to the two accountants; screens ask `DossierRightVoter::PAYROLL_READ` (the
+  rail hides the entry) and `PAYROLL_SETTINGS`.
+
+## Employees (built at step 4.2a)
+
+- **Paie et social › Salariés** (`/d/{dossier}/payroll/employees[/{matricule}]`, the rail's entry):
+  `Employee` (civil status, NIR, contract type and dates, withholding rate; null = neutral rate) and
+  **`EmploymentTerms`, dated**: job, classification, status, working time, monthly hours, base
+  salary from a day on. The first terms start on the day of hire and follow it; each change is a
+  row from its own day (UNIQUE employee + day), and the rows are the history. **Read the terms in
+  force with `Employee::termsAt($day)`**, never the latest row; the hourly rate is read (salary ÷
+  hours), never stored. Full time works the establishment's collective hours.
+- `EmployeeRules` is pure; `EmployeeSheet` the one door (fiche, demonstration), audit trail
+  included; « À compter du » = the day shown corrects, another day adds a row. A NIR's format and
+  its agreement with sex and birth are checked, **never its key** (fictitious, key « 00 »).
+  Writes ask `DossierRightVoter::PAYROLL_ENTER`. `fixtures/demo/employees.yaml`: S001-S011.
+
 ## Cross-cutting building blocks (built at step 0.6a)
 
 Reach for these rather than re-implement them; each has its test.
@@ -1150,8 +1182,8 @@ Reach for these rather than re-implement them; each has its test.
   default. No rate is written in the code (lots 3 and 4).
 - **The millésime files** `config/regulatory/<année>.yaml` follow the prepared data's schema (plan,
   `donnees/reglementaire/LISEZ-MOI.md`); `RegulatoryFile` checks a file whole and names every fault.
-  2025 and 2026 ship **empty**: the fiscal values arrive at lot 3, the social ones at lot 4, from the
-  prepared data (whose `social-2026.yaml` needs one flow mapping quoted to be Symfony YAML).
+  The social values of 2025 and 2026 are in (step 4.1, from the prepared data); the fiscal ones
+  arrive at lot 3.
   `app:regulatory:sync` (`RegulatorySync`) only ever adds rows: what is missing, what a file changed
   (the older row kept), never over an administrator's value (reported « conservée »); a stable rule
   both files carry word for word is written once; one fault anywhere installs nothing.
