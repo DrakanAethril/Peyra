@@ -1,0 +1,46 @@
+/*
+ * Bibliothèque › Dossiers modèles: a template's card in the grid of « Mes dossiers » (the
+ * description under its facts, the processes' codes), the actions of a share's row, the two
+ * starts of « Nouveau dossier modèle » side by side, the récapitulatif before a deletion.
+ */
+@layer px.components {
+    .px-templatecard {
+        & .px-card__body {
+            align-content: start;
+        }
+
+        & abbr {
+            text-decoration: none;
+            font-variant-numeric: tabular-nums;
+        }
+    }
+
+    .px-templatecard__text {
+        margin: 0;
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+    }
+
+    .px-templateshares__actions {
+        justify-content: flex-end;
+        flex-wrap: nowrap;
+    }
+
+    .px-starts {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: var(--px-gap);
+        align-items: start;
+    }
+
+    .px-recap {
+        margin: 0;
+        padding-left: var(--px-space-16);
+        display: grid;
+        gap: var(--px-space-4);
+
+        & b {
+            font-variant-numeric: tabular-nums;
+        }
+    }
+}

@@ -48,6 +48,7 @@ final class S3BucketPolicyTest extends TestCase
         'CopyObject' => ['s3:GetObject', 's3:PutObject'],
         'ListObjectsV2' => ['s3:ListBucket'],
         'DeleteObject' => ['s3:DeleteObject'],
+        'DeleteObjects' => ['s3:DeleteObject'],
     ];
 
     /**
@@ -57,11 +58,10 @@ final class S3BucketPolicyTest extends TestCase
      * @var array<string, string>
      */
     private const array GRANTED_AHEAD = [
-        's3:DeleteObject' => 'the plan (step 0.8) names deletion among the storage\'s gestures: a draft\'s pièce removed, lots 1-2; on the versioned bucket it leaves a recoverable version',
     ];
 
     /** The public methods of DossierFiles this test plays; one more fails the test until played. */
-    private const array PLAYED = ['prefix', 'storeUpload', 'storeContents', 'read', 'readStream', 'exists', 'size', 'copyAll', 'owned'];
+    private const array PLAYED = ['prefix', 'storeUpload', 'storeContents', 'read', 'readStream', 'exists', 'size', 'copyAll', 'deleteAll', 'owned'];
 
     /** @var list<array{operation: string, key: ?string, prefix: ?string, copySource: ?string, acl: ?string, aclHeader: string}> */
     private array $sent = [];
@@ -193,6 +193,7 @@ final class S3BucketPolicyTest extends TestCase
         $files->exists(7, $key);
         $files->size(7, $key);
         self::assertSame(['dossiers/7/pieces/0123456789abcdef0123456789abcdef.pdf' => 'dossiers/8/pieces/0123456789abcdef0123456789abcdef.pdf'], $files->copyAll(7, 8));
+        self::assertSame(1, $files->deleteAll(7));
     }
 
     private function answer(CommandInterface $command, ?RequestInterface $request, string $prefix): PromiseInterface

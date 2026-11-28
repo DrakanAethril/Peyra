@@ -1,0 +1,24 @@
+{#
+ # One template of the library as a card (`template_card`, a TemplateCard): its title and its
+ # exercise, where it sits for this teacher, the company, the year and processes it is for, how
+ # often it was handed out; « Ouvrir » enters it, the title leads to its fiche.
+ #}
+{% set template = template_card.template %}
+<twig:Px:Card title="{{ template.libraryTitle }}" meta="{{ template_card.exercise ? 'Exercice ' ~ template_card.exercise.code : 'Hors exercice' }}" class="px-templatecard">
+    <twig:block name="actions">
+        {% if template_card.shelf.value == 'common' %}<twig:Px:Badge tone="warning" label="Fourni"/>{% elseif template_card.shelf.value == 'shared' %}<twig:Px:Badge tone="info" label="{{ template_card.sharedForChange ? 'Partagé · modification' : 'Partagé · lecture' }}"/>{% endif %}
+    </twig:block>
+    <dl class="px-facts">
+        <dt>Société</dt><dd>{{ template.name }}</dd>
+        <dt>Auteur</dt><dd>{{ template.owner ? template.owner.displayName : 'Bibliothèque commune' }}</dd>
+        <dt>Niveau</dt><dd>{{ template.libraryLevel ? template.libraryLevel.label : '—' }}</dd>
+        <dt>Processus</dt><dd>{% for process in template.libraryProcesses %}<abbr title="{{ process.label }}">{{ process.value }}</abbr>{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</dd>
+        <dt>Date du dossier</dt><dd>{{ template.dossierDate|date_chip }}</dd>
+        <dt>Utilisations</dt><dd>{{ template_card.copies > 0 ? template_card.copies ~ (template_card.copies > 1 ? ' dossiers distribués' : ' dossier distribué') : 'jamais distribué' }}{% if template_card.shelf.value == 'mine' and template_card.shares > 0 %} · partagé avec {{ template_card.shares }} {{ template_card.shares > 1 ? 'collègues' : 'collègue' }}{% endif %}</dd>
+    </dl>
+    {% if template.libraryDescription %}<p class="px-templatecard__text">{{ template.libraryDescription|length > 160 ? template.libraryDescription|slice(0, 159)|trim ~ '…' : template.libraryDescription }}</p>{% endif %}
+    <twig:block name="foot">
+        <twig:Px:Button variant="secondary" size="sm" href="{{ path('app_library_template', {dossier: template.id}) }}" icon="info">Fiche</twig:Px:Button>
+        <twig:Px:Button variant="primary" size="sm" href="{{ path('app_dossier_dashboard', {dossier: template.id}) }}" icon="folder-open">Ouvrir</twig:Px:Button>
+    </twig:block>
+</twig:Px:Card>

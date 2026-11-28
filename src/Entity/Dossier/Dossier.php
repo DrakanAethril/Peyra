@@ -7,6 +7,8 @@ namespace App\Entity\Dossier;
 use App\Entity\Identity\SchoolYear;
 use App\Entity\Identity\User;
 use App\Enum\Dossier\DossierKind;
+use App\Enum\Dossier\TemplateLevel;
+use App\Enum\Shared\BtsProcess;
 use App\Repository\Dossier\DossierRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -90,6 +92,24 @@ class Dossier
     /** The last time its student (or a member of its group) opened it: « dernier passage ». */
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $lastVisitedAt = null;
+
+    /**
+     * A template's card in the library (lot 1, step 1.8): its title (« Vasseur, à-nouveaux 2026 »,
+     * the company's name when empty), what it is for, the year it is written for and the processes
+     * of the référentiel it covers. Kept on the other kinds as it was copied, never shown there.
+     */
+    #[ORM\Column(length: 120, nullable: true)]
+    private ?string $libraryTitle = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $libraryDescription = null;
+
+    #[ORM\Column(length: 8, nullable: true, enumType: TemplateLevel::class)]
+    private ?TemplateLevel $libraryLevel = null;
+
+    /** @var list<string> BtsProcess values, in the référentiel's order */
+    #[ORM\Column(type: Types::JSON)]
+    private array $libraryProcesses = [];
 
     public function __construct(DossierKind $kind, Company $company, \DateTimeImmutable $dossierDate, ?User $owner, ?SchoolYear $schoolYear, \DateTimeImmutable $createdAt, ?User $createdBy)
     {
@@ -214,6 +234,64 @@ class Dossier
     public function usesChart(string $code): void
     {
         $this->chartCode = $code;
+    }
+
+    /**
+     * What a copy carries of the dossier's own row (App\Service\Dossier\Copy\DossierCopier): the
+     * company's fiche and the chart its plan came from. Never its kind, owner, year, origin, date
+     * nor its library card: those say what the copy is, not what it holds.
+     */
+    public function takeContentOf(self $source): void
+    {
+        $this->company = $source->company;
+        $this->chartCode = $source->chartCode;
+    }
+
+    /** The card's title, or the company's name when it has none. */
+    public function getLibraryTitle(): string
+    {
+        return $this->libraryTitle ?? $this->company->getName();
+    }
+
+    public function hasOwnLibraryTitle(): bool
+    {
+        return null !== $this->libraryTitle;
+    }
+
+    public function getLibraryDescription(): ?string
+    {
+        return $this->libraryDescription;
+    }
+
+    public function getLibraryLevel(): ?TemplateLevel
+    {
+        return $this->libraryLevel;
+    }
+
+    /** @return list<BtsProcess> */
+    public function getLibraryProcesses(): array
+    {
+        $processes = [];
+        foreach (BtsProcess::cases() as $process) {
+            if (\in_array($process->value, $this->libraryProcesses, true)) {
+                $processes[] = $process;
+            }
+        }
+
+        return $processes;
+    }
+
+    /**
+     * App\Service\Dossier\Library\TemplateCards is the caller, once it checked the card.
+     *
+     * @param list<BtsProcess> $processes
+     */
+    public function describeInLibrary(?string $title, ?string $description, ?TemplateLevel $level, array $processes): void
+    {
+        $this->libraryTitle = $title;
+        $this->libraryDescription = $description;
+        $this->libraryLevel = $level;
+        $this->libraryProcesses = array_values(array_map(static fn (BtsProcess $process): string => $process->value, array_filter(BtsProcess::cases(), static fn (BtsProcess $process): bool => \in_array($process, $processes, true))));
     }
 
     public function getLastVisitedAt(): ?\DateTimeImmutable

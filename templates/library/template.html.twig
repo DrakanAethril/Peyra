@@ -1,0 +1,92 @@
+{#
+ # A template's fiche in the library (design-ux.md § 3.3, gabarit F): its card (title, level,
+ # processes, description; F10 for whoever may change it, read otherwise), what it holds, and its
+ # shares for its author. Actions: Supprimer (author; administrators for the common library),
+ # Dupliquer, Ouvrir le dossier, Enregistrer.
+ #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'templates' %}
+{% set library_title = dossier.libraryTitle %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set can_share = is_granted('TEMPLATE_SHARE', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ dossier.libraryTitle }}" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Dossiers modèles', href: path('app_library')},
+        {label: dossier.libraryTitle, href: path('app_library_template', {dossier: dossier.id})},
+    ]">
+        <twig:block name="badge"> <twig:Px:Badge tone="{{ card.shelf.value == 'common' ? 'warning' : (card.shelf.value == 'shared' ? 'info' : 'neutral') }}" label="{{ card.shelf.value == 'common' ? 'Fourni' : (card.shelf.value == 'shared' ? (card.sharedForChange ? 'Partagé · modification' : 'Partagé · lecture') : 'Mon modèle') }}"/></twig:block>
+        <twig:block name="actions">
+            {% if is_granted('TEMPLATE_DELETE', dossier) %}<twig:Px:Button variant="quiet" href="{{ path('app_library_delete', {dossier: dossier.id}) }}" icon="trash-2">Supprimer</twig:Px:Button>{% endif %}
+            <twig:Px:Button type="submit" icon="copy" form="template-duplicate">Dupliquer</twig:Px:Button>
+            <twig:Px:Button href="{{ path('app_dossier_dashboard', {dossier: dossier.id}) }}" icon="folder-open" variant="{{ can_edit ? 'secondary' : 'primary' }}">Ouvrir le dossier</twig:Px:Button>
+            {% if can_edit %}<twig:Px:Button type="submit" variant="primary" form="template-card" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <div class="px-split">
+        <div class="px-stack">
+            {% if can_edit %}
+                <form method="post" action="{{ path('app_library_template', {dossier: dossier.id}) }}" id="template-card" class="px-stack" novalidate data-controller="focus-error">
+                    <input type="hidden" name="_token" value="{{ csrf_token('library-card-' ~ dossier.id) }}">
+                    {% if draft.errors is not empty %}
+                        <twig:Px:Alert tone="danger">La fiche n’est pas enregistrée : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+                    {% endif %}
+                    <twig:Px:Card title="Fiche du modèle" meta="ce que les collègues lisent dans la bibliothèque">
+                        <div class="px-fieldgrid">
+                            <twig:Px:Field id="title" label="Titre" :wide="true" hint="Vide : le nom de la société, {{ dossier.name }}." :error="draft.error('title')">
+                                <twig:Px:Input id="title" value="{{ draft.title }}" hint="1" :error="draft.error('title')" placeholder="{{ dossier.name }}" autocomplete="off" maxlength="120"/>
+                            </twig:Px:Field>
+                            <twig:Px:Field id="level" label="Niveau visé" :error="draft.error('level')">
+                                <twig:Px:Select id="level" placeholder="Non précisé" :options="levels" value="{{ draft.level }}" :error="draft.error('level')"/>
+                            </twig:Px:Field>
+                            <twig:Px:CheckGroup legend="Processus couverts" name="processes" class="px-fieldgrid__full" :error="draft.error('processes')" :options="processes|map(p => {value: p.value, label: p.value ~ ' · ' ~ p.label, checked: p.value in draft.processes})"/>
+                            <twig:Px:Field id="description" label="Description" class="px-fieldgrid__full" hint="Ce que le dossier contient et ce qu’on y fait travailler." :error="draft.error('description')">
+                                <twig:Px:Input id="description" :area="true" value="{{ draft.description }}" hint="1" :error="draft.error('description')" rows="5"/>
+                            </twig:Px:Field>
+                        </div>
+                    </twig:Px:Card>
+                </form>
+            {% else %}
+                <twig:Px:Card title="Fiche du modèle" meta="{{ card.shelf.value == 'common' ? 'tenue par les administrateurs' : 'tenue par ' ~ dossier.owner.displayName }}">
+                    <dl class="px-facts">
+                        <dt>Niveau visé</dt><dd>{{ dossier.libraryLevel ? dossier.libraryLevel.label : 'Non précisé' }}</dd>
+                        <dt>Processus</dt><dd>{% for process in dossier.libraryProcesses %}{{ process.value }} · {{ process.label }}{% if not loop.last %}<br>{% endif %}{% else %}Non précisés{% endfor %}</dd>
+                        <dt>Description</dt><dd>{{ dossier.libraryDescription ?? 'Aucune description.' }}</dd>
+                    </dl>
+                </twig:Px:Card>
+            {% endif %}
+        </div>
+
+        <div class="px-stack">
+            <twig:Px:Card title="Contenu" meta="{{ card.exercise ? 'exercice ' ~ card.exercise.code : 'hors exercice' }}">
+                <dl class="px-facts">
+                    <dt>Société</dt><dd>{{ dossier.name }} · {{ dossier.company.city }}</dd>
+                    <dt>Auteur</dt><dd>{{ dossier.owner ? dossier.owner.displayName : 'Bibliothèque commune' }}</dd>
+                    <dt>Date du dossier</dt><dd>{{ dossier.dossierDate|date_chip }}</dd>
+                    <dt>Plan de comptes</dt><dd>{{ contents.accounts }} comptes{% if dossier.chartCode %} · {{ dossier.chartCode|upper|replace({'-': ' '}) }}{% endif %}</dd>
+                    <dt>Journaux · tiers</dt><dd>{{ contents.journals }} journaux · {{ contents.thirdParties }} tiers</dd>
+                    <dt>Écritures</dt><dd>{{ contents.validated }} validées · {{ contents.drafts }} au brouillard</dd>
+                    <dt>Modèles d’écriture</dt><dd>{{ contents.entryTemplates }} modèles · {{ contents.subscriptions }} abonnements</dd>
+                    <dt>Utilisations</dt><dd>{{ card.copies > 0 ? card.copies ~ (card.copies > 1 ? ' dossiers distribués' : ' dossier distribué') : 'jamais distribué' }}</dd>
+                    {% if dossier.sourceTemplate %}<dt>Origine</dt><dd>copie de « {{ dossier.sourceTemplate.libraryTitle }} »</dd>{% endif %}
+                </dl>
+            </twig:Px:Card>
+
+            {% if can_share %}
+                {{ include('library/_shares.html.twig') }}
+            {% endif %}
+        </div>
+    </div>
+
+    <form method="post" action="{{ path('app_library_duplicate', {dossier: dossier.id}) }}" id="template-duplicate" hidden>
+        <input type="hidden" name="_token" value="{{ csrf_token('library-duplicate-' ~ dossier.id) }}">
+    </form>
+{% endblock %}
+
+{% block facts %}<span>Modèle · <b>{{ dossier.libraryTitle }}</b></span><span>Date du dossier · <b>{{ dossier.dossierDate|date_fr }}</b></span>{% endblock %}

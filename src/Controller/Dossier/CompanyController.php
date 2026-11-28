@@ -11,7 +11,6 @@ use App\Repository\Dossier\PeriodRepository;
 use App\Security\Voter\DossierRightVoter;
 use App\Service\Dossier\CompanyDraft;
 use App\Service\Dossier\CompanySheet;
-use App\Service\Shared\PostValue;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -38,19 +37,7 @@ final class CompanyController extends AbstractController
             if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier) || !$this->isCsrfTokenValid('dossier-company-'.$dossier->getId(), $request->request->getString('_token'))) {
                 throw new NotFoundHttpException('Not yours to change.');
             }
-            $draft->denomination = PostValue::trimmed($request, 'denomination');
-            $draft->legalForm = PostValue::trimmed($request, 'legalForm');
-            $draft->siret = PostValue::trimmed($request, 'siret');
-            $draft->vatNumber = PostValue::trimmed($request, 'vatNumber');
-            $draft->nafCode = PostValue::trimmed($request, 'nafCode');
-            $draft->activity = PostValue::trimmed($request, 'activity');
-            $draft->street = PostValue::trimmed($request, 'street');
-            $draft->street2 = PostValue::trimmed($request, 'street2');
-            $draft->postalCode = PostValue::trimmed($request, 'postalCode');
-            $draft->city = PostValue::trimmed($request, 'city');
-            $draft->vatRegime = PostValue::trimmed($request, 'vatRegime');
-            $draft->profitTaxRegime = PostValue::trimmed($request, 'profitTaxRegime');
-            $draft->capitalCents = PostValue::cents($request, 'capital');
+            $draft = CompanyDraft::fromRequest($request);
             $company = $sheet->check($draft);
             if (null !== $company) {
                 $changed = $sheet->save($dossier, $company, $me);

@@ -9,8 +9,8 @@ use App\Repository\Dossier\DossierShareRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * A template its author shares with a colleague (conception § 4, « lecture ou modification »). The
- * library screens that write it come with step 1.8; DossierVoter reads it now. Like a member, a
+ * A template its author shares with a colleague (conception § 4, « lecture ou modification »),
+ * written by App\Service\Dossier\Library\TemplateShares and read by DossierVoter. Like a member, a
  * share says who enters, not what the dossier holds: global, never copied.
  */
 #[ORM\Entity(repositoryClass: DossierShareRepository::class)]
@@ -67,6 +67,12 @@ class DossierShare
     public function canEdit(): bool
     {
         return $this->canEdit;
+    }
+
+    /** Through App\Service\Dossier\Library\TemplateShares, which records it in the template's trail. */
+    public function changeRight(bool $canEdit): void
+    {
+        $this->canEdit = $canEdit;
     }
 
     public function getSharedAt(): \DateTimeImmutable

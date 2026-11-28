@@ -1,0 +1,50 @@
+{#
+ # Bibliothèque › Nouveau dossier modèle, first step (design-ux.md § 3.3, gabarit E): an empty
+ # dossier (its company, exercise and plan come next), or the copy of a template the teacher reads,
+ # made at once under the title they give.
+ #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'templates' %}
+{% set library_title = 'Nouveau dossier modèle' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Nouveau dossier modèle" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Dossiers modèles', href: path('app_library')},
+        {label: 'Nouveau dossier modèle', href: path('app_library_new')},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Stepper label="Étapes du nouveau dossier modèle" :steps="[
+        {label: 'Départ', href: path('app_library_new'), state: 'current'},
+        {label: 'Société, exercice et plan'},
+    ]"/>
+
+    <div class="px-starts">
+        <twig:Px:Card title="Partir d’un dossier vide" meta="société, exercice, plan">
+            <p class="px-u-muted">Vous décrivez la société et son premier exercice ; le plan de comptes de référence et cinq journaux (achats, ventes, banque, opérations diverses, à-nouveaux) sont posés pour vous. Vous saisissez ensuite le dossier comme un étudiant.</p>
+            <twig:block name="foot"><twig:Px:Button variant="primary" href="{{ path('app_library_new_empty') }}" icon="chevron-right">Continuer</twig:Px:Button></twig:block>
+        </twig:Px:Card>
+
+        <twig:Px:Card title="Copier un modèle existant" meta="tout son contenu">
+            {% if templates is empty %}
+                <twig:Px:Empty icon="book-copy" title="Aucun modèle à copier" text="Aucun modèle de la bibliothèque ne vous est ouvert pour l’instant."/>
+            {% else %}
+                <form method="post" action="{{ path('app_library_new') }}" id="library-copy" class="px-stack" novalidate data-controller="focus-error">
+                    <input type="hidden" name="_token" value="{{ csrf_token('library-new-copy') }}">
+                    <twig:Px:Field id="template" label="Modèle à copier" :required="true" :error="error">
+                        <twig:Px:Select id="template" placeholder="Choisir un modèle…" :options="templates" value="{{ chosen }}" :required="true" :error="error"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="title" label="Titre de la copie" hint="Vide : le titre du modèle suivi de « (copie) ».">
+                        <twig:Px:Input id="title" value="{{ title }}" hint="1" maxlength="120" autocomplete="off"/>
+                    </twig:Px:Field>
+                </form>
+            {% endif %}
+            <twig:block name="foot">{% if templates is not empty %}<twig:Px:Button type="submit" variant="primary" form="library-copy" icon="copy">Copier le modèle</twig:Px:Button>{% endif %}</twig:block>
+        </twig:Px:Card>
+    </div>
+{% endblock %}
+
+{% block facts %}<span>Étape · <b>1 sur 2</b></span>{% endblock %}
