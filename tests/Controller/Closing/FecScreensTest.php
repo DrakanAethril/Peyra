@@ -62,7 +62,8 @@ final class FecScreensTest extends WebTestCase
         self::assertSelectorTextContains('main', 'L’exercice n’est pas clos');
         self::assertSelectorNotExists('main tr.is-error');
         self::assertSelectorExists('a[href="/d/'.$dossier->getId().'/closing/fec/download?exercise=2026"]');
-        self::assertSelectorExists('.px-rail a[href="/d/'.$dossier->getId().'/closing/fec"][aria-current="page"]');
+        // The rail's entry opens the module on its fixed assets (step 3.4) and stays lit on the FEC.
+        self::assertSelectorExists('.px-rail a[href="/d/'.$dossier->getId().'/assets"][aria-current="page"]');
 
         // An exercise the dossier does not have: the one of its date.
         $client->request('GET', '/d/'.$dossier->getId().'/closing/fec?exercise=1999');
