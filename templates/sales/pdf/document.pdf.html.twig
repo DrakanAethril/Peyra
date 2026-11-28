@@ -1,0 +1,141 @@
+{#
+ # A commercial document on the company's own paper (step 2.3): a quote, an order confirmation, a
+ # delivery note (quantities, no prices), an invoice or a credit note. The customer is the one frozen
+ # at the validation; a draft prints « Brouillon » in place of its number. An invoice carries the
+ # mentions of article L441-9 of the Code de commerce (due date, terms, late penalties, the 40 €
+ # recovery fee). Variables: company (Company), document (SalesDocument), customer
+ # ({name, lines, siren, vatNumber}), totals (SalesTotals).
+ #}
+{% extends 'doc/_document.html.twig' %}
+
+{% set type = document.type %}
+{% set prices = type.printsPrices %}
+
+{% block title %}{{ type.label }} {{ document.number ?? 'brouillon' }} · {{ company.name }}{% endblock %}
+
+{% block page_style %}
+    <style>
+        .sd { display: flex; flex-direction: column; gap: 6mm; }
+        .sd h1, .sd p { margin: 0; }
+        .sd__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8mm; }
+        .sd__name { font-family: "Spectral", Georgia, serif; font-size: 14pt; font-weight: 600; color: #12344d; }
+        .sd__small { font-size: 8pt; color: #4a5562; }
+        .sd__title { font-family: "Spectral", Georgia, serif; font-size: 18pt; font-weight: 600; letter-spacing: .05em; color: #12344d; text-align: right; }
+        .sd__meta { display: grid; grid-template-columns: auto auto; gap: 1mm 4mm; justify-content: end; font-size: 9pt; }
+        .sd__meta dt { color: #4a5562; text-align: right; }
+        .sd__meta dd { margin: 0; font-weight: 600; }
+        .sd__to { align-self: flex-end; width: 80mm; padding: 3mm 4mm; border: .3mm solid #b8c0c8; }
+        .sd__to b { display: block; font-size: 10pt; }
+        .sd__label { display: block; margin-bottom: 1mm; font-size: 7.5pt; text-transform: uppercase; letter-spacing: .08em; color: #4a5562; }
+        .sd table { width: 100%; border-collapse: collapse; }
+        .sd th, .sd td { padding: 1.6mm 2mm; text-align: left; vertical-align: top; }
+        .sd th { font-size: 8pt; font-weight: 600; }
+        .sd .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .sd__lines thead th { border-bottom: .4mm solid #12344d; }
+        .sd__lines tbody td { border-bottom: .2mm solid #d5dae0; }
+        .sd__bottom { display: flex; justify-content: space-between; gap: 8mm; align-items: flex-start; }
+        .sd__vat { width: 85mm; }
+        .sd__vat th { border-bottom: .2mm solid #8a95a1; }
+        .sd__totals { width: 70mm; }
+        .sd__totals td { border-bottom: .2mm solid #d5dae0; }
+        .sd__totals tr:last-child td { border-bottom: 0; font-weight: 700; font-size: 11pt; color: #12344d; }
+        .sd__terms { font-size: 8pt; color: #303a45; border-top: .2mm solid #d5dae0; padding-top: 3mm; display: flex; flex-direction: column; gap: 1mm; }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <article class="sd">
+        <header class="sd__head">
+            <div>
+                <p class="sd__name">{{ company.name }}</p>
+                <div class="sd__small">
+                    <p>{{ company.street }}</p>
+                    {% if company.street2 %}<p>{{ company.street2 }}</p>{% endif %}
+                    <p>{{ company.postalCode }} {{ company.city }}</p>
+                    <p>{{ company.legalForm.shortName }} au capital de {{ company.capital|amount_eur }} · SIRET {{ company.siret }}</p>
+                    {% if company.vatNumber %}<p>TVA intracommunautaire {{ company.vatNumber }}</p>{% endif %}
+                </div>
+            </div>
+            <div>
+                <h1 class="sd__title">{{ type.title }}</h1>
+                <dl class="sd__meta">
+                    <dt>Numéro</dt><dd>{{ document.number ?? 'Brouillon' }}</dd>
+                    <dt>Date</dt><dd>{{ document.date|date_fr }}</dd>
+                    {% if document.source %}<dt>{{ type.value == 'credit_note' ? 'Facture corrigée' : 'Suite de' }}</dt><dd>{{ document.source.number }}</dd>{% endif %}
+                    {% if document.reference %}<dt>Votre référence</dt><dd>{{ document.reference }}</dd>{% endif %}
+                </dl>
+            </div>
+        </header>
+
+        <section class="sd__to">
+            <span class="sd__label">{{ type.value == 'delivery' ? 'Livré à' : (type.invoicing ? 'Facturé à' : 'Client') }}</span>
+            <b>{{ customer.name }}</b>
+            {% for line in customer.lines %}<p>{{ line }}</p>{% endfor %}
+            {% if customer.siren %}<p class="sd__small">SIREN {{ customer.siren }}</p>{% endif %}
+            {% if customer.vatNumber %}<p class="sd__small">TVA intracommunautaire {{ customer.vatNumber }}</p>{% endif %}
+        </section>
+
+        <table class="sd__lines">
+            <thead>
+                <tr>
+                    <th scope="col">Référence</th>
+                    <th scope="col">Désignation</th>
+                    <th scope="col" class="num">Quantité</th>
+                    {% if prices %}
+                        <th scope="col" class="num">Prix unitaire HT</th>
+                        <th scope="col" class="num">Remise</th>
+                        <th scope="col" class="num">TVA</th>
+                        <th scope="col" class="num">Montant HT</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in document.lines %}
+                    <tr>
+                        <td>{{ line.article }}</td>
+                        <td>{{ line.designation }}</td>
+                        <td class="num">{{ line.quantity|quantity(line.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }} {{ line.unit }}</td>
+                        {% if prices %}
+                            <td class="num">{{ line.unitPrice|amount }}</td>
+                            <td class="num">{{ line.discount is not null ? line.discount|percent : '' }}</td>
+                            <td class="num">{{ line.rate|percent }}</td>
+                            <td class="num">{{ totals.lineAmounts[loop.index0]|amount }}</td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if prices %}
+            <section class="sd__bottom">
+                <table class="sd__vat">
+                    <thead><tr><th scope="col">Taux de TVA</th><th scope="col" class="num">Base HT</th><th scope="col" class="num">Montant TVA</th></tr></thead>
+                    <tbody>
+                        {% for line in totals.vatLines %}
+                            <tr><td>{{ line.rate|percent }}</td><td class="num">{{ line.base|amount }}</td><td class="num">{{ line.vat|amount }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <table class="sd__totals">
+                    <tbody>
+                        <tr><td>Total HT</td><td class="num">{{ totals.excludingTax|amount_eur }}</td></tr>
+                        <tr><td>Total TVA</td><td class="num">{{ totals.vat|amount_eur }}</td></tr>
+                        <tr><td>{{ type.value == 'invoice' ? 'Net à payer TTC' : 'Total TTC' }}</td><td class="num">{{ totals.includingTax|amount_eur }}</td></tr>
+                    </tbody>
+                </table>
+            </section>
+        {% endif %}
+
+        {% if type.value == 'invoice' %}
+            <footer class="sd__terms">
+                {% if document.dueDate %}<p><b>Échéance : {{ document.dueDate|date_fr }}</b></p>{% endif %}
+                <p>Conditions de règlement : {{ document.customer.paymentTerms.label|lower }} · mode de règlement : {{ document.customer.paymentMethod.label|lower }}.</p>
+                <p>Escompte pour paiement anticipé : néant.</p>
+                <p>En cas de retard de paiement, pénalités au taux de trois fois le taux d’intérêt légal.</p>
+                <p>Indemnité forfaitaire pour frais de recouvrement due en cas de retard : 40 €.</p>
+            </footer>
+        {% elseif type.value == 'quote' %}
+            <footer class="sd__terms"><p>Devis valable un mois à compter de sa date. Bon pour accord : date, signature et cachet du client.</p></footer>
+        {% endif %}
+    </article>
+{% endblock %}

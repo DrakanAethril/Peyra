@@ -11,6 +11,7 @@ use App\Enum\Audit\AuditAction;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntryLineRepository;
+use App\Repository\Sales\SalesDocumentRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Audit\AuditTrail;
 use Doctrine\ORM\EntityManagerInterface;
@@ -30,6 +31,7 @@ final readonly class ThirdPartySheet
         private AccountRepository $accounts,
         private AuditTrail $auditTrail,
         private EntryLineRepository $lines,
+        private SalesDocumentRepository $salesDocuments,
     ) {
     }
 
@@ -86,7 +88,9 @@ final readonly class ThirdPartySheet
     {
         $count = $this->lines->countOnThirdParty($thirdParty);
         if (0 === $count) {
-            return null;
+            $documents = $this->salesDocuments->countForCustomer($thirdParty);
+
+            return 0 === $documents ? null : \sprintf('Ce tiers est le client de %s : il reste au dossier.', 1 === $documents ? 'un document commercial' : $documents.' documents commerciaux');
         }
 
         return \sprintf('Ce tiers est nommé sur %s : il reste au dossier.', 1 === $count ? 'une ligne d’écriture' : $count.' lignes d’écriture');

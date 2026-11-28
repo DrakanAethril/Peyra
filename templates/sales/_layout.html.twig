@@ -1,0 +1,17 @@
+{#
+ # Ventes (design-ux.md §§ 2.5 and 3.2; lot 2): the module's tab bar - Clients, Devis · Commandes ·
+ # Livraisons, Factures et avoirs (step 2.3); Règlements and Suivi join it with steps 2.6 and 2.7.
+ # A screen sets `sales_tab` (customers, orders, invoices) and `dossier_title` outside any block.
+ # Closed to a profile that does not read the sales (SALES_READ).
+ #}
+{% extends 'dossier/_layout.html.twig' %}
+
+{% set rail_current = 'sales' %}
+
+{% block module_tabs %}
+    <twig:Px:ModuleTabs label="Ventes" :tabs="[
+        {label: 'Clients', href: path('app_sales_customers', {dossier: dossier.id}), current: (sales_tab ?? '') == 'customers'},
+        {label: 'Devis · Commandes · Livraisons', href: path('app_sales_documents', {dossier: dossier.id, type: 'quote'}), current: (sales_tab ?? '') == 'orders'},
+        {label: 'Factures et avoirs', href: path('app_sales_documents', {dossier: dossier.id, type: 'invoice'}), current: (sales_tab ?? '') == 'invoices'},
+    ]"/>
+{% endblock %}

@@ -1,0 +1,17 @@
+{# One line of a commercial document's grid; `index` names its fields, `errors` is the draft (or null for the template row). #}
+{% set fields = [
+    {name: 'article', label: 'Article', class: 'px-u-code', size: 8},
+    {name: 'designation', label: 'Désignation', class: '', size: 40},
+    {name: 'unit', label: 'Unité', class: '', size: 7},
+    {name: 'quantity', label: 'Quantité', class: 'px-u-num', size: 7},
+    {name: 'unitPrice', label: 'Prix unitaire HT', class: 'px-u-num', size: 10},
+    {name: 'discount', label: 'Remise %', class: 'px-u-num', size: 5},
+    {name: 'rate', label: 'TVA %', class: 'px-u-num', size: 5},
+] %}
+<tr data-sales-lines-target="row">
+    {% for field in fields %}
+        {% set error = errors ? errors.error('line.' ~ index ~ '.' ~ field.name) : null %}
+        <td><input type="text" class="px-input px-input--sm {{ field.class }}" name="lines[{{ index }}][{{ field.name }}]" value="{{ line[field.name] }}" size="{{ field.size }}" aria-label="{{ field.label }}" autocomplete="off" spellcheck="false"{% if field.name == 'rate' %} list="sales-rates" inputmode="decimal"{% elseif field.name in ['quantity', 'unitPrice', 'discount'] %} inputmode="decimal"{% endif %}{% if field.name == 'article' %} data-action="change->sales-lines#fill"{% endif %}{% if error %} aria-invalid="true" title="{{ error }}"{% endif %}></td>
+    {% endfor %}
+    <td><twig:Px:IconButton icon="x" label="Retirer la ligne" size="sm" data-action="sales-lines#remove"/></td>
+</tr>

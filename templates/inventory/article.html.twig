@@ -1,0 +1,77 @@
+{#
+ # The fiche of an article (step 2.3, gabarit F), saved with F10 under DOSSIER_SETTINGS; whoever
+ # only reads sees the facts. A selling price asks a VAT rate and a class-7 revenue account.
+ #}
+{% extends 'inventory/_layout.html.twig' %}
+
+{% set can_edit = is_granted('DOSSIER_SETTINGS', dossier) %}
+{% set dossier_title = article ? 'Article ' ~ article.code : 'Nouvel article' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}, {combo: 'F4', verb: 'Liste des comptes'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ article ? article.code ~ ' · ' ~ article.designation : 'Nouvel article' }}" :trail="[
+        {label: 'Achats et stocks', href: path('app_inventory_articles', {dossier: dossier.id})},
+        {label: 'Articles', href: path('app_inventory_articles', {dossier: dossier.id})},
+        {label: article ? article.code : 'Nouvel article', href: article ? path('app_inventory_article', {dossier: dossier.id, code: article.code}) : path('app_inventory_article_new', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}
+                {% if article %}<twig:Px:ConfirmButton label="Supprimer l’article" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="article-delete"/>{% endif %}
+                <twig:Px:Button type="submit" variant="primary" form="article-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">L’article n’est pas enregistré : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+    {% if can_edit %}
+        <form method="post" action="{{ article ? path('app_inventory_article', {dossier: dossier.id, code: article.code}) : path('app_inventory_article_new', {dossier: dossier.id}) }}" id="article-form" novalidate data-controller="focus-error">
+            <input type="hidden" name="_token" value="{{ csrf_token(article ? 'article-' ~ article.id : 'article-new-' ~ dossier.id) }}">
+            <twig:Px:Card title="Article">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="code" label="Référence" :required="true" hint="1 à 12 capitales ou chiffres : PF001." :error="draft.error('code')">
+                        <twig:Px:Input id="code" value="{{ draft.code }}" :required="true" hint="1" :error="draft.error('code')" class="px-u-code" maxlength="12" autocomplete="off" spellcheck="false" autofocus/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="designation" label="Désignation" :required="true" :wide="true" :error="draft.error('designation')">
+                        <twig:Px:Input id="designation" value="{{ draft.designation }}" :required="true" :error="draft.error('designation')" maxlength="160" autocomplete="off"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="unit" label="Unité" :required="true" hint="pièce, m², heure…" :error="draft.error('unit')">
+                        <twig:Px:Input id="unit" value="{{ draft.unit }}" :required="true" hint="1" :error="draft.error('unit')" maxlength="20" autocomplete="off"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="salePrice" label="Prix de vente HT" hint="Vide : l’article n’est pas vendu (une matière première)." :error="draft.error('salePrice')">
+                        <twig:Px:Input id="salePrice" value="{{ draft.salePrice }}" hint="1" :error="draft.error('salePrice')" class="px-u-num" inputmode="decimal" autocomplete="off"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="vatRate" label="Taux de TVA" hint="En % : 20 ou 5,5." :error="draft.error('vatRate')">
+                        <twig:Px:Input id="vatRate" value="{{ draft.vatRate }}" hint="1" :error="draft.error('vatRate')" class="px-u-num" inputmode="decimal" autocomplete="off"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="revenueAccount" label="Compte de produits" hint="Classe 7 : 701000, 706000…" :error="draft.error('revenueAccount')">
+                        <twig:Px:AccountPicker id="revenueAccount" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" nature="revenue" value="{{ draft.revenueAccount }}" hint="1" :error="draft.error('revenueAccount')" listLabel="Comptes de produits"/>
+                    </twig:Px:Field>
+                    <div class="px-field px-fieldgrid__full">
+                        <label class="px-check"><input type="checkbox" name="stockTracked" value="1"{% if draft.stockTracked %} checked{% endif %}> <span>Suivi en stock : ses entrées et ses sorties sont des mouvements de stock</span></label>
+                    </div>
+                </div>
+            </twig:Px:Card>
+        </form>
+        {% if article %}
+            <form method="post" action="{{ path('app_inventory_article_delete', {dossier: dossier.id, code: article.code}) }}" id="article-delete" hidden>
+                <input type="hidden" name="_token" value="{{ csrf_token('article-delete-' ~ article.id) }}">
+            </form>
+        {% endif %}
+    {% else %}
+        <twig:Px:Card title="Article">
+            <dl class="px-facts">
+                <dt>Référence</dt><dd class="px-u-code">{{ article.code }}</dd>
+                <dt>Désignation</dt><dd>{{ article.designation }}</dd>
+                <dt>Unité</dt><dd>{{ article.unit }}</dd>
+                <dt>Prix de vente HT</dt><dd class="px-u-num">{{ article.salePrice ? article.salePrice|amount_eur : 'Non vendu' }}</dd>
+                <dt>Taux de TVA</dt><dd>{{ article.vatRate is not null ? article.vatRate|percent : '—' }}</dd>
+                <dt>Compte de produits</dt><dd class="px-u-code">{{ article.revenueAccount ?? '—' }}</dd>
+                <dt>Stock</dt><dd>{{ article.stockTracked ? 'Suivi' : 'Non suivi' }}</dd>
+            </dl>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}

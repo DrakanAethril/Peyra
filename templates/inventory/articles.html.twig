@@ -1,0 +1,65 @@
+{#
+ # Achats et stocks › Articles (step 2.3, gabarit L): reference, designation, unit, selling price,
+ # VAT rate, revenue account, stock followed; searched by reference or designation in GET.
+ #}
+{% extends 'inventory/_layout.html.twig' %}
+
+{% set dossier_title = 'Articles' %}
+{% set can_edit = is_granted('DOSSIER_SETTINGS', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouvel article'}, {combo: '/', verb: 'Rechercher'}] : [{combo: '/', verb: 'Rechercher'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Articles" :trail="[
+        {label: 'Achats et stocks', href: path('app_inventory_articles', {dossier: dossier.id})},
+        {label: 'Articles', href: path('app_inventory_articles', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button href="{{ path('app_inventory_article_new', {dossier: dossier.id}) }}" variant="primary" icon="plus" shortcut="N">Nouvel article</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if total == 0 %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="package" title="Aucun article" text="Ce que l’entreprise achète et vend : une référence, une unité, un prix de vente, un taux de TVA et un compte de produits. Les lignes des devis et des factures les reprennent."/>
+        </twig:Px:Card>
+    {% else %}
+        <twig:Px:Card :flush="true">
+            <twig:Px:Filters action="{{ path('app_inventory_articles', {dossier: dossier.id}) }}" search="{{ search }}" searchLabel="Référence ou désignation" resetHref="{{ search ? path('app_inventory_articles', {dossier: dossier.id}) : null }}"/>
+            {% if article_rows is empty %}
+                <twig:Px:Empty icon="search" title="Aucun article" text="Aucun article ne correspond à « {{ search }} »."/>
+            {% else %}
+                <twig:Px:Table caption="Articles de {{ dossier.name }}" :rows="true">
+                    <thead>
+                        <tr>
+                            <th scope="col">Référence</th>
+                            <th scope="col">Désignation</th>
+                            <th scope="col">Unité</th>
+                            <th scope="col" class="px-u-num">Prix de vente HT</th>
+                            <th scope="col" class="px-u-num">TVA</th>
+                            <th scope="col">Compte</th>
+                            <th scope="col">Stock</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in article_rows %}
+                            <tr data-rows-target="row">
+                                <td class="px-u-code"><a class="px-link" href="{{ path('app_inventory_article', {dossier: dossier.id, code: item.code}) }}">{{ item.code }}</a></td>
+                                <td class="px-u-fill" title="{{ item.designation }}">{{ item.designation }}</td>
+                                <td>{{ item.unit }}</td>
+                                <td class="px-u-num">{{ item.salePrice ? item.salePrice|amount : '' }}</td>
+                                <td class="px-u-num">{{ item.vatRate is not null ? item.vatRate|percent : '' }}</td>
+                                <td class="px-u-code">{{ item.revenueAccount }}</td>
+                                <td>{{ item.stockTracked ? 'Suivi' : '' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+            <twig:Px:Pager :total="shown_total" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>Articles · <b>{{ total }}</b></span>{% endblock %}
