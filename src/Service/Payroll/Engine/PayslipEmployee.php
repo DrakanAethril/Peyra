@@ -12,8 +12,9 @@ use Brick\Math\RoundingMode;
 
 /**
  * What the payslip engine knows of an employee (lot 4, step 4.3): the terms in force on the
- * payslip's day, read once from the fiche, and the withholding rate the tax office sent (null: none,
- * the neutral rate applies). A value, so that the engine stays a function of its
+ * payslip's day, read once from the fiche, the withholding rate the tax office sent (null: none,
+ * the neutral rate applies), and the days the contract starts and ends (step 4.3d: a month the
+ * contract does not cover whole). A value, so that the engine stays a function of its
  * arguments; tests write it by hand.
  */
 final readonly class PayslipEmployee
@@ -27,9 +28,12 @@ final readonly class PayslipEmployee
         BigDecimal|string $monthlyHours,
         public Money $baseSalary,
         public ?BigDecimal $withholdingRate = null,
+        public ?\DateTimeImmutable $hiredOn = null,
+        public ?\DateTimeImmutable $leavesOn = null,
     ) {
         $this->monthlyHours = BigDecimal::of($monthlyHours);
-        if (!$this->monthlyHours->isPositive() || $baseSalary->isNegative() || true === $withholdingRate?->isNegative()) {
+        if (!$this->monthlyHours->isPositive() || $baseSalary->isNegative() || true === $withholdingRate?->isNegative()
+            || (null !== $hiredOn && null !== $leavesOn && $leavesOn < $hiredOn)) {
             throw new \InvalidArgumentException('An employee of a payslip works some hours for a salary that is not negative.');
         }
     }
@@ -41,7 +45,7 @@ final readonly class PayslipEmployee
 
         $rate = $employee->getWithholdingRate();
 
-        return new self($employee->getFullName(), $terms->isExecutive(), $employee->getContractType(), $terms->getMonthlyHours(), $terms->getBaseSalary(), null === $rate ? null : BigDecimal::of($rate));
+        return new self($employee->getFullName(), $terms->isExecutive(), $employee->getContractType(), $terms->getMonthlyHours(), $terms->getBaseSalary(), null === $rate ? null : BigDecimal::of($rate), $employee->getHiredOn(), $employee->getExitOn());
     }
 
     /** The hourly rate of the contract, four decimals as the fiche and the payslip show it: salary ÷ monthly hours. */

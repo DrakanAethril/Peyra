@@ -64,24 +64,38 @@ abstract class GeneralReductionFormula
     /** The coefficient's maximum for that headcount band, the T of the imputation. */
     abstract protected function maximum(string $band): BigDecimal;
 
-    /** The SMIC of reference of the month (see the class). */
-    public function smic(BigDecimal $contractHours, BigDecimal $collectiveHours, BigDecimal $premiumHours): Money
+    /**
+     * The SMIC of reference of the month (see the class), corrected in a month with an absence by the ratio
+     * of the salary due to the salary of the whole month (PayslipPresence::ratio(), step 4.3d), rounded once.
+     *
+     * @param array{due: BigDecimal, full: BigDecimal, text: string}|null $presence
+     */
+    public function smic(BigDecimal $contractHours, BigDecimal $collectiveHours, BigDecimal $premiumHours, ?array $presence = null): Money
     {
         $monthly = $this->regulatory->decimal($this->parametersKey(), 'smic_monthly_reference');
         $hourly = $this->regulatory->decimal($this->parametersKey(), 'smic_hourly_reference');
-        $prorated = Money::euros($monthly->multipliedBy($contractHours)->dividedBy($collectiveHours, 2, RoundingMode::HalfUp));
+        $prorated = null === $presence
+            ? Money::euros($monthly->multipliedBy($contractHours)->dividedBy($collectiveHours, 2, RoundingMode::HalfUp))
+            : Money::euros($monthly->multipliedBy($contractHours)->multipliedBy($presence['due'])->dividedBy($collectiveHours->multipliedBy($presence['full']), 2, RoundingMode::HalfUp));
 
         return $prorated->plus(Money::euros(PayslipUnit::EurosPerHour->times($premiumHours, $hourly)));
     }
 
-    /** The explanation of the SMIC of reference, for the line. */
-    public function smicExplanation(BigDecimal $contractHours, BigDecimal $collectiveHours, BigDecimal $premiumHours, Money $smic): string
+    /**
+     * The explanation of the SMIC of reference, for the line.
+     *
+     * @param array{due: BigDecimal, full: BigDecimal, text: string}|null $presence
+     */
+    public function smicExplanation(BigDecimal $contractHours, BigDecimal $collectiveHours, BigDecimal $premiumHours, ?array $presence, Money $smic): string
     {
         $monthly = $this->regulatory->decimal($this->parametersKey(), 'smic_monthly_reference');
         $hourly = $this->regulatory->decimal($this->parametersKey(), 'smic_hourly_reference');
         $text = \sprintf('SMIC de référence du mois : %s', PayslipUnit::Euros->format($monthly));
         if (!$contractHours->isEqualTo($collectiveHours)) {
             $text .= \sprintf(' × %s ÷ %s', PayslipUnit::Hours->format($contractHours), PayslipUnit::Hours->format($collectiveHours));
+        }
+        if (null !== $presence) {
+            $text .= \sprintf(' × %s ÷ %s (%s, D241-7 IV du code de la sécurité sociale)', PayslipUnit::Euros->format($presence['due']), PayslipUnit::Euros->format($presence['full']), $presence['text']);
         }
         if (!$premiumHours->isZero()) {
             $text .= \sprintf(' + %s × %s (heures supplémentaires et complémentaires)', PayslipUnit::EurosPerHour->format($hourly), PayslipUnit::Hours->format($premiumHours));

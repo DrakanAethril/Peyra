@@ -37,14 +37,14 @@ final class PayrollSettingsTest extends KernelTestCase
         [$dossier] = $this->setUpDossier();
         $installer = self::getContainer()->get(PayrollPlanInstaller::class);
 
-        self::assertSame(49, $installer->installStandard($dossier, 'test'));
+        self::assertSame(50, $installer->installStandard($dossier, 'test'));
         self::getContainer()->get(EntityManagerInterface::class)->flush();
 
         $bodies = self::getContainer()->get(PayrollBodyRepository::class)->findByDossier($dossier);
         self::assertSame([PayrollBodyKind::Urssaf, PayrollBodyKind::Retirement, PayrollBodyKind::Provident], array_map(static fn ($body) => $body->getKind(), $bodies), 'The bodies its contributions go to, made with their default names.');
         $plan = self::getContainer()->get(PayrollItemRepository::class)->findPlan($dossier);
         self::assertSame(['1000', '1010'], [$plan[0]->getCode(), $plan[1]->getCode()], 'The gross pay first.');
-        self::assertSame('4200', $plan[48]->getCode(), 'The withholding tax last.');
+        self::assertSame('4200', $plan[49]->getCode(), 'The withholding tax last.');
         self::assertSame(1, self::getContainer()->get(EntityManagerInterface::class)->getRepository(AuditEvent::class)->count(['action' => AuditAction::PayrollPlanInstalled]));
 
         $this->expectException(\LogicException::class);

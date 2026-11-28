@@ -11,7 +11,10 @@ use Brick\Math\BigDecimal;
  * The « éléments du mois » of one employee (lot 4, step 4.3), entered on the rubriques of the
  * plan de paie à la manière de Sage, by code: hours or a number on an item that counts them
  * (overtime, an absence, meals), an amount on an item that is one (a bonus, a benefit in kind),
- * a percent on an item whose rate is entered (the seniority bonus) - and the paid leave taken.
+ * a percent on an item whose rate is entered (the seniority bonus) - and the paid leave taken. A
+ * sick pay item takes both: the hours its salary is kept for, and the daily allowances of the social
+ * security for those days (step 4.3d). The whole calendar days of absence the employer paid nothing for
+ * (`unpaidDays`, step 4.3d) take their days off the month's ceiling.
  * A rubrique with nothing entered does not appear on the payslip.
  */
 final readonly class PayslipVariables
@@ -26,7 +29,11 @@ final readonly class PayslipVariables
         public array $amounts = [],
         public array $rates = [],
         public ?PaidLeave $paidLeave = null,
+        public int $unpaidDays = 0,
     ) {
+        if ($unpaidDays < 0) {
+            throw new \InvalidArgumentException('A number of days of absence is not negative.');
+        }
         foreach ([$quantities, $rates] as $list) {
             foreach ($list as $value) {
                 if ($value->isNegative()) {

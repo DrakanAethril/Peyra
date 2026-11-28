@@ -31,7 +31,11 @@ use Brick\Math\RoundingMode;
  * - a number at a price (meals provided, valued at the regulatory amount);
  * - an amount entered (a bonus, a company car);
  * - the paid leave: its hours off the salary, and its pay, the better of the salary kept and the
- *   tenth of the reference period's gross pay for the days taken (L3141-24).
+ *   tenth of the reference period's gross pay for the days taken (L3141-24);
+ * - step 4.3d: the days of the month outside the contract (hired or leaving during the month), the
+ *   sick pay (the salary kept less the daily allowances), and the absences cut so that they never take
+ *   more than the salary (PayslipPresence). The month's ceiling and SMIC of reference follow
+ *   (PayslipMonth, PayslipPresence::ratio()).
  */
 final class PayslipCalculator
 {
@@ -48,6 +52,7 @@ final class PayslipCalculator
                 $rows[] = $row;
             }
         }
+        $rows = PayslipPresence::capped($input->plan, $rows);
         $gross = Money::sum(array_map(static fn (PayslipRow $row): Money => $row->employeeAmount, $rows));
         $contributions = PayslipContributions::calculate($input, $ordered, $rows, $gross);
         $notSubject = [];
@@ -60,7 +65,7 @@ final class PayslipCalculator
             }
         }
         $lines = [...$rows, ...$contributions['rows'], ...$notSubject];
-        $net = PayslipNet::calculate($input, $ordered, $lines, $gross, $contributions['overtimePay'], $contributions['reduction'], $contributions['smic']);
+        $net = PayslipNet::calculate($input, $ordered, $lines, $gross, $contributions['overtimePay'], $contributions['reduction'], $contributions['smic'], $contributions['ceiling']);
 
         return new Payslip([...$lines, ...$net['rows']], $gross, $contributions['reduction'], $net['totals'], $net['yearToDate']);
     }
@@ -149,6 +154,14 @@ final class PayslipCalculator
             case PayrollBase::PaidLeavePay:
                 return null === $variables->paidLeave ? null : self::paidLeavePay($spec, $input, $variables->paidLeave);
 
+            case PayrollBase::EntryExitDays:
+                return self::entryExitRow($spec, $input);
+
+            case PayrollBase::SickPay:
+                $hours = $variables->quantity($spec->code);
+
+                return null === $hours ? null : self::sickPayRow($spec, $input, $hours);
+
             default:
                 throw new \LogicException(\sprintf('Rubrique %s : un élément de brut ne repose pas sur « %s ».', $spec->code, $spec->base->label()));
         }
@@ -186,6 +199,64 @@ final class PayslipCalculator
             'Heures de congés payés prises dans le mois : le salaire qu’elles auraient payé est maintenu.',
             self::contractRateOrigin($input->employee),
             $tenth['source'],
+            $notes,
+        ));
+    }
+
+    /**
+     * The days of the month outside the contract, taken off at the calendar day's rate - the salary over
+     * the days of the month, four decimals as the hourly rate (DECISIONS 4.3d). None in a whole month.
+     */
+    private static function entryExitRow(PayrollItemSpec $spec, PayslipInput $input): ?PayslipRow
+    {
+        $month = PayslipMonth::of($input);
+        if ($month->isComplete()) {
+            return null;
+        }
+        $employee = $input->employee;
+        $days = BigDecimal::of($month->outsideDays());
+        $daily = $employee->baseSalary->toDecimal()->dividedBy($month->days, 4, RoundingMode::HalfUp);
+        $amount = PayslipUnit::EurosPerUnit->times($days, $daily);
+        $period = [];
+        if ($month->from > $month->first) {
+            $period[] = \sprintf('entrée le %s', FrenchFormat::date($month->from));
+        }
+        if ($month->to < $month->last) {
+            $period[] = \sprintf('dernier jour le %s', FrenchFormat::date($month->to));
+        }
+
+        return self::row($spec, $days, PayslipUnit::Days, $daily, PayslipUnit::EurosPerUnit, Money::euros($amount)->negated(), new PayslipExplanation(
+            self::formula($days, PayslipUnit::Days, $daily, PayslipUnit::EurosPerUnit, $amount).', en déduction',
+            \sprintf('Jours calendaires du mois hors contrat (%s) : %d jours sur %d, le contrat en couvre %d.', implode(', ', $period), $month->outsideDays(), $month->days, $month->presentDays),
+            \sprintf('Taux journalier : salaire du contrat ÷ jours du mois = %s ÷ %d = %s.', FrenchFormat::amountInEuros($employee->baseSalary), $month->days, PayslipUnit::EurosPerUnit->format($daily)),
+        ));
+    }
+
+    /**
+     * The sick pay the employer adds (L1226-1, D1226-1 of the code du travail): the hours whose salary
+     * is kept, at the contract's hourly rate times the item's rate (90 %, four decimals), less the daily
+     * allowances of the social security for those days, entered beside the hours - never below zero. The
+     * hours are the user's: who has a right to it and from which day is read on the stop, not here.
+     */
+    private static function sickPayRow(PayrollItemSpec $spec, PayslipInput $input, BigDecimal $hours): PayslipRow
+    {
+        $hourly = $input->employee->hourlyRate();
+        $share = self::percent($spec, $input) ?? throw new \LogicException(\sprintf('Rubrique %s : le maintien de salaire n’a pas de taux.', $spec->code));
+        $rate = $hourly->multipliedBy($share['rate'])->dividedBy(100, 4, RoundingMode::HalfUp);
+        $kept = PayslipUnit::EurosPerHour->times($hours, $rate);
+        $allowances = $input->variables->amount($spec->code) ?? Money::zero();
+        $amount = Money::euros($kept)->minus($allowances);
+        $notes = [];
+        if ($amount->isNegative()) {
+            $notes[] = 'Les indemnités journalières dépassent le salaire maintenu : l’employeur n’ajoute rien.';
+            $amount = Money::zero();
+        }
+
+        return self::row($spec, $hours, PayslipUnit::Hours, $rate, PayslipUnit::EurosPerHour, $amount, new PayslipExplanation(
+            \sprintf('%s, moins %s d’indemnités journalières = %s', self::formula($hours, PayslipUnit::Hours, $rate, PayslipUnit::EurosPerHour, $kept), FrenchFormat::amountInEuros($allowances), FrenchFormat::amountInEuros($amount)),
+            'Heures d’absence dont le salaire est maintenu, saisies dans les éléments du mois, et indemnités journalières brutes de la sécurité sociale pour ces jours (relevé de la caisse).',
+            \sprintf('%s × %s = %s. %s', self::contractRateOrigin($input->employee), PayslipUnit::Percent->format($share['rate']), PayslipUnit::EurosPerHour->format($rate), $share['origin']),
+            $share['source'],
             $notes,
         ));
     }

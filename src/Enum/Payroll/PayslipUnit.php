@@ -9,7 +9,7 @@ use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 
 /**
- * What the base or the rate of a payslip line counts (lot 4, step 4.3): hours, a number of
+ * What the base or the rate of a payslip line counts (lot 4, step 4.3): hours, calendar days, a number of
  * something (meals), euros, a percent of the base, euros an hour or a unit, or a coefficient (the
  * general reduction's, applied to the gross pay as it is: 0,1775 × 2 472,00). The line's amount is
  * always the base times the rate as they are shown, rounded to the cent, so that whoever checks a
@@ -18,6 +18,7 @@ use Brick\Math\RoundingMode;
 enum PayslipUnit: string
 {
     case Hours = 'hours';
+    case Days = 'days';
     case Count = 'count';
     case Euros = 'euros';
     case Percent = 'percent';
@@ -30,6 +31,7 @@ enum PayslipUnit: string
     {
         return match ($this) {
             self::Hours => FrenchFormat::hours($value),
+            self::Days => FrenchFormat::number($value)."\u{a0}j",
             self::Count => FrenchFormat::number($value),
             self::Euros => FrenchFormat::quantity($value)."\u{a0}€",
             self::Percent => FrenchFormat::quantity($value, max(2, $value->strippedOfTrailingZeros()->getScale()))."\u{a0}%",
