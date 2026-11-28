@@ -211,6 +211,24 @@ enum AuditAction: string
 
     case DocumentDuplicateWithdrawn = 'document.duplicate_withdrawn';
 
+    /** An article created, changed or deleted (step 2.3). */
+    case ArticleCreated = 'inventory.article_created';
+
+    case ArticleChanged = 'inventory.article_changed';
+
+    case ArticleDeleted = 'inventory.article_deleted';
+
+    /** A commercial document drafted, changed, deleted while a draft, validated, sent, transformed (step 2.3). */
+    case SalesDocumentCreated = 'sales.document_created';
+
+    case SalesDocumentChanged = 'sales.document_changed';
+
+    case SalesDocumentDeleted = 'sales.document_deleted';
+
+    case SalesDocumentValidated = 'sales.document_validated';
+
+    case SalesDocumentSent = 'sales.document_sent';
+
     public function label(): string
     {
         return match ($this) {
@@ -286,6 +304,14 @@ enum AuditAction: string
             self::DocumentProposalFixed => 'Écriture juste d’une pièce corrigée',
             self::DocumentDuplicateAdded => 'Doublon glissé',
             self::DocumentDuplicateWithdrawn => 'Doublon retiré',
+            self::ArticleCreated => 'Article créé',
+            self::ArticleChanged => 'Article modifié',
+            self::ArticleDeleted => 'Article supprimé',
+            self::SalesDocumentCreated => 'Document commercial créé',
+            self::SalesDocumentChanged => 'Document commercial modifié',
+            self::SalesDocumentDeleted => 'Brouillon de document commercial supprimé',
+            self::SalesDocumentValidated => 'Document commercial validé',
+            self::SalesDocumentSent => 'Document commercial envoyé',
         };
     }
 }

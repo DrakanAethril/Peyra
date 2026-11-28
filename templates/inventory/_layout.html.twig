@@ -1,0 +1,14 @@
+{#
+ # Achats et stocks (design-ux.md §§ 2.5 and 3.2; lot 2): the module's tab bar - Articles (step 2.3);
+ # Fournisseurs, Commandes, Réceptions, Factures reçues and Stocks join it with steps 2.4 and 2.5.
+ # A screen sets `dossier_title` outside any block.
+ #}
+{% extends 'dossier/_layout.html.twig' %}
+
+{% set rail_current = 'inventory' %}
+
+{% block module_tabs %}
+    <twig:Px:ModuleTabs label="Achats et stocks" :tabs="[
+        {label: 'Articles', href: path('app_inventory_articles', {dossier: dossier.id}), current: true},
+    ]"/>
+{% endblock %}

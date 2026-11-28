@@ -29,7 +29,7 @@ final readonly class SearchScreens
 {
     /** The routes of the catalogue's screens: those a visit records among the recent ones. */
     public const array SCREEN_ROUTES = [
-        'app_dossier_dashboard', 'app_documents', 'app_accounting_entry', 'app_accounting_guided', 'app_accounting_opening', 'app_accounting_brouillard',
+        'app_dossier_dashboard', 'app_documents', 'app_sales_customers', 'app_sales_documents', 'app_inventory_articles', 'app_accounting_entry', 'app_accounting_guided', 'app_accounting_opening', 'app_accounting_brouillard',
         'app_accounting_consultation', 'app_accounting_lettering', 'app_accounting_entries', 'app_accounting_edition_journals',
         'app_accounting_edition_general_ledger', 'app_accounting_edition_trial_balance',
         'app_accounting_edition_third_party_balance', 'app_accounting_edition_aged_balance',
@@ -89,6 +89,15 @@ final readonly class SearchScreens
         $items = [
             $screen('app_dossier_dashboard', 'Tableau de bord', null, 'house', 'accueil'),
             $screen('app_documents', 'Boîte de réception', 'Pièces', 'inbox', 'pieces factures tickets a traiter'),
+        ];
+        if ($this->authorization->isGranted(DossierRightVoter::SALES_READ, $dossier)) {
+            $items[] = $screen('app_sales_customers', 'Clients', 'Ventes', 'tag', 'clients encours');
+            $items[] = $screen('app_sales_documents', 'Devis, commandes, livraisons', 'Ventes', 'tag', 'devis commande bon de livraison', ['type' => 'quote']);
+            $items[] = new SearchItem(SearchGroup::Screens, 'Factures et avoirs', $this->urls->generate('app_sales_documents', $id + ['type' => 'invoice']), 'Ventes', icon: 'tag', key: 'app_sales_documents:invoice', terms: 'factures de vente avoirs facturation');
+        }
+        $items = [
+            ...$items,
+            $screen('app_inventory_articles', 'Articles', 'Achats et stocks', 'package', 'articles produits references prix'),
             $screen('app_accounting_entry', 'Saisie par journal', self::ENTRY, 'book-text', 'ecriture grille comptabilite'),
         ];
         foreach ($this->journals->findByDossier($dossier) as $journal) {

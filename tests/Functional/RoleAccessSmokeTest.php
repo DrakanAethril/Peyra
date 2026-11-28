@@ -21,6 +21,7 @@ use App\Enum\Dossier\DossierKind;
 use App\Enum\Payroll\ContractType;
 use App\Enum\Payroll\Sex;
 use App\Enum\Payroll\WorkingTime;
+use App\Enum\Sales\SalesDocumentType;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntrySubscriptionRepository;
@@ -39,8 +40,12 @@ use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Restore\RestorePoints;
 use App\Service\Dossier\Restore\RestoreRunner;
 use App\Service\Identity\SchoolClasses;
+use App\Service\Inventory\ArticleDraft;
+use App\Service\Inventory\ArticleSheet;
 use App\Service\Payroll\Plan\PayrollPlanInstaller;
 use App\Service\Regulatory\RegulatorySync;
+use App\Service\Sales\SalesDocumentDraft;
+use App\Service\Sales\SalesDocuments;
 use App\Service\Shared\Money;
 use App\Tests\Support\BuildsSchool;
 use App\Tests\Support\RegulatoryFixtures;
@@ -251,6 +256,25 @@ final class RoleAccessSmokeTest extends WebTestCase
 
             return $document->getId();
         });
+        $salesId = $client->getContainer()->get(DossierContext::class)->within($saved, static function () use ($client, $saved): ?int {
+            $entityManager = $client->getContainer()->get(EntityManagerInterface::class);
+            $customer = new ThirdParty($saved, 'C0019', ThirdPartyKind::Customer, 'Girard, Jean et Anne');
+            $customer->keepOn($client->getContainer()->get(AccountRepository::class)->findOneByNumber($saved, '411000'), '411GIRA');
+            $entityManager->persist($customer);
+            $article = new ArticleDraft();
+            [$article->code, $article->designation, $article->unit, $article->salePrice, $article->vatRate, $article->revenueAccount] = ['PF001', 'Fenêtre chêne', 'pièce', '1380', '20', '701000'];
+            $articles = $client->getContainer()->get(ArticleSheet::class);
+            $articles->create($saved, $articles->check($article, $saved) ?? throw new \LogicException(implode(' ', $article->errors)), 'test');
+            $entityManager->flush();
+            $quote = new SalesDocumentDraft();
+            [$quote->customer, $quote->date] = ['C0019', '2026-01-20'];
+            $quote->readLines([['article' => 'PF001', 'designation' => 'Fenêtre chêne', 'unit' => 'pièce', 'quantity' => '2', 'unitPrice' => '1380', 'discount' => '', 'rate' => '20']]);
+            $sales = $client->getContainer()->get(SalesDocuments::class);
+            $document = $sales->create($saved, SalesDocumentType::Quote, $sales->check($quote, $saved) ?? throw new \LogicException(implode(' ', $quote->errors)), 'test');
+            $entityManager->flush();
+
+            return $document->getId();
+        });
         $dossier = (int) $saved->getId();
         $point = $client->getContainer()->get(RestorePoints::class)->pose($saved, 'Avant validation', $ines, new \DateTimeImmutable('2026-11-28 10:00'));
         $pointId = (int) $point->getId();
@@ -292,6 +316,9 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/payroll/employees/S001/contract.pdf', '/payroll/social-portal/dpae/S001', '/payroll/employees/S001/exit',
             '/payroll/payslips', '/payroll/payslips/S001',
             '/documents', '/documents?state=to_process&q=fa', '/documents/new', '/documents/'.$documentId, '/documents/'.$documentId.'/file',
+            '/inventory/articles', '/inventory/articles?q=fen', '/inventory/articles/new', '/inventory/articles/PF001',
+            '/sales/customers', '/sales/customers?q=gir', '/sales/quote', '/sales/order', '/sales/invoice', '/sales/credit_note',
+            '/sales/quote/new', '/sales/invoice/new', '/sales/documents/'.$salesId, '/sales/documents/'.$salesId.'.pdf',
             '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {

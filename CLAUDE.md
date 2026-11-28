@@ -1113,6 +1113,18 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   tells. A doublon is a second `Document` whose `duplicateOf` names the first (the generator's too).
   `answerKey`, `duplicateOf` and `generation` are named only where `AnswerKeyStaysHomeTest` allows.
 
+## Sales and articles (built at step 2.3a)
+
+- **`SalesDocument`** is the whole chain (quote, order, delivery note, invoice, credit note: `SalesDocumentType`),
+  `SalesDocuments` its one door: a draft is free; `validate()` numbers it under a lock on its `SalesSequence`
+  (per type and year, never before the last numbered date) and **the entity then refuses any change** - an
+  invoice is corrected by a credit note (`transform()`). Lines are JSON (`SalesLine`, article by code); figures
+  are read by the pure `SalesComputation` (VAT once per rate), never stored. `fixtures/demo/sales.yaml` holds
+  the articles and the numbering the books already used (next invoice FV-2026-0047).
+- `Article` (Achats et stocks › Articles) is written by `ArticleSheet` under `DOSSIER_SETTINGS`; Ventes asks
+  `SALES_READ` / `SALES_ENTER` / `SALES_VALIDATE` (area Ventes of `ProfileMatrix`).
+- `type` is a prop of `Px:Button`: a page variable of that name is hidden inside one (the sales templates say `doc_type`).
+
 ## Référentiel and assistance levels (built at step 2.8)
 
 - **The référentiel is versioned data**, `config/referential/bts-cg.yaml` (edition 2014: four exams,

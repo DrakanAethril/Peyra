@@ -1,0 +1,88 @@
+# Menuiserie Vasseur SARL - its sales (step 2.3): the 58 articles of the prepared data, the
+# numbering its books already used, and a quote of March turned into an order still in draft.
+#
+# - `articles`: design/validated/plan/donnees/demo/articles.yaml read into this shape - raw
+#   materials and consumables have no selling price; the services carry 20 %, the rate of a
+#   professional customer (10 % is chosen on the line for works in an old dwelling, as in the
+#   books of January). Prices are euros as text, read exactly. Checked by ArticleRules.
+# - `numbering`: the last number of each type the entries carry (FV-2026-0046 of 31/03,
+#   AV-2026-001 of 30/01): the next invoice validated in the dossier is FV-2026-0047.
+# - `documents`: in order, each through SalesDocuments like the fiche; `validate` numbers it,
+#   `made_from` is the rank of the document it was transformed from.
+articles:
+  - { code: "MP001", designation: "Chêne avivé 27 mm", unit: "m³", stock: true }
+  - { code: "MP002", designation: "Chêne avivé 41 mm", unit: "m³", stock: true }
+  - { code: "MP003", designation: "Chêne avivé 54 mm", unit: "m³", stock: true }
+  - { code: "MP004", designation: "Carrelet chêne lamellé-collé 3 plis 68 × 86", unit: "m", stock: true }
+  - { code: "MP005", designation: "Carrelet pin lamellé-collé 68 × 86", unit: "m", stock: true }
+  - { code: "MP006", designation: "Sapin du Nord raboté 27 mm", unit: "m³", stock: true }
+  - { code: "MP007", designation: "Mélèze avivé 27 mm", unit: "m³", stock: true }
+  - { code: "MP008", designation: "Hêtre étuvé 41 mm", unit: "m³", stock: true }
+  - { code: "MP009", designation: "Contreplaqué okoumé 18 mm, 250 × 122", unit: "plaque", stock: true }
+  - { code: "MP010", designation: "MDF 19 mm, 280 × 207", unit: "plaque", stock: true }
+  - { code: "MP011", designation: "Médium hydrofuge 19 mm, 280 × 207", unit: "plaque", stock: true }
+  - { code: "MP012", designation: "Panneau 3 plis chêne 19 mm, 250 × 125", unit: "plaque", stock: true }
+  - { code: "MP013", designation: "Panneau à âme isolante pour porte d'entrée, 68 mm", unit: "pièce", stock: true }
+  - { code: "MP014", designation: "Double vitrage 4/16/4 argon, faible émissivité", unit: "m²", stock: true }
+  - { code: "MP015", designation: "Triple vitrage 4/12/4/12/4 argon", unit: "m²", stock: true }
+  - { code: "MP016", designation: "Vitrage feuilleté retardateur 44.2/16/4", unit: "m²", stock: true }
+  - { code: "MP017", designation: "Ferrure oscillo-battante complète (Hartmann)", unit: "jeu", stock: true }
+  - { code: "MP018", designation: "Crémone à levier de fenêtre", unit: "pièce", stock: true }
+  - { code: "MP019", designation: "Paumelle de fenêtre 140 mm", unit: "pièce", stock: true }
+  - { code: "MP020", designation: "Paumelle de porte 140 mm", unit: "pièce", stock: true }
+  - { code: "MP021", designation: "Serrure 3 points pour porte d'entrée", unit: "pièce", stock: true }
+  - { code: "MP022", designation: "Cylindre européen de sécurité 30 × 40", unit: "pièce", stock: true }
+  - { code: "MP023", designation: "Poignée de fenêtre laiton", unit: "pièce", stock: true }
+  - { code: "MP024", designation: "Ensemble de poignées de porte", unit: "jeu", stock: true }
+  - { code: "MP025", designation: "Joint d'étanchéité de fenêtre", unit: "m", stock: true }
+  - { code: "MP026", designation: "Rejet d'eau aluminium laqué", unit: "m", stock: true }
+  - { code: "MP027", designation: "Seuil aluminium à rupture de pont thermique", unit: "m", stock: true }
+  - { code: "MP028", designation: "Gonds et pentures de volet (jeu de deux)", unit: "jeu", stock: true }
+  - { code: "MC001", designation: "Colle polyuréthane D4", unit: "kg", stock: true }
+  - { code: "MC002", designation: "Vis inox 5 × 60 (boîte de 200)", unit: "boîte", stock: true }
+  - { code: "MC003", designation: "Abrasif grain 120 (rouleau de 50 m)", unit: "rouleau", stock: true }
+  - { code: "MC004", designation: "Lasure chêne clair, phase aqueuse", unit: "l", stock: true }
+  - { code: "MC005", designation: "Vernis escalier polyuréthane", unit: "l", stock: true }
+  - { code: "MC006", designation: "Peinture microporeuse blanc RAL 9016", unit: "l", stock: true }
+  - { code: "MC007", designation: "Mastic acrylique (cartouche)", unit: "pièce", stock: true }
+  - { code: "PF001", designation: "Fenêtre chêne 2 vantaux 125 × 135, double vitrage", unit: "pièce", price: "1380.00", rate: "20", account: "701000", stock: true }
+  - { code: "PF002", designation: "Fenêtre chêne 1 vantail 60 × 95, double vitrage", unit: "pièce", price: "690.00", rate: "20", account: "701000", stock: true }
+  - { code: "PF003", designation: "Porte-fenêtre chêne 2 vantaux 140 × 215", unit: "pièce", price: "2150.00", rate: "20", account: "701000", stock: true }
+  - { code: "PF004", designation: "Fenêtre pin lasuré 2 vantaux 100 × 125", unit: "pièce", price: "760.00", rate: "20", account: "701000", stock: true }
+  - { code: "PF005", designation: "Porte d'entrée chêne vitrée 90 × 215", unit: "pièce", price: "2980.00", rate: "20", account: "701000", stock: true }
+  - { code: "PF006", designation: "Bloc-porte intérieur chêne massif 83 × 204", unit: "pièce", price: "640.00", rate: "20", account: "701000", stock: true }
+  - { code: "PF007", designation: "Bloc-porte intérieur médium à peindre 73 × 204", unit: "pièce", price: "285.00", rate: "20", account: "701000", stock: true }
+  - { code: "PF008", designation: "Paire de volets battants mélèze 125 × 135", unit: "paire", price: "620.00", rate: "20", account: "701000", stock: true }
+  - { code: "PF009", designation: "Escalier chêne quart tournant, 14 marches", unit: "pièce", price: "7950.00", rate: "20", account: "701000", stock: true }
+  - { code: "PF010", designation: "Escalier droit hêtre, 13 marches", unit: "pièce", price: "4200.00", rate: "20", account: "701000", stock: true }
+  - { code: "PF011", designation: "Placard sur mesure, façades chêne", unit: "m linéaire", price: "590.00", rate: "20", account: "701000", stock: true }
+  - { code: "PF012", designation: "Garde-corps et habillage chêne", unit: "m linéaire", price: "340.00", rate: "20", account: "701000", stock: true }
+  - { code: "PF013", designation: "Comptoir d'agencement chêne", unit: "m linéaire", price: "1150.00", rate: "20", account: "701000", stock: true }
+  - { code: "PF014", designation: "Bloc-porte coupe-feu EI30 bois 93 × 204", unit: "pièce", price: "1090.00", rate: "20", account: "701000", stock: true }
+  - { code: "SV001", designation: "Pose d'une fenêtre ou porte-fenêtre en rénovation, dépose comprise", unit: "pièce", price: "240.00", rate: "20", account: "704000", stock: false }
+  - { code: "SV002", designation: "Pose d'une porte d'entrée", unit: "pièce", price: "380.00", rate: "20", account: "704000", stock: false }
+  - { code: "SV003", designation: "Pose d'un escalier", unit: "forfait", price: "1150.00", rate: "20", account: "704000", stock: false }
+  - { code: "SV004", designation: "Pose d'un bloc-porte intérieur", unit: "pièce", price: "120.00", rate: "20", account: "704000", stock: false }
+  - { code: "SV005", designation: "Pose d'agencement", unit: "heure", price: "52.00", rate: "20", account: "704000", stock: false }
+  - { code: "SV006", designation: "Métré et étude technique", unit: "forfait", price: "180.00", rate: "20", account: "706000", stock: false }
+  - { code: "SV007", designation: "Dépose et évacuation de menuiseries anciennes (hors pose)", unit: "pièce", price: "65.00", rate: "20", account: "704000", stock: false }
+  - { code: "DV001", designation: "Port et emballage facturés", unit: "forfait", price: "85.00", rate: "20", account: "708500", stock: false }
+  - { code: "DV002", designation: "Chutes de bois et bois de chauffage (vente au comptoir)", unit: "lot", price: "25.00", rate: "20", account: "708800", stock: false }
+
+numbering:
+  - { type: invoice, year: 2026, last: 46, date: '2026-03-31' }
+  - { type: credit_note, year: 2026, last: 1, date: '2026-01-30' }
+
+documents:
+  - type: quote
+    customer: C0017
+    date: '2026-03-27'
+    reference: "Résidence Les Tilleuls, lot 3"
+    validate: true
+    lines:
+      - { article: PF003, quantity: '2', price: '2150.00', discount: '5', rate: '20' }
+      - { article: SV001, quantity: '2', price: '240.00', rate: '20' }
+      - { article: DV001, quantity: '1', price: '85.00', rate: '20' }
+  - type: order
+    made_from: 0
+    validate: false
