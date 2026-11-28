@@ -1,0 +1,110 @@
+{#
+ # Achats et stocks › Stocks › the sheet of a physical inventory (step 2.5b; design-ux.md § 3.2,
+ # gabarit G): a line per article - its theoretical quantity in the place at the day, the quantity
+ # counted, the gap, its reason. In progress, Entrée goes from cell to cell and the gap follows what
+ # is typed (stock_count_controller.js); F10 saves; Ctrl Entrée validates after the confirmation bar,
+ # each gap becoming an adjustment - at G and B a gap must carry its reason first. Validated, the
+ # sheet is read only, its theoretical quantities those of the validation.
+ #}
+{% extends 'inventory/_layout.html.twig' %}
+
+{% set inventory_tab = 'stock' %}
+{% set dossier_title = count.title %}
+{% set editable = count.draft and is_granted('PURCHASES_ENTER', dossier) %}
+{% set can_validate = count.draft and is_granted('PURCHASES_VALIDATE', dossier) %}
+{% set status_keys = (editable ? [{combo: 'F10', verb: 'Enregistrer'}] : [])|merge(can_validate ? [{combo: 'Ctrl+Enter', verb: 'Valider l’inventaire'}] : []) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ count.title }}" :trail="[
+        {label: 'Achats et stocks', href: path('app_inventory_articles', {dossier: dossier.id})},
+        {label: 'Inventaire physique', href: path('app_inventory_stock_counts', {dossier: dossier.id})},
+        {label: count.date|date_fr, href: path('app_inventory_stock_count', {dossier: dossier.id, id: count.id})},
+    ]">
+        <twig:block name="badge"> <twig:Px:Badge :of="count.state"/></twig:block>
+        <twig:block name="actions">
+            {% if editable or can_validate %}
+                <div class="px-entry-confirmable" data-controller="confirm-bar">
+                <div class="px-entry-actions" data-confirm-bar-target="actions">
+                    {% if editable %}
+                        <twig:Px:ConfirmButton label="Supprimer l’inventaire" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="count-delete"/>
+                        <twig:Px:Button type="submit" form="count-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+                    {% endif %}
+                    {% if can_validate %}<twig:Px:Button variant="primary" shortcut="Ctrl+Enter" data-action="confirm-bar#open">Valider l’inventaire</twig:Px:Button>{% endif %}
+                </div>
+                {% if can_validate %}
+                    <form class="px-confirmbar" method="post" action="{{ path('app_inventory_stock_count_validate', {dossier: dossier.id, id: count.id}) }}" role="alertdialog" aria-labelledby="count-validate-text" hidden data-confirm-bar-target="bar" data-action="keydown->confirm-bar#keydown">
+                        <input type="hidden" name="_token" value="{{ csrf_token('stock-count-validate-' ~ count.id) }}">
+                        <p id="count-validate-text">Valider l’inventaire ? Chaque écart devient un ajustement de stock au {{ count.date|date_fr }} et l’inventaire ne pourra plus être modifié. Les comptages non enregistrés sont perdus.</p>
+                        <twig:Px:Button variant="quiet" data-action="confirm-bar#close">Annuler</twig:Px:Button>
+                        <twig:Px:Button type="submit" variant="primary" data-confirm-bar-target="confirm">Valider</twig:Px:Button>
+                    </form>
+                {% endif %}
+                </div>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if errors is not empty %}
+        <twig:Px:Alert tone="danger">Les comptages ne sont pas enregistrés : {{ errors|length > 1 ? errors|length ~ ' cellules sont à corriger' : 'une cellule est à corriger' }}.</twig:Px:Alert>
+    {% elseif refusals is not empty %}
+        <twig:Px:Alert tone="info">Avant de valider : {{ refusals|join(' ') }}</twig:Px:Alert>
+    {% endif %}
+    <div class="px-kpis">
+        <twig:Px:Kpi label="Articles comptés" value="{{ counted }} / {{ line_rows|length }}" note="{{ count.draft ? 'un article non compté garde son stock' : 'à la validation' }}"/>
+        <twig:Px:Kpi label="Écarts" value="{{ gaps }}" note="{{ count.draft ? (reason_required ? 'chacun à justifier avant validation' : 'ajustements à la validation') : 'ajustements de stock faits' }}" :state="gaps > 0 ? 'alert' : null"/>
+    </div>
+    <form method="post" action="{{ path('app_inventory_stock_count', {dossier: dossier.id, id: count.id}) }}" id="count-form" class="px-stock-count" novalidate data-controller="focus-error stock-count">
+        {% if editable %}<input type="hidden" name="_token" value="{{ csrf_token('stock-count-' ~ count.id) }}">{% endif %}
+        <twig:Px:Card :flush="true">
+            {% if line_rows is empty %}
+                <twig:Px:Empty icon="package" title="Aucun article à compter" text="Aucun article n’était suivi en stock à l’ouverture de l’inventaire."/>
+            {% else %}
+                <twig:Px:Table caption="{{ count.title }}">
+                    <thead>
+                        <tr>
+                            <th scope="col">Article</th>
+                            <th scope="col">Désignation</th>
+                            <th scope="col">Unité</th>
+                            <th scope="col" class="px-u-num">Théorique</th>
+                            <th scope="col" class="px-u-num">Compté</th>
+                            <th scope="col" class="px-u-num">Écart</th>
+                            <th scope="col">Justification</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in line_rows %}
+                            {% set counted_error = errors['line.' ~ row.index ~ '.counted'] ?? null %}
+                            {% set reason_error = errors['line.' ~ row.index ~ '.reason'] ?? (row.unjustified ? 'Écart à justifier avant validation.' : null) %}
+                            <tr data-stock-count-target="row" data-theoretical="{{ row.theoretical }}">
+                                <td class="px-u-code">{% if row.article %}<a class="px-link" href="{{ path('app_inventory_stock_card', {dossier: dossier.id, code: row.article.code, at: count.date|date('Y-m-d')}) }}">{{ row.line.article }}</a>{% else %}{{ row.line.article }}{% endif %}</td>
+                                <td{% if not editable %} class="px-u-fill"{% endif %} title="{{ row.article ? row.article.designation : 'Article supprimé' }}">{{ row.article ? row.article.designation : 'Article supprimé' }}</td>
+                                <td>{{ row.article ? row.article.unit : '' }}</td>
+                                <td class="px-u-num">{{ row.theoretical|quantity(row.theoretical.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}</td>
+                                {% if editable %}
+                                    <td class="px-u-num"><input type="text" class="px-input px-input--sm px-u-num px-stock-count__counted" name="counted[{{ row.index }}]" value="{{ row.counted_text }}" aria-label="Quantité comptée de {{ row.line.article }}" autocomplete="off" inputmode="decimal" data-stock-count-target="cell" data-action="input->stock-count#follow focus->stock-count#select keydown->stock-count#key"{% if counted_error %} aria-invalid="true" title="{{ counted_error }}"{% endif %}></td>
+                                {% else %}
+                                    <td class="px-u-num">{{ row.line.counted is not null ? row.line.counted|quantity(row.line.counted.strippedOfTrailingZeros.scale > 2 ? 3 : 2) : 'non compté' }}</td>
+                                {% endif %}
+                                <td class="px-u-num" data-stock-count-target="gap">{% if row.gap is not null and not row.gap.isZero() %}{{ row.gap.isPositive() ? '+' : '−' }}{{ row.gap.abs|quantity(row.gap.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}{% endif %}</td>
+                                {% if editable %}
+                                    <td><input type="text" class="px-input px-input--sm px-stock-count__reason" name="reason[{{ row.index }}]" value="{{ row.reason_text }}" maxlength="160" aria-label="Justification de l’écart de {{ row.line.article }}" autocomplete="off" data-stock-count-target="cell" data-action="focus->stock-count#select keydown->stock-count#key"{% if reason_error %} aria-invalid="true" title="{{ reason_error }}"{% endif %}></td>
+                                {% else %}
+                                    <td class="px-u-fill">{{ row.line.reason }}</td>
+                                {% endif %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+        </twig:Px:Card>
+    </form>
+    {% if editable %}
+        <form method="post" action="{{ path('app_inventory_stock_count_delete', {dossier: dossier.id, id: count.id}) }}" id="count-delete" hidden>
+            <input type="hidden" name="_token" value="{{ csrf_token('stock-count-delete-' ~ count.id) }}">
+        </form>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>{{ count.location }} · {{ counted }} / {{ line_rows|length }} articles comptés</span>{% endblock %}

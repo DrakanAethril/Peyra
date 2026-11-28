@@ -113,22 +113,11 @@ final class StockMovementsController extends AbstractController
             'draft_date' => DateValue::parse($draft->date),
             'kinds' => StockMovementKind::cases(),
             'tracked' => array_values(array_filter($articles->findByDossier($dossier), static fn (Article $a): bool => $a->isStockTracked())),
-            'places' => self::places($reader, $dossier),
+            'places' => $reader->offeredPlaces($dossier),
             'article' => $article,
             'article_places' => null === $article ? [] : $reader->places($article, $at),
             'next_cost' => null !== $article && Assistance::at($levels->for($dossier))->showsStockValuation() ? $reader->card($article, $at)->nextExitCost : null,
         ], new Response(status: $status));
-    }
-
-    /** @return list<string> the storage places the dossier's movements name, the main one first */
-    private static function places(StockReader $reader, Dossier $dossier): array
-    {
-        $places = [StockMovement::MAIN_LOCATION => true];
-        foreach ($reader->placesUsed($dossier) as $place) {
-            $places[$place] = true;
-        }
-
-        return array_map('strval', array_keys($places));
     }
 
     private function denyUnless(string $right, Dossier $dossier): void

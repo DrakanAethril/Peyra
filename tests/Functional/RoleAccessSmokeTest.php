@@ -42,6 +42,7 @@ use App\Service\Dossier\Restore\RestoreRunner;
 use App\Service\Identity\SchoolClasses;
 use App\Service\Inventory\ArticleDraft;
 use App\Service\Inventory\ArticleSheet;
+use App\Service\Inventory\Stock\StockCounts;
 use App\Service\Payroll\Engine\PayslipAdjustments;
 use App\Service\Payroll\Payslip\PayslipBook;
 use App\Service\Payroll\Payslip\PayslipElements;
@@ -298,6 +299,7 @@ final class RoleAccessSmokeTest extends WebTestCase
 
             return [$document->getId(), $receipt->getId()];
         });
+        $countId = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): ?int => $client->getContainer()->get(StockCounts::class)->open($saved, $saved->getDossierDate(), 'Dépôt principal', 'test')->getId());
         $dossier = (int) $saved->getId();
         $point = $client->getContainer()->get(RestorePoints::class)->pose($saved, 'Avant validation', $ines, new \DateTimeImmutable('2026-11-28 10:00'));
         $pointId = (int) $point->getId();
@@ -347,6 +349,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/inventory/stock', '/inventory/stock?view=below&at=2026-01-31', '/inventory/stock/export.csv', '/inventory/stock/movements',
             '/inventory/stock/movements?kind=entry&q=pf', '/inventory/stock/movements/new', '/inventory/stock/movements/new?article=PF001&kind=entry',
             '/inventory/stock/PF001', '/inventory/stock/PF001?at=2026-01-15',
+            '/inventory/stock/counts', '/inventory/stock/counts/new', '/inventory/stock/counts/'.$countId,
             '/sales/customers', '/sales/customers?q=gir', '/sales/quote', '/sales/order', '/sales/invoice', '/sales/credit_note', '/sales/deposit',
             '/sales/quote/new', '/sales/invoice/new', '/sales/documents/'.$salesId, '/sales/documents/'.$salesId.'.pdf',
             '/purchases/suppliers', '/purchases/suppliers?q=scie', '/purchases/price_request', '/purchases/purchase_order', '/purchases/receipt',
