@@ -1138,8 +1138,9 @@ Reach for these rather than re-implement them; each has its test.
 - **CI** (GitHub Actions, one job, on every push to `staging` and every pull request): `cs-check`,
   `lint:yaml`, `lint:twig`, `lint:container`, PHPStan, migrations replayed from an empty database
   then `doctrine:schema:validate`, the suite through ParaTest, then once more in one process. No repository secret. A push touching only `**.md`
-  may skip it — on the `push` trigger only, never on `pull_request`. Concurrency grouped by
-  `github.head_ref || github.ref`.
+  may skip it — on the `push` trigger only, never on `pull_request`. A newer push cancels a pull
+  request's run, **never a push to `staging`** (a group per run): two tracks push more often than
+  a run lasts.
 
 ## Git workflow
 

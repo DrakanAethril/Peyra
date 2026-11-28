@@ -22,11 +22,13 @@ on:
 permissions:
   contents: read
 
-# github.head_ref only exists on a pull request; on a push the fallback groups the runs by branch,
-# so a newer push cancels the run of a commit it has already superseded.
+# A pull request's runs share one group, and a newer push to it cancels the run it supersedes.
+# A push to staging is never cancelled nor held back: two build tracks push there more often than
+# a run lasts, so a run cancelled by the next push would leave no run ever finishing. Each push
+# therefore gets a group of its own (github.run_id), and every staging commit gets its verdict.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   checks:
