@@ -1,6 +1,6 @@
 {#
- # Bibliothèque (design-ux.md § 2.6): « Dossiers modèles », « Distribution » and « Partages »;
- # « Missions » joins it with its step (2.9). A screen sets `library_tab` and `library_title`
+ # Bibliothèque (design-ux.md § 2.6): « Dossiers modèles », « Missions » (step 2.9a), « Distribution »
+ # and « Partages ». A screen sets `library_tab` and `library_title`
  # outside any block.
  #}
 {% extends 'teacher/_layout.html.twig' %}
@@ -12,6 +12,7 @@
 {% block module_tabs %}
     <twig:Px:ModuleTabs label="Bibliothèque" :tabs="[
         {label: 'Dossiers modèles', href: path('app_library'), current: library_tab == 'templates'},
+        {label: 'Missions', href: path('app_library_missions'), current: library_tab == 'missions'},
         {label: 'Distribution', href: path('app_library_distributions'), current: library_tab == 'distributions'},
         {label: 'Partages', href: path('app_library_shares'), current: library_tab == 'shares'},
     ]"/>

@@ -10,7 +10,7 @@ use App\Enum\Accounting\AccountingModule;
 
 /**
  * Which behaviour applies to a module's proposal in a dossier (design-ux.md § 3.4). The mission
- * played in the dossier sets it at step 2.9; until then ProposeByDefault answers.
+ * played in the dossier sets it (MissionBehaviours, step 2.9a); without one, ProposeByDefault's.
  */
 interface AccountingBehaviours
 {

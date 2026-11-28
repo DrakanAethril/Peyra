@@ -1,0 +1,33 @@
+{#
+ # Mission › Tâches (step 2.9a): the tasks in their order - an intitulé and a consigne each -, ↑ ↓ to
+ # move one (the form is saved with the move), the empty row at the end to add one; a row left empty
+ # is dropped.
+ #}
+{% extends 'mission/_layout.html.twig' %}
+
+{% block mission_page %}
+    <form method="post" action="{{ path('app_mission_tasks', {id: mission.id}) }}" id="mission-form" class="px-stack" novalidate data-controller="focus-error">
+        <input type="hidden" name="_token" value="{{ csrf_token('mission-' ~ mission.id) }}">
+        {% if errors.tasks is defined %}<twig:Px:Alert tone="danger">{{ errors.tasks }}</twig:Px:Alert>{% endif %}
+        {% set rows = form.tasks|merge([{title: '', instruction: ''}]) %}
+        {% for i, task in rows %}
+            {% set last = loop.last %}
+            <twig:Px:Card title="{{ last ? 'Nouvelle tâche' : 'Tâche ' ~ (i + 1) }}">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="task-{{ i }}-title" label="Intitulé" :wide="true" :error="errors['task.' ~ i ~ '.title'] ?? null">
+                        <twig:Px:Input id="task-{{ i }}-title" name="tasks[{{ i }}][title]" value="{{ task.title }}" :error="errors['task.' ~ i ~ '.title'] ?? null" maxlength="160" autocomplete="off"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="task-{{ i }}-instruction" label="Consigne" class="px-fieldgrid__full" :error="errors['task.' ~ i ~ '.instruction'] ?? null">
+                        <twig:Px:Input id="task-{{ i }}-instruction" name="tasks[{{ i }}][instruction]" :area="true" value="{{ task.instruction }}" :error="errors['task.' ~ i ~ '.instruction'] ?? null" rows="3" maxlength="2000"/>
+                    </twig:Px:Field>
+                </div>
+                {% if not last %}
+                    <div class="px-cluster">
+                        {% if i > 0 %}<twig:Px:Button type="submit" size="sm" variant="quiet" icon="arrow-up" name="move" value="{{ i }}:up">Monter</twig:Px:Button>{% endif %}
+                        {% if i < rows|length - 2 %}<twig:Px:Button type="submit" size="sm" variant="quiet" icon="arrow-down" name="move" value="{{ i }}:down">Descendre</twig:Px:Button>{% endif %}
+                    </div>
+                {% endif %}
+            </twig:Px:Card>
+        {% endfor %}
+    </form>
+{% endblock %}

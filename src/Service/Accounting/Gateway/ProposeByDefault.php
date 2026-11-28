@@ -8,7 +8,7 @@ use App\Entity\Dossier\Dossier;
 use App\Enum\Accounting\AccountingBehaviour;
 use App\Enum\Accounting\AccountingModule;
 
-/** Without a mission (lot 2 brings them), the engine proposes every entry in the brouillard. */
+/** Without a mission, the engine proposes every entry in the brouillard (MissionBehaviours falls back on it, step 2.9a). */
 final readonly class ProposeByDefault implements AccountingBehaviours
 {
     public function for(Dossier $dossier, AccountingModule $module): AccountingBehaviour

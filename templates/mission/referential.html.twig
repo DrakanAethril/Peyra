@@ -1,0 +1,14 @@
+{# Mission › Référentiel (step 2.9a): the activities of the BTS CG référentiel the mission aims at, by process. #}
+{% extends 'mission/_layout.html.twig' %}
+
+{% block mission_page %}
+    <form method="post" action="{{ path('app_mission_referential', {id: mission.id}) }}" id="mission-form" class="px-stack" novalidate>
+        <input type="hidden" name="_token" value="{{ csrf_token('mission-' ~ mission.id) }}">
+        {% if errors.activities is defined %}<twig:Px:Alert tone="danger">{{ errors.activities }}</twig:Px:Alert>{% endif %}
+        {% for process in processes %}
+            <twig:Px:Card title="{{ process.process.value }} · {{ process.title }}">
+                <twig:Px:CheckGroup legend="Activités de {{ process.process.value }}" name="activities" :options="process.activities|map(a => {value: a.code, label: a.code ~ ' · ' ~ a.title, checked: a.code in form.activities})"/>
+            </twig:Px:Card>
+        {% endfor %}
+    </form>
+{% endblock %}

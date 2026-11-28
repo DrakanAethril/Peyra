@@ -207,6 +207,12 @@ class Document implements DossierOwned
         return $this->receivedOn;
     }
 
+    /** Documents::scheduleArrival() alone moves it, on a template's open pièce. */
+    public function arriveOn(\DateTimeImmutable $on): void
+    {
+        $this->receivedOn = $on;
+    }
+
     public function getDepositedBy(): ?User
     {
         return $this->depositedBy;

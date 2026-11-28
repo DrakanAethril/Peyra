@@ -8,6 +8,7 @@ use App\Entity\Dossier\Dossier;
 use App\Security\Voter\DossierVoter;
 use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Dossier\Search\GlobalSearch;
+use App\Service\Mission\CurrentMission;
 use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\QueryValue;
 use App\Service\Shared\ReturnPath;
@@ -24,6 +25,10 @@ use Symfony\Component\Routing\Attribute\Route;
  */
 final class SearchController extends AbstractController
 {
+    public function __construct(private readonly CurrentMission $missions)
+    {
+    }
+
     #[Route('/d/{dossier}/search', name: 'app_dossier_search', requirements: ['dossier' => '\d+'], methods: ['GET'])]
     public function search(Dossier $dossier, Request $request, GlobalSearch $search, AssistanceLevels $levels): Response
     {
@@ -36,7 +41,7 @@ final class SearchController extends AbstractController
                 $dossier,
                 $query,
                 $canEdit,
-                Assistance::at($levels->for($dossier))->opensGuidedEntry($this->isGranted('ROLE_TEACHER')),
+                Assistance::at($levels->for($dossier))->opensGuidedEntry($this->isGranted('ROLE_TEACHER'), $this->missions->opensGuidedEntry($dossier)),
                 ReturnPath::of(QueryValue::trimmed($request, 'here'), (int) $dossier->getId()),
             ),
         ]);

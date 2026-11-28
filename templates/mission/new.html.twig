@@ -1,0 +1,34 @@
+{# Bibliothèque › Missions › Nouvelle mission (step 2.9a, gabarit E): the template it is played on, its title; F10 creates it, the tabs compose it. #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'missions' %}
+{% set library_title = 'Nouvelle mission' %}
+{% set status_keys = [{combo: 'F10', verb: 'Créer'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Nouvelle mission" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Missions', href: path('app_library_missions')},
+        {label: 'Nouvelle mission', href: path('app_mission_new')},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button type="submit" variant="primary" form="mission-new" shortcut="F10 Ctrl+S" icon="plus">Créer la mission</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <form method="post" action="{{ path('app_mission_new') }}" id="mission-new" novalidate data-controller="focus-error">
+        <input type="hidden" name="_token" value="{{ csrf_token('mission-new') }}">
+        <twig:Px:Card title="Mission">
+            <div class="px-fieldgrid">
+                <twig:Px:Field id="template" label="Dossier modèle" :required="true" hint="La mission se joue sur ses pièces ; elle se donne aux distributions faites depuis lui." :error="errors.template ?? null">
+                    <twig:Px:Select id="template" placeholder="Choisir un dossier modèle…" :options="template_options" value="{{ chosen }}" :required="true" hint="1" :error="errors.template ?? null" autofocus/>
+                </twig:Px:Field>
+                <twig:Px:Field id="title" label="Titre" :required="true" :wide="true" :error="errors.title ?? null">
+                    <twig:Px:Input id="title" value="{{ title }}" :required="true" :error="errors.title ?? null" maxlength="120" autocomplete="off" placeholder="Janvier, de la pièce à l’écriture"/>
+                </twig:Px:Field>
+            </div>
+        </twig:Px:Card>
+    </form>
+{% endblock %}

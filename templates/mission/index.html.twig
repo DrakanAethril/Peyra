@@ -1,0 +1,50 @@
+{# Bibliothèque › Missions (step 2.9a; design-ux.md § 2.6): the teacher's missions, the latest first. #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'missions' %}
+{% set library_title = 'Missions' %}
+{% set status_keys = [{combo: 'N', verb: 'Nouvelle mission'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Missions" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Missions', href: path('app_library_missions')},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ path('app_mission_new') }}" variant="primary" icon="plus" shortcut="N">Nouvelle mission</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card :flush="true">
+        {% if missions is empty %}
+            <twig:Px:Empty icon="flag" title="Aucune mission" text="Une mission se joue sur un dossier modèle : son énoncé, ses tâches, ses pièces datées, les activités du référentiel visées et ses réglages. Donnée à une distribution, elle règle les dossiers des étudiants."/>
+        {% else %}
+            <twig:Px:Table caption="Mes missions" :rows="true">
+                <thead><tr>
+                    <th scope="col">Mission</th>
+                    <th scope="col">Dossier modèle</th>
+                    <th scope="col" class="px-u-right">Tâches</th>
+                    <th scope="col" class="px-u-right">Activités</th>
+                    <th scope="col">Réglages</th>
+                    <th scope="col" class="px-u-right">Donnée</th>
+                </tr></thead>
+                <tbody>
+                    {% for mission in missions %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-fill"><a class="px-link" href="{{ path('app_mission', {id: mission.id}) }}">{{ mission.title }}</a></td>
+                            <td>{{ mission.template ? mission.template.libraryTitle : '—' }}</td>
+                            <td class="px-u-num">{{ mission.tasks|length }}</td>
+                            <td class="px-u-num">{{ mission.activities|length }}</td>
+                            <td>{{ mission.assistanceLevel.label }} · {{ mission.behaviour.label|lower }}</td>
+                            <td class="px-u-num">{{ given[mission.id] ?? 0 }} fois</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>Missions · <b>{{ missions|length }}</b></span>{% endblock %}

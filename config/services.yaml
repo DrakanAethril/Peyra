@@ -43,6 +43,9 @@ services:
 
     App\Service\Identity\Directory: '@App\Service\Identity\LdapDirectory'
 
+    # The behaviour of the modules is the mission's the dossier plays (step 2.9a), Propose without one.
+    App\Service\Accounting\Gateway\AccountingBehaviours: '@App\Service\Mission\MissionBehaviours'
+
     # The client of the `documents.s3` storage (config/packages/flysystem.yaml), built only when
     # PEYRA_STORAGE=s3.
     peyra.s3_client:

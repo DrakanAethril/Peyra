@@ -1,0 +1,58 @@
+{#
+ # Mission › Distributions (step 2.9a; design-ux.md § 4.2 « Donner une mission »): the distributions
+ # of the template the mission was given to, and « Donner la mission » to another of the teacher's -
+ # its due date and hour, real time. From then on the mission's settings hold for its dossiers.
+ #}
+{% extends 'mission/_layout.html.twig' %}
+
+{% set save = false %}
+
+{% block mission_page %}
+    <div class="px-stack">
+        <twig:Px:Card :flush="true" title="Donnée à">
+            {% if given is empty %}
+                <twig:Px:Empty icon="send" title="Pas encore donnée" text="Donnée à une distribution de son dossier modèle, la mission fixe le niveau d’assistance, le comportement comptable et les modules des dossiers de cette distribution."/>
+            {% else %}
+                <twig:Px:Table caption="Distributions de la mission">
+                    <thead><tr>
+                        <th scope="col">Distribution</th>
+                        <th scope="col">Classe</th>
+                        <th scope="col" class="px-u-num">Donnée le</th>
+                        <th scope="col" class="px-u-num">À rendre le</th>
+                    </tr></thead>
+                    <tbody>
+                        {% for one in given %}
+                            <tr>
+                                <td class="px-u-fill"><a class="px-link" href="{{ path('app_library_distribution', {id: one.distribution.id}) }}">{{ one.distribution.title }}</a></td>
+                                <td>{{ one.distribution.schoolClass.name }}</td>
+                                <td class="px-u-num">{{ one.givenAt|date('d/m/Y H:i') }}</td>
+                                <td class="px-u-num">{{ one.dueAt|date('d/m/Y H:i') }}{% if one.dueAt < now %} <twig:Px:Badge tone="neutral">échue</twig:Px:Badge>{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+        </twig:Px:Card>
+        <twig:Px:Card title="Donner la mission">
+            {% if distribution_options is empty %}
+                <p class="px-u-muted">Aucune de vos distributions de {{ mission.template ? mission.template.libraryTitle : 'son dossier modèle' }} n’attend cette mission. {% if mission.template %}<a class="px-link" href="{{ path('app_library_distribute', {dossier: mission.template.id}) }}">Distribuer le dossier modèle</a>{% endif %}</p>
+            {% else %}
+                <form method="post" action="{{ path('app_mission_assignments', {id: mission.id}) }}" class="px-stack" novalidate data-controller="focus-error">
+                    <input type="hidden" name="_token" value="{{ csrf_token('mission-' ~ mission.id) }}">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="distribution" label="Distribution" :required="true" :error="errors.distribution ?? null">
+                            <twig:Px:Select id="distribution" placeholder="Choisir une distribution…" :options="distribution_options" value="{{ form.distribution }}" :required="true" :error="errors.distribution ?? null" autofocus/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="dueOn" label="À rendre le" :required="true" :error="errors.dueAt ?? null">
+                            <twig:Px:DateInput id="dueOn" :value="form.dueOn" :reference="now" :required="true" :error="errors.dueAt ?? null"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="dueTime" label="à" :required="true" :error="errors.dueTime ?? null">
+                            <twig:Px:Input id="dueTime" value="{{ form.dueTime }}" :required="true" :error="errors.dueTime ?? null" class="px-u-code" maxlength="5" placeholder="18:00" autocomplete="off"/>
+                        </twig:Px:Field>
+                    </div>
+                    <div class="px-cluster"><twig:Px:Button type="submit" variant="primary" icon="send" shortcut="Ctrl+Enter">Donner la mission</twig:Px:Button></div>
+                </form>
+            {% endif %}
+        </twig:Px:Card>
+    </div>
+{% endblock %}
