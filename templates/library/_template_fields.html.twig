@@ -1,0 +1,32 @@
+{#
+ # The fields of a new template (Bibliothèque › Nouveau dossier modèle): its card's title, the
+ # company's fiche, the first exercise, the dossier's date and the reference chart. Read by the
+ # empty template and by the one made from a FEC: `form` is an EmptyTemplateDraft, `draft` its
+ # company, `dates`, `reference` and `charts` as NewTemplateController::fields() gives them.
+ #}
+<twig:Px:Card title="Le modèle" meta="dans la bibliothèque">
+    <div class="px-fieldgrid">
+        <twig:Px:Field id="title" label="Titre" :wide="true" hint="Vide : le nom de la société." :error="form.error('title')">
+            <twig:Px:Input id="title" value="{{ form.title }}" hint="1" :error="form.error('title')" maxlength="120" autocomplete="off" placeholder="Vasseur, à-nouveaux 2026"/>
+        </twig:Px:Field>
+    </div>
+</twig:Px:Card>
+
+{{ include('dossier/_company_fields.html.twig') }}
+
+<twig:Px:Card title="Exercice et plan de comptes">
+    <div class="px-fieldgrid">
+        <twig:Px:Field id="exerciseStart" label="Début de l’exercice" :required="true" :error="form.error('exerciseStart')">
+            <twig:Px:DateInput id="exerciseStart" :value="dates.exerciseStart" :reference="reference" :required="true" :error="form.error('exerciseStart')"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="exerciseEnd" label="Fin de l’exercice" :required="true" hint="Un exercice dure de 1 à 24 mois." :error="form.error('exerciseEnd')">
+            <twig:Px:DateInput id="exerciseEnd" :value="dates.exerciseEnd" :reference="reference" :required="true" hint="1" :error="form.error('exerciseEnd')"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="dossierDate" label="Date du dossier" :required="true" hint="Le jour où le dossier commence ; vous l’avancez ensuite." :error="form.error('dossierDate')">
+            <twig:Px:DateInput id="dossierDate" :value="dates.dossierDate" :reference="reference" :required="true" hint="1" :error="form.error('dossierDate')"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="chart" label="Plan de comptes de référence" :required="true" :wide="true" :error="form.error('chart')">
+            <twig:Px:Select id="chart" placeholder="Choisir un plan…" :options="charts" value="{{ form.chart }}" :required="true" :error="form.error('chart')"/>
+        </twig:Px:Field>
+    </div>
+</twig:Px:Card>

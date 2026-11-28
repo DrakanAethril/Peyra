@@ -130,6 +130,17 @@ final class FecConformityTest extends TestCase
         self::assertSame(['7 · ValidDate · Les écritures se suivent dans l’ordre chronologique de leur validation : celle-ci, validée le 09/01/2026, vient après une écriture validée le 10/01/2026.'], $this->located($this->check($rows)));
     }
 
+    public function testTheImportAsksNeitherTheNameNorTheSequence(): void
+    {
+        $rows = $this->rows();
+        $rows[5][2] = $rows[6][2] = 'ACH-2026-00005';
+        $rows[5][15] = $rows[6][15] = '20260109';
+
+        $report = FecConformity::check($this->text($rows, "\t", FecFormat::COLUMNS), null, new \DateTimeImmutable('2026-01-01'), new \DateTimeImmutable('2026-12-31'), false);
+        self::assertTrue($report->isConform());
+        self::assertCount(3, $this->check($rows, 'fec.txt')->findings);
+    }
+
     public function testMontantAndSensMayReplaceDebitAndCredit(): void
     {
         $rows = array_map(static function (array $row): array {

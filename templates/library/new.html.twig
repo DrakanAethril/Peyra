@@ -1,7 +1,7 @@
 {#
  # Bibliothèque › Nouveau dossier modèle, first step (design-ux.md § 3.3, gabarit E): an empty
- # dossier (its company, exercise and plan come next), or the copy of a template the teacher reads,
- # made at once under the title they give.
+ # dossier (its company, exercise and plan come next), the copy of a template the teacher reads,
+ # made at once under the title they give, or another tool's FEC (step 1.9b).
  #}
 {% extends 'library/_layout.html.twig' %}
 
@@ -26,6 +26,11 @@
         <twig:Px:Card title="Partir d’un dossier vide" meta="société, exercice, plan">
             <p class="px-u-muted">Vous décrivez la société et son premier exercice ; le plan de comptes de référence et cinq journaux (achats, ventes, banque, opérations diverses, à-nouveaux) sont posés pour vous. Vous saisissez ensuite le dossier comme un étudiant.</p>
             <twig:block name="foot"><twig:Px:Button variant="primary" href="{{ path('app_library_new_empty') }}" icon="chevron-right">Continuer</twig:Px:Button></twig:block>
+        </twig:Px:Card>
+
+        <twig:Px:Card title="Partir d’un FEC" meta="d’un autre logiciel">
+            <p class="px-u-muted">Le fichier des écritures comptables d’un exercice, exporté d’un autre logiciel : ses comptes, ses journaux, ses tiers et ses écritures validées, lettrées comme il le dit, deviennent ceux du modèle. Un fichier qui porte une anomalie n’est pas importé : la liste dit laquelle, ligne par ligne.</p>
+            <twig:block name="foot"><twig:Px:Button variant="primary" href="{{ path('app_library_new_fec') }}" icon="chevron-right">Continuer</twig:Px:Button></twig:block>
         </twig:Px:Card>
 
         <twig:Px:Card title="Copier un modèle existant" meta="tout son contenu">
