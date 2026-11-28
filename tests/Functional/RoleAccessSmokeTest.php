@@ -52,6 +52,7 @@ use App\Service\Identity\SchoolClasses;
 use App\Service\Inventory\ArticleDraft;
 use App\Service\Inventory\ArticleSheet;
 use App\Service\Inventory\Stock\StockCounts;
+use App\Service\Mission\MissionSheet;
 use App\Service\Payroll\Engine\PayslipAdjustments;
 use App\Service\Payroll\Payslip\PayslipBook;
 use App\Service\Payroll\Payslip\PayslipElements;
@@ -120,6 +121,8 @@ final class RoleAccessSmokeTest extends WebTestCase
         yield 'Bibliothèque › Dossiers modèles, filtrés' => ['/teacher/library?shelf=mine&q=vasseur', $teachers];
         yield 'Bibliothèque › Partages' => ['/teacher/library/shares', $teachers];
         yield 'Bibliothèque › Distribution' => ['/teacher/library/distributions', $teachers];
+        yield 'Bibliothèque › Missions' => ['/teacher/library/missions', $teachers];
+        yield 'Nouvelle mission' => ['/teacher/library/missions/new', $teachers];
         yield 'Nouveau dossier modèle' => ['/teacher/library/new', $teachers];
         yield 'Nouveau dossier modèle vide' => ['/teacher/library/new/empty', $teachers];
         yield 'Nouveau dossier modèle depuis un FEC' => ['/teacher/library/new/fec', $teachers];
@@ -467,6 +470,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             return $document->getId();
         });
         $common = (int) $this->savedDossier(DossierKind::Template, null)->getId();
+        $mission = (int) $client->getContainer()->get(MissionSheet::class)->create($ownTemplate, 'Janvier', $durand, new \DateTimeImmutable('2026-11-28'))->getId();
         $this->signOut($client);
         $this->submitLogin($client, self::ACCOUNTS['admin']);
         $this->signOut($client);
@@ -494,6 +498,12 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/d/'.$own.'/documents/'.$piece.'/prepare?slip=line.0.account' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
             '/teacher/documents/generator/'.$common => ['student' => 404, 'teacher' => 404, 'admin' => 200, 'refused' => 302],
             '/teacher/documents/generator/'.$student => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
+            '/teacher/library/missions/'.$mission => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/teacher/library/missions/'.$mission.'/tasks' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/teacher/library/missions/'.$mission.'/documents' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/teacher/library/missions/'.$mission.'/referential' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/teacher/library/missions/'.$mission.'/settings' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/teacher/library/missions/'.$mission.'/assignments' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
         ];
         foreach ($table as $url => $expected) {
             $actual = [];

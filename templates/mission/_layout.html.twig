@@ -1,0 +1,42 @@
+{#
+ # A mission of the library, tab by tab (step 2.9a; design-ux.md § 3.3 « Mission (composition) »): the
+ # head (title, template, Dupliquer, Enregistrer F10 on the tab's form `mission-form`) and the tabs. A
+ # tab sets `mission_tab` outside any block and fills `mission_page`.
+ #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'missions' %}
+{% set library_title = mission.title %}
+{% set status_keys = (save ?? true) ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ mission.title }}" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Missions', href: path('app_library_missions')},
+        {label: mission.title, href: path('app_mission', {id: mission.id})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button type="submit" icon="copy" form="mission-duplicate">Dupliquer</twig:Px:Button>
+            {% if (save ?? true) %}<twig:Px:Button type="submit" variant="primary" form="mission-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <p class="px-u-muted">Se joue sur {% if mission.template %}<a class="px-link" href="{{ path('app_library_template', {dossier: mission.template.id}) }}">{{ mission.template.libraryTitle }}</a>{% else %}un dossier modèle supprimé{% endif %} · {{ mission.tasks|length }} tâche{{ mission.tasks|length > 1 ? 's' : '' }} · {{ mission.activities|length }} activité{{ mission.activities|length > 1 ? 's' : '' }} visée{{ mission.activities|length > 1 ? 's' : '' }} · assistance {{ mission.assistanceLevel.label|lower }}, {{ mission.behaviour.label|lower }}</p>
+    <twig:Px:Tabs label="Mission" :tabs="[
+        {label: 'Général', href: path('app_mission', {id: mission.id}), current: mission_tab == 'general'},
+        {label: 'Tâches', href: path('app_mission_tasks', {id: mission.id}), current: mission_tab == 'tasks'},
+        {label: 'Pièces', href: path('app_mission_documents', {id: mission.id}), current: mission_tab == 'documents'},
+        {label: 'Référentiel', href: path('app_mission_referential', {id: mission.id}), current: mission_tab == 'referential'},
+        {label: 'Réglages', href: path('app_mission_settings', {id: mission.id}), current: mission_tab == 'settings'},
+        {label: 'Distributions', href: path('app_mission_assignments', {id: mission.id}), current: mission_tab == 'assignments'},
+    ]"/>
+    {% if errors is not empty %}
+        <twig:Px:Alert tone="danger">La mission n’est pas enregistrée : {{ errors|length > 1 ? errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+    {% block mission_page %}{% endblock %}
+    <form method="post" action="{{ path('app_mission_duplicate', {id: mission.id}) }}" id="mission-duplicate" hidden>
+        <input type="hidden" name="_token" value="{{ csrf_token('mission-' ~ mission.id) }}">
+    </form>
+{% endblock %}

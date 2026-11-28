@@ -31,6 +31,7 @@ use App\Service\Accounting\Entry\PendingStale;
 use App\Service\Accounting\Template\TemplateCall;
 use App\Service\Dossier\Rights\DossierRights;
 use App\Service\Dossier\Rights\Gesture;
+use App\Service\Mission\CurrentMission;
 use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\DateValue;
 use App\Service\Shared\FrenchFormat;
@@ -63,6 +64,10 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 #[Route('/d/{dossier}/accounting/entry', requirements: ['dossier' => '\d+'])]
 final class EntryGridController extends AbstractController
 {
+    public function __construct(private readonly CurrentMission $missions)
+    {
+    }
+
     private const string SESSION_KEY = 'entry_grid';
 
     #[Route('', name: 'app_accounting_entry', methods: ['GET'])]
@@ -102,7 +107,7 @@ final class EntryGridController extends AbstractController
             'others' => $others,
             'drafts_count' => \count($entries->findDrafts()),
             'level' => $context->level,
-            'guided_open' => $editable && Assistance::at($context->level)->opensGuidedEntry($this->isGranted('ROLE_TEACHER')),
+            'guided_open' => $editable && Assistance::at($context->level)->opensGuidedEntry($this->isGranted('ROLE_TEACHER'), $this->missions->opensGuidedEntry($dossier)),
             'grid' => [
                 'groups' => $grid->groups($context, $editable ? $me : null),
                 'revision' => $editable ? $pending->revision($journal, $period, $me) : 0,

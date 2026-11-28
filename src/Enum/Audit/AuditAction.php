@@ -207,6 +207,9 @@ enum AuditAction: string
 
     case DocumentReadingChanged = 'document.reading_changed';
 
+    /** The dossier's date a template's pièce arrives on, set by its mission (step 2.9a). */
+    case DocumentArrivalScheduled = 'document.arrival_scheduled';
+
     /** A pièce made by the teacher's generator (step 2.1b). */
     case DocumentGenerated = 'document.generated';
 
@@ -291,6 +294,13 @@ enum AuditAction: string
     /** An invoicing document's entry written in the brouillard through the gateway (step 2.3b). */
     case SalesDocumentPosted = 'sales.document_posted';
 
+    /** A mission of the library created (or duplicated), changed, given to a distribution (step 2.9a). */
+    case MissionCreated = 'mission.created';
+
+    case MissionChanged = 'mission.changed';
+
+    case MissionGiven = 'mission.given';
+
     /** A fixed asset's fiche created (step 3.4). */
     case FixedAssetCreated = 'assets.fixed_asset_created';
 
@@ -373,6 +383,7 @@ enum AuditAction: string
             self::PayrollMonthReopened => 'Mois de paie rouvert',
             self::DocumentDeposited => 'Pièce déposée',
             self::DocumentReadingChanged => 'Données lues d’une pièce modifiées',
+            self::DocumentArrivalScheduled => 'Date d’arrivée d’une pièce réglée',
             self::DocumentGenerated => 'Pièce générée',
             self::DocumentProposalRebuilt => 'Écriture d’une pièce reprise depuis ses données lues',
             self::DocumentAnomalyReported => 'Anomalie signalée sur une pièce',
@@ -410,6 +421,9 @@ enum AuditAction: string
             self::SalesDocumentValidated => 'Document commercial validé',
             self::SalesDocumentSent => 'Document commercial envoyé',
             self::SalesDocumentPosted => 'Document commercial comptabilisé',
+            self::MissionCreated => 'Mission créée',
+            self::MissionChanged => 'Mission modifiée',
+            self::MissionGiven => 'Mission donnée',
             self::FixedAssetCreated => 'Immobilisation créée',
             self::FixedAssetChanged => 'Immobilisation modifiée',
             self::FixedAssetDeleted => 'Immobilisation supprimée',

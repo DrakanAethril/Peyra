@@ -1,0 +1,23 @@
+{#
+ # Mission › Réglages (step 2.9a; design-ux.md § 3.4): the assistance level and the behaviour of the
+ # modules, independent of each other, and the guided entry opened at A and 0. They hold for the
+ # dossiers of every distribution the mission is given to; a student's own level wins over the level.
+ #}
+{% extends 'mission/_layout.html.twig' %}
+
+{% block mission_page %}
+    <form method="post" action="{{ path('app_mission_settings', {id: mission.id}) }}" id="mission-form" class="px-stack" novalidate data-controller="focus-error">
+        <input type="hidden" name="_token" value="{{ csrf_token('mission-' ~ mission.id) }}">
+        <twig:Px:Card title="Les deux réglages">
+            <div class="px-fieldgrid">
+                <twig:Px:Field id="level" label="Niveau d’assistance" :required="true" hint="Les contrôles, les explications, les aides de saisie. Le niveau propre d’un étudiant (ses aménagements) l’emporte." :error="errors.level ?? null">
+                    <twig:Px:Select id="level" placeholder="Choisir un niveau…" :options="level_options" value="{{ form.level }}" :required="true" hint="1" :error="errors.level ?? null" autofocus/>
+                </twig:Px:Field>
+                <twig:Px:Field id="behaviour" label="Comportement comptable des modules" :required="true" hint="Quand une pièce, une facture, un règlement ou la paie appelle une écriture : la proposer, laisser l’étudiant la saisir, ou la passer seule au brouillard." :error="errors.behaviour ?? null">
+                    <twig:Px:Select id="behaviour" placeholder="Choisir un comportement…" :options="behaviour_options" value="{{ form.behaviour }}" :required="true" hint="1" :error="errors.behaviour ?? null"/>
+                </twig:Px:Field>
+            </div>
+            <label class="px-check"><input type="checkbox" name="guided" value="1"{% if form.guided %} checked{% endif %}><span>Saisie guidée ouverte, même aux niveaux « Avertissements » et « Aucun filet »</span></label>
+        </twig:Px:Card>
+    </form>
+{% endblock %}

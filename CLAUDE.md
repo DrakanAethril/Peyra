@@ -1189,6 +1189,20 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   and only approved invoices (`PaymentApproval`, « bon à payer ») reach its transfer order. `ThirdParty::$doubtful` is a marker only
   (`DoubtfulReceivables`).
 
+## Missions (built from step 2.9a)
+
+- **`Mission`** (global, `src/Entity/Mission/`): a teacher's, on a template (its pièces are the template's), with statement,
+  tasks (JSON), activities aimed at (`Referential` codes), modules open (`MissionModule`), level, behaviour, guided entry.
+  `MissionSheet` is its one door, `MissionVoter::EDIT` its author alone (404). Bibliothèque › Missions, `/teacher/library/missions/{id}[/tab]`.
+- **Given to a distribution** of its template (`MissionAssignment`, due date real time, `MissionAssignments::give()`): the dossiers
+  that distribution made play **the latest mission given** (`CurrentMission::of()`, memoised, reset after a gesture). Its
+  settings are read there and nowhere else: `MissionBehaviours` (the `AccountingBehaviours` alias), `StudentAssistanceLevels`
+  (student's own level, then the mission's), `Assistance::opensGuidedEntry($teacher, $mission)`, `MissionModuleAccess` (a closed
+  module is not in the rail - `mission_opens()` -, not in Ctrl K, and its addresses answer a student 404 by
+  `MissionModulesListener`; `MissionModule::ofPath()` maps an address to its module; a teacher reaches everything).
+- **A pièce arrives on its `receivedOn`**: `DocumentRepository` shows a student's or group's dossier only the pièces whose day has
+  come (a template shows all); Mission › Pièces sets the day (`Documents::scheduleArrival()`).
+
 ## Référentiel and assistance levels (built at step 2.8)
 
 - **The référentiel is versioned data**, `config/referential/bts-cg.yaml` (edition 2014: four exams,
@@ -1203,8 +1217,7 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
 - **The level a dossier is worked at** is `StudentAssistanceLevels` (the `AssistanceLevels`
   service): the student's own level (`User::$assistanceLevel`, Fiche étudiant › Aménagements,
   `StudentAssistance` the one door, administration journal) - the owner's for a student's dossier,
-  the working member's for a group's - else « Avertissements ». The missions (2.9) slot theirs in
-  between.
+  the working member's for a group's - else the mission's (step 2.9a), else « Avertissements ».
 
 ## Payroll settings (built at step 4.1)
 

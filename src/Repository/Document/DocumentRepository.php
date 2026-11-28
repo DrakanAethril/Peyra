@@ -32,6 +32,7 @@ final class DocumentRepository extends ServiceEntityRepository
             ->leftJoin('d.thirdParty', 't')
             ->andWhere('d.dossier = :dossier')
             ->setParameter('dossier', $dossier)
+            ->andWhere($this->arrived($dossier, 'd'))
             ->orderBy('d.receivedOn', 'DESC')
             ->addOrderBy('d.id', 'DESC')
             ->getQuery()
@@ -44,6 +45,7 @@ final class DocumentRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('d')
             ->andWhere('d.dossier = :dossier')
             ->andWhere('d.id = :id')
+            ->andWhere($this->arrived($dossier, 'd'))
             ->setParameter('dossier', $dossier)
             ->setParameter('id', $id)
             ->getQuery()
@@ -71,6 +73,7 @@ final class DocumentRepository extends ServiceEntityRepository
             ->select('COUNT(d.id)')
             ->andWhere('d.dossier = :dossier')
             ->andWhere('d.state IN (:states)')
+            ->andWhere($this->arrived($dossier, 'd'))
             ->setParameter('dossier', $dossier)
             ->setParameter('states', [DocumentState::ToProcess, DocumentState::InProgress])
             ->getQuery()
@@ -92,5 +95,15 @@ final class DocumentRepository extends ServiceEntityRepository
         }
 
         return $open[0] ?? null;
+    }
+
+    /**
+     * A pièce exists in a student's or a group's dossier once the dossier's date has reached the day
+     * it arrives on (a mission's « Pièces », step 2.9a); a template shows them all, to the teacher
+     * preparing it.
+     */
+    private function arrived(Dossier $dossier, string $alias): string
+    {
+        return $dossier->isTemplate() ? '1 = 1' : \sprintf("%s.receivedOn <= '%s'", $alias, $dossier->getDossierDate()->format('Y-m-d'));
     }
 }
