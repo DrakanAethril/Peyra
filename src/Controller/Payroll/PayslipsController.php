@@ -117,7 +117,7 @@ final class PayslipsController extends AbstractController
             'has_establishment' => $book->hasEstablishment($dossier),
             'result' => $calculation['payslip'],
             'refusal' => $calculation['refusal'],
-            'view' => null === $calculation['payslip'] ? null : PayslipView::of($calculation['payslip']),
+            'payslip_view' => null === $calculation['payslip'] ? null : PayslipView::of($calculation['payslip']),
         ], new Response(null, [] === $errors ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY));
     }
 

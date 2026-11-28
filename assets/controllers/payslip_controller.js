@@ -14,11 +14,12 @@ export default class extends Controller {
         this.dirty = false;
         this.current = null;
         this.onLeave = this.onLeave.bind(this);
-        this.element.addEventListener('click', this.onLeave, true);
+        // The head's buttons (previous, next, detail) sit outside this element: listen on the document.
+        document.addEventListener('click', this.onLeave, true);
     }
 
     disconnect() {
-        this.element.removeEventListener('click', this.onLeave, true);
+        document.removeEventListener('click', this.onLeave, true);
     }
 
     changed() {
@@ -45,7 +46,7 @@ export default class extends Controller {
     }
 
     explainCurrent() {
-        const line = this.lineTargets.includes(document.activeElement) ? document.activeElement : this.current ?? this.lineTargets[0];
+        const line = this.lineTargets.includes(document.activeElement) ? document.activeElement : (this.current ?? this.lineTargets[0]);
         if (line) {
             this.show(line);
         }
@@ -62,7 +63,16 @@ export default class extends Controller {
     }
 
     onLeave(event) {
-        if (!this.dirty || !(event.target instanceof Element)) {
+        if (!(event.target instanceof Element)) {
+            return;
+        }
+        if (event.target.closest('[data-payslip-explain]')) {
+            event.preventDefault();
+            this.explainCurrent();
+
+            return;
+        }
+        if (!this.dirty) {
             return;
         }
         const link = event.target.closest('[data-payslip-leave]');

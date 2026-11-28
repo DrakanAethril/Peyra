@@ -23,7 +23,7 @@
             <twig:Px:Badge :of="status"/>
             {% if previous %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: previous.registrationNumber}) }}" icon="chevron-up" shortcut="Ctrl+ArrowUp" data-payslip-leave="">Précédent</twig:Px:Button>{% endif %}
             {% if next %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: next.registrationNumber}) }}" icon="chevron-down" shortcut="Ctrl+ArrowDown" data-payslip-leave="">Suivant</twig:Px:Button>{% endif %}
-            {% if view %}<twig:Px:Button shortcut="F5" data-action="payslip#explainCurrent">Détail d’une rubrique</twig:Px:Button>{% endif %}
+            {% if payslip_view %}<twig:Px:Button shortcut="F5" data-payslip-explain="">Détail d’une rubrique</twig:Px:Button>{% endif %}
             {% if can_edit %}<twig:Px:Button type="submit" form="payslip-elements" variant="primary" shortcut="F9 F10">{{ status.value == 'todo' ? 'Calculer le bulletin' : 'Recalculer' }}</twig:Px:Button>{% endif %}
         </twig:block>
     </twig:Px:PageHead>
@@ -45,7 +45,7 @@
         {% if employee.withholdingRate is null %}
             <twig:Px:Alert tone="info">Le taux de prélèvement à la source de {{ employee.fullName }} n’est pas renseigné. Le taux neutre s’applique.</twig:Px:Alert>
         {% endif %}
-        <div class="px-split px-split--side">
+        <div class="px-split px-split--payslip">
             <div class="px-stack">
                 <twig:Px:Card title="Salariés" meta="{{ employee_rows|length }} bulletin{{ employee_rows|length > 1 ? 's' : '' }}" :flush="true">
                     <twig:Px:Table caption="Salariés de {{ month|period }}" density="compact" :rows="true">
@@ -73,7 +73,7 @@
                                     {% set field_error = errors[field.key] ?? null %}
                                     <tr>
                                         <th scope="row"><label for="{{ field_id }}">{{ field.label }}</label>{% if field_error %}<p class="px-field__error" id="{{ field_id }}_error">{{ field_error }}</p>{% endif %}</th>
-                                        <td class="px-u-num"><twig:Px:Input id="{{ field_id }}" name="{{ field.kind }}[{{ field.code }}]" value="{{ typed[field.key] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" disabled="{{ not can_edit }}" placeholder="{{ field.unit }}" autofocus="{{ loop.first and can_edit }}"/></td>
+                                        <td class="px-u-num"><twig:Px:Input id="{{ field_id }}" name="{{ field.kind }}[{{ field.code }}]" value="{{ typed[field.key] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" :disabled="not can_edit" placeholder="{{ field.unit }}" :autofocus="loop.first and can_edit"/></td>
                                     </tr>
                                 {% endfor %}
                                 {% if takes_paid_leave %}
@@ -81,14 +81,14 @@
                                         {% set field_error = errors['paidLeave.' ~ part] ?? (loop.first ? errors['paidLeave'] ?? null : null) %}
                                         <tr>
                                             <th scope="row"><label for="el-leave-{{ part }}">{{ part_label }}</label>{% if field_error %}<p class="px-field__error">{{ field_error }}</p>{% endif %}</th>
-                                            <td class="px-u-num"><twig:Px:Input id="el-leave-{{ part }}" name="paidLeave[{{ part }}]" value="{{ typed['paidLeave.' ~ part] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" disabled="{{ not can_edit }}" placeholder="{{ part == 'referenceGross' ? '€' : (part == 'hours' ? 'h' : 'j') }}"/></td>
+                                            <td class="px-u-num"><twig:Px:Input id="el-leave-{{ part }}" name="paidLeave[{{ part }}]" value="{{ typed['paidLeave.' ~ part] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" :disabled="not can_edit" placeholder="{{ part == 'referenceGross' ? '€' : (part == 'hours' ? 'h' : 'j') }}"/></td>
                                         </tr>
                                     {% endfor %}
                                 {% endif %}
                                 {% set field_error = errors['unpaidDays'] ?? null %}
                                 <tr>
                                     <th scope="row"><label for="el-unpaid">Jours entiers d’absence sans aucun versement</label>{% if field_error %}<p class="px-field__error">{{ field_error }}</p>{% endif %}</th>
-                                    <td class="px-u-num"><twig:Px:Input id="el-unpaid" name="unpaidDays" value="{{ typed['unpaidDays'] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" disabled="{{ not can_edit }}" placeholder="j"/></td>
+                                    <td class="px-u-num"><twig:Px:Input id="el-unpaid" name="unpaidDays" value="{{ typed['unpaidDays'] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" :disabled="not can_edit" placeholder="j"/></td>
                                 </tr>
                             </tbody>
                         </twig:Px:Table>
@@ -96,8 +96,8 @@
                 </twig:Px:Card>
             </div>
             <div class="px-stack">
-                <twig:Px:Card title="Bulletin de paie" meta="du {{ month|date('j') == '1' ? '1er' : month|date('j') }} au {{ pay_day|date_long }} · paiement le {{ pay_day|day_month(pay_day|date('Y')) }} par virement" :flush="true">
-                    {% if view is null %}
+                <twig:Px:Card title="Bulletin de paie" meta="du 1er au {{ pay_day|date('j') }} {{ month|period }} · paiement le {{ pay_day|day_month(pay_day|date('Y')) }} par virement" :flush="true">
+                    {% if payslip_view is null %}
                         {% if refusal %}
                             <twig:Px:Empty icon="triangle-alert" title="Le bulletin ne se calcule pas" text="{{ refusal }}"/>
                         {% else %}
@@ -116,14 +116,14 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for row in view.gross %}{{ include('payroll/_payslip_row.html.twig') }}{% endfor %}
+                                {% for row in payslip_view.gross %}{{ include('payroll/_payslip_row.html.twig') }}{% endfor %}
                                 <tr class="px-table__subtotal"><th scope="row">Salaire brut</th><td></td><td></td><td class="px-u-num">{{ result.gross|amount }}</td><td></td><td></td></tr>
-                                {% for block in view.contributions %}
+                                {% for block in payslip_view.contributions %}
                                     <tr class="px-table__section"><th scope="rowgroup" colspan="6">{{ block.heading }}</th></tr>
                                     {% for row in block.rows %}{{ include('payroll/_payslip_row.html.twig') }}{% endfor %}
                                 {% endfor %}
                                 <tr class="px-table__subtotal"><th scope="row">Total des cotisations et contributions</th><td></td><td></td><td class="px-u-num">{{ result.totals.employeeContributions|amount }}</td><td></td><td class="px-u-num">{{ result.totals.employerContributions|amount }}</td></tr>
-                                {% for block in view.after %}
+                                {% for block in payslip_view.after %}
                                     <tr class="px-table__section"><th scope="rowgroup" colspan="6">{{ block.heading }}</th></tr>
                                     {% for row in block.rows %}{{ include('payroll/_payslip_row.html.twig') }}{% endfor %}
                                 {% endfor %}
@@ -131,7 +131,7 @@
                         </twig:Px:Table>
                     {% endif %}
                 </twig:Px:Card>
-                {% if view %}
+                {% if payslip_view %}
                     {% set totals = result.totals %}
                     <div class="px-kpis">
                         <twig:Px:Kpi label="Montant net social" value="{{ totals.netSocial|amount }}" note="à déclarer pour les prestations"/>
