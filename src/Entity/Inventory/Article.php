@@ -7,15 +7,19 @@ namespace App\Entity\Inventory;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\DossierOwned;
 use App\Entity\Dossier\DossierOwnedTrait;
+use App\Enum\Inventory\StockValuationMethod;
 use App\Repository\Inventory\ArticleRepository;
 use App\Service\Shared\Money;
+use Brick\Math\BigDecimal;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
  * An article of the dossier (lot 2, step 2.3): its reference, what it is, its unit, its selling
  * price excluding tax, the VAT rate it is usually sold at (« 20 », « 5.5 »: the author writes it,
  * no rate is in the code), the revenue account its sales go to (a number of the plan, as text,
- * checked when the article is saved) and whether its stock is followed (lot 2.5). A raw material
+ * checked when the article is saved) and whether its stock is followed; a followed stock has its
+ * valuation method and may have a minimum below which it is signalled (step 2.5). A raw material
  * has no selling price. ArticleSheet is the only writer.
  */
 #[ORM\Entity(repositoryClass: ArticleRepository::class)]
@@ -58,6 +62,13 @@ class Article implements DossierOwned
 
     #[ORM\Column]
     private bool $stockTracked = false;
+
+    #[ORM\Column(length: 20, enumType: StockValuationMethod::class)]
+    private StockValuationMethod $valuationMethod = StockValuationMethod::WeightedAverage;
+
+    /** The quantity below which its stock is signalled as running out (step 2.5); null: no threshold. */
+    #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 3, nullable: true)]
+    private ?string $minimumStock = null;
 
     public function __construct(Dossier $dossier, string $code)
     {
@@ -112,9 +123,21 @@ class Article implements DossierOwned
         return $this->stockTracked;
     }
 
-    /** ArticleSheet's write, every field at once. */
-    public function describe(string $code, string $designation, string $unit, ?Money $salePrice, ?string $vatRate, ?string $revenueAccount, bool $stockTracked, ?Money $purchasePrice = null): void
+    public function getValuationMethod(): StockValuationMethod
     {
+        return $this->valuationMethod;
+    }
+
+    public function getMinimumStock(): ?BigDecimal
+    {
+        return null === $this->minimumStock ? null : BigDecimal::of($this->minimumStock);
+    }
+
+    /** ArticleSheet's write, every field at once. */
+    public function describe(string $code, string $designation, string $unit, ?Money $salePrice, ?string $vatRate, ?string $revenueAccount, bool $stockTracked, ?Money $purchasePrice = null, StockValuationMethod $valuationMethod = StockValuationMethod::WeightedAverage, ?BigDecimal $minimumStock = null): void
+    {
+        $this->valuationMethod = $valuationMethod;
+        $this->minimumStock = null === $minimumStock ? null : (string) $minimumStock->toScale(3);
         $this->purchasePrice = $purchasePrice;
         $this->code = $code;
         $this->designation = $designation;

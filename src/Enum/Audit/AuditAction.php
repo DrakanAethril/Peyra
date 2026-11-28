@@ -230,6 +230,9 @@ enum AuditAction: string
 
     case ArticleDeleted = 'inventory.article_deleted';
 
+    /** A stock movement recorded by hand, or those a delivery note or a receipt made (step 2.5). */
+    case StockMovementRecorded = 'inventory.stock_movement_recorded';
+
     /** A commercial document drafted, changed, deleted while a draft, validated, sent, transformed (step 2.3). */
     case SalesDocumentCreated = 'sales.document_created';
 
@@ -326,6 +329,7 @@ enum AuditAction: string
             self::ArticleCreated => 'Article créé',
             self::ArticleChanged => 'Article modifié',
             self::ArticleDeleted => 'Article supprimé',
+            self::StockMovementRecorded => 'Mouvement de stock enregistré',
             self::SalesDocumentCreated => 'Document commercial créé',
             self::SalesDocumentChanged => 'Document commercial modifié',
             self::SalesDocumentDeleted => 'Brouillon de document commercial supprimé',

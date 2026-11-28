@@ -23,22 +23,22 @@ final class AssistanceTest extends TestCase
         yield 'Guidé' => [AssistanceLevel::Guided, [
             'runsControls' => true, 'blocks' => true, 'allowsPartialLettering' => false, 'proposesLettering' => true,
             'opensGuidedEntry' => true, 'refusesAccountOutsideChart' => true, 'signalsAccountOutsideChart' => true,
-            'requiresHiringDeclarationFields' => true, 'explainsPortalRejections' => true, 'flagsQuantityGaps' => true,
+            'requiresHiringDeclarationFields' => true, 'explainsPortalRejections' => true, 'flagsQuantityGaps' => true, 'showsStockValuation' => true,
         ]];
         yield 'Contrôles bloquants' => [AssistanceLevel::Blocking, [
             'runsControls' => true, 'blocks' => true, 'allowsPartialLettering' => false, 'proposesLettering' => false,
             'opensGuidedEntry' => true, 'refusesAccountOutsideChart' => true, 'signalsAccountOutsideChart' => true,
-            'requiresHiringDeclarationFields' => true, 'explainsPortalRejections' => false, 'flagsQuantityGaps' => false,
+            'requiresHiringDeclarationFields' => true, 'explainsPortalRejections' => false, 'flagsQuantityGaps' => false, 'showsStockValuation' => false,
         ]];
         yield 'Avertissements' => [AssistanceLevel::Warnings, [
             'runsControls' => true, 'blocks' => false, 'allowsPartialLettering' => true, 'proposesLettering' => false,
             'opensGuidedEntry' => false, 'refusesAccountOutsideChart' => false, 'signalsAccountOutsideChart' => true,
-            'requiresHiringDeclarationFields' => false, 'explainsPortalRejections' => false, 'flagsQuantityGaps' => false,
+            'requiresHiringDeclarationFields' => false, 'explainsPortalRejections' => false, 'flagsQuantityGaps' => false, 'showsStockValuation' => false,
         ]];
         yield 'Aucun filet' => [AssistanceLevel::None, [
             'runsControls' => false, 'blocks' => false, 'allowsPartialLettering' => true, 'proposesLettering' => false,
             'opensGuidedEntry' => false, 'refusesAccountOutsideChart' => false, 'signalsAccountOutsideChart' => false,
-            'requiresHiringDeclarationFields' => false, 'explainsPortalRejections' => false, 'flagsQuantityGaps' => false,
+            'requiresHiringDeclarationFields' => false, 'explainsPortalRejections' => false, 'flagsQuantityGaps' => false, 'showsStockValuation' => false,
         ]];
     }
 
@@ -59,6 +59,7 @@ final class AssistanceTest extends TestCase
             'requiresHiringDeclarationFields' => $assistance->requiresHiringDeclarationFields(),
             'explainsPortalRejections' => $assistance->explainsPortalRejections(),
             'flagsQuantityGaps' => $assistance->flagsQuantityGaps(),
+            'showsStockValuation' => $assistance->showsStockValuation(),
         ]);
         self::assertSame($level, $assistance->level);
     }

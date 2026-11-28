@@ -1,8 +1,8 @@
 {#
  # Achats et stocks (design-ux.md §§ 2.5 and 3.2; lot 2): the module's tab bar - Fournisseurs,
  # Commandes · Réceptions and Factures et avoirs reçus (step 2.4, closed to a profile that does not
- # read the purchases), Articles (step 2.3); Stocks join it with step 2.5. A screen sets
- # `inventory_tab` (suppliers, articles, orders, invoices) and `dossier_title` outside any block.
+ # read the purchases), Articles (step 2.3), Stocks (step 2.5, the same profiles). A screen sets
+ # `inventory_tab` (suppliers, articles, orders, invoices, stock) and `dossier_title` outside any block.
  #}
 {% extends 'dossier/_layout.html.twig' %}
 
@@ -17,5 +17,6 @@
     ])|merge(purchases ? [
         {label: 'Commandes · Réceptions', href: path('app_sales_documents', {dossier: dossier.id, side: 'purchases', type: 'purchase_order'}), current: (inventory_tab ?? '') == 'orders'},
         {label: 'Factures et avoirs reçus', href: path('app_purchase_invoices', {dossier: dossier.id}), current: (inventory_tab ?? '') == 'invoices'},
+        {label: 'Stocks', href: path('app_inventory_stock_movements', {dossier: dossier.id}), current: (inventory_tab ?? '') == 'stock'},
     ] : [])"/>
 {% endblock %}

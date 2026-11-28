@@ -1,0 +1,83 @@
+{#
+ # Achats et stocks › Stocks › Mouvements (step 2.5, gabarit L): the dossier's movements, the
+ # latest first, by kind and searched by article; each with the value it came in or went out at
+ # (read by replaying the article's movements with its method), and the document that made it.
+ #}
+{% extends 'inventory/_layout.html.twig' %}
+
+{% set inventory_tab = 'stock' %}
+{% set stock_current = 'movements' %}
+{% set dossier_title = 'Mouvements de stock' %}
+{% set can_enter = is_granted('PURCHASES_ENTER', dossier) %}
+{% set status_keys = can_enter ? [{combo: 'N', verb: 'Nouveau mouvement'}, {combo: '/', verb: 'Rechercher'}] : [{combo: '/', verb: 'Rechercher'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Mouvements de stock" :trail="[
+        {label: 'Achats et stocks', href: path('app_inventory_articles', {dossier: dossier.id})},
+        {label: 'Stocks', href: path('app_inventory_stock_movements', {dossier: dossier.id})},
+        {label: 'Mouvements', href: path('app_inventory_stock_movements', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_enter %}<twig:Px:Button href="{{ path('app_inventory_stock_movement_new', {dossier: dossier.id}) }}" variant="primary" icon="plus" shortcut="N">Nouveau mouvement</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('inventory/stock/_tabs.html.twig') }}
+    {% if total == 0 %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="package" title="Aucun mouvement de stock" text="Les entrées, sorties, transferts et ajustements des articles suivis en stock. Un bon de réception validé fait entrer ses articles, un bon de livraison validé les fait sortir."/>
+        </twig:Px:Card>
+    {% else %}
+        <twig:Px:Card :flush="true">
+            <twig:Px:Filters action="{{ path('app_inventory_stock_movements', {dossier: dossier.id}) }}" search="{{ search }}" searchLabel="Article" resetHref="{{ search or kind ? path('app_inventory_stock_movements', {dossier: dossier.id}) : null }}">
+                <twig:Px:FilterChip label="Tous" href="{{ path('app_inventory_stock_movements', {dossier: dossier.id, q: search ?: null}) }}" :count="searched_total" :current="kind is null"/>
+                {% for item in kinds %}
+                    <twig:Px:FilterChip label="{{ item.label }}s" href="{{ path('app_inventory_stock_movements', {dossier: dossier.id, kind: item.value, q: search ?: null}) }}" :count="counts[item.value] ?? 0" :current="kind == item"/>
+                {% endfor %}
+            </twig:Px:Filters>
+            {% if movement_rows is empty %}
+                <twig:Px:Empty icon="search" title="Aucun mouvement" text="Aucun mouvement ne correspond à ces filtres."/>
+            {% else %}
+                <twig:Px:Table caption="Mouvements de stock de {{ dossier.name }}" :rows="true">
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Article</th>
+                            <th scope="col">Désignation</th>
+                            <th scope="col">Nature</th>
+                            <th scope="col">Dépôt</th>
+                            <th scope="col" class="px-u-num">Quantité</th>
+                            <th scope="col" class="px-u-num">Valeur</th>
+                            <th scope="col">Libellé</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for movement in movement_rows %}
+                            {% set item = movement.article %}
+                            {% set signed = movement.kind.value == 'exit' ? movement.quantity.negated : movement.quantity %}
+                            <tr data-rows-target="row">
+                                <td>{{ movement.date|date_fr }}</td>
+                                <td class="px-u-code"><a class="px-link" href="{{ path('app_inventory_stock_card', {dossier: dossier.id, code: item.code}) }}">{{ item.code }}</a></td>
+                                <td class="px-u-fill" title="{{ item.designation }}">{{ item.designation }}</td>
+                                <td><twig:Px:Badge :of="movement.kind"/></td>
+                                <td>{{ movement.location }}{% if movement.toLocation %} → {{ movement.toLocation }}{% endif %}</td>
+                                <td class="px-u-num">{{ movement.kind.value == 'transfer' ? '' : (signed.isNegative ? '−' : '') ~ signed.abs|quantity(signed.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }} {{ item.unit }}</td>
+                                <td class="px-u-num">{{ values[movement.id] is defined and values[movement.id] is not null ? values[movement.id]|amount : '' }}</td>
+                                <td>
+                                    {% if movement.salesDocument %}
+                                        <a class="px-link" href="{{ path('app_sales_document', {dossier: dossier.id, side: movement.salesDocument.type.side, id: movement.salesDocument.id}) }}">{{ movement.label }}</a>
+                                    {% else %}{{ movement.label }}{% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+            <twig:Px:Pager :total="shown_total" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>Mouvements · <b>{{ total }}</b></span>{% endblock %}

@@ -15,6 +15,7 @@
         {label: article ? article.code : 'Nouvel article', href: article ? path('app_inventory_article', {dossier: dossier.id, code: article.code}) : path('app_inventory_article_new', {dossier: dossier.id})},
     ]">
         <twig:block name="actions">
+            {% if article and article.stockTracked and is_granted('PURCHASES_READ', dossier) %}<twig:Px:Button href="{{ path('app_inventory_stock_card', {dossier: dossier.id, code: article.code}) }}" icon="package">Fiche de stock</twig:Px:Button>{% endif %}
             {% if can_edit %}
                 {% if article %}<twig:Px:ConfirmButton label="Supprimer l’article" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="article-delete"/>{% endif %}
                 <twig:Px:Button type="submit" variant="primary" form="article-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
@@ -24,6 +25,7 @@
 {% endblock %}
 
 {% block page %}
+    {% for message in app.flashes('article_fault') %}<twig:Px:Alert tone="danger">{{ message }}</twig:Px:Alert>{% endfor %}
     {% if draft.errors is not empty %}
         <twig:Px:Alert tone="danger">L’article n’est pas enregistré : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
     {% endif %}
@@ -54,8 +56,15 @@
                         <twig:Px:AccountPicker id="revenueAccount" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" nature="revenue" value="{{ draft.revenueAccount }}" hint="1" :error="draft.error('revenueAccount')" listLabel="Comptes de produits"/>
                     </twig:Px:Field>
                     <div class="px-field px-fieldgrid__full">
-                        <label class="px-check"><input type="checkbox" name="stockTracked" value="1"{% if draft.stockTracked %} checked{% endif %}> <span>Suivi en stock : ses entrées et ses sorties sont des mouvements de stock</span></label>
+                        <label class="px-check"><input type="checkbox" name="stockTracked" value="1"{% if draft.stockTracked %} checked{% endif %}{% if draft.error('stockTracked') %} aria-invalid="true"{% endif %}> <span>Suivi en stock : ses entrées et ses sorties sont des mouvements de stock</span></label>
+                        {% if draft.error('stockTracked') %}<p class="px-field__error"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ draft.error('stockTracked') }}</p>{% endif %}
                     </div>
+                    <twig:Px:Field id="valuationMethod" label="Méthode de valorisation" hint="Pour un article suivi en stock." :error="draft.error('valuationMethod')">
+                        <twig:Px:Select id="valuationMethod" :options="valuation_methods" value="{{ draft.valuationMethod }}" hint="1" :error="draft.error('valuationMethod')"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="minimumStock" label="Stock minimum" hint="En dessous, l’état du stock le signale. Vide : aucun seuil." :error="draft.error('minimumStock')">
+                        <twig:Px:Input id="minimumStock" value="{{ draft.minimumStock }}" hint="1" :error="draft.error('minimumStock')" class="px-u-num" inputmode="decimal" autocomplete="off"/>
+                    </twig:Px:Field>
                 </div>
             </twig:Px:Card>
         </form>
@@ -74,7 +83,8 @@
                 <dt>Prix d’achat HT</dt><dd class="px-u-num">{{ article.purchasePrice ? article.purchasePrice|amount_eur : 'Non acheté' }}</dd>
                 <dt>Taux de TVA</dt><dd>{{ article.vatRate is not null ? article.vatRate|percent : '—' }}</dd>
                 <dt>Compte de produits</dt><dd class="px-u-code">{{ article.revenueAccount ?? '—' }}</dd>
-                <dt>Stock</dt><dd>{{ article.stockTracked ? 'Suivi' : 'Non suivi' }}</dd>
+                <dt>Stock</dt><dd>{{ article.stockTracked ? 'Suivi, ' ~ article.valuationMethod.label : 'Non suivi' }}</dd>
+                {% if article.stockTracked and article.minimumStock is not null %}<dt>Stock minimum</dt><dd class="px-u-num">{{ article.minimumStock|quantity(3) }} {{ article.unit }}</dd>{% endif %}
             </dl>
         </twig:Px:Card>
     {% endif %}

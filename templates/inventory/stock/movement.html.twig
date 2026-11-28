@@ -1,0 +1,76 @@
+{#
+ # Achats et stocks › Stocks › Nouveau mouvement (step 2.5, gabarit F): an entry at its unit cost,
+ # an exit, a transfer from one storage place to another, an adjustment up or down; F10 records it
+ # under PURCHASES_ENTER, then opens the article's fiche de stock. Opened from a fiche de stock, the
+ # article's stock by place is shown - and at level G the unit cost its next exit goes out at.
+ #}
+{% extends 'inventory/_layout.html.twig' %}
+
+{% set inventory_tab = 'stock' %}
+{% set dossier_title = 'Nouveau mouvement de stock' %}
+{% set status_keys = [{combo: 'F10', verb: 'Enregistrer'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Nouveau mouvement de stock" :trail="[
+        {label: 'Achats et stocks', href: path('app_inventory_articles', {dossier: dossier.id})},
+        {label: 'Stocks', href: path('app_inventory_stock_movements', {dossier: dossier.id})},
+        {label: 'Nouveau mouvement', href: path('app_inventory_stock_movement_new', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ article ? path('app_inventory_stock_card', {dossier: dossier.id, code: article.code}) : path('app_inventory_stock_movements', {dossier: dossier.id}) }}" variant="quiet">Annuler</twig:Px:Button>
+            <twig:Px:Button type="submit" variant="primary" form="movement-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">Le mouvement n’est pas enregistré : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+    {% if article %}
+        <twig:Px:Card title="Stock de {{ article.code }} au {{ dossier.dossierDate|date_fr }}">
+            <dl class="px-facts">
+                <dt>Article</dt><dd>{{ article.designation }}</dd>
+                <dt>Méthode</dt><dd>{{ article.valuationMethod.label }}</dd>
+                {% for place in article_places %}
+                    <dt>{{ place.location }}</dt><dd class="px-u-num">{{ place.quantity|quantity(place.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }} {{ article.unit }}</dd>
+                {% else %}
+                    <dt>Quantité</dt><dd class="px-u-num">0 {{ article.unit }}</dd>
+                {% endfor %}
+                {% if next_cost %}<dt>Prochaine sortie</dt><dd class="px-u-num">{{ next_cost|amount_eur }} l’unité ({{ article.valuationMethod.shortLabel }})</dd>{% endif %}
+            </dl>
+        </twig:Px:Card>
+    {% endif %}
+    <form method="post" action="{{ path('app_inventory_stock_movement_new', {dossier: dossier.id}) }}" id="movement-form" novalidate data-controller="focus-error">
+        <input type="hidden" name="_token" value="{{ csrf_token('stock-movement-' ~ dossier.id) }}">
+        <twig:Px:Card title="Mouvement">
+            <div class="px-fieldgrid">
+                <twig:Px:Field id="kind" label="Nature" :required="true" :error="draft.error('kind')">
+                    <twig:Px:Select id="kind" :options="kinds|map(k => {value: k.value, label: k.label})" value="{{ draft.kind }}" :error="draft.error('kind')" autofocus/>
+                </twig:Px:Field>
+                <twig:Px:Field id="article" label="Article" :required="true" :error="draft.error('article')" :wide="true">
+                    <twig:Px:Select id="article" :options="tracked|map(a => {value: a.code, label: a.code ~ ' · ' ~ a.designation})" value="{{ draft.article }}" placeholder="Choisir un article suivi en stock…" :error="draft.error('article')"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="date" label="Date" :required="true" :error="draft.error('date')">
+                    <twig:Px:DateInput id="date" :value="draft_date" :reference="dossier.dossierDate" :required="true" :error="draft.error('date')"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="quantity" label="Quantité" :required="true" hint="Un ajustement en moins s’écrit −2." :error="draft.error('quantity')">
+                    <twig:Px:Input id="quantity" value="{{ draft.quantity }}" hint="1" :required="true" :error="draft.error('quantity')" class="px-u-num" inputmode="decimal" autocomplete="off"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="unitCost" label="Coût unitaire HT" hint="Pour une entrée : ce que l’unité a coûté." :error="draft.error('unitCost')">
+                    <twig:Px:Input id="unitCost" value="{{ draft.unitCost }}" hint="1" :error="draft.error('unitCost')" class="px-u-num" inputmode="decimal" autocomplete="off"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="location" label="Dépôt" :required="true" hint="Le dépôt de départ d’un transfert." :error="draft.error('location')">
+                    <twig:Px:Input id="location" value="{{ draft.location }}" hint="1" :required="true" :error="draft.error('location')" list="stock-places" maxlength="40" autocomplete="off"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="toLocation" label="Dépôt d’arrivée" hint="Pour un transfert." :error="draft.error('toLocation')">
+                    <twig:Px:Input id="toLocation" value="{{ draft.toLocation }}" hint="1" :error="draft.error('toLocation')" list="stock-places" maxlength="40" autocomplete="off"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="label" label="Libellé" hint="Vide : la nature du mouvement." :wide="true" :error="draft.error('label')">
+                    <twig:Px:Input id="label" value="{{ draft.label }}" hint="1" :error="draft.error('label')" maxlength="160" autocomplete="off"/>
+                </twig:Px:Field>
+            </div>
+            <datalist id="stock-places">{% for place in places %}<option value="{{ place }}"></option>{% endfor %}</datalist>
+        </twig:Px:Card>
+    </form>
+{% endblock %}

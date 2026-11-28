@@ -91,4 +91,14 @@ final readonly class Assistance
     {
         return AssistanceLevel::Guided === $this->level;
     }
+
+    /**
+     * A new stock movement shows, before it is recorded, the unit cost its article's next exit goes
+     * out at - the CMUP, the month's, the oldest lot's (G: « valorisation calculée »); elsewhere the
+     * student values the exit and reads the engine's value once it is recorded.
+     */
+    public function showsStockValuation(): bool
+    {
+        return AssistanceLevel::Guided === $this->level;
+    }
 }

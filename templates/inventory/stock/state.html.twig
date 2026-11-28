@@ -1,0 +1,89 @@
+{#
+ # Achats et stocks › Stocks › État du stock (step 2.5, gabarit R): every followed article at a day
+ # (the dossier's by default) - quantity, unit cost, value at its method, its minimum -, those below
+ # their minimum signalled and filtered apart (« Sous le minimum »), the total; « Exporter » in CSV.
+ #}
+{% extends 'inventory/_layout.html.twig' %}
+
+{% set inventory_tab = 'stock' %}
+{% set stock_current = 'state' %}
+{% set dossier_title = 'État du stock' %}
+
+{% macro qty(value) %}{{ value|quantity(value.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}{% endmacro %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="État du stock au {{ at|date_fr }}" :trail="[
+        {label: 'Achats et stocks', href: path('app_inventory_articles', {dossier: dossier.id})},
+        {label: 'Stocks', href: path('app_inventory_stock_movements', {dossier: dossier.id})},
+        {label: 'État du stock', href: path('app_inventory_stock_state', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ path('app_inventory_stock_state_export', {dossier: dossier.id, at: at|date('Y-m-d')}) }}" icon="download">Exporter</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% import _self as format %}
+    {{ include('inventory/stock/_tabs.html.twig') }}
+    {% if below_total > 0 %}
+        <twig:Px:Alert tone="warning">{{ below_total }} article{{ below_total > 1 ? 's sont' : ' est' }} sous {{ below_total > 1 ? 'leur' : 'son' }} stock minimum au {{ at|date_fr }} : à réapprovisionner.</twig:Px:Alert>
+    {% endif %}
+    <twig:Px:Card :flush="true">
+        <twig:Px:Filters action="{{ path('app_inventory_stock_state', {dossier: dossier.id}) }}" resetHref="{{ alerts or at != dossier.dossierDate ? path('app_inventory_stock_state', {dossier: dossier.id}) : null }}">
+            <span class="px-filters__field">
+                <label for="state-at">Au</label>
+                <twig:Px:DateInput id="state-at" name="at" :value="at" :reference="dossier.dossierDate"/>
+            </span>
+            {% if alerts %}<input type="hidden" name="view" value="below">{% endif %}
+            <twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button>
+            <span class="px-filters__sep" aria-hidden="true"></span>
+            <twig:Px:FilterChip label="Tous les articles" href="{{ path('app_inventory_stock_state', {dossier: dossier.id, at: at|date('Y-m-d')}) }}" :count="line_total" :current="not alerts"/>
+            <twig:Px:FilterChip label="Sous le minimum" href="{{ path('app_inventory_stock_state', {dossier: dossier.id, at: at|date('Y-m-d'), view: 'below'}) }}" :count="below_total" :current="alerts"/>
+        </twig:Px:Filters>
+        {% if stock_lines is empty %}
+            <twig:Px:Empty icon="package" title="{{ alerts ? 'Aucun article sous son minimum' : 'Aucun article suivi en stock' }}" text="{{ alerts ? 'Chaque article suivi a au moins son stock minimum au ' ~ at|date_fr ~ '.' : 'Cochez « Suivi en stock » sur la fiche d’un article pour que ses entrées et ses sorties soient des mouvements de stock.' }}"/>
+        {% else %}
+            <twig:Px:Table caption="État du stock de {{ dossier.name }} au {{ at|date_fr }}" :rows="true">
+                <thead>
+                    <tr>
+                        <th scope="col">Article</th>
+                        <th scope="col">Désignation</th>
+                        <th scope="col">Méthode</th>
+                        <th scope="col" class="px-u-num">Quantité</th>
+                        <th scope="col">Unité</th>
+                        <th scope="col" class="px-u-num">Coût unitaire</th>
+                        <th scope="col" class="px-u-num">Valeur</th>
+                        <th scope="col" class="px-u-num">Minimum</th>
+                        <th scope="col">Alerte</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in stock_lines %}
+                        {% set item = line.article %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-code"><a class="px-link" href="{{ path('app_inventory_stock_card', {dossier: dossier.id, code: item.code, at: at|date('Y-m-d')}) }}">{{ item.code }}</a></td>
+                            <td class="px-u-fill" title="{{ item.designation }}">{{ item.designation }}</td>
+                            <td>{{ item.valuationMethod.shortLabel }}</td>
+                            <td class="px-u-num">{{ format.qty(line.position.quantity) }}</td>
+                            <td>{{ item.unit }}</td>
+                            <td class="px-u-num">{{ line.position.unitCost ? line.position.unitCost|amount : '' }}</td>
+                            <td class="px-u-num">{{ line.position.value|amount_cell }}</td>
+                            <td class="px-u-num">{{ item.minimumStock is not null ? format.qty(item.minimumStock) : '' }}</td>
+                            <td>{% if line.belowMinimum %}<twig:Px:Badge tone="warning" label="Sous le minimum"/>{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="px-table__total">
+                        <th scope="row" colspan="6">Valeur du stock</th>
+                        <td class="px-u-num">{{ total_value|amount }}</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>Stock au {{ at|date_fr }} · <b>{{ total_value|amount_eur }}</b></span>{% endblock %}
