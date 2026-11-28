@@ -101,7 +101,7 @@ final class DistributionsTest extends KernelTestCase
             self::assertSame($this->template->getId(), $dossier->getSourceTemplate()?->getId());
             self::assertSame($this->teacher->getId(), $dossier->getDistributedBy()?->getId());
             self::assertSame($this->schoolClass->getSchoolYear()->getId(), $dossier->getSchoolYear()?->getId());
-            self::assertSame('2026-01-31', $dossier->getDossierDate()->format('Y-m-d'));
+            self::assertSame('2026-03-31', $dossier->getDossierDate()->format('Y-m-d'));
             self::assertSame($templateEntries, $this->rows('SELECT COUNT(*) FROM entry WHERE dossier_id = ?', $dossier->getId()));
 
             $points = self::getContainer()->get(RestorePointRepository::class)->findByDossier($dossier);
@@ -201,7 +201,7 @@ final class DistributionsTest extends KernelTestCase
         $counts = $distributions->moveDate($this->reloadDistribution($distribution), new \DateTimeImmutable('2026-02-28'), $this->reloadedTeacher(), new \DateTimeImmutable(self::AT), static fn (Dossier $dossier): bool => $dossier !== $first);
         self::assertSame(['moved' => 3, 'unchanged' => 0, 'refused' => 1], $counts);
         $dates = array_map(static fn (DistributionCopy $copy): string => $copy->getDossier()?->getDossierDate()->format('Y-m-d') ?? '', $this->copiesOf($distribution));
-        self::assertSame(['2026-01-31', '2026-02-28', '2026-02-28', '2026-02-28'], $dates);
+        self::assertSame(['2026-03-31', '2026-02-28', '2026-02-28', '2026-02-28'], $dates);
 
         $dossierIds = array_map(static fn (DistributionCopy $copy): ?int => $copy->getDossier()?->getId(), $this->copiesOf($distribution));
         $distribution = $this->reloadDistribution($distribution);

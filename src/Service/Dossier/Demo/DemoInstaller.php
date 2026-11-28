@@ -12,6 +12,7 @@ use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Audit\AuditAction;
 use App\Enum\Dossier\DossierKind;
 use App\Repository\Accounting\AccountRepository;
+use App\Repository\Accounting\EntryRepository;
 use App\Repository\Dossier\DossierRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Accounting\Chart\AccountNumber;
@@ -43,6 +44,14 @@ final readonly class DemoInstaller
 {
     public const string DENOMINATION = 'Menuiserie Vasseur';
 
+    /**
+     * Entries drafted, entries validated between two clearings of the entity manager: a flush
+     * looks at every entity it manages, and a quarter of entries drafted one flush at a time over
+     * a growing unit of work took six times as long (as the FEC import found).
+     */
+    private const int DRAFT_BATCH = 20;
+    private const int VALIDATION_BATCH = 100;
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private DossierRepository $dossiers,
@@ -58,12 +67,16 @@ final readonly class DemoInstaller
         private SubscriptionRun $subscriptionRun,
         private Lettering $lettering,
         private ThirdPartyRepository $thirdParties,
+        private EntryRepository $entries,
         #[Autowire('%kernel.project_dir%/fixtures/demo')]
         private string $directory,
     ) {
     }
 
-    /** The common library's demonstration template; null when it is already installed. */
+    /**
+     * The common library's demonstration template; null when it is already installed. The install
+     * clears the entity manager as it goes: entities the caller loaded before are detached after.
+     */
     public function installTemplate(string $actor, \DateTimeImmutable $at): ?Dossier
     {
         if (null !== $this->dossiers->findCommonTemplateNamed(self::DENOMINATION)) {
@@ -106,7 +119,9 @@ final readonly class DemoInstaller
         $this->entityManager->flush();
         $this->context->within($dossier, fn () => $this->installThirdParties($dossier, $thirdPartyFile));
         $this->entityManager->flush();
-        $this->context->within($dossier, fn () => $this->installEntries($dossier, $entryFile, $actor));
+        $dossierId = (int) $dossier->getId();
+        $this->installEntries($dossierId, $entryFile, $actor);
+        $dossier = $this->fresh($dossierId);
         $this->context->within($dossier, fn () => $this->installTemplates($dossier, $templateFile, $actor));
         $this->context->within($dossier, fn () => $this->installSubscriptions($dossier, $subscriptionFile, $actor, $at));
         $this->context->within($dossier, fn () => $this->installLetterings($dossier, $letteringFile, $actor));
@@ -163,28 +178,47 @@ final readonly class DemoInstaller
     }
 
     /**
-     * Its entries, through the Ledger like any other: drafted one by one, then those marked validated
-     * validated together (numbered by date, as a person validating the month would). One the Ledger
-     * refuses names the entry and stops the install.
+     * Its entries, through the Ledger like any other: drafted one by one in the file's order (by
+     * date), then those marked validated validated in that order, a batch at a time (numbered by
+     * date, as a person validating each month would). One the Ledger refuses names the entry and
+     * stops the install.
      */
-    private function installEntries(Dossier $dossier, DemoEntryFile $file, string $actor): void
+    private function installEntries(int $dossierId, DemoEntryFile $file, string $actor): void
     {
         $toValidate = [];
-        foreach ($file->entries as $index => $entry) {
-            try {
-                $written = $this->ledger->draft($dossier, $entry['draft'], $actor, $entry['origin']);
-            } catch (EntryRefused $refusal) {
-                throw new \InvalidArgumentException(\sprintf('entries.yaml : entries[%d] (%s) : %s', $index, $entry['draft']->document, implode(' ', $refusal->errors)), 0, $refusal);
-            }
-            if ($entry['validated']) {
-                $toValidate[] = $written;
-            }
+        foreach (array_chunk($file->entries, self::DRAFT_BATCH, true) as $batch) {
+            $dossier = $this->fresh($dossierId);
+            $this->context->within($dossier, function () use ($dossier, $batch, $actor, &$toValidate): void {
+                foreach ($batch as $index => $entry) {
+                    try {
+                        $written = $this->ledger->draft($dossier, $entry['draft'], $actor, $entry['origin']);
+                    } catch (EntryRefused $refusal) {
+                        throw new \InvalidArgumentException(\sprintf('entries.yaml : entries[%d] (%s) : %s', $index, $entry['draft']->document, implode(' ', $refusal->errors)), 0, $refusal);
+                    }
+                    if ($entry['validated']) {
+                        $toValidate[] = (int) $written->getId();
+                    }
+                }
+            });
         }
-        try {
-            $this->ledger->validate($toValidate, $actor);
-        } catch (EntryRefused $refusal) {
-            throw new \InvalidArgumentException('entries.yaml : '.implode(' ', $refusal->errors), 0, $refusal);
+        foreach (array_chunk($toValidate, self::VALIDATION_BATCH) as $batch) {
+            $dossier = $this->fresh($dossierId);
+            $this->context->within($dossier, function () use ($batch, $actor): void {
+                try {
+                    $this->ledger->validate($this->entries->findBy(['id' => $batch], ['id' => 'ASC']), $actor);
+                } catch (EntryRefused $refusal) {
+                    throw new \InvalidArgumentException('entries.yaml : '.implode(' ', $refusal->errors), 0, $refusal);
+                }
+            });
         }
+    }
+
+    /** The dossier read again in an entity manager cleared of what the previous batch loaded. */
+    private function fresh(int $dossierId): Dossier
+    {
+        $this->entityManager->clear();
+
+        return $this->entityManager->find(Dossier::class, $dossierId) ?? throw new \LogicException('The demonstration is being written.');
     }
 
     /** Its entry templates, each checked as the fiche checks it: a fault names the code and installs nothing. */

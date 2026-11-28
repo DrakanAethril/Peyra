@@ -109,7 +109,7 @@ final class RestorePointsTest extends KernelTestCase
         self::assertSame($atPoint, $this->export()->of($dossier));
         self::assertSame($filesAtPoint, $this->files()->keys($this->dossierId()));
         self::assertNotContains($added, $this->files()->keys($this->dossierId()));
-        self::assertSame('2026-01-31', $dossier->getDossierDate()->format('Y-m-d'), 'La date du dossier ne bouge pas.');
+        self::assertSame('2026-03-31', $dossier->getDossierDate()->format('Y-m-d'), 'La date du dossier ne bouge pas.');
         // The state it left is a point of its own, ready.
         $safety = $restoration->getSafetyPoint() ?? throw new \LogicException('A point of the state left.');
         self::assertTrue($safety->isReady());

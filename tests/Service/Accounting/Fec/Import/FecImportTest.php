@@ -50,6 +50,8 @@ final class FecImportTest extends KernelTestCase
         $installer = self::getContainer()->get(DemoInstaller::class);
         $installer->installTemplate('test', new \DateTimeImmutable('2026-11-28 09:00'));
         $demo = $installer->findTemplate() ?? throw new \LogicException('The demonstration is installed.');
+        // The install clears the entity manager: the teacher is read again.
+        $this->teacher = self::getContainer()->get(EntityManagerInterface::class)->find(User::class, $this->teacher->getId()) ?? throw new \LogicException('Teacher.');
         $fec = $this->fecOf($demo);
         self::assertTrue($fec->report->isConform());
 
@@ -64,7 +66,7 @@ final class FecImportTest extends KernelTestCase
         self::assertSame($fec->entries, $result->entries);
         self::assertSame(0, $result->zeroLines);
         self::assertSame(0, $result->lettersLeft);
-        self::assertSame(4, $result->letterings);
+        self::assertSame(9, $result->letterings, 'The Scierie A to E, SCI Vasseur and Loire Bail A and B.');
 
         $again = $this->fecOf($template);
         self::assertTrue($again->report->isConform());
@@ -149,7 +151,7 @@ final class FecImportTest extends KernelTestCase
             'denomination' => 'Menuiserie Vasseur SARL', 'legalForm' => 'sarl', 'capital' => '5000000', 'siret' => '99941273600018',
             'activity' => 'Menuiserie', 'street' => '12 rue des Tilleuls', 'postalCode' => '42600', 'city' => 'Montbrison',
             'vatRegime' => 'real_normal_monthly', 'profitTaxRegime' => 'is_real_normal',
-            'exerciseStart' => '2026-01-01', 'exerciseEnd' => '2026-12-31', 'dossierDate' => '2026-01-31', 'chart' => 'pcg-2026',
+            'exerciseStart' => '2026-01-01', 'exerciseEnd' => '2026-12-31', 'dossierDate' => '2026-03-31', 'chart' => 'pcg-2026',
         ]));
         $draft->bytes = $bytes;
         $draft->fileName = $name;
