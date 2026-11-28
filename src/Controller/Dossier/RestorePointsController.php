@@ -14,6 +14,7 @@ use App\Service\Dossier\DossierLive;
 use App\Service\Dossier\Restore\Restorations;
 use App\Service\Dossier\Restore\RestorePointRules;
 use App\Service\Dossier\Restore\RestorePoints;
+use App\Service\Dossier\Restore\RestoreQueue;
 use App\Service\Dossier\Restore\RestoreRefused;
 use App\Service\Dossier\Restore\RestoreSummary;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -37,6 +38,7 @@ final class RestorePointsController extends AbstractController
     public function __construct(
         private readonly RestorePointRepository $points,
         private readonly DossierRestorationRepository $restorations,
+        private readonly RestoreQueue $queue,
     ) {
     }
 
@@ -132,6 +134,13 @@ final class RestorePointsController extends AbstractController
     {
         $points = $this->points->findByDossier($dossier);
         $latest = $this->restorations->findLatest($dossier);
+        // The list asks again while a copy is under way: each asking makes what a request left
+        // (its WorkBudget ran out, a class given a point at once) after the answer.
+        foreach ($points as $point) {
+            if ($point->isPreparing()) {
+                $this->queue->point($point);
+            }
+        }
 
         return $this->render('dossier/restore_points.html.twig', [
             'dossier' => $dossier,
