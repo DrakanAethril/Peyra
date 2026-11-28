@@ -101,7 +101,7 @@ final readonly class PurchaseMatching
      */
     public function status(Document $document, array $pieces): MatchStatus
     {
-        return $this->match($document, $pieces)?->status ?? MatchStatus::NoOrder;
+        return $this->match($document, $pieces)->status ?? MatchStatus::NoOrder;
     }
 
     /**
