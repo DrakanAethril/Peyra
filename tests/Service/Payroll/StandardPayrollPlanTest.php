@@ -32,11 +32,11 @@ final class StandardPayrollPlanTest extends TestCase
     {
         $specs = $this->specs();
 
-        self::assertCount(50, $specs);
+        self::assertCount(58, $specs);
         $codes = array_map(static fn (PayrollItemSpec $spec): string => $spec->code, $specs);
         self::assertSame($codes, array_values(array_unique($codes)), 'Each code once.');
         $families = array_count_values(array_map(static fn (PayrollItemSpec $spec): string => $spec->kind->value, $specs));
-        self::assertSame(['gross' => 15, 'contribution' => 30, 'not_subject' => 2, 'deduction' => 3], $families);
+        self::assertSame(['gross' => 17, 'contribution' => 34, 'not_subject' => 4, 'deduction' => 3], $families);
         // The benefits in kind the deduction 4000 takes back off the net.
         self::assertSame(['1400', '1410'], array_values(array_map(static fn (PayrollItemSpec $spec): string => $spec->code, array_filter($specs, static fn (PayrollItemSpec $spec): bool => $spec->benefitInKind))));
     }
@@ -84,6 +84,9 @@ final class StandardPayrollPlanTest extends TestCase
         // CSG 6,80 + 2,40 and CRDS 0,50; overtime 25 % and 50 %, complementary hours 10 % and 25 %.
         self::assertSame(['6.8', '2.4', '0.5'], [$read('2026-01-15', '2800', 'employee'), $read('2026-01-15', '2810', 'employee'), $read('2026-01-15', '2820', 'employee')]);
         self::assertSame(['25', '50', '10', '25'], [$read('2026-01-15', '1100', 'employee'), $read('2026-01-15', '1110', 'employee'), $read('2026-01-15', '1120', 'employee'), $read('2025-06-15', '1130', 'employee')]);
+        // End of a contract (step 4.3e): 10 % of a fixed-term contract's gross pay; the employer's contribution on a
+        // conventional termination, 30 % in 2025, 40 % in 2026.
+        self::assertSame(['10', '30', '40'], [$read('2026-01-15', '1500', 'employee'), $read('2025-06-15', '2710', 'employer'), $read('2026-01-15', '2710', 'employer')]);
         // Meal allowance on travel 10,40 €, benefit in kind 5,50 € a meal; flat deduction 1,50 € an hour below 20.
         self::assertSame(['10.4', '5.5', '1.5'], [$read('2026-01-15', '3000', 'employee'), $read('2026-01-15', '1410', 'employee'), $read('2026-01-15', '2920', 'employer')]);
         // Sick pay: 90 % of the salary the employee would have earned (service-public F175), both years.

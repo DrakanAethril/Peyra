@@ -134,7 +134,7 @@ final class PayrollItemRules
             if (null !== $line) {
                 $draft->errors['line'] = 'Seule une cotisation figure sur une ligne du bulletin clarifié.';
             }
-            if (null !== $base && null !== $employee && $employee->isNone() && !\in_array($base, [PayrollBase::EnteredAmount, PayrollBase::BenefitsInKind, PayrollBase::EntryExitDays], true)) {
+            if (null !== $base && null !== $employee && $employee->isNone() && !\in_array($base, [PayrollBase::EnteredAmount, PayrollBase::BenefitsInKind, PayrollBase::EntryExitDays, PayrollBase::Dismissal, PayrollBase::ConventionalBreak], true)) {
                 $draft->errors['employeeSource'] = \sprintf('Une rubrique sur « %s » a son taux.', mb_strtolower($base->label()));
             }
         }

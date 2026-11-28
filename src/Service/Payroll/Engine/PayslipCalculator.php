@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Payroll\Engine;
 
+use App\Enum\Payroll\ExitReason;
 use App\Enum\Payroll\PayrollBase;
 use App\Enum\Payroll\PayrollItemKind;
 use App\Enum\Payroll\PayrollRateSource;
@@ -36,6 +37,11 @@ use Brick\Math\RoundingMode;
  *   sick pay (the salary kept less the daily allowances), and the absences cut so that they never take
  *   more than the salary (PayslipPresence). The month's ceiling and SMIC of reference follow
  *   (PayslipMonth, PayslipPresence::ratio()).
+ * - step 4.3e: the end of a contract, once the month's gross pay is known - the end-of-contract indemnity
+ *   of a fixed-term contract reaching its term (the contract's gross pay times its rate), then the
+ *   compensatory paid leave indemnity (the paid leave's rule on the days left, its tenth on a reference
+ *   that includes the month and that indemnity); among the items not subject, the dismissal or conventional
+ *   termination indemnity (PayslipSeverance).
  */
 final class PayslipCalculator
 {
@@ -43,8 +49,13 @@ final class PayslipCalculator
     {
         $ordered = self::ordered($input->plan);
         $rows = [];
+        $closing = [];
         foreach ($ordered as $spec) {
             if (PayrollItemKind::Gross !== $spec->kind || !$spec->status->holds($input->employee->executive)) {
+                continue;
+            }
+            if (PayrollBase::FixedTermEnd === $spec->base || PayrollBase::LeaveCompensation === $spec->base) {
+                $closing[] = $spec;
                 continue;
             }
             $row = self::grossRow($spec, $input);
@@ -53,6 +64,21 @@ final class PayslipCalculator
             }
         }
         $rows = PayslipPresence::capped($input->plan, $rows);
+        // The end of the contract reads the month's gross pay: the fixed-term indemnity first, the
+        // compensatory leave last (its tenth counts that indemnity).
+        foreach ([PayrollBase::FixedTermEnd, PayrollBase::LeaveCompensation] as $base) {
+            foreach ($closing as $spec) {
+                if ($base !== $spec->base) {
+                    continue;
+                }
+                $soFar = Money::sum(array_map(static fn (PayslipRow $row): Money => $row->employeeAmount, $rows));
+                $row = PayrollBase::FixedTermEnd === $base ? self::fixedTermRow($spec, $input, $soFar) : self::compensatoryLeaveRow($spec, $input, $soFar);
+                if (null !== $row) {
+                    $rows[] = $row;
+                }
+            }
+        }
+        $rows = self::inPlanOrder($ordered, $rows);
         $gross = Money::sum(array_map(static fn (PayslipRow $row): Money => $row->employeeAmount, $rows));
         $contributions = PayslipContributions::calculate($input, $ordered, $rows, $gross);
         $notSubject = [];
@@ -81,6 +107,20 @@ final class PayslipCalculator
         usort($plan, static fn (PayrollItemSpec $a, PayrollItemSpec $b): int => [$families[$a->kind->value], $a->sortOrder, $a->code] <=> [$families[$b->kind->value], $b->sortOrder, $b->code]);
 
         return $plan;
+    }
+
+    /**
+     * @param list<PayrollItemSpec> $ordered
+     * @param list<PayslipRow>      $rows
+     *
+     * @return list<PayslipRow>
+     */
+    private static function inPlanOrder(array $ordered, array $rows): array
+    {
+        $place = array_flip(array_map(static fn (PayrollItemSpec $spec): string => $spec->code, $ordered));
+        usort($rows, static fn (PayslipRow $a, PayslipRow $b): int => ($place[$a->code] ?? 0) <=> ($place[$b->code] ?? 0));
+
+        return $rows;
     }
 
     private static function grossRow(PayrollItemSpec $spec, PayslipInput $input): ?PayslipRow
@@ -162,6 +202,10 @@ final class PayslipCalculator
 
                 return null === $hours ? null : self::sickPayRow($spec, $input, $hours);
 
+            case PayrollBase::Dismissal:
+            case PayrollBase::ConventionalBreak:
+                return self::severanceRow($spec, $input);
+
             default:
                 throw new \LogicException(\sprintf('Rubrique %s : un élément de brut ne repose pas sur « %s ».', $spec->code, $spec->base->label()));
         }
@@ -172,22 +216,31 @@ final class PayslipCalculator
      * of the contract, what they take off the salary - and the tenth of the reference period's gross
      * pay for the days taken out of the days acquired.
      */
-    private static function paidLeavePay(PayrollItemSpec $spec, PayslipInput $input, PaidLeave $leave): PayslipRow
+    private static function paidLeavePay(PayrollItemSpec $spec, PayslipInput $input, PaidLeave $leave, ?Money $month = null): PayslipRow
     {
         $hourly = $input->employee->hourlyRate();
         $kept = PayslipUnit::EurosPerHour->times($leave->hours, $hourly);
         $tenth = self::percent($spec, $input) ?? throw new \LogicException(\sprintf('Rubrique %s : la règle du dixième n’a pas de taux.', $spec->code));
-        $share = $leave->referenceGross->toDecimal()->multipliedBy($leave->daysTaken)->dividedBy($leave->daysAcquired, 2, RoundingMode::HalfUp);
+        // The compensatory indemnity's reference adds the last month's gross pay to the months before it.
+        $reference = null === $month ? $leave->referenceGross : $leave->referenceGross->plus($month);
+        $share = $reference->toDecimal()->multipliedBy($leave->daysTaken)->dividedBy($leave->daysAcquired, 2, RoundingMode::HalfUp);
         $tenthPay = PayslipUnit::Percent->times($share, $tenth['rate']);
+        $days = null === $month ? 'jours pris' : 'jours restants';
+        $referenceText = null === $month
+            ? PayslipUnit::Euros->format($reference->toDecimal())
+            : \sprintf('(%s + %s du dernier mois)', PayslipUnit::Euros->format($leave->referenceGross->toDecimal()), PayslipUnit::Euros->format($month->toDecimal()));
 
         $keptText = \sprintf('Maintien de salaire : %s × %s = %s', PayslipUnit::Hours->format($leave->hours), PayslipUnit::EurosPerHour->format($hourly), PayslipUnit::Euros->format($kept));
-        $tenthText = \sprintf('Dixième : %s × %s ÷ %s jours acquis = %s ; × %s = %s', PayslipUnit::Euros->format($leave->referenceGross->toDecimal()), FrenchFormat::number($leave->daysTaken).' jours pris', FrenchFormat::number($leave->daysAcquired), PayslipUnit::Euros->format($share), PayslipUnit::Percent->format($tenth['rate']), PayslipUnit::Euros->format($tenthPay));
+        $tenthText = \sprintf('Dixième : %s × %s ÷ %s jours acquis = %s ; × %s = %s', $referenceText, FrenchFormat::number($leave->daysTaken).' '.$days, FrenchFormat::number($leave->daysAcquired), PayslipUnit::Euros->format($share), PayslipUnit::Percent->format($tenth['rate']), PayslipUnit::Euros->format($tenthPay));
         $notes = [$keptText.'.', $tenthText.'.', 'Le plus favorable des deux est versé.'];
+        if (null !== $month) {
+            $notes[] = 'La période de référence comprend le dernier mois, indemnité de fin de contrat comprise.';
+        }
 
         if ($tenthPay->isGreaterThan($kept)) {
             return self::row($spec, $share, PayslipUnit::Euros, $tenth['rate'], PayslipUnit::Percent, Money::euros($tenthPay), new PayslipExplanation(
                 self::formula($share, PayslipUnit::Euros, $tenth['rate'], PayslipUnit::Percent, $tenthPay),
-                \sprintf('Rémunération brute de la période de référence (%s) pour %s jours pris sur %s acquis.', PayslipUnit::Euros->format($leave->referenceGross->toDecimal()), FrenchFormat::number($leave->daysTaken), FrenchFormat::number($leave->daysAcquired)),
+                \sprintf('Rémunération brute de la période de référence (%s) pour %s %s sur %s acquis.', PayslipUnit::Euros->format($reference->toDecimal()), FrenchFormat::number($leave->daysTaken), $days, FrenchFormat::number($leave->daysAcquired)),
                 'Règle du dixième : '.$tenth['origin'],
                 $tenth['source'],
                 $notes,
@@ -196,7 +249,7 @@ final class PayslipCalculator
 
         return self::row($spec, $leave->hours, PayslipUnit::Hours, $hourly, PayslipUnit::EurosPerHour, Money::euros($kept), new PayslipExplanation(
             self::formula($leave->hours, PayslipUnit::Hours, $hourly, PayslipUnit::EurosPerHour, $kept),
-            'Heures de congés payés prises dans le mois : le salaire qu’elles auraient payé est maintenu.',
+            null === $month ? 'Heures de congés payés prises dans le mois : le salaire qu’elles auraient payé est maintenu.' : 'Heures que représentent les jours de congés acquis et non pris : le salaire qu’elles auraient payé.',
             self::contractRateOrigin($input->employee),
             $tenth['source'],
             $notes,
@@ -229,6 +282,53 @@ final class PayslipCalculator
             self::formula($days, PayslipUnit::Days, $daily, PayslipUnit::EurosPerUnit, $amount).', en déduction',
             \sprintf('Jours calendaires du mois hors contrat (%s) : %d jours sur %d, le contrat en couvre %d.', implode(', ', $period), $month->outsideDays(), $month->days, $month->presentDays),
             \sprintf('Taux journalier : salaire du contrat ÷ jours du mois = %s ÷ %d = %s.', FrenchFormat::amountInEuros($employee->baseSalary), $month->days, PayslipUnit::EurosPerUnit->format($daily)),
+        ));
+    }
+
+    /**
+     * The end-of-contract indemnity of a fixed-term contract reaching its term (L1243-8 of the code du
+     * travail, service-public F803): its rate on the contract's gross pay - the months before, entered on
+     * the rubrique, and this month's, before the indemnities. None for any other end (an early termination,
+     * the trial period), nor before the last month.
+     */
+    private static function fixedTermRow(PayrollItemSpec $spec, PayslipInput $input, Money $month): ?PayslipRow
+    {
+        if (ExitReason::FixedTermEnd !== $input->employee->exitReason || !PayslipSeverance::endsThisMonth($input)) {
+            return null;
+        }
+        $rate = self::percent($spec, $input) ?? throw new \LogicException(\sprintf('Rubrique %s : l’indemnité de fin de contrat n’a pas de taux.', $spec->code));
+        $before = $input->variables->amount($spec->code) ?? Money::zero();
+        $base = $before->plus($month)->toDecimal();
+
+        return self::times($spec, $base, PayslipUnit::Euros, \sprintf('Rémunération brute du contrat : %s des mois précédents (saisis) + %s du dernier mois, avant les indemnités = %s.', FrenchFormat::amountInEuros($before), FrenchFormat::amountInEuros($month), PayslipUnit::Euros->format($base)), $rate['rate'], PayslipUnit::Percent, $rate['origin'].' Due au terme du contrat ; ni en cas de rupture anticipée, ni pendant la période d’essai, ni si le salarié refuse un CDI proposé (retirez alors la ligne).', $rate['source']);
+    }
+
+    /**
+     * The compensatory paid leave indemnity: the paid leave's rule on the days acquired and not taken,
+     * whose tenth counts the last month's gross pay.
+     */
+    private static function compensatoryLeaveRow(PayrollItemSpec $spec, PayslipInput $input, Money $month): ?PayslipRow
+    {
+        $leave = $input->variables->compensatoryLeave;
+
+        return null === $leave ? null : self::paidLeavePay($spec, $input, $leave, $month);
+    }
+
+    /** The dismissal or conventional termination indemnity, exempt: its explanation carries its regime. */
+    private static function severanceRow(PayrollItemSpec $spec, PayslipInput $input): ?PayslipRow
+    {
+        $severance = PayslipSeverance::of($input);
+        if (null === $severance || $severance->base !== $spec->base) {
+            return null;
+        }
+        $agreed = PayrollBase::ConventionalBreak === $spec->base && !$severance->amount->equals($severance->legal);
+
+        return self::row($spec, null, null, null, null, $severance->amount, new PayslipExplanation(
+            $agreed ? 'Indemnité convenue : '.FrenchFormat::amountInEuros($severance->amount).', au moins l’indemnité légale ('.FrenchFormat::amountInEuros($severance->legal).')' : 'Indemnité légale : '.FrenchFormat::amountInEuros($severance->amount),
+            $severance->legalText,
+            'Sans taux : versée hors du brut, exonérée de cotisations ; son régime est dans les notes.',
+            PayslipSeverance::source($input),
+            $severance->notes,
         ));
     }
 

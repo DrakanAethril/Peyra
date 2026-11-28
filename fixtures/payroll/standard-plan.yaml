@@ -8,7 +8,7 @@
 # de la paie. Ce qui est propre à l'entreprise (complémentaire santé, contrat de prévoyance
 # au-delà du minimum, taux d'accident du travail et de versement mobilité) est au dossier.
 # Le moteur de bulletin (étape 4.3) applique ce que les rubriques ne disent pas : la proratisation du
-# plafond et du SMIC de référence d'un mois incomplet, la régularisation des plafonds, les taux réduits de 2025, l'exonération des apprentis, la réduction générale du
+# plafond et du SMIC de référence d'un mois incomplet, la régularisation des plafonds, les taux réduits de 2025, l'exonération des apprentis, le régime des indemnités de rupture, la réduction générale du
 # millésime et son imputation, l'assiette de la CSG, le taux effectif de la réduction salariale sur
 # les heures supplémentaires.
 #
@@ -34,8 +34,10 @@ items:
   - {code: '1230', label: Absence entrée ou sortie en cours de mois, kind: gross, subtracts: true, base: entry_exit_days}
   - {code: '1300', label: Absence congés payés, kind: gross, subtracts: true, base: paid_leave_hours, employee: {source: hourly_rate}}
   - {code: '1310', label: Indemnité de congés payés, kind: gross, base: paid_leave_pay, employee: {source: regulatory, key: social.paid_leave.pay, path: tenth_of_reference_pay}}
+  - {code: '1320', label: Indemnité compensatrice de congés payés, kind: gross, base: leave_compensation, employee: {source: regulatory, key: social.paid_leave.pay, path: tenth_of_reference_pay}}
   - {code: '1400', label: Avantage en nature véhicule, kind: gross, benefit_in_kind: true, base: entered_amount}
   - {code: '1410', label: Avantage en nature nourriture, kind: gross, benefit_in_kind: true, base: entered_count, employee: {source: regulatory, key: social.benefit_in_kind.meal, path: per_meal}}
+  - {code: '1500', label: Indemnité de fin de contrat (CDD), kind: gross, base: fixed_term_end, employee: {source: regulatory, key: social.end_of_contract.fixed_term_indemnity, path: rate}}
 
   # --- Cotisations : santé ------------------------------------------------------------------------
   - {code: '2000', label: 'Maladie, maternité, invalidité, décès', kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.health, path: employer_rate}, body: urssaf, line: social_security_health}
@@ -75,11 +77,16 @@ items:
   - {code: '2660', label: Taxe d’apprentissage, kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.apprenticeship_tax, path: total}, body: urssaf, line: other_employer_contributions}
   - {code: '2670', label: Versement mobilité, kind: contribution, base: gross, employer: {source: mobility}, headcount: from_11, body: urssaf, line: other_employer_contributions}
   - {code: '2700', label: Forfait social sur la prévoyance, kind: contribution, base: provident_employer, employer: {source: regulatory, key: social.contrib.forfait_social_prevoyance, path: 1.rate}, headcount: from_11, body: urssaf, line: other_employer_contributions}
+  - {code: '2710', label: Contribution patronale sur l’indemnité de rupture conventionnelle, kind: contribution, base: conventional_exempt, employer: {source: regulatory, key: social.contrib.conventional_termination, path: employer_rate}, body: urssaf, line: other_employer_contributions}
 
   # --- CSG et CRDS ---------------------------------------------------------------------------------
   - {code: '2800', label: CSG déductible, kind: contribution, base: csg_base, employee: {source: regulatory, key: social.contrib.csg_deductible, path: employee_rate}, body: urssaf, line: csg_deductible}
   - {code: '2810', label: CSG non déductible, kind: contribution, base: csg_base, employee: {source: regulatory, key: social.contrib.csg_non_deductible, path: employee_rate}, body: urssaf, line: csg_crds_non_deductible}
   - {code: '2820', label: CRDS, kind: contribution, base: csg_base, employee: {source: regulatory, key: social.contrib.crds, path: employee_rate}, body: urssaf, line: csg_crds_non_deductible}
+  # Sur une indemnité de rupture exonérée d'impôt, la CSG n'est jamais déductible : les trois parts vont à la ligne non déductible.
+  - {code: '2830', label: 'CSG sur indemnité de rupture, part dite déductible', kind: contribution, base: severance_csg, employee: {source: regulatory, key: social.contrib.csg_deductible, path: employee_rate}, body: urssaf, line: csg_crds_non_deductible}
+  - {code: '2840', label: 'CSG sur indemnité de rupture, part non déductible', kind: contribution, base: severance_csg, employee: {source: regulatory, key: social.contrib.csg_non_deductible, path: employee_rate}, body: urssaf, line: csg_crds_non_deductible}
+  - {code: '2850', label: CRDS sur indemnité de rupture, kind: contribution, base: severance_csg, employee: {source: regulatory, key: social.contrib.crds, path: employee_rate}, body: urssaf, line: csg_crds_non_deductible}
 
   # --- Exonérations et allègements ------------------------------------------------------------------
   - {code: '2900', label: Réduction générale des cotisations patronales, kind: contribution, subtracts: true, base: gross, employer: {source: general_reduction}, body: urssaf, line: reductions}
@@ -90,6 +97,8 @@ items:
   # --- Non soumis -----------------------------------------------------------------------------------
   - {code: '3000', label: Indemnité de repas (déplacement), kind: not_subject, base: entered_count, employee: {source: regulatory, key: social.expenses.meal_allowances, path: meal_on_travel_not_restaurant}}
   - {code: '3010', label: Remboursement de frais professionnels, kind: not_subject, base: entered_amount}
+  - {code: '3100', label: Indemnité légale de licenciement, kind: not_subject, base: dismissal}
+  - {code: '3110', label: Indemnité spécifique de rupture conventionnelle, kind: not_subject, base: conventional_break}
 
   # --- Retenues sur le net --------------------------------------------------------------------------
   - {code: '4000', label: Avantages en nature (déduction), kind: deduction, base: benefits_in_kind}

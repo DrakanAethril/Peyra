@@ -48,9 +48,9 @@ enum PayrollItemKind: string
     public function bases(): array
     {
         return match ($this) {
-            self::Gross => [PayrollBase::ContractHours, PayrollBase::EnteredHours, PayrollBase::EnteredCount, PayrollBase::EnteredAmount, PayrollBase::BaseSalary, PayrollBase::PaidLeaveHours, PayrollBase::PaidLeavePay, PayrollBase::EntryExitDays, PayrollBase::SickPay],
-            self::Contribution => [PayrollBase::Gross, PayrollBase::CsgBase, PayrollBase::MonthlyCeiling, PayrollBase::Flat, PayrollBase::OvertimePay, PayrollBase::OvertimeHours, PayrollBase::ProvidentEmployer],
-            self::NotSubject => [PayrollBase::EnteredCount, PayrollBase::EnteredAmount],
+            self::Gross => [PayrollBase::ContractHours, PayrollBase::EnteredHours, PayrollBase::EnteredCount, PayrollBase::EnteredAmount, PayrollBase::BaseSalary, PayrollBase::PaidLeaveHours, PayrollBase::PaidLeavePay, PayrollBase::EntryExitDays, PayrollBase::SickPay, PayrollBase::FixedTermEnd, PayrollBase::LeaveCompensation],
+            self::Contribution => [PayrollBase::Gross, PayrollBase::CsgBase, PayrollBase::MonthlyCeiling, PayrollBase::Flat, PayrollBase::OvertimePay, PayrollBase::OvertimeHours, PayrollBase::ProvidentEmployer, PayrollBase::SeveranceCsg, PayrollBase::ConventionalExempt],
+            self::NotSubject => [PayrollBase::EnteredCount, PayrollBase::EnteredAmount, PayrollBase::Dismissal, PayrollBase::ConventionalBreak],
             self::Deduction => [PayrollBase::EnteredAmount, PayrollBase::BenefitsInKind, PayrollBase::NetTaxable],
         };
     }
