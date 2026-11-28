@@ -43,6 +43,24 @@ final class AuditEventRepository extends ServiceEntityRepository
         return (int) $this->dossierQuery($dossierId, $criteria)->select('COUNT(e.id)')->getQuery()->getSingleScalarResult();
     }
 
+    /**
+     * The gestures made in a dossier after a moment, but the restore points' own: what a return to
+     * a point made then undoes (design-ux.md § 4.9, the récapitulatif).
+     */
+    public function countDossierSince(int $dossierId, \DateTimeImmutable $since): int
+    {
+        return (int) $this->createQueryBuilder('e')
+            ->select('COUNT(e.id)')
+            ->andWhere('e.dossierId = :dossier')
+            ->andWhere('e.occurredAt > :since')
+            ->andWhere('e.action NOT IN (:restore)')
+            ->setParameter('dossier', $dossierId)
+            ->setParameter('since', $since)
+            ->setParameter('restore', [AuditAction::RestorePointPosed, AuditAction::RestorePointFailed, AuditAction::RestorePointDeleted, AuditAction::DossierRestored, AuditAction::DossierRestorationFailed])
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     /** @return list<AuditAction> the gestures the dossier's trail holds, in the enum's order */
     public function actionsOfDossier(int $dossierId): array
     {

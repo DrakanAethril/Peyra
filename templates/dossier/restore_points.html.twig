@@ -1,0 +1,96 @@
+{#
+ # Système d'information › Points de restauration (design-ux.md §§ 3.2 and 4.9, gabarit L): « Poser
+ # un point » - a name, prefilled « Avant validation du … », Entrée -, then the dossier's points,
+ # the newest first: name, when (real time, as the trail shows it), the dossier's date then, author,
+ # state (« En préparation… » until its copy is made, then « Prêt »). « Revenir à ce point » opens
+ # the récapitulatif; « Supprimer » is a two-step button. The list redraws itself when a copy ends
+ # (live, or every two seconds while one is under way). A failed return is said above it.
+ #}
+{% extends 'dossier/_layout.html.twig' %}
+
+{% set rail_current = 'si' %}
+{% set dossier_title = 'Points de restauration' %}
+{% set points_url = path('app_dossier_restore_points', {dossier: dossier.id}) %}
+{% set status_keys = can_pose and not full ? [{combo: 'Enter', verb: 'Poser le point'}] : [] %}
+
+{% block module_tabs %}{% set si_current = 'restore' %}{{ include('dossier/_si_tabs.html.twig') }}{% endblock %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Points de restauration" :trail="[
+        {label: 'Système d’information', href: path('app_dossier_company', {dossier: dossier.id})},
+        {label: 'Points de restauration', href: points_url},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    {% if failed_return %}
+        <twig:Px:Alert tone="danger" title="Le retour au point « {{ failed_return.pointName }} » a échoué">
+            {{ failed_return.failure }} Demandé le {{ failed_return.requestedAt|date('d/m/Y à H:i') }}{% if failed_return.requestedBy %} par {{ failed_return.requestedBy.displayName }}{% endif %}.
+        </twig:Px:Alert>
+    {% endif %}
+    {% if error %}<twig:Px:Alert tone="warning">{{ error }}</twig:Px:Alert>{% endif %}
+
+    {% if can_pose %}
+        {% if full and not name_error %}
+            <twig:Px:Alert tone="warning">Ce dossier a déjà {{ limit }} points de restauration. Supprimez un point pour en poser un nouveau.</twig:Px:Alert>
+        {% else %}
+            <twig:Px:Card title="Poser un point" meta="{{ points|length }} sur {{ limit }}">
+                <form class="px-restore-pose" method="post" action="{{ path('app_dossier_restore_point_pose', {dossier: dossier.id}) }}" novalidate data-controller="focus-error">
+                    <input type="hidden" name="_token" value="{{ csrf_token('restore-points-' ~ dossier.id) }}">
+                    <twig:Px:Field id="name" label="Nom du point" :required="true" hint="Une copie du dossier tel qu’il est maintenant. Elle se prépare en arrière-plan : le travail continue." :error="name_error">
+                        <twig:Px:Input id="name" value="{{ name }}" :required="true" :hint="true" :error="name_error" maxlength="80" autocomplete="off" :autofocus="focus"/>
+                    </twig:Px:Field>
+                    <twig:Px:Button type="submit" variant="primary" icon="history">Poser le point</twig:Px:Button>
+                </form>
+            </twig:Px:Card>
+        {% endif %}
+    {% endif %}
+
+    <turbo-frame id="restore-points" target="_top">
+        <div hidden data-controller="live-frame" data-live-frame-frame-value="restore-points" data-live-frame-events-value="{{ ['points']|json_encode }}" data-live-frame-poll-value="{{ preparing ? 2000 : 0 }}"></div>
+        <twig:Px:Card :flush="true">
+            {% if points is empty %}
+                <twig:Px:Empty icon="history" title="Aucun point de restauration" text="Un point garde le dossier tel qu’il est à un moment : vous pourrez y revenir si la suite tourne mal. Posez-en un avant une validation ou une clôture."/>
+            {% else %}
+                <twig:Px:Table caption="Points de restauration de {{ dossier.name }}, le plus récent d’abord" :rows="true">
+                    <thead><tr>
+                        <th scope="col">Nom</th>
+                        <th scope="col">Posé le</th>
+                        <th scope="col">Date du dossier</th>
+                        <th scope="col">Auteur</th>
+                        <th scope="col">État</th>
+                        <th scope="col"><span class="px-u-sr-only">Actions</span></th>
+                    </tr></thead>
+                    <tbody>
+                        {% for point in points %}
+                            {% set can_return = is_granted('RESTORE_POINT_RETURN', point) %}
+                            <tr data-rows-target="row">
+                                <td class="px-u-fill">
+                                    {% if can_return and point.ready %}<a class="px-link" href="{{ path('app_dossier_restore_point_return', {dossier: dossier.id, point: point.id}) }}">{{ point.name }}</a>{% else %}{{ point.name }}{% endif %}
+                                    {% if point.origin.value != 'manual' %}<span class="px-u-muted"> · {{ point.origin.label|lower }}</span>{% endif %}
+                                </td>
+                                <td class="px-u-code px-u-nowrap">{{ point.createdAt|date('d/m/Y') }} {{ point.createdAt|date('H:i') }}</td>
+                                <td class="px-u-code">{{ point.dossierDate|date('d/m/Y') }}</td>
+                                <td class="px-u-nowrap">{{ point.author ? point.author.displayName : '—' }}</td>
+                                <td>{% if point.state.value == 'failed' %}<twig:Px:Badge :of="point.state" full="En échec : {{ point.failure }}"/>{% else %}<twig:Px:Badge :of="point.state"/>{% endif %}</td>
+                                <td class="px-u-right px-u-nowrap"><span class="px-restore-actions">
+                                    {% if can_return %}
+                                        {% if point.ready %}<twig:Px:Button size="sm" icon="undo-2" href="{{ path('app_dossier_restore_point_return', {dossier: dossier.id, point: point.id}) }}">Revenir à ce point</twig:Px:Button>{% endif %}
+                                        {% if not point.preparing %}
+                                            <form method="post" action="{{ path('app_dossier_restore_point_delete', {dossier: dossier.id, point: point.id}) }}">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('restore-point-delete-' ~ point.id) }}">
+                                                <twig:Px:ConfirmButton size="sm" label="Supprimer" confirmLabel="Confirmer la suppression"/>
+                                            </form>
+                                        {% endif %}
+                                    {% endif %}
+                                </span></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+        </twig:Px:Card>
+    </turbo-frame>
+{% endblock %}
+
+{% block facts %}<span>Points · <b>{{ points|length }}</b> sur {{ limit }}</span>{% if preparing %}<span>Copie en cours</span>{% endif %}{% endblock %}

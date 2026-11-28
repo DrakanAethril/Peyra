@@ -1,0 +1,78 @@
+/*
+ * Système d'information › Points de restauration: the « Poser un point » form on one line (the
+ * name, then its button), the actions of a point's row, the lines a return changes in the
+ * récapitulatif, and the waiting page of a dossier going back to a point.
+ */
+@layer px.components {
+    .px-restore-pose {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--px-space-12);
+
+        & .px-field {
+            flex: 0 1 420px;
+        }
+
+        & > .px-btn {
+            margin-top: 19px;
+        }
+    }
+
+    .px-restore-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--px-space-6);
+
+        & form {
+            display: inline-flex;
+        }
+    }
+
+    .px-restore-lead {
+        margin: 0 0 var(--px-space-12);
+    }
+
+    .px-restore-summary th[scope="row"] {
+        font-weight: 400;
+    }
+
+    .px-restore-summary .px-restore-changed th,
+    .px-restore-summary .px-restore-changed td {
+        font-weight: 600;
+    }
+
+    .px-restoring {
+        display: grid;
+        justify-items: center;
+        gap: var(--px-space-8);
+        max-width: 560px;
+        margin: var(--px-space-48) auto;
+        text-align: center;
+    }
+
+    .px-restoring__spinner {
+        width: 28px;
+        height: 28px;
+        border: 3px solid var(--px-action-tint);
+        border-top-color: var(--px-action);
+        border-radius: 50%;
+        animation: px-spin 900ms linear infinite;
+    }
+
+    .px-restoring__title {
+        margin: 0;
+        font-size: var(--px-fs-18);
+    }
+
+    .px-restoring__text,
+    .px-restoring__meta {
+        margin: 0;
+        color: var(--px-text-muted);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .px-restoring__spinner {
+            animation: none;
+        }
+    }
+}

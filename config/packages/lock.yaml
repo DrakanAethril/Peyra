@@ -1,2 +1,9 @@
 framework:
     lock: '%env(LOCK_DSN)%'
+
+# The test processes of ParaTest share the project's directory but not their databases (dossier
+# ids repeat from one to the other): a lock seen across processes would make one wait on another's
+# dossier. Each process keeps its locks to itself.
+when@test:
+    framework:
+        lock: 'in-memory'

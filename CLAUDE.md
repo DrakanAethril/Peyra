@@ -92,8 +92,9 @@ Run the suite both ways before pushing, as CI does: ParaTest gives every test fi
 process, so a test that leaks global state (an environment variable unset, a static) only breaks
 the files after it under `bin/phpunit`.
 
-Application commands (`src/Command/`). **None is scheduled yet**: `App\Scheduler\PeyraSchedule` is
-empty, and `PeyraScheduleTest` pins that list, so adding a task is a decision the test makes visible.
+Application commands (`src/Command/`). **One is scheduled** (`app:restore-points:advance`, every
+minute): `App\Scheduler\PeyraSchedule` holds the list, and `PeyraScheduleTest` pins it, so adding a
+task is a decision the test makes visible.
 
 | Command | Role |
 |---|---|
@@ -102,6 +103,7 @@ empty, and `PeyraScheduleTest` pins that list, so adding a task is a decision th
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
 | `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, January's purchases and Banque Populaire with two drafts in each, seven entry templates, two subscriptions, three suppliers lettered; date 31/01/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
 | `app:dev:dossiers` | **Development and test only**, until the distribution of step 1.8c: gives each student enrolled this year their own Menuiserie Vasseur, built from the fixtures (the template installed first if missing), and one group's Menuiserie Vasseur to `ines.morel` (Comptable fournisseurs), `theo.garnier` (Comptable clients) and `chloe.fabre` (Chef comptable) when enrolled. Sign the students in first: their first sign-in places them |
+| `app:restore-points:advance` | **Scheduled every minute.** Finishes the restore points still in preparation and the returns still running that a request left (a worker restarted); usually finds nothing. Takes each dossier's lock |
 | `app:test:parallel-databases` | **Test only.** Copies the migrated `peyra_test` into `peyra_test1`… for ParaTest (tests/README.md) |
 
 ```console
@@ -958,6 +960,32 @@ Lot 1, step 1.8a (conception § 4; design-ux.md §§ 2.6, 3.3, 6.2), held by cod
   dossier that is not a template answers 404.
 - A template's ribbon (gold) goes back to its fiche in the library. The demonstration's card is in
   `fixtures/demo/company.yaml` (`library:`).
+
+## Restore points (built at step 1.8b)
+
+Lot 1, step 1.8b (design-ux.md § 4.9), held by code in `src/Service/Dossier/Restore/`,
+`RestorePointsController`, `RestoringController` and `RestorationInProgressListener`:
+
+- **`RestorePoint`** (global): the dossier, its frozen copy (a `Dossier` of kind Snapshot), name,
+  author, real time, dossier's date, origin (manual / before a return), state (preparing, ready,
+  failed). **`DossierRestoration`** (global): a return, running / done / failed. Ten points a dossier
+  (`RestorePointRules`). Rights: `RestorePointVoter` - POSE with `DossierVoter::EDIT`, RETURN and
+  DELETE with `DossierRightVoter::SETTINGS` too.
+- **`RestorePoints` and `Restorations` are the doors**; the copy runs after the answer
+  (`RestoreQueue`, `RestoreWorkListener` on kernel.terminate), under the dossier's lock
+  (`RestoreRunner::lockName()`, the distribution will take it too), and
+  `app:restore-points:advance` finishes what a stopped worker left. A return erases the rows and
+  copies the point's back **in one transaction**; the files are copied in beside, and the ones no row
+  names any more deleted after it holds (`DossierFiles::keys()`, `deleteKeys()`). The dossier's date
+  never moves; the trail gains a line. After a return the entity manager is cleared.
+- **While a return runs**, every GET of the dossier is redirected to `/d/{id}/restoring` and every
+  other request answers 409. The shell subscribes to the dossier's private topic
+  (`DossierLive::topic()`, cookie of the `subscriber` hub set by `dossier_live_url()`): `restoring`
+  sends every tab to the waiting page, the others reach the screen as a `peyra:live` event
+  (`live_frame_controller.js` redraws a frame; it also polls while a copy is under way).
+- `DossierEraser::deleteDossier()` deletes a dossier's points (and their copies) first. Locks are
+  in memory in the test environment (ParaTest processes share the project directory, not their
+  ids). Twig resolves `point.ready` to a method `ready()` before `isReady()`: mutators are `mark…()`.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

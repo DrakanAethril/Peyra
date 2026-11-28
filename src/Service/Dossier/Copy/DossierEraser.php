@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Dossier\Copy;
 
 use App\Entity\Dossier\Dossier;
+use App\Entity\Dossier\RestorePoint;
 use App\Enum\Dossier\CopyKind;
 use App\Service\Shared\Storage\DossierFiles;
 use Doctrine\DBAL\Connection;
@@ -19,7 +20,7 @@ use Doctrine\ORM\EntityManagerInterface;
  * copier writes them, a table's references to itself (an entry's reversal) set aside first.
  *
  * Only ever by a person's gesture - a template deleted, a dossier taken back to a restore point,
- * a distribution withdrawn: nothing is deleted automatically (CLAUDE.md). The audit trail is never
+ * a restore point deleted, a distribution withdrawn: nothing is deleted automatically (CLAUDE.md). The audit trail is never
  * touched (it outlives the dossier). Like the copier, it writes through DBAL: entities of the
  * dossier loaded before are stale afterwards, which the caller knows.
  */
@@ -53,13 +54,37 @@ final readonly class DossierEraser
     }
 
     /**
-     * Deletes the dossier: its content, the rows no copy carries, its files, then its own row - its
-     * members and shares with it (their keys cascade); a copy that named it as its template keeps
-     * its content and loses the link.
+     * Deletes the rows a copy would bring back, and leaves the files: a return to a restore point
+     * erases and copies in one transaction, and a file deleted cannot be rolled back with it - its
+     * caller deletes the files no row names any more once the transaction holds
+     * (App\Service\Dossier\Restore\Restorations).
+     *
+     * @return array<string, int>
+     */
+    public function eraseRows(Dossier $dossier): array
+    {
+        $id = $dossier->getId() ?? throw new \LogicException('A saved dossier is erased.');
+
+        return $this->connection->transactional(fn (): array => $this->delete($this->plan->tables(CopyKind::Snapshot), $id));
+    }
+
+    /**
+     * Deletes the dossier: its restore points first (each a dossier of its own), its content, the
+     * rows no copy carries, its files, then its own row - its members, shares and returns with it
+     * (their keys cascade); a copy that named it as its template keeps its content and loses the
+     * link.
      */
     public function deleteDossier(Dossier $dossier): void
     {
         $id = $dossier->getId() ?? throw new \LogicException('A saved dossier is deleted.');
+        $points = $this->entityManager->getRepository(RestorePoint::class)->findBy(['dossier' => $dossier]);
+        foreach ($points as $point) {
+            $this->entityManager->remove($point);
+        }
+        $this->entityManager->flush();
+        foreach ($points as $point) {
+            $this->deleteDossier($point->getSnapshot());
+        }
         $this->connection->transactional(function () use ($dossier, $id): void {
             $this->delete($this->plan->ownedTables(), $id);
             $this->entityManager->remove($dossier);

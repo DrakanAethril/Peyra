@@ -1,11 +1,13 @@
 {#
  # The dossier switcher (design-ui.md § 4.2, design-ux.md § 2.1): the company and its exercise; the
  # panel lists the dossiers by school year, the most recent first, with a tick on the one in hand,
- # then « Tous mes dossiers ». With a single dossier it is a text, without a menu. Changing dossier
- # opens the other one's dashboard. (The restore point joins the panel at step 1.8.)
+ # then « Poser un point de restauration » (for whoever may) and « Tous mes dossiers ». With a single
+ # dossier and no point to pose it is a text, without a menu. Changing dossier opens the other one's
+ # dashboard.
  #}
+{% set can_pose_point = is_granted('RESTORE_POINT_POSE', dossier) %}
 {% set exercise_label = (view.exercise ? 'Exercice ' ~ view.exercise.code : 'Hors exercice') ~ (dossier.kind.value == 'group' ? ' · groupe' : '') %}
-{% if view.switcherCount <= 1 %}
+{% if view.switcherCount <= 1 and not can_pose_point %}
     <div class="px-switcher px-switcher--static">
         <b class="px-switcher__name">{{ dossier.name }}</b>
         <small class="px-switcher__meta">{{ exercise_label }}</small>
@@ -31,8 +33,11 @@
                         </a>
                     {% endfor %}
                 {% endfor %}
+                {% if can_pose_point or not view.teacher %}<div class="px-menu__sep" role="separator"></div>{% endif %}
+                {% if can_pose_point %}
+                    <a class="px-menu__item" role="menuitem" href="{{ path('app_dossier_restore_point_new', {dossier: dossier.id}) }}"><twig:ux:icon name="history" aria-hidden="true"/>Poser un point de restauration</a>
+                {% endif %}
                 {% if not view.teacher %}
-                    <div class="px-menu__sep" role="separator"></div>
                     <a class="px-menu__item" role="menuitem" href="{{ path('app_student_dossiers') }}"><twig:ux:icon name="folder-open" aria-hidden="true"/>Tous mes dossiers</a>
                 {% endif %}
             </div>

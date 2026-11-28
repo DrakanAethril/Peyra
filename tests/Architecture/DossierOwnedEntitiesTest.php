@@ -8,7 +8,9 @@ use App\Entity\Audit\AuditEvent;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\DossierMember;
 use App\Entity\Dossier\DossierOwned;
+use App\Entity\Dossier\DossierRestoration;
 use App\Entity\Dossier\DossierShare;
+use App\Entity\Dossier\RestorePoint;
 use App\Entity\Identity\AdministrationEvent;
 use App\Entity\Identity\AuthorizedTeacher;
 use App\Entity\Identity\DirectoryGroupMapping;
@@ -42,6 +44,9 @@ final class DossierOwnedEntitiesTest extends KernelTestCase
         AuditEvent::class,
         // The dossier itself, and who enters it besides its owner: read by DossierVoter before any context.
         Dossier::class, DossierMember::class, DossierShare::class,
+        // What a dossier can go back to, and its returns: a point keeps its copy in a dossier of its
+        // own; a copy of the dossier never carries them (step 1.8b).
+        RestorePoint::class, DossierRestoration::class,
     ];
 
     public function testEveryEntityIsDossierOwnedOrNamedGlobal(): void

@@ -117,6 +117,21 @@ enum AuditAction: string
     /** A template deleted from the library, with its content (its trail stays). */
     case TemplateDeleted = 'library.deleted';
 
+    /** A restore point asked for, by a person or before a return (step 1.8b). */
+    case RestorePointPosed = 'restore.point_posed';
+
+    /** The copy of a restore point stopped: the dossier is untouched. */
+    case RestorePointFailed = 'restore.point_failed';
+
+    /** A restore point deleted by a person. */
+    case RestorePointDeleted = 'restore.point_deleted';
+
+    /** The dossier taken back to one of its restore points. */
+    case DossierRestored = 'restore.dossier_restored';
+
+    /** A return to a restore point that stopped: the dossier stayed as it was. */
+    case DossierRestorationFailed = 'restore.dossier_restoration_failed';
+
     public function label(): string
     {
         return match ($this) {
@@ -156,6 +171,11 @@ enum AuditAction: string
             self::TemplateShared => 'Modèle partagé',
             self::TemplateUnshared => 'Partage du modèle retiré',
             self::TemplateDeleted => 'Modèle supprimé',
+            self::RestorePointPosed => 'Point de restauration posé',
+            self::RestorePointFailed => 'Point de restauration en échec',
+            self::RestorePointDeleted => 'Point de restauration supprimé',
+            self::DossierRestored => 'Retour à un point de restauration',
+            self::DossierRestorationFailed => 'Retour à un point en échec',
         };
     }
 }
