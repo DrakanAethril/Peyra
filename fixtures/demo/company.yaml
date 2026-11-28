@@ -30,8 +30,8 @@ exercises:
   - { code: '2025', start: '2025-01-01', end: '2025-12-31', closed: true }
   - { code: '2026', start: '2026-01-01', end: '2026-12-31', closed: false }
 
-# The dossier's date: the end of January, whose purchases and bank are entered (entries.yaml).
-dossier_date: '2026-01-31'
+# The dossier's date: the end of the first quarter, whose entries are typed (entries.yaml).
+dossier_date: '2026-03-31'
 
 # Its card in the library (Bibliothèque › Dossiers modèles, step 1.8a): what the referents read
 # before they distribute it. It grows with the lots.
@@ -41,5 +41,6 @@ library:
   processes: [P1, P2]
   description: >-
     Menuiserie de Montbrison, une douzaine de salariés, TVA au réel normal mensuel, IS. L'exercice
-    2026 s'ouvre sur ses à-nouveaux ; les achats et la banque de janvier sont saisis, avec des
-    brouillards à contrôler et trois fournisseurs déjà lettrés.
+    2026 s'ouvre sur ses à-nouveaux ; le premier trimestre est saisi (achats, ventes, banques, paie,
+    TVA de janvier et février), avec des brouillards de fin mars à contrôler, la TVA de mars à
+    liquider et trois fournisseurs déjà lettrés.

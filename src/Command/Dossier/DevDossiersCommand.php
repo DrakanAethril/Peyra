@@ -77,6 +77,8 @@ final class DevDossiersCommand extends Command
             return Command::FAILURE;
         }
         $this->installer->installTemplate($this->getName() ?? 'app:dev:dossiers', $this->clock->now());
+        // The install clears the entity manager: the year is read again.
+        $year = $this->years->findCurrent() ?? throw new \LogicException('The current year exists.');
         $template = $this->installer->findTemplate() ?? throw new \LogicException('The demonstration template is installed.');
 
         $made = 0;

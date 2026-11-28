@@ -54,7 +54,7 @@ final class DemoInstallCommandTest extends KernelTestCase
         $vasseur = $templates[0];
         self::assertSame(DossierKind::Template, $vasseur->getKind());
         self::assertNull($vasseur->getOwner());
-        self::assertSame('2026-01-31', $vasseur->getDossierDate()->format('Y-m-d'), 'La fin de janvier, dont les achats et la banque sont saisis.');
+        self::assertSame('2026-03-31', $vasseur->getDossierDate()->format('Y-m-d'), 'La fin du premier trimestre, dont les écritures sont saisies.');
         self::assertSame('99941273600018', $vasseur->getCompany()->getSiret());
         self::assertSame(8_000_000, $vasseur->getCompany()->getCapital()->cents);
         self::assertSame('Vasseur, à-nouveaux 2026', $vasseur->getLibraryTitle(), 'Its card in the library.');
@@ -118,8 +118,10 @@ final class DemoInstallCommandTest extends KernelTestCase
 
         // Its opening balance: one validated entry of AN, balanced at 459 260,31 (ouverture-2026.yaml).
         $context = self::getContainer()->get(DossierContext::class);
+        // The install clears the entity manager as it goes: what follows reads lazily, inside the dossier.
+        $context->enter($vasseur);
         $entries = $context->within($vasseur, static fn (): array => self::getContainer()->get(EntryRepository::class)->findBy([], ['id' => 'ASC']));
-        self::assertCount(49, $entries, 'Les à-nouveaux, 16 achats et 32 mouvements de la Banque Populaire de janvier.');
+        self::assertCount(245, $entries, 'Les à-nouveaux, les 80 écritures de janvier, 82 de février, 80 de mars et les deux abonnements de mars.');
         $opening = $entries[0];
         self::assertSame(['AN-2026-00001', 'AN-2026-001', '2026-01-01', EntryOrigin::Opening, 67], [$opening->getNumberLabel(), $opening->getDocument(), $opening->getEntryDate()->format('Y-m-d'), $opening->getOrigin(), \count($opening->getLines())]);
         self::assertSame([45_926_031, 45_926_031], [$opening->totalDebit()->cents, $opening->totalCredit()->cents]);
@@ -138,20 +140,41 @@ final class DemoInstallCommandTest extends KernelTestCase
             self::assertSame(-1_500_000, $owed('A0001'), 'Compte courant de Bernard Vasseur, 455100.');
         });
 
-        // January's purchases and Banque Populaire: validated by date, the last two of each left in the brouillard.
+        // The quarter: validated by date, but for the last entries of March and the two drafts the
+        // subscriptions generate; February's VAT liquidated, March's left to do.
         $states = [];
         foreach ($entries as $entry) {
             $key = $entry->getJournal()->getCode().' '.($entry->isValidated() ? 'validée' : 'brouillard');
             $states[$key] = ($states[$key] ?? 0) + 1;
         }
-        self::assertSame(['AN validée' => 1, 'ACH validée' => 14, 'BQ2 validée' => 30, 'ACH brouillard' => 2, 'BQ2 brouillard' => 2], $states, 'États par journal.');
+        ksort($states);
+        self::assertSame([
+            'ACH brouillard' => 4, 'ACH validée' => 47, 'AN validée' => 1, 'BQ1 validée' => 31, 'BQ2 brouillard' => 2, 'BQ2 validée' => 103,
+            'OD validée' => 10, 'VTE brouillard' => 2, 'VTE validée' => 45,
+        ], $states, 'États par journal.');
+        $drafts = array_map(static fn ($entry): string => $entry->getDocument(), array_values(array_filter($entries, static fn ($entry): bool => !$entry->isValidated())));
+        sort($drafts);
+        self::assertSame(['BFM-26-0412', 'ECH-EMP1-33', 'FRAIS-BQ2-03', 'FV-2026-0045', 'FV-2026-0046', 'LBE-2026-03', 'LOY-2026-03', 'PRL-26-00702'], $drafts);
         $purchase = array_values(array_filter($entries, static fn ($entry): bool => 'FA-2601-0012' === $entry->getDocument()))[0];
         self::assertSame(['601000', '624100', '445660', '401000'], array_map(static fn ($line): string => $line->getAccount()->getNumber(), $purchase->getLines()));
         self::assertSame([415_812, '2026-02-07'], [$purchase->totalCredit()->cents, $purchase->getLines()[3]->getDueDate()?->format('Y-m-d')]);
-        $end = new \DateTimeImmutable('2026-01-31');
-        $context->within($vasseur, static function () use ($reader, $account, $end): void {
-            $bank = $reader->accountBalance($account('512200') ?? throw new \LogicException(), new \DateTimeImmutable('2026-01-01'), $end, EntryScope::WithDrafts)->balance()->cents;
-            self::assertSame(1_511_678, $bank, 'Banque Populaire au 31/01/2026 : 15 116,78 D (operations-2026.md § 2.5).');
+        $context->within($vasseur, static function () use ($reader, $account): void {
+            $at = static fn (string $number, string $day): int => $reader->accountBalance($account($number) ?? throw new \LogicException($number), new \DateTimeImmutable('2026-01-01'), new \DateTimeImmutable($day), EntryScope::Validated)->balance()->cents;
+            // operations-2026.md § 2.5: January's balances.
+            self::assertSame(
+                [3_109_029, 1_511_678, 11_272_990, 684_000, -1_414_080, -874_856, -183_878, -88_370, -888_379, 0, 0, 0],
+                array_map(static fn (string $number): int => $at($number, '2026-01-31'), ['512100', '512200', '411000', '416000', '401000', '431000', '437100', '442100', '445510', '445710', '445660', '421000']),
+                'Soldes au 31/01/2026 (operations-2026.md § 2.5).',
+            );
+            $revenue = 0;
+            foreach (['701000', '704000', '708500', '708800', '709100'] as $number) {
+                $revenue -= $at($number, '2026-01-31');
+            }
+            self::assertSame(7_840_592, $revenue, 'Chiffre d’affaires de janvier : 78 405,92 HT.');
+            // § 4: the Crédit Coopératif at the end of February and of March.
+            self::assertSame([1_388_389, 2_760_029], [$at('512100', '2026-02-28'), $at('512100', '2026-03-31')], 'Crédit Coopératif : 13 883,89 puis 27 600,29.');
+            // The machining centre's deposit (05/02) is imputed on its invoice of 16/03: 103 800,00 - 25 200,00 left to pay on 15/04.
+            self::assertSame([2_520_000, 0, -7_860_000], [$at('409100', '2026-02-28'), $at('409100', '2026-03-31'), $at('404000', '2026-03-31')]);
         });
 
         // Its entry templates (step 1.4b): the rent, the leasing, the fees, a purchase and a sale at 20 %, the bank's.
@@ -165,41 +188,53 @@ final class DemoInstallCommandTest extends KernelTestCase
             'Le loyer de février : 3 200,00 HT, 640,00 de TVA, 3 840,00 à la SCI (LOY-2026-02).',
         );
 
-        // Its subscriptions (step 1.4c): the rent and the leasing from February, into the brouillard;
-        // none is due on 31/01/2026, the first falls on 01/02.
+        // Its subscriptions (step 1.4c): the rent and the leasing from March, into the brouillard;
+        // March's are generated at install (the dossier's date is 31/03), April's come next.
         $subscriptions = $context->within($vasseur, static fn (): array => self::getContainer()->get(EntrySubscriptionRepository::class)->findByDossier($vasseur));
         self::assertSame(
-            ['Crédit-bail du chariot élévateur CBAIL 41200 5 2026-02 31 0 draft', 'Loyer de l\'atelier LOYER 320000 1 2026-02 11 0 draft'],
+            ['Crédit-bail du chariot élévateur CBAIL 41200 5 2026-03 30 1 draft', 'Loyer de l\'atelier LOYER 320000 1 2026-03 10 1 draft'],
             array_map(static fn ($s): string => implode(' ', [$s->getLabel(), $s->getTemplate()->getCode(), $s->getAmount()?->cents, $s->getDayOfMonth(), $s->getFirstMonth()->format('Y-m'), $s->getOccurrences(), $s->getGenerated(), $s->getTarget()->value]), $subscriptions),
         );
-        self::assertSame('2026-02-01', SubscriptionSchedule::next($subscriptions[1]->getFirstMonth(), 1, 11, 0)?->format('Y-m-d'));
+        self::assertSame('2026-04-01', SubscriptionSchedule::next($subscriptions[1]->getFirstMonth(), 1, 10, 1)?->format('Y-m-d'));
 
-        // A lettering under way (letterings.yaml): the Scierie's two December invoices and their
-        // transfers (A 7 878,00, B 4 704,00), SCI Vasseur's rent and Loire Bail's lease (A each);
-        // January's invoice of the Scierie, 4 158,12, is left open, and the other suppliers.
+        // A lettering under way (letterings.yaml), by amount: the Scierie's two December invoices and
+        // January's and February's with their transfers (A 7 878,00, B 4 704,00, C 4 158,12, D
+        // 6 394,80, E 5 691,60), SCI Vasseur's rent and Loire Bail's lease of January and February;
+        // the Scierie's three March invoices are left open, and March's direct debits of the rent and
+        // the lease (their invoices are drafts), and the other suppliers.
         $context->within($vasseur, static function (): void {
             $board = self::getContainer()->get(LetteringBoard::class);
             $lettered = [];
-            foreach (self::getContainer()->get(EntryLineRepository::class)->findBy(['letter' => ['A', 'B']]) as $line) {
+            foreach (self::getContainer()->get(EntryLineRepository::class)->findBy(['letter' => ['A', 'B', 'C', 'D', 'E']]) as $line) {
                 $lettered[] = $line->getThirdParty()?->getCode().' '.$line->getLetter().' '.($line->getDebit()->cents ?: -$line->getCredit()->cents).' '.$line->getLetteredOn()?->format('Y-m-d');
             }
             sort($lettered);
             self::assertSame([
-                'F0001 A -787800 2026-01-31', 'F0001 A 787800 2026-01-31', 'F0001 B -470400 2026-01-31', 'F0001 B 470400 2026-01-31',
-                'F0009 A -384000 2026-01-31', 'F0009 A 384000 2026-01-31', 'F0018 A -49440 2026-01-31', 'F0018 A 49440 2026-01-31',
+                'F0001 A -787800 2026-03-31', 'F0001 A 787800 2026-03-31', 'F0001 B -470400 2026-03-31', 'F0001 B 470400 2026-03-31',
+                'F0001 C -415812 2026-03-31', 'F0001 C 415812 2026-03-31', 'F0001 D -639480 2026-03-31', 'F0001 D 639480 2026-03-31',
+                'F0001 E -569160 2026-03-31', 'F0001 E 569160 2026-03-31',
+                'F0009 A -384000 2026-03-31', 'F0009 A 384000 2026-03-31', 'F0009 B -384000 2026-03-31', 'F0009 B 384000 2026-03-31',
+                'F0018 A -49440 2026-03-31', 'F0018 A 49440 2026-03-31', 'F0018 B -49440 2026-03-31', 'F0018 B 49440 2026-03-31',
             ], $lettered);
-            $scierie = array_values(array_filter($board->rows(), static fn ($row): bool => '401SCIE' === $row->key->code()));
-            self::assertSame([1, -415_812], [$scierie[0]->openLines, $scierie[0]->openBalance()->cents]);
+            $open = [];
+            foreach ($board->rows() as $row) {
+                if (\in_array($row->key->code(), ['401SCIE', '401SCIV', '401LBAI'], true)) {
+                    $open[$row->key->code()] = [$row->openLines, $row->openBalance()->cents];
+                }
+            }
+            ksort($open);
+            // March: Scierie 8 104,80 + 5 398,80 + 6 345,60; the direct debits of the rent and the lease.
+            self::assertSame(['401LBAI' => [1, 49_440], '401SCIE' => [3, -1_984_920], '401SCIV' => [1, 384_000]], $open);
         });
 
-        // Up to 31/03, February and March of both: four drafts, LOY-2026-02 = 3 840,00, LBE-2026-03 = 494,40.
-        $outcome = $context->within($vasseur, static fn () => self::getContainer()->get(SubscriptionRun::class)->generate($vasseur, new \DateTimeImmutable('2026-03-31'), 'test', new \DateTimeImmutable('2026-11-28 10:00')));
-        self::assertSame([4, 0, []], [$outcome->drafts, $outcome->pending, $outcome->faults]);
+        // Up to 30/04, April of both: two drafts, LOY-2026-04 = 3 840,00, LBE-2026-04 = 494,40.
+        $outcome = $context->within($vasseur, static fn () => self::getContainer()->get(SubscriptionRun::class)->generate($vasseur, new \DateTimeImmutable('2026-04-30'), 'test', new \DateTimeImmutable('2026-11-28 10:00')));
+        self::assertSame([2, 0, []], [$outcome->drafts, $outcome->pending, $outcome->faults]);
         $context->within($vasseur, static function () use ($vasseur): void {
             $entries = self::getContainer()->get(EntryRepository::class);
-            self::assertSame(384_000, $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LOY-2026-02'])?->totalDebit()->cents);
-            self::assertSame(49_440, $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LBE-2026-03'])?->totalDebit()->cents);
-            self::assertSame('2026-03-05', $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LBE-2026-03'])?->getEntryDate()->format('Y-m-d'));
+            self::assertSame(384_000, $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LOY-2026-04'])?->totalDebit()->cents);
+            self::assertSame(49_440, $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LBE-2026-04'])?->totalDebit()->cents);
+            self::assertSame('2026-04-05', $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LBE-2026-04'])?->getEntryDate()->format('Y-m-d'));
         });
 
         // Its payroll settings (step 4.1, payroll.yaml): the establishment, four fictitious bodies,
