@@ -493,11 +493,13 @@
         }
     }
 
+    /* The facts are what the bar is for: when the two do not fit (1024 to 1279 px), the keys give way. */
     .px-statusbar__facts {
         display: flex;
+        flex-shrink: 0;
         align-items: center;
         gap: var(--px-space-16);
-        min-width: 0;
+        max-width: 100%;
         overflow: hidden;
     }
 
@@ -505,7 +507,9 @@
         display: flex;
         align-items: center;
         gap: var(--px-space-12);
+        min-width: 0;
         margin-inline-start: auto;
+        overflow: hidden;
 
         & > span {
             display: inline-flex;
