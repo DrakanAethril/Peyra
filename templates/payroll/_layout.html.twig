@@ -1,9 +1,9 @@
 {#
- # Paie et social (design-ux.md §§ 2.5 and 3.2; lot 4): the module's tab bar. Step 4.1 brings its
- # « Paramètres de paie » - plan de paie, organismes, établissement; Salariés, Bulletins, Éditions,
- # Déclarations, Écritures de paie and Fin de contrat join it with their steps. A screen sets
- # `settings_current` and `dossier_title` outside any block. Closed to a profile that does not read
- # the payroll (DossierRightVoter::PAYROLL_READ).
+ # Paie et social (design-ux.md §§ 2.5 and 3.2; lot 4): the module's tab bar - Salariés (step 4.2a)
+ # and « Paramètres de paie » (step 4.1: plan de paie, organismes, établissement); Bulletins,
+ # Éditions, Déclarations, Écritures de paie and Fin de contrat join it with their steps. A screen
+ # sets `payroll_tab` ('employees', else the settings), `settings_current` and `dossier_title`
+ # outside any block. Closed to a profile that does not read the payroll (PAYROLL_READ).
  #}
 {% extends 'dossier/_layout.html.twig' %}
 
@@ -11,6 +11,7 @@
 
 {% block module_tabs %}
     <twig:Px:ModuleTabs label="Paie et social" :tabs="[
-        {label: 'Paramètres de paie', href: path('app_payroll_items', {dossier: dossier.id}), current: true},
+        {label: 'Salariés', href: path('app_payroll_employees', {dossier: dossier.id}), current: (payroll_tab ?? '') == 'employees'},
+        {label: 'Paramètres de paie', href: path('app_payroll_items', {dossier: dossier.id}), current: (payroll_tab ?? '') != 'employees'},
     ]"/>
 {% endblock %}

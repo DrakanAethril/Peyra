@@ -13,7 +13,7 @@
 
 {% block page_head %}
     <twig:Px:PageHead title="{{ item ? item.code ~ ' · ' ~ item.label : 'Nouvelle rubrique' }}" :trail="[
-        {label: 'Paie et social', href: path('app_payroll_items', {dossier: dossier.id})},
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
         {label: 'Plan de paie', href: path('app_payroll_items', {dossier: dossier.id})},
         {label: item ? item.code : 'Nouvelle rubrique', href: item ? path('app_payroll_item', {dossier: dossier.id, code: item.code}) : path('app_payroll_item_new', {dossier: dossier.id})},
     ]">

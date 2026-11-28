@@ -101,7 +101,7 @@ Application commands (`src/Command/`). **Two are scheduled** (`app:restore-point
 | `app:regulatory:sync [--dry-run]` | Installs the millésime files `config/regulatory/<année>.yaml`; only ever adds rows, never over an administrator's value. **Every deploy runs it** |
 | `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
-| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, the first quarter in every journal with drafts at the end of March, seven entry templates, two subscriptions, three suppliers lettered; date 31/03/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
+| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, the first quarter in every journal with drafts at the end of March, seven entry templates, two subscriptions, three suppliers lettered, the payroll settings and eleven employees; date 31/03/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
 | `app:dev:dossiers` | **Development and test only.** Distributes Menuiserie Vasseur (the common library's template, installed first if missing) to each class of the current year - every student who holds no copy of it yet -, then as one shared dossier to `ines.morel` (Comptable fournisseurs), `theo.garnier` (Comptable clients) and `chloe.fabre` (Chef comptable) when enrolled in one class; the copies are made at once. Sign the students in first: their first sign-in places them |
 | `app:distribution:advance` | **Scheduled every minute.** Makes the dossiers of the distributions a request left waiting (a worker restarted), one copy per pass under its own lock; usually finds nothing |
 | `app:restore-points:advance` | **Scheduled every minute.** Finishes the restore points still in preparation and the returns still running that a request left (a worker restarted); usually finds nothing. Takes each dossier's lock |
@@ -1094,6 +1094,20 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
 - **The area « Paie et social »** of `ProfileMatrix`: the payroll manager's and the chief
   accountant's, closed to the two accountants; screens ask `DossierRightVoter::PAYROLL_READ` (the
   rail hides the entry) and `PAYROLL_SETTINGS`.
+
+## Employees (built at step 4.2a)
+
+- **Paie et social › Salariés** (`/d/{dossier}/payroll/employees[/{matricule}]`, the rail's entry):
+  `Employee` (civil status, NIR, contract type and dates, withholding rate; null = neutral rate) and
+  **`EmploymentTerms`, dated**: job, classification, status, working time, monthly hours, base
+  salary from a day on. The first terms start on the day of hire and follow it; each change is a
+  row from its own day (UNIQUE employee + day), and the rows are the history. **Read the terms in
+  force with `Employee::termsAt($day)`**, never the latest row; the hourly rate is read (salary ÷
+  hours), never stored. Full time works the establishment's collective hours.
+- `EmployeeRules` is pure; `EmployeeSheet` the one door (fiche, demonstration), audit trail
+  included; « À compter du » = the day shown corrects, another day adds a row. A NIR's format and
+  its agreement with sex and birth are checked, **never its key** (fictitious, key « 00 »).
+  Writes ask `DossierRightVoter::PAYROLL_ENTER`. `fixtures/demo/employees.yaml`: S001-S011.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

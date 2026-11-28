@@ -164,6 +164,13 @@ enum AuditAction: string
 
     case PayrollItemDeleted = 'payroll.item_deleted';
 
+    /** An employee created, changed (their contract's terms from a day on included) or deleted (step 4.2a). */
+    case EmployeeCreated = 'payroll.employee_created';
+
+    case EmployeeChanged = 'payroll.employee_changed';
+
+    case EmployeeDeleted = 'payroll.employee_deleted';
+
     public function label(): string
     {
         return match ($this) {
@@ -220,6 +227,9 @@ enum AuditAction: string
             self::PayrollItemCreated => 'Rubrique de paie créée',
             self::PayrollItemChanged => 'Rubrique de paie modifiée',
             self::PayrollItemDeleted => 'Rubrique de paie supprimée',
+            self::EmployeeCreated => 'Salarié créé',
+            self::EmployeeChanged => 'Salarié modifié',
+            self::EmployeeDeleted => 'Salarié supprimé',
         };
     }
 }

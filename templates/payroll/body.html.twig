@@ -8,7 +8,7 @@
 
 {% block page_head %}
     <twig:Px:PageHead title="{{ body ? body.name : 'Nouvel organisme' }}" :trail="[
-        {label: 'Paie et social', href: path('app_payroll_items', {dossier: dossier.id})},
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
         {label: 'Organismes', href: path('app_payroll_bodies', {dossier: dossier.id})},
         {label: body ? body.name : 'Nouvel organisme', href: body ? path('app_payroll_body', {dossier: dossier.id, id: body.id}) : path('app_payroll_body_new', {dossier: dossier.id})},
     ]">

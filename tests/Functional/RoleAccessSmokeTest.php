@@ -9,10 +9,16 @@ use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Distribution;
 use App\Entity\Identity\SchoolClass;
 use App\Entity\Identity\User;
+use App\Entity\Payroll\Employee;
+use App\Entity\Payroll\EmploymentTerms;
+use App\Entity\Payroll\PayrollEstablishment;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\JournalType;
 use App\Enum\Dossier\DistributionMode;
 use App\Enum\Dossier\DossierKind;
+use App\Enum\Payroll\ContractType;
+use App\Enum\Payroll\Sex;
+use App\Enum\Payroll\WorkingTime;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntrySubscriptionRepository;
@@ -217,6 +223,14 @@ final class RoleAccessSmokeTest extends WebTestCase
 
             return $client->getContainer()->get(PayrollBodyRepository::class)->findByDossier($saved)[0]->getId();
         });
+        $client->getContainer()->get(DossierContext::class)->within($saved, static function () use ($client, $saved): void {
+            $entityManager = $client->getContainer()->get(EntityManagerInterface::class);
+            $entityManager->persist(new PayrollEstablishment($saved, '8.69', '2.1', null, '151.67'));
+            $paul = new Employee($saved, 'S001', 'Vasseur', 'Paul', Sex::Male, new \DateTimeImmutable('1988-02-11'), ContractType::Permanent, new \DateTimeImmutable('2012-09-03'));
+            $entityManager->persist($paul);
+            $entityManager->persist(new EmploymentTerms($paul, new \DateTimeImmutable('2012-09-03'), 'Chef d’atelier', '', true, WorkingTime::FullTime, '151.67', Money::cents(465_000)));
+            $entityManager->flush();
+        });
         $entry = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): Entry => $client->getContainer()->get(Ledger::class)->draft($saved, new EntryDraft('BQ1', new \DateTimeImmutable('2026-01-20'), 'VIR-SCIE', 'Virement Scierie', [
             EntryLineDraft::debit('401000', Money::cents(1_000), '', 'F0001'),
             EntryLineDraft::credit('512100', Money::cents(1_000)),
@@ -256,6 +270,8 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/closing/fec', '/closing/fec?exercise=2026', '/closing/fec/download',
             '/payroll/items', '/payroll/items/new', '/payroll/items/2200', '/payroll/bodies', '/payroll/bodies/new',
             '/payroll/bodies/'.$bodyId, '/payroll/establishment',
+            '/payroll/employees', '/payroll/employees?state=present&q=vas', '/payroll/employees/new', '/payroll/employees/S001',
+            '/payroll/employees/S001?from=2012-09-03',
             '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
