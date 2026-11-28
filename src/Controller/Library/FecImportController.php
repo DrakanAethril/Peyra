@@ -19,7 +19,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * The progress of a FEC's import into a new template (step 1.10b): the stage reached and its bar,
- * redrawn live and asked again while passes are left; once done, what the template received and
+ * redrawn live and asked again while passes are left - each asking runs a few more -; once done, what the template received and
  * the way to it; stopped, why, with « Relancer » (the next pass starts where the stopped one was
  * rolled back) and « Abandonner » (the hidden template deleted). Its author's (FecImportVoter).
  */
@@ -27,9 +27,14 @@ use Symfony\Component\Routing\Attribute\Route;
 final class FecImportController extends AbstractController
 {
     #[Route('', name: 'app_library_fec_import', methods: ['GET'])]
-    public function show(#[MapEntity] FecImportJob $job): Response
+    public function show(#[MapEntity] FecImportJob $job, FecImportQueue $queue): Response
     {
         $this->guard($job);
+        // The page asks again every two seconds while passes are left: each time, a few more run
+        // after the answer (FecImportWorkListener), under the import's lock.
+        if ($job->isPending()) {
+            $queue->add($job);
+        }
 
         return $this->render('library/fec_import.html.twig', ['job' => $job]);
     }

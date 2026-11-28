@@ -92,8 +92,8 @@ Run the suite both ways before pushing, as CI does: ParaTest gives every test fi
 process, so a test that leaks global state (an environment variable unset, a static) only breaks
 the files after it under `bin/phpunit`.
 
-Application commands (`src/Command/`). **Two are scheduled** (`app:restore-points:advance` and
-`app:distribution:advance`, every minute): `App\Scheduler\PeyraSchedule` holds the list, and
+Application commands (`src/Command/`). **Three are scheduled** (`app:restore-points:advance`,
+`app:distribution:advance` and `app:fec-import:advance`, every minute): `App\Scheduler\PeyraSchedule` holds the list, and
 `PeyraScheduleTest` pins it, so adding a task is a decision the test makes visible.
 
 | Command | Role |
@@ -104,6 +104,7 @@ Application commands (`src/Command/`). **Two are scheduled** (`app:restore-point
 | `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, the first quarter in every journal with drafts at the end of March, seven entry templates, two subscriptions, three suppliers lettered; date 31/03/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
 | `app:dev:dossiers` | **Development and test only.** Distributes Menuiserie Vasseur (the common library's template, installed first if missing) to each class of the current year - every student who holds no copy of it yet -, then as one shared dossier to `ines.morel` (Comptable fournisseurs), `theo.garnier` (Comptable clients) and `chloe.fabre` (Chef comptable) when enrolled in one class; the copies are made at once. Sign the students in first: their first sign-in places them |
 | `app:distribution:advance` | **Scheduled every minute.** Makes the dossiers of the distributions a request left waiting (a worker restarted), one copy per pass under its own lock; usually finds nothing |
+| `app:fec-import:advance` | **Scheduled every minute.** Runs the passes of the FEC imports a request left (the page's 12 s budget, a worker restarted); a pass that fails stops its import, never retried on its own |
 | `app:restore-points:advance` | **Scheduled every minute.** Finishes the restore points still in preparation and the returns still running that a request left (a worker restarted); usually finds nothing. Takes each dossier's lock |
 | `app:test:parallel-databases` | **Test only.** Copies the migrated `peyra_test` into `peyra_test1`… for ParaTest (tests/README.md) |
 
@@ -1052,12 +1053,18 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
 - **Import into a new template** (step 1.9b, Bibliothèque › Nouveau dossier modèle › Depuis un FEC,
   `/teacher/library/new/fec`): `FecImport` checks the fields (`TemplateFactory::prepare()`), the
   file (`FecConformity::check()` without name nor sequence), reads it with the pure
-  `FecImportReading` (rules in its docblock), then writes in **one transaction** through the usual
-  doors - `TemplateFactory::open()`, `JournalSheet`, `ThirdPartyRules`, `Ledger::draft()` then
-  `validate()` in date order, `Lettering::letter()` per group - and rolls everything back on the
-  first refusal, each fault on its line. It works in batches with the entity manager **cleared**
-  between them (a flush per draft over a growing unit of work made 500 entries take 90 s): entities
-  loaded before an import are detached after it. 1 000 entries at most (`MAX_ENTRIES`). The
+  `FecImportReading` (rules in its docblock) and **rehearses the doors before writing anything**
+  (`FecImportRehearsal`: ThirdPartyRules and EntryRules over the template built in memory), each
+  fault on its line. Then (step 1.10b) `launch()` opens the template **hidden**
+  (`Dossier::$importing`: DossierVoter refuses it, the library leaves it out) and records a
+  `FecImportJob` (global, the file gzipped); the writing is **in the background**, `pass()` by
+  `pass()` - set-up, 250 drafts, 250 validations, 100 letterings -, each one transaction under the
+  job's lock (`FecImportRunner`), through the usual doors, the entity manager **cleared** between
+  batches (entities loaded before are detached after). Passes run after the answer for 12 s at
+  most (`FecImportWorkListener`: **PHP's 30 s `max_execution_time` counts kernel.terminate too**),
+  again at each poll of the progress page (`/teacher/library/imports/{id}`, Mercure + polling), and
+  by `app:fec-import:advance`. A pass that fails stops the import: « Relancer » or « Abandonner »
+  (the hidden template deleted, the teacher's gesture). 10 000 entries at most (`MAX_ENTRIES`). The
   demonstration's FEC imported then exported again gives back the same bytes (`FecImportTest`).
 
 ## Référentiel and assistance levels (built at step 2.8)

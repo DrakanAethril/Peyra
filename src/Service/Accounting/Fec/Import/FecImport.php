@@ -60,9 +60,13 @@ final readonly class FecImport
     /** A small company's whole exercise, written in the background (about 15 ms an entry). */
     public const int MAX_ENTRIES = 10000;
 
-    /** Entries drafted, or validated, in one pass; lettering groups lettered in one pass. */
-    public const int PASS_ENTRIES = 500;
-    public const int PASS_LETTERINGS = 200;
+    /**
+     * Entries drafted, or validated, in one pass; lettering groups lettered in one pass: a few
+     * seconds each, so that a request's budget after its answer (FecImportWorkListener) ends well
+     * within PHP's time limit.
+     */
+    public const int PASS_ENTRIES = 250;
+    public const int PASS_LETTERINGS = 100;
 
     /**
      * Entries drafted, entries validated, groups lettered between two clearings of the entity
