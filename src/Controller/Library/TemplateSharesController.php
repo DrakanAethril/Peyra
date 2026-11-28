@@ -12,7 +12,7 @@ use App\Repository\Dossier\DossierShareRepository;
 use App\Repository\Identity\UserRepository;
 use App\Security\Voter\TemplateVoter;
 use App\Service\Dossier\Library\TemplateCardDraft;
-use App\Service\Dossier\Library\TemplateContents;
+use App\Service\Dossier\DossierContents;
 use App\Service\Dossier\Library\TemplateLibrary;
 use App\Service\Dossier\Library\TemplateShares;
 use App\Service\Shared\PostValue;
@@ -50,7 +50,7 @@ final class TemplateSharesController extends AbstractController
     }
 
     #[Route('/teacher/library/{dossier}/shares', name: 'app_library_share', requirements: ['dossier' => '\d+'], methods: ['POST'])]
-    public function share(Dossier $dossier, Request $request, TemplateShares $templateShares, UserRepository $users, DossierShareRepository $shares, TemplateLibrary $library, TemplateContents $contents, EntityManagerInterface $entityManager, ClockInterface $clock, #[CurrentUser] User $me): Response
+    public function share(Dossier $dossier, Request $request, TemplateShares $templateShares, UserRepository $users, DossierShareRepository $shares, TemplateLibrary $library, DossierContents $contents, EntityManagerInterface $entityManager, ClockInterface $clock, #[CurrentUser] User $me): Response
     {
         $this->allowed($dossier);
         $this->checkToken($request, $dossier);

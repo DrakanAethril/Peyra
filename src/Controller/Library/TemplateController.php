@@ -14,7 +14,7 @@ use App\Security\Voter\TemplateVoter;
 use App\Service\Dossier\Library\TemplateCard;
 use App\Service\Dossier\Library\TemplateCardDraft;
 use App\Service\Dossier\Library\TemplateCards;
-use App\Service\Dossier\Library\TemplateContents;
+use App\Service\Dossier\DossierContents;
 use App\Service\Dossier\Library\TemplateDeletion;
 use App\Service\Dossier\Library\TemplateDuplicator;
 use App\Service\Dossier\Library\TemplateLibrary;
@@ -37,7 +37,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 final class TemplateController extends AbstractController
 {
     #[Route('/teacher/library/{dossier}', name: 'app_library_template', requirements: ['dossier' => '\d+'], methods: ['GET', 'POST'])]
-    public function show(Dossier $dossier, Request $request, TemplateLibrary $library, TemplateCards $cards, TemplateContents $contents, DossierShareRepository $shares, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
+    public function show(Dossier $dossier, Request $request, TemplateLibrary $library, TemplateCards $cards, DossierContents $contents, DossierShareRepository $shares, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $card = $this->card($library, $me, $dossier);
         $draft = TemplateCardDraft::of($dossier);
@@ -83,7 +83,7 @@ final class TemplateController extends AbstractController
     }
 
     #[Route('/teacher/library/{dossier}/delete', name: 'app_library_delete', requirements: ['dossier' => '\d+'], methods: ['GET', 'POST'])]
-    public function delete(Dossier $dossier, Request $request, TemplateLibrary $library, TemplateContents $contents, TemplateDeletion $deletion, DossierShareRepository $shares, #[CurrentUser] User $me): Response
+    public function delete(Dossier $dossier, Request $request, TemplateLibrary $library, DossierContents $contents, TemplateDeletion $deletion, DossierShareRepository $shares, #[CurrentUser] User $me): Response
     {
         $card = $this->card($library, $me, $dossier);
         if (!$this->isGranted(TemplateVoter::DELETE, $dossier)) {
