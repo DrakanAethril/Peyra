@@ -3,7 +3,9 @@
  # head, the customer and the dates, the lines in a grid (an article's reference fills the line:
  # sales_lines_controller.js), the HT / TVA / TTC foot read from the saved lines, the history. A draft
  # is saved with F10 and validated with Ctrl Entrée after the confirmation bar; validated, it never
- # changes - « Transformer en… », « Créer un avoir », « Envoyer » and the PDF remain.
+ # changes - « Transformer en… », « Créer un avoir », « Envoyer » and the PDF remain. An invoice
+ # takes a cash discount, an invoicing document's VAT may be due on receipt, a final invoice deducts
+ # its order's deposits, and a validated invoicing document shows its entry (step 2.3b).
  #}
 {% extends 'sales/_layout.html.twig' %}
 
@@ -12,6 +14,7 @@
 {% set can_validate = document and document.draft and is_granted('SALES_VALIDATE', dossier) %}
 {% set can_send = document and not document.draft and is_granted('SALES_VALIDATE', dossier) %}
 {% set can_transform = document and not document.draft and is_granted('SALES_ENTER', dossier) %}
+{% set can_post = posting and is_granted('SALES_VALIDATE', dossier) %}
 {% set status_keys = (editable ? [{combo: 'F10', verb: 'Enregistrer'}] : [])|merge(can_validate ? [{combo: 'Ctrl+Enter', verb: 'Valider'}] : []) %}
 
 {% block page_head %}
@@ -34,9 +37,15 @@
                     {% endif %}
                     {% if can_transform %}
                         {% for into in transforms %}
-                            <form method="post" action="{{ path('app_sales_document_transform', {dossier: dossier.id, id: document.id}) }}">
+                            <form method="post" action="{{ path('app_sales_document_transform', {dossier: dossier.id, id: document.id}) }}"{% if into.value == 'deposit' %} class="px-cluster"{% endif %}>
                                 <input type="hidden" name="_token" value="{{ csrf_token('sales-transform-' ~ document.id) }}">
-                                <twig:Px:Button type="submit" name="into" value="{{ into.value }}" icon="arrow-right" variant="{{ loop.first ? 'primary' : 'secondary' }}">{{ into.value == 'credit_note' ? 'Créer un avoir' : 'Transformer en ' ~ into.label|lower }}</twig:Px:Button>
+                                {% if into.value == 'deposit' %}
+                                    <label class="px-u-sr-only" for="deposit-percent">Pourcentage de l’acompte</label>
+                                    <twig:Px:Input id="deposit-percent" name="percent" value="30" size="sm" class="px-u-num px-sales-percent" inputmode="decimal" autocomplete="off" maxlength="6"/>
+                                    <twig:Px:Button type="submit" name="into" value="deposit" icon="arrow-right">% : facturer un acompte</twig:Px:Button>
+                                {% else %}
+                                    <twig:Px:Button type="submit" name="into" value="{{ into.value }}" icon="arrow-right" variant="{{ loop.first ? 'primary' : 'secondary' }}">{{ into.value == 'credit_note' ? 'Créer un avoir' : 'Transformer en ' ~ into.label|lower }}</twig:Px:Button>
+                                {% endif %}
                             </form>
                         {% endfor %}
                     {% endif %}
@@ -90,6 +99,16 @@
                         <twig:Px:Field id="reference" label="Référence" hint="Celle du client ou l’objet : Chantier Rambaud." :wide="true" :error="draft.error('reference')">
                             <twig:Px:Input id="reference" value="{{ draft.reference }}" hint="1" :error="draft.error('reference')" maxlength="80" autocomplete="off"/>
                         </twig:Px:Field>
+                        {% if doc_type.takesCashDiscount %}
+                            <twig:Px:Field id="cashDiscount" label="Escompte %" hint="Pour paiement comptant : déduit avant la TVA." :error="draft.error('cashDiscount')">
+                                <twig:Px:Input id="cashDiscount" value="{{ draft.cashDiscount }}" hint="1" :error="draft.error('cashDiscount')" class="px-u-num" inputmode="decimal" autocomplete="off" maxlength="6"/>
+                            </twig:Px:Field>
+                        {% endif %}
+                        {% if doc_type.invoicing %}
+                            <div class="px-field px-fieldgrid__full">
+                                <label class="px-check"><input type="checkbox" name="vatOnReceipts" value="1"{% if draft.vatOnReceipts %} checked{% endif %}> <span>TVA sur les encaissements (prestations de services) : exigible au règlement, portée en attente au 445800</span></label>
+                            </div>
+                        {% endif %}
                     </div>
                 </twig:Px:Card>
 
@@ -135,6 +154,8 @@
                 <dt>Date</dt><dd>{{ document.date|date_fr }}</dd>
                 {% if document.dueDate %}<dt>Échéance</dt><dd>{{ document.dueDate|date_fr }}</dd>{% endif %}
                 {% if document.reference %}<dt>Référence</dt><dd>{{ document.reference }}</dd>{% endif %}
+                {% if document.cashDiscount %}<dt>Escompte</dt><dd>{{ document.cashDiscount|percent }} pour paiement comptant</dd>{% endif %}
+                {% if doc_type.invoicing %}<dt>TVA</dt><dd>{{ document.vatOnReceipts ? 'Sur les encaissements' : 'Sur les débits' }}</dd>{% endif %}
             </dl>
         </twig:Px:Card>
         <twig:Px:Card title="Lignes" :flush="true">
@@ -171,14 +192,19 @@
     {% endif %}
 
     {% if document %}
-        {% set totals = document.totals %}
         <div class="px-split px-split--even">
             <twig:Px:Card title="Totaux" meta="{{ editable ? 'Lignes enregistrées (F10)' : '' }}">
                 <dl class="px-facts">
                     {% if not totals.discounts.isZero %}<dt>Remises</dt><dd class="px-u-num">{{ totals.discounts.negated|amount }}</dd>{% endif %}
                     <dt>Total HT</dt><dd class="px-u-num">{{ totals.excludingTax|amount_eur }}</dd>
+                    {% if not totals.cashDiscount.isZero %}
+                        <dt>Escompte {{ document.cashDiscount|percent }}</dt><dd class="px-u-num">{{ totals.cashDiscount.negated|amount }}</dd>
+                        <dt>Net financier</dt><dd class="px-u-num">{{ totals.netFinancial|amount_eur }}</dd>
+                    {% endif %}
                     {% for vat in totals.vatLines %}<dt>TVA {{ vat.rate|percent }} sur {{ vat.base|amount }}</dt><dd class="px-u-num">{{ vat.vat|amount }}</dd>{% endfor %}
                     <dt>Total TTC</dt><dd class="px-u-num"><b>{{ totals.includingTax|amount_eur }}</b></dd>
+                    {% for deposit in totals.deposits %}<dt>Acompte {{ deposit.number }} du {{ deposit.date|date_fr }}</dt><dd class="px-u-num">{{ deposit.includingTax.negated|amount }}</dd>{% endfor %}
+                    {% if totals.deposits is not empty %}<dt>Net à payer</dt><dd class="px-u-num"><b>{{ totals.amountDue|amount_eur }}</b></dd>{% endif %}
                 </dl>
             </twig:Px:Card>
             <twig:Px:Card title="Historique" :flush="true">
@@ -192,5 +218,9 @@
                 </twig:Px:Table>
             </twig:Px:Card>
         </div>
+    {% endif %}
+
+    {% if posting %}
+        {{ include('sales/_posting.html.twig') }}
     {% endif %}
 {% endblock %}

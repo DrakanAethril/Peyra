@@ -93,7 +93,7 @@ final readonly class SearchScreens
         if ($this->authorization->isGranted(DossierRightVoter::SALES_READ, $dossier)) {
             $items[] = $screen('app_sales_customers', 'Clients', 'Ventes', 'tag', 'clients encours');
             $items[] = $screen('app_sales_documents', 'Devis, commandes, livraisons', 'Ventes', 'tag', 'devis commande bon de livraison', ['type' => 'quote']);
-            $items[] = new SearchItem(SearchGroup::Screens, 'Factures et avoirs', $this->urls->generate('app_sales_documents', $id + ['type' => 'invoice']), 'Ventes', icon: 'tag', key: 'app_sales_documents:invoice', terms: 'factures de vente avoirs facturation');
+            $items[] = new SearchItem(SearchGroup::Screens, 'Factures, avoirs, acomptes', $this->urls->generate('app_sales_documents', $id + ['type' => 'invoice']), 'Ventes', icon: 'tag', key: 'app_sales_documents:invoice', terms: 'factures de vente avoirs acomptes facturation');
         }
         $items = [
             ...$items,

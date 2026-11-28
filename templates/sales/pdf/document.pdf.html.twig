@@ -119,18 +119,31 @@
                 <table class="sd__totals">
                     <tbody>
                         <tr><td>Total HT</td><td class="num">{{ totals.excludingTax|amount_eur }}</td></tr>
+                        {% if not totals.cashDiscount.isZero %}
+                            <tr><td>Escompte {{ document.cashDiscount|percent }}</td><td class="num">{{ totals.cashDiscount.negated|amount_eur }}</td></tr>
+                            <tr><td>Net financier HT</td><td class="num">{{ totals.netFinancial|amount_eur }}</td></tr>
+                        {% endif %}
                         <tr><td>Total TVA</td><td class="num">{{ totals.vat|amount_eur }}</td></tr>
-                        <tr><td>{{ type.value == 'invoice' ? 'Net à payer TTC' : 'Total TTC' }}</td><td class="num">{{ totals.includingTax|amount_eur }}</td></tr>
+                        {% if totals.deposits is empty %}
+                            <tr><td>{{ type.value in ['invoice', 'deposit'] ? 'Net à payer TTC' : 'Total TTC' }}</td><td class="num">{{ totals.includingTax|amount_eur }}</td></tr>
+                        {% else %}
+                            <tr><td>Total TTC</td><td class="num">{{ totals.includingTax|amount_eur }}</td></tr>
+                            {% for deposit in totals.deposits %}
+                                <tr><td>Acompte {{ deposit.number }} du {{ deposit.date|date_fr }}</td><td class="num">{{ deposit.includingTax.negated|amount_eur }}</td></tr>
+                            {% endfor %}
+                            <tr><td>Net à payer TTC</td><td class="num">{{ totals.amountDue|amount_eur }}</td></tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </section>
         {% endif %}
 
-        {% if type.value == 'invoice' %}
+        {% if type.value in ['invoice', 'deposit'] %}
             <footer class="sd__terms">
                 {% if document.dueDate %}<p><b>Échéance : {{ document.dueDate|date_fr }}</b></p>{% endif %}
                 <p>Conditions de règlement : {{ document.customer.paymentTerms.label|lower }} · mode de règlement : {{ document.customer.paymentMethod.label|lower }}.</p>
-                <p>Escompte pour paiement anticipé : néant.</p>
+                <p>{{ document.cashDiscount ? 'Escompte de ' ~ document.cashDiscount|percent ~ ' pour paiement comptant, déduit ci-dessus.' : 'Escompte pour paiement anticipé : néant.' }}</p>
+                {% if document.vatOnReceipts %}<p>TVA acquittée sur les encaissements.</p>{% endif %}
                 <p>En cas de retard de paiement, pénalités au taux de trois fois le taux d’intérêt légal.</p>
                 <p>Indemnité forfaitaire pour frais de recouvrement due en cas de retard : 40 €.</p>
             </footer>

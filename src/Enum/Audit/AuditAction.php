@@ -240,6 +240,8 @@ enum AuditAction: string
     case SalesDocumentValidated = 'sales.document_validated';
 
     case SalesDocumentSent = 'sales.document_sent';
+    /** An invoicing document's entry written in the brouillard through the gateway (step 2.3b). */
+    case SalesDocumentPosted = 'sales.document_posted';
 
     public function label(): string
     {
@@ -329,6 +331,7 @@ enum AuditAction: string
             self::SalesDocumentDeleted => 'Brouillon de document commercial supprimé',
             self::SalesDocumentValidated => 'Document commercial validé',
             self::SalesDocumentSent => 'Document commercial envoyé',
+            self::SalesDocumentPosted => 'Document commercial comptabilisé',
         };
     }
 }

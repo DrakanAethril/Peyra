@@ -1,0 +1,64 @@
+{#
+ # The card « Écriture » of a validated invoicing document (step 2.3b; design-ux.md § 3.2: « lien vers
+ # l'écriture, comptabilisation selon la mission »): the entry it led to; else, under « Proposer » -
+ # or « Comptabiliser » when the validation could not write it -, the proposal and « Passer
+ # l'écriture au brouillard »; under « Laisser saisir », only the journal to enter it in: the
+ # proposal is the correction's, never shown.
+ #}
+{% set back = path('app_sales_document', {dossier: dossier.id, id: document.id}) %}
+{% if posting.entries is not empty %}
+    {% for entry in posting.entries %}
+        {{ include('document/_written_entry.html.twig', {entry: entry, back_path: back}) }}
+    {% endfor %}
+{% elseif posting.behaviour.value == 'let_enter' %}
+    <twig:Px:Card title="Écriture">
+        <p>À vous de la saisir dans le journal des ventes, pièce <span class="px-u-code">{{ document.number }}</span>, au {{ document.date|date_fr }}.</p>
+        {% if posting.journal %}
+            <twig:Px:Button href="{{ path('app_accounting_entry', {dossier: dossier.id, journal: posting.journal, period: document.date|date('Y-m-01')}) }}" icon="arrow-right">Saisir dans le journal {{ posting.journal }}</twig:Px:Button>
+        {% endif %}
+    </twig:Px:Card>
+{% elseif posting.proposal %}
+    {% set proposal = posting.proposal %}
+    {% set check = posting.check %}
+    <section class="px-card px-card--flush" aria-labelledby="sales-proposal-title">
+        <header class="px-card__head">
+            <h2 id="sales-proposal-title">Écriture proposée</h2>
+            <small>Journal <span class="px-u-code">{{ proposal.journal }}</span> · {{ date(proposal.date)|date_fr }} · pièce <span class="px-u-code">{{ proposal.document }}</span></small>
+            {% if can_post and check.writable %}
+                <div class="px-card__actions">
+                    <form method="post" action="{{ path('app_sales_document_post', {dossier: dossier.id, id: document.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('sales-post-' ~ document.id) }}">
+                        <twig:Px:Button type="submit" size="sm" variant="primary" icon="check">Passer l’écriture au brouillard</twig:Px:Button>
+                    </form>
+                </div>
+            {% endif %}
+        </header>
+        {% if check.errors is not empty %}
+            <twig:Px:Alert tone="danger">{{ posting.behaviour.value == 'post' ? 'L’écriture n’a pas pu être passée à la validation : ' : 'L’écriture ne peut pas être passée : ' }}{{ check.errors|join(' ') }}</twig:Px:Alert>
+        {% endif %}
+        <twig:Px:Table caption="Lignes de l’écriture proposée">
+            <thead><tr>
+                <th scope="col">Compte</th><th scope="col">Tiers</th><th scope="col" class="px-u-num">Échéance</th>
+                <th scope="col" class="px-u-right">Débit</th><th scope="col" class="px-u-right">Crédit</th>
+            </tr></thead>
+            <tbody>
+                {% for line in proposal.lines %}
+                    <tr>
+                        <td class="px-u-code">{{ line.account }}</td>
+                        <td class="px-u-code">{{ line.thirdParty }}</td>
+                        <td class="px-u-num">{{ line.due ? date(line.due)|date_fr : '' }}</td>
+                        <td class="px-u-num">{{ line.debit|amount_cell }}</td>
+                        <td class="px-u-num">{{ line.credit|amount_cell }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot><tr>
+                <th scope="row" colspan="3">Totaux</th>
+                <td class="px-u-num">{{ proposal.totalDebit|amount }}</td>
+                <td class="px-u-num">{{ proposal.totalCredit|amount }}</td>
+            </tr></tfoot>
+        </twig:Px:Table>
+    </section>
+{% else %}
+    <twig:Px:Alert tone="warning">Aucune écriture proposée : le client n’est rattaché à aucun compte, ou le dossier n’a pas de journal de ventes.</twig:Px:Alert>
+{% endif %}

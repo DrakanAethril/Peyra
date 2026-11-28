@@ -22,11 +22,9 @@ use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\EntryLineRepository;
 use App\Repository\Accounting\EntryRepository;
 use App\Repository\Accounting\JournalRepository;
-use App\Repository\Dossier\PeriodRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Accounting\Entry\GridLine;
-use App\Service\Accounting\Entry\JournalGrid;
 use App\Service\Accounting\Gateway\AccountingBehaviours;
 use App\Service\Accounting\Gateway\AccountingGateway;
 use App\Service\Accounting\Ledger\Ledger;
@@ -34,6 +32,7 @@ use App\Service\Audit\AuditTrail;
 use App\Service\Document\PieceAnomaly;
 use App\Service\Document\Processing\PieceProcessing;
 use App\Service\Document\Processing\PieceProposal;
+use App\Service\Document\Processing\ProposedEntryCheck;
 use App\Service\Document\VatLine;
 use App\Service\Shared\Money;
 use App\Tests\Support\BuildsLedger;
@@ -227,9 +226,8 @@ final class PieceProcessingTest extends KernelTestCase
         return new PieceProcessing(
             $gateway,
             $container->get(JournalRepository::class),
-            $container->get(PeriodRepository::class),
             $container->get(EntryLineRepository::class),
-            $container->get(JournalGrid::class),
+            $container->get(ProposedEntryCheck::class),
             $container->get(AssistanceLevels::class),
             $container->get(AuditTrail::class),
         );

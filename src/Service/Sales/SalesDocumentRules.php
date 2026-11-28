@@ -17,7 +17,8 @@ use Brick\Math\Exception\MathException;
  * of 80 characters at most, and lines - a row left entirely empty is dropped; every other one has
  * its designation, a quantity above zero (three decimals at most), a price excluding tax (zero or
  * more), a discount from 0 to 100 % (two decimals at most) and a VAT rate; an article named must be
- * one of the dossier. Faults under `customer`, `date`, `dueDate`, `reference`, `line.<i>.<field>`.
+ * one of the dossier; a cash discount from 0 to 100 % (two decimals at most, step 2.3b). Faults under
+ * `customer`, `date`, `dueDate`, `reference`, `cashDiscount`, `line.<i>.<field>`.
  *
  * What a validation adds (a line at least, the dates against the dossier and the numbering) is
  * `validationRefusals()`.
@@ -59,6 +60,13 @@ final class SalesDocumentRules
         if (mb_strlen($reference) > 80) {
             $errors['reference'] = '80 caractères au plus.';
         }
+        $cashDiscount = null;
+        if ('' !== trim($draft->cashDiscount)) {
+            $cashDiscount = self::decimal($draft->cashDiscount, 2);
+            if (null === $cashDiscount || $cashDiscount->isNegative() || $cashDiscount->isGreaterThanOrEqualTo(100)) {
+                $errors['cashDiscount'] = 'Un escompte de 0 à 100 %, deux décimales au plus.';
+            }
+        }
 
         $lines = [];
         $kept = [];
@@ -81,7 +89,15 @@ final class SalesDocumentRules
             return null;
         }
 
-        return new SalesDocumentFields($customer, $date, $dueDate, '' === $reference ? null : $reference, $lines);
+        return new SalesDocumentFields(
+            $customer,
+            $date,
+            $dueDate,
+            '' === $reference ? null : $reference,
+            $lines,
+            null === $cashDiscount || $cashDiscount->isZero() ? null : (string) $cashDiscount->strippedOfTrailingZeros(),
+            $draft->vatOnReceipts,
+        );
     }
 
     /**
