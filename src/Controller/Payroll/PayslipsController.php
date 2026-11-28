@@ -80,7 +80,7 @@ final class PayslipsController extends AbstractController
         $refusal = $book->close($dossier, $me);
         if (null === $refusal) {
             $entityManager->flush();
-            $this->addFlash('status', \sprintf('Paie de %s close : %s s’ouvre.', FrenchFormat::period($month), FrenchFormat::period($book->month($dossier))));
+            $this->addFlash('status', \sprintf('Paie %s close : %s s’ouvre.', FrenchFormat::ofPeriod($month), FrenchFormat::period($book->month($dossier))));
         } else {
             $this->addFlash('payslip_fault', $refusal);
         }
@@ -99,7 +99,7 @@ final class PayslipsController extends AbstractController
         $refusal = $book->reopen($dossier, $me);
         if (null === $refusal) {
             $entityManager->flush();
-            $this->addFlash('status', \sprintf('Paie de %s rouverte.', FrenchFormat::period($last?->getMonth() ?? $book->month($dossier))));
+            $this->addFlash('status', \sprintf('Paie %s rouverte.', FrenchFormat::ofPeriod($last?->getMonth() ?? $book->month($dossier))));
         } else {
             $this->addFlash('payslip_fault', $refusal);
         }

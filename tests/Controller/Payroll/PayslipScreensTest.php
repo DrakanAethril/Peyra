@@ -28,7 +28,9 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  * plan, Lucie Perrin, comptable at 2 730,00 since 01/01/2026. March lists her payslip « À faire »; a
  * card with an unreadable amount is refused whole; with a seniority bonus of 3 % the payslip is
  * calculated (2 730,00 + 81,90 = 2 811,90 of gross pay) and « Calculé, à valider », and the card keeps
- * what was typed.
+ * what was typed. Step 4.4b: a base forced in the grid, a rubrique removed, one the law makes due refused,
+ * the validation that freezes the payslip, its sending, its cancellation, the closing of March - April
+ * then reads March in its year to date - and its reopening, a teacher's alone.
  */
 final class PayslipScreensTest extends WebTestCase
 {
@@ -71,6 +73,84 @@ final class PayslipScreensTest extends WebTestCase
 
         $client->request('GET', $this->url($dossier, '/payroll/payslips/S999'));
         self::assertResponseStatusCodeSame(404);
+    }
+
+    public function testAPayslipChangedByHandValidatedAndItsMonthClosed(): void
+    {
+        [$client, $dossier] = $this->school();
+        $payslip = $this->url($dossier, '/payroll/payslips/S010');
+        $crawler = $client->request('GET', $payslip);
+        $form = $crawler->filter('#payslip-elements')->form();
+        $form['rate[1010]'] = '3';
+        $client->submit($form);
+        $crawler = $client->followRedirect();
+
+        // 140 h at 2 730,00 ÷ 151,67 = 17,9996 → 2 519,94; + 81,90 = 2 601,84, the base marked forced.
+        $form = $crawler->filter('#payslip-elements')->form();
+        self::assertSame('151,67', $form['cell[1000.base]']->getValue());
+        $form['cell[1000.base]'] = '140';
+        $client->submit($form);
+        $crawler = $client->followRedirect();
+        self::assertSame('260184', $this->gross($crawler->filter('tr.px-table__subtotal')->first()->text()));
+        self::assertSelectorTextContains('main', 'Modifié, à valider');
+        self::assertCount(1, $crawler->filter('input.is-forced[name="cell[1000.base]"]'));
+
+        // Ctrl+Suppr: the seniority bonus goes (2 519,94), the old-age contribution is due and stays.
+        $values = $crawler->filter('#payslip-elements')->form()->getPhpValues();
+        $client->request('POST', $payslip, $values + ['remove' => '2200']);
+        self::assertResponseStatusCodeSame(422);
+        self::assertSelectorTextContains('main', 'La rubrique 2200 · Vieillesse plafonnée est due');
+        $client->request('POST', $payslip, $values + ['remove' => '1010']);
+        $crawler = $client->followRedirect();
+        self::assertSame('251994', $this->gross($crawler->filter('tr.px-table__subtotal')->first()->text()));
+        self::assertCount(0, $crawler->filter('tr[data-code="1010"]'));
+
+        // Validated: frozen, then the month's list (nobody else to do); sent; cancelled and validated again.
+        $client->request('POST', $payslip.'/validate', ['_token' => $crawler->filter('form[action$="/validate"] input[name="_token"]')->attr('value')]);
+        self::assertResponseRedirects($this->url($dossier, '/payroll/payslips'));
+        $crawler = $client->request('GET', $payslip);
+        self::assertSelectorTextContains('main', 'Bulletin validé le 15/03/2026');
+        self::assertCount(0, $crawler->filter('input[name^="cell["]'));
+        $client->request('POST', $payslip, ['_token' => 'x']);
+        self::assertResponseStatusCodeSame(404);
+        $client->request('POST', $payslip.'/send', ['_token' => $crawler->filter('form[action$="/send"] input[name="_token"]')->attr('value')]);
+        $crawler = $client->followRedirect();
+        self::assertSelectorTextContains('main', 'Envoyé le 15/03/2026');
+        self::assertSelectorTextContains('main', 'Duplicata PDF');
+        $client->request('GET', $payslip.'/payslip.pdf');
+        self::assertResponseHeaderSame('Content-Type', 'application/pdf');
+        self::assertStringStartsWith('%PDF-', (string) $client->getInternalResponse()->getContent());
+        $client->request('POST', $payslip.'/cancel', ['_token' => $crawler->filter('form[action$="/cancel"] input[name="_token"]')->attr('value')]);
+        $crawler = $client->followRedirect();
+        self::assertSelectorTextContains('main', 'Modifié, à valider');
+        $client->request('POST', $payslip.'/validate', ['_token' => $crawler->filter('form[action$="/validate"] input[name="_token"]')->attr('value')]);
+
+        // March closed: April is paid, and reads March in its year to date (2 519,94 + 2 730,00 = 5 249,94).
+        $crawler = $client->request('GET', $this->url($dossier, '/payroll/payslips'));
+        self::assertSelectorTextContains('main', 'Tous les bulletins de mars 2026 sont validés');
+        $client->request('POST', $this->url($dossier, '/payroll/payslips/close'), ['_token' => $crawler->filter('form[action$="/close"] input[name="_token"]')->attr('value')]);
+        $crawler = $client->followRedirect();
+        self::assertSelectorTextContains('h1', 'Bulletins d’avril 2026');
+        self::assertCount(0, $crawler->filter('form[action$="/reopen"]'), 'A student does not reopen a month.');
+        $crawler = $client->request('GET', $payslip);
+        $client->submit($crawler->filter('#payslip-elements')->form());
+        $crawler = $client->followRedirect();
+        self::assertStringContainsString('part du brut de l’année (5 249,94 €)', str_replace(["\u{202F}", "\u{A0}"], ' ', $crawler->filter('main')->text()));
+        $client->request('POST', $this->url($dossier, '/payroll/payslips/reopen'), ['_token' => 'x']);
+        self::assertResponseStatusCodeSame(404);
+
+        $this->signOut($client);
+        $this->submitLogin($client, 'prof.martin');
+        $crawler = $client->request('GET', $this->url($dossier, '/payroll/payslips'));
+        $client->request('POST', $this->url($dossier, '/payroll/payslips/reopen'), ['_token' => $crawler->filter('form[action$="/reopen"] input[name="_token"]')->attr('value')]);
+        $client->followRedirect();
+        self::assertSelectorTextContains('h1', 'Bulletins de mars 2026');
+        self::assertSelectorTextContains('main tbody', 'Validé');
+    }
+
+    private function gross(string $text): string
+    {
+        return (string) preg_replace('/\D/', '', $text);
     }
 
     /** @return array{KernelBrowser, Dossier} the client signed in as ines.morel, her dossier */

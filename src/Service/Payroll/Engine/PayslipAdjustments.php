@@ -103,7 +103,7 @@ final readonly class PayslipAdjustments
         return $forcing->apply($row, PayrollItemKind::Deduction === $spec->kind || $spec->subtracts);
     }
 
-    /** @return array{removed: list<string>, added: list<string>, forced: array<string, array<string, string>>} */
+    /** @return array{removed: list<string>, added: list<string>, forced: array<array-key, array<string, string>>} codes of digits are integer keys */
     public function toArray(): array
     {
         $forced = [];

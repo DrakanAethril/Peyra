@@ -14,7 +14,7 @@
 {% set status_keys = first_to_do ? [{combo: 'Enter', verb: 'ouvrir le bulletin'}, {combo: 'ArrowUp', verb: 'ligne précédente'}, {combo: 'ArrowDown', verb: 'ligne suivante'}] : [] %}
 
 {% block page_head %}
-    <twig:Px:PageHead title="Bulletins de {{ month|period }}" :trail="[
+    <twig:Px:PageHead title="Bulletins {{ month|of_period }}" :trail="[
         {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
         {label: 'Bulletins', href: path('app_payroll_payslips', {dossier: dossier.id})},
     ]">
@@ -33,7 +33,7 @@
                 {% if can_close %}
                     <form class="px-confirmbar" method="post" action="{{ path('app_payroll_payslips_close', {dossier: dossier.id}) }}" role="alertdialog" aria-labelledby="payroll-close-text" hidden data-confirm-bar-target="bar" data-action="keydown->confirm-bar#keydown">
                         <input type="hidden" name="_token" value="{{ csrf_token('payroll-close-' ~ dossier.id) }}">
-                        <p id="payroll-close-text">Clore la paie de {{ month|period }} ? Les bulletins ne pourront plus être annulés sans rouvrir le mois.</p>
+                        <p id="payroll-close-text">Clore la paie {{ month|of_period }} ? Les bulletins ne pourront plus être annulés sans rouvrir le mois.</p>
                         <twig:Px:Button variant="quiet" data-action="confirm-bar#close">Annuler</twig:Px:Button>
                         <twig:Px:Button type="submit" variant="primary" data-confirm-bar-target="confirm">Clore le mois</twig:Px:Button>
                     </form>
@@ -47,7 +47,7 @@
     {% for message in app.flashes('payslip_fault') %}<twig:Px:Alert tone="danger">{{ message }}</twig:Px:Alert>{% endfor %}
     {% if employee_rows is not empty %}
         {% if closing_refusals is empty %}
-            <twig:Px:Alert tone="success">Tous les bulletins de {{ month|period }} sont validés : le mois peut être clos. Les cumuls de l’année se lisent sur les bulletins validés, et {{ month|date_modify('first day of next month')|period }} s’ouvre.</twig:Px:Alert>
+            <twig:Px:Alert tone="success">Tous les bulletins {{ month|of_period }} sont validés : le mois peut être clos. Les cumuls de l’année se lisent sur les bulletins validés, et {{ month|date_modify('first day of next month')|period }} s’ouvre.</twig:Px:Alert>
         {% else %}
             <twig:Px:Alert tone="info">{{ month|period|capitalize }} se clôt quand tous ses bulletins sont validés : {{ closing_refusals|length }} {{ closing_refusals|length > 1 ? 'restent' : 'reste' }} à valider.</twig:Px:Alert>
         {% endif %}
@@ -56,7 +56,7 @@
         {% if employee_rows is empty %}
             <twig:Px:Empty icon="users" title="Aucun salarié dans ce dossier." text="Aucun contrat ne couvre {{ month|period }} : le bulletin d’un salarié se prépare dès que sa fiche le met sous contrat dans le mois."/>
         {% else %}
-            <twig:Px:Table caption="Bulletins de {{ month|period }}" :rows="true">
+            <twig:Px:Table caption="Bulletins {{ month|of_period }}" :rows="true">
                 <thead>
                     <tr>
                         <th scope="col">Matricule</th>

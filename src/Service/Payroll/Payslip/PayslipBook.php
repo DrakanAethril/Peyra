@@ -260,7 +260,7 @@ final readonly class PayslipBook
         }
         $month = $this->month($dossier);
         $this->entityManager->persist(new PayrollMonthClosure($dossier, $month, $dossier->getDossierDate()));
-        $this->auditTrail->inDossier($dossier, AuditAction::PayrollMonthClosed, $actor, \sprintf('Paie de %s close', FrenchFormat::period($month)), ['month' => $month->format('Y-m')]);
+        $this->auditTrail->inDossier($dossier, AuditAction::PayrollMonthClosed, $actor, \sprintf('Paie %s close', FrenchFormat::ofPeriod($month)), ['month' => $month->format('Y-m')]);
 
         return null;
     }
@@ -279,11 +279,11 @@ final readonly class PayslipBook
         $open = $this->month($dossier);
         foreach ($this->payslipsOf($dossier, $open) as $payslip) {
             if ($payslip->isValidated()) {
-                return \sprintf('Des bulletins de %s sont validés : annulez-les avant de rouvrir %s.', FrenchFormat::period($open), FrenchFormat::period($last->getMonth()));
+                return \sprintf('Des bulletins %s sont validés : annulez-les avant de rouvrir %s.', FrenchFormat::ofPeriod($open), FrenchFormat::period($last->getMonth()));
             }
         }
         $this->entityManager->remove($last);
-        $this->auditTrail->inDossier($dossier, AuditAction::PayrollMonthReopened, $actor, \sprintf('Paie de %s rouverte', FrenchFormat::period($last->getMonth())), ['month' => $last->getMonth()->format('Y-m')]);
+        $this->auditTrail->inDossier($dossier, AuditAction::PayrollMonthReopened, $actor, \sprintf('Paie %s rouverte', FrenchFormat::ofPeriod($last->getMonth())), ['month' => $last->getMonth()->format('Y-m')]);
 
         return null;
     }

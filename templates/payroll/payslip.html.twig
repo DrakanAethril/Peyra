@@ -94,7 +94,7 @@
         <div class="px-split px-split--payslip">
             <div class="px-stack">
                 <twig:Px:Card title="Salariés" meta="{{ employee_rows|length }} bulletin{{ employee_rows|length > 1 ? 's' : '' }}" :flush="true">
-                    <twig:Px:Table caption="Salariés de {{ month|period }}" density="compact" :rows="true">
+                    <twig:Px:Table caption="Salariés {{ month|of_period }}" density="compact" :rows="true">
                         <tbody>
                             {% for other in employee_rows %}
                                 {% set other_terms = other.termsAt(pay_day) %}

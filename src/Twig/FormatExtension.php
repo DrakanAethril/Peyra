@@ -102,6 +102,12 @@ final class FormatExtension
         return null === $date ? '' : FrenchFormat::period($date);
     }
 
+    #[AsTwigFilter('of_period')]
+    public static function ofPeriod(?\DateTimeInterface $date): string
+    {
+        return null === $date ? '' : FrenchFormat::ofPeriod($date);
+    }
+
     #[AsTwigFilter('clock')]
     public static function clock(?\DateTimeInterface $time): string
     {
