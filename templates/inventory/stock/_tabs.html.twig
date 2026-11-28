@@ -1,0 +1,5 @@
+{# The views of Achats et stocks › Stocks (design-ux.md § 2.5): mouvements, état du stock. #}
+<twig:Px:Tabs label="Stocks" :tabs="[
+    {label: 'Mouvements', href: path('app_inventory_stock_movements', {dossier: dossier.id}), current: stock_current == 'movements'},
+    {label: 'État du stock', href: path('app_inventory_stock_state', {dossier: dossier.id}), current: stock_current == 'state'},
+]"/>

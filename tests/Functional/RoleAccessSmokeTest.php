@@ -272,7 +272,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             $customer->keepOn($client->getContainer()->get(AccountRepository::class)->findOneByNumber($saved, '411000'), '411GIRA');
             $entityManager->persist($customer);
             $article = new ArticleDraft();
-            [$article->code, $article->designation, $article->unit, $article->salePrice, $article->vatRate, $article->revenueAccount] = ['PF001', 'Fenêtre chêne', 'pièce', '1380', '20', '701000'];
+            [$article->code, $article->designation, $article->unit, $article->salePrice, $article->vatRate, $article->revenueAccount, $article->stockTracked] = ['PF001', 'Fenêtre chêne', 'pièce', '1380', '20', '701000', true];
             $articles = $client->getContainer()->get(ArticleSheet::class);
             $articles->create($saved, $articles->check($article, $saved) ?? throw new \LogicException(implode(' ', $article->errors)), 'test');
             $entityManager->flush();
@@ -342,6 +342,9 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/payroll/employees/S001/absences', '/payroll/employees/S001/year-to-date?year=2026',
             '/documents', '/documents?state=to_process&q=fa', '/documents/new', '/documents/'.$documentId, '/documents/'.$documentId.'/file',
             '/inventory/articles', '/inventory/articles?q=fen', '/inventory/articles/new', '/inventory/articles/PF001',
+            '/inventory/stock', '/inventory/stock?view=below&at=2026-01-31', '/inventory/stock/export.csv', '/inventory/stock/movements',
+            '/inventory/stock/movements?kind=entry&q=pf', '/inventory/stock/movements/new', '/inventory/stock/movements/new?article=PF001&kind=entry',
+            '/inventory/stock/PF001', '/inventory/stock/PF001?at=2026-01-15',
             '/sales/customers', '/sales/customers?q=gir', '/sales/quote', '/sales/order', '/sales/invoice', '/sales/credit_note', '/sales/deposit',
             '/sales/quote/new', '/sales/invoice/new', '/sales/documents/'.$salesId, '/sales/documents/'.$salesId.'.pdf',
             '/purchases/suppliers', '/purchases/suppliers?q=scie', '/purchases/price_request', '/purchases/purchase_order', '/purchases/receipt',

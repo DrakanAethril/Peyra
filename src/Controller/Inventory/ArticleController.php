@@ -7,6 +7,7 @@ namespace App\Controller\Inventory;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
 use App\Entity\Inventory\Article;
+use App\Enum\Inventory\StockValuationMethod;
 use App\Repository\Inventory\ArticleRepository;
 use App\Security\Voter\DossierRightVoter;
 use App\Service\Inventory\ArticleDraft;
@@ -50,7 +51,7 @@ final class ArticleController extends AbstractController
             $status = Response::HTTP_UNPROCESSABLE_ENTITY;
         }
 
-        return $this->render('inventory/article.html.twig', ['dossier' => $dossier, 'article' => null, 'draft' => $draft], new Response(status: $status));
+        return $this->render('inventory/article.html.twig', ['dossier' => $dossier, 'article' => null, 'draft' => $draft, 'valuation_methods' => self::methods()], new Response(status: $status));
     }
 
     #[Route('/{code}', name: 'app_inventory_article', requirements: ['code' => self::CODE], methods: ['GET', 'POST'])]
@@ -73,7 +74,7 @@ final class ArticleController extends AbstractController
             $status = Response::HTTP_UNPROCESSABLE_ENTITY;
         }
 
-        return $this->render('inventory/article.html.twig', ['dossier' => $dossier, 'article' => $article, 'draft' => $draft], new Response(status: $status));
+        return $this->render('inventory/article.html.twig', ['dossier' => $dossier, 'article' => $article, 'draft' => $draft, 'valuation_methods' => self::methods()], new Response(status: $status));
     }
 
     #[Route('/{code}/delete', name: 'app_inventory_article_delete', requirements: ['code' => self::CODE], methods: ['POST'])]
@@ -84,11 +85,23 @@ final class ArticleController extends AbstractController
         if (!$this->isCsrfTokenValid('article-delete-'.$article->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Bad token.');
         }
+        $refusal = $sheet->deletionRefusal($article);
+        if (null !== $refusal) {
+            $this->addFlash('article_fault', $refusal);
+
+            return $this->redirectToRoute('app_inventory_article', ['dossier' => $dossier->getId(), 'code' => $code], Response::HTTP_SEE_OTHER);
+        }
         $sheet->delete($article, $me);
         $entityManager->flush();
         $this->addFlash('status', \sprintf('Article %s supprimé.', $code));
 
         return $this->redirectToRoute('app_inventory_articles', ['dossier' => $dossier->getId()], Response::HTTP_SEE_OTHER);
+    }
+
+    /** @return list<array{value: string, label: string}> */
+    private static function methods(): array
+    {
+        return array_map(static fn (StockValuationMethod $method): array => ['value' => $method->value, 'label' => $method->label()], StockValuationMethod::cases());
     }
 
     private function settings(Dossier $dossier): void
@@ -116,5 +129,7 @@ final class ArticleController extends AbstractController
         $draft->vatRate = PostValue::trimmed($request, 'vatRate');
         $draft->revenueAccount = PostValue::trimmed($request, 'revenueAccount');
         $draft->stockTracked = '1' === PostValue::trimmed($request, 'stockTracked');
+        $draft->valuationMethod = PostValue::trimmed($request, 'valuationMethod');
+        $draft->minimumStock = PostValue::trimmed($request, 'minimumStock');
     }
 }

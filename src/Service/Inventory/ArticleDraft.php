@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Inventory;
 
 use App\Entity\Inventory\Article;
+use App\Enum\Inventory\StockValuationMethod;
 use App\Service\Shared\FrenchFormat;
 
 /** An article as a person typed it, before ArticleRules checks it, with the error of each field. */
@@ -18,6 +19,9 @@ final class ArticleDraft
     public string $vatRate = '';
     public string $revenueAccount = '';
     public bool $stockTracked = false;
+    /** A StockValuationMethod's value. */
+    public string $valuationMethod = StockValuationMethod::WeightedAverage->value;
+    public string $minimumStock = '';
 
     /** @var array<string, string> by field */
     public array $errors = [];
@@ -33,6 +37,9 @@ final class ArticleDraft
         $draft->vatRate = str_replace('.', ',', $article->getVatRate() ?? '');
         $draft->revenueAccount = $article->getRevenueAccount() ?? '';
         $draft->stockTracked = $article->isStockTracked();
+        $draft->valuationMethod = $article->getValuationMethod()->value;
+        $minimum = $article->getMinimumStock();
+        $draft->minimumStock = null === $minimum ? '' : str_replace('.', ',', (string) $minimum->strippedOfTrailingZeros());
 
         return $draft;
     }

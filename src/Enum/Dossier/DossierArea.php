@@ -41,7 +41,7 @@ enum DossierArea: string
     public function covers(): string
     {
         return match ($this) {
-            self::Purchases => 'documents d’achat, journaux d’achats, lettrage des fournisseurs',
+            self::Purchases => 'documents d’achat, mouvements de stock, journaux d’achats, lettrage des fournisseurs',
             self::Sales => 'documents commerciaux, journaux de ventes, lettrage des clients',
             self::Treasury => 'journaux de banque et de caisse',
             self::General => 'opérations diverses, à-nouveaux, lettrage des autres comptes',

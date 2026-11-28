@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace App\Service\Inventory;
 
+use App\Enum\Inventory\StockValuationMethod;
 use App\Service\Accounting\Template\VatRate;
 use App\Service\Shared\AmountParseError;
 use App\Service\Shared\AmountParser;
+use App\Service\Shared\DecimalParseError;
+use App\Service\Shared\DecimalParser;
 
 /**
  * The one reading of an article (step 2.3, pure): the fiche and the demonstration's file go
  * through it. A code of 1 to 12 capitals or digits, unique in the dossier; a designation and a
  * unit; a selling price (zero or more) asks a VAT rate and a revenue account - a raw material
  * has none of the three -; the account must be a class-7 account of the plan. A purchase price
- * (step 2.4, zero or more) asks a VAT rate too.
+ * (step 2.4, zero or more) asks a VAT rate too. A followed stock has a valuation method and may
+ * have a minimum, zero or more with three decimals at most (step 2.5).
  */
 final class ArticleRules
 {
@@ -96,11 +100,27 @@ final class ArticleRules
             $errors['vatRate'] = 'Un article acheté a son taux de TVA.';
         }
 
+        $method = StockValuationMethod::tryFrom($draft->valuationMethod);
+        if (null === $method) {
+            $errors['valuationMethod'] = 'Choisissez une méthode de valorisation.';
+        }
+        $minimum = null;
+        if ('' !== trim($draft->minimumStock)) {
+            try {
+                $minimum = DecimalParser::parse($draft->minimumStock);
+                if ($minimum->isNegative() || $minimum->strippedOfTrailingZeros()->getScale() > 3) {
+                    $errors['minimumStock'] = 'Un seuil positif ou nul, trois décimales au plus.';
+                }
+            } catch (DecimalParseError $error) {
+                $errors['minimumStock'] = $error->getMessage();
+            }
+        }
+
         $draft->errors = $errors;
-        if ([] !== $errors) {
+        if ([] !== $errors || null === $method) {
             return null;
         }
 
-        return new ArticleFields($code, $designation, $unit, $price, $rate, '' === $account ? null : $account, $draft->stockTracked, $purchasePrice);
+        return new ArticleFields($code, $designation, $unit, $price, $rate, '' === $account ? null : $account, $draft->stockTracked, $purchasePrice, $method, $draft->stockTracked ? $minimum : null);
     }
 }
