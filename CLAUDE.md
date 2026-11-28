@@ -199,6 +199,8 @@ Gotchas met while building it:
   sourcing it, and a script written to be sourced dies with « bad interpreter ».
 - Until the first migration exists, `doctrine:migrations:migrate` fails without
   `--allow-no-migration`; CI passes it, and it is a no-op afterwards.
+- **Migrations born on two tracks**: a migration is named after the last one in `staging` *at merge time* (recheck after merging `origin/staging`; `MigrationOrderTest`).
+  A renamed migration already played is never replayed: dev and test run `doctrine:migrations:version 'DoctrineMigrations\Version<new>' --add -n`, then `… Version<old> --delete -n`, then `doctrine:migrations:status` (New: 0).
 - The development worker reloads on a changed file under `src/`, `templates/` or `config/`, but not
   in a **directory created after `php` started**: its PHP keeps the old code (a new controller
   answers with the previous one, a template gets variables it no longer expects). `docker compose
