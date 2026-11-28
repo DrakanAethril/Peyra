@@ -37,4 +37,6 @@ when@test:
             documents.local:
                 adapter: 'local'
                 options:
-                    directory: '%kernel.cache_dir%/storage'
+                    # One directory per ParaTest process, as each has its own database: two
+                    # processes number their dossiers alike, and a dossier's files are its prefix.
+                    directory: '%kernel.cache_dir%/storage%env(default::TEST_TOKEN)%'
