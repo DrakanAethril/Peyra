@@ -175,5 +175,6 @@ final class PayrollItemsController extends AbstractController
             $draft->{$field} = PostValue::trimmed($request, $field);
         }
         $draft->subtracts = '1' === PostValue::trimmed($request, 'subtracts');
+        $draft->benefitInKind = '1' === PostValue::trimmed($request, 'benefitInKind');
     }
 }

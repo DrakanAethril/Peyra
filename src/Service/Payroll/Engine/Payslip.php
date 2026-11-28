@@ -8,8 +8,10 @@ use App\Enum\Payroll\PayslipLine;
 use App\Service\Shared\Money;
 
 /**
- * A calculated payslip (lot 4, step 4.3): its lines in the order of the plan de paie, the gross pay
- * they add up to, and the general reduction with its imputation when there is one.
+ * A calculated payslip (lot 4, step 4.3): its lines in the order of the plan de paie (gross pay,
+ * contributions, items not subject, deductions from the net), the gross pay, the general reduction
+ * with its imputation when there is one, the figures under the lines (net, tax, cost) and the
+ * employee's year to date after it.
  *
  * A line of the clarified payslip is the sum of its rubriques' amounts, each already rounded to the
  * cent (the rounding rule, DECISIONS 4.3b): never its base times a summed rate rounded once.
@@ -20,7 +22,9 @@ final readonly class Payslip
     public function __construct(
         public array $rows,
         public Money $gross,
-        public ?GeneralReduction $generalReduction = null,
+        public ?GeneralReduction $generalReduction,
+        public PayslipTotals $totals,
+        public PayslipYearToDate $yearToDate,
     ) {
     }
 

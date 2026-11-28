@@ -13,6 +13,8 @@ use Brick\Math\BigDecimal;
  * compared, its coefficient and amount, and the amount's imputation - on the Urssaf, by the share of
  * the Urssaf's rates in the coefficient's maximum, rounded to the cent, and the rest on the
  * Agirc-Arrco complementary pension (FAQ Agirc-Arrco, « Réduction générale des cotisations », 2026).
+ * Regularised over the year (step 4.3c), the month's amount is the year's less what was already made -
+ * negative when the year's reduction falls - and the year's figures are kept beside it.
  */
 final readonly class GeneralReduction
 {
@@ -27,6 +29,9 @@ final readonly class GeneralReduction
         public Money $retirementShare,
         public array $steps,
         public PayslipSource $source,
+        public Money $yearRemuneration,
+        public Money $yearSmic,
+        public Money $yearAmount,
     ) {
     }
 }

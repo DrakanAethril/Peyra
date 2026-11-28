@@ -32,6 +32,7 @@ final readonly class PayrollItemSpec
         public SalaryCondition $salary,
         public ?PayrollBody $body,
         public ?PayslipLine $line,
+        public bool $benefitInKind = false,
     ) {
     }
 }

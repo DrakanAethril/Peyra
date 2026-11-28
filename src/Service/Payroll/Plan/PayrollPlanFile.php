@@ -18,6 +18,7 @@ use Symfony\Component\Yaml\Yaml;
  *       kind: contribution                # PayrollItemKind
  *       order: 2200                       # optional: the code's number
  *       subtracts: false                  # optional
+ *       benefit_in_kind: false            # optional: an element of gross pay received in kind
  *       base: gross                       # PayrollBase
  *       ceiling: tranche_1                # optional: none
  *       employee: {source: regulatory, key: social.contrib.old_age_capped, path: employee_rate}
@@ -30,7 +31,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class PayrollPlanFile
 {
-    private const array FIELDS = ['code', 'label', 'kind', 'order', 'subtracts', 'base', 'ceiling', 'employee', 'employer', 'status', 'headcount', 'salary', 'body', 'line'];
+    private const array FIELDS = ['code', 'label', 'kind', 'order', 'subtracts', 'benefit_in_kind', 'base', 'ceiling', 'employee', 'employer', 'status', 'headcount', 'salary', 'body', 'line'];
 
     /**
      * The standard plan's file: its default body names by kind and its items.
@@ -89,6 +90,11 @@ final class PayrollPlanFile
                 throw new \InvalidArgumentException($at.'.subtracts : true ou false est attendu.');
             }
             $draft->subtracts = $subtracts;
+            $inKind = $entry['benefit_in_kind'] ?? false;
+            if (!\is_bool($inKind)) {
+                throw new \InvalidArgumentException($at.'.benefit_in_kind : true ou false est attendu.');
+            }
+            $draft->benefitInKind = $inKind;
             $draft->base = self::text($entry, 'base', $at);
             $draft->ceiling = self::text($entry, 'ceiling', $at, 'none');
             [$draft->employeeSource, $draft->employeeKey, $draft->employeePath, $draft->employeeValue] = self::side($entry, 'employee', $at);

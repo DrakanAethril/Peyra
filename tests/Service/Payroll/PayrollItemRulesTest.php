@@ -162,6 +162,22 @@ final class PayrollItemRulesTest extends TestCase
         self::assertNotNull(PayrollItemRules::check($draft, null), implode(' ', $draft->errors));
     }
 
+    public function testOnlyAGrossElementThatAddsIsABenefitInKind(): void
+    {
+        $draft = new PayrollItemDraft();
+        [$draft->code, $draft->label, $draft->kind, $draft->base] = ['1400', 'Avantage en nature véhicule', PayrollItemKind::Gross->value, PayrollBase::EnteredAmount->value];
+        $draft->benefitInKind = true;
+        self::assertTrue(PayrollItemRules::check($draft, null)?->benefitInKind);
+
+        $draft->subtracts = true;
+        self::assertNull(PayrollItemRules::check($draft, null));
+        self::assertNotNull($draft->error('benefitInKind'), 'An absence is not received in kind.');
+
+        [$draft->code, $draft->kind, $draft->subtracts] = ['4100', PayrollItemKind::Deduction->value, false];
+        self::assertNull(PayrollItemRules::check($draft, null));
+        self::assertSame('Seul un élément de brut qui s’ajoute au salaire est un avantage en nature.', $draft->error('benefitInKind'));
+    }
+
     public function testCodeKeyAndPathAreWrittenAsSaid(): void
     {
         $draft = $this->contribution();

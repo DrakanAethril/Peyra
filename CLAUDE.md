@@ -1206,6 +1206,15 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   new class and a new regime value, never an `if` on the year. Monthly, against the January SMIC of
   reference (`smic_monthly_reference`) prorated and raised by the overtime hours; `DecimalPower` gives
   the RGDU's ^1,75 without a float.
+- **Net and year to date** (step 4.3c, `PayslipNet`, `PayslipTotals`, `WithholdingTax`): `PayslipInput`
+  takes the year **before** the payslip (`PayslipYearToDate`: gross, ceilings, SMIC of reference,
+  reduction made, exempt overtime, net taxable - the caller sums the year's earlier payslips) and
+  `Payslip::$yearToDate` gives it back **after**. With it, brackets and the general reduction are
+  regularised over the year (a month's tranche 2 or reduction may be negative). Net social excludes
+  the employer's health and provident shares (R844-1 II, since 2024); net taxable adds the employer's
+  **health** share only. A gross rubrique `benefit_in_kind` is taken back off the net by 4000.
+  Reference payslips: `tests/Service/Payroll/Engine/reference/bulletins_4_3c.py`, a decimal script
+  that never reads the repository - extend it, never copy an expected amount from the engine.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 
