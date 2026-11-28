@@ -126,14 +126,14 @@ class DossierRestoration
         return $this->failure;
     }
 
-    public function done(\DateTimeImmutable $at): void
+    public function markDone(\DateTimeImmutable $at): void
     {
         $this->expectRunning();
         $this->state = RestorationState::Done;
         $this->finishedAt = $at;
     }
 
-    public function fail(string $reason, \DateTimeImmutable $at): void
+    public function markFailed(string $reason, \DateTimeImmutable $at): void
     {
         $this->expectRunning();
         $this->state = RestorationState::Failed;

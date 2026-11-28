@@ -9,6 +9,7 @@ use App\Entity\Identity\User;
 use App\Enum\Dossier\TemplateLevel;
 use App\Enum\Shared\BtsProcess;
 use App\Repository\Dossier\DossierShareRepository;
+use App\Repository\Dossier\RestorePointRepository;
 use App\Security\Voter\DossierVoter;
 use App\Security\Voter\TemplateVoter;
 use App\Service\Dossier\Library\TemplateCard;
@@ -83,7 +84,7 @@ final class TemplateController extends AbstractController
     }
 
     #[Route('/teacher/library/{dossier}/delete', name: 'app_library_delete', requirements: ['dossier' => '\d+'], methods: ['GET', 'POST'])]
-    public function delete(Dossier $dossier, Request $request, TemplateLibrary $library, DossierContents $contents, TemplateDeletion $deletion, DossierShareRepository $shares, #[CurrentUser] User $me): Response
+    public function delete(Dossier $dossier, Request $request, TemplateLibrary $library, DossierContents $contents, TemplateDeletion $deletion, DossierShareRepository $shares, RestorePointRepository $points, #[CurrentUser] User $me): Response
     {
         $card = $this->card($library, $me, $dossier);
         if (!$this->isGranted(TemplateVoter::DELETE, $dossier)) {
@@ -110,6 +111,7 @@ final class TemplateController extends AbstractController
             'card' => $card,
             'contents' => $contents->of($dossier),
             'shares' => \count($shares->findByDossier($dossier)),
+            'points' => $points->countByDossier($dossier),
             'error' => $error,
             'typed' => $typed,
         ], new Response(status: null === $error ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY));

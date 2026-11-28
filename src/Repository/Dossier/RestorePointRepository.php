@@ -50,18 +50,4 @@ final class RestorePointRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
-
-    /** @return list<RestorePoint> the points whose copy failed, the newest first (the teachers' home) */
-    public function findFailed(): array
-    {
-        /* @var list<RestorePoint> */
-        return $this->createQueryBuilder('p')
-            ->join('p.dossier', 'd')
-            ->addSelect('d')
-            ->andWhere('p.state = :state')
-            ->setParameter('state', RestorePointState::Failed)
-            ->orderBy('p.id', 'DESC')
-            ->getQuery()
-            ->getResult();
-    }
 }

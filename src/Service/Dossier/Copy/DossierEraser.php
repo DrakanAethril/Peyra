@@ -78,7 +78,7 @@ final readonly class DossierEraser
         $id = $dossier->getId() ?? throw new \LogicException('A saved dossier is deleted.');
         $snapshots = $this->connection->fetchFirstColumn('SELECT snapshot_id FROM restore_point WHERE dossier_id = ? ORDER BY id', [$id], [ParameterType::INTEGER]);
         foreach ($snapshots as $snapshotId) {
-            $snapshot = $this->entityManager->find(Dossier::class, (int) $snapshotId);
+            $snapshot = is_numeric($snapshotId) ? $this->entityManager->find(Dossier::class, (int) $snapshotId) : null;
             if ($snapshot instanceof Dossier) {
                 $this->deleteDossier($snapshot);
             }

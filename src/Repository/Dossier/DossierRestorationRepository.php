@@ -49,22 +49,4 @@ final class DossierRestorationRepository extends ServiceEntityRepository
             ->getQuery()
             ->getSingleScalarResult() > 0;
     }
-
-    /**
-     * @return list<DossierRestoration> the failed returns that are their dossier's latest (a later
-     *                                  return supersedes the failure), the newest first
-     */
-    public function findLatestFailed(): array
-    {
-        /* @var list<DossierRestoration> */
-        return $this->createQueryBuilder('r')
-            ->join('r.dossier', 'd')
-            ->addSelect('d')
-            ->andWhere('r.state = :failed')
-            ->andWhere('NOT EXISTS (SELECT later.id FROM '.DossierRestoration::class.' later WHERE later.dossier = r.dossier AND later.id > r.id)')
-            ->setParameter('failed', RestorationState::Failed)
-            ->orderBy('r.id', 'DESC')
-            ->getQuery()
-            ->getResult();
-    }
 }

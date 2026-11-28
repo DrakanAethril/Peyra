@@ -98,7 +98,7 @@ final readonly class RestorePoints
             return;
         }
         $this->copier->copy($point->getDossier(), $point->getSnapshot(), CopyKind::Snapshot);
-        $point->ready($now);
+        $point->markReady($now);
         $this->entityManager->flush();
     }
 
@@ -108,7 +108,7 @@ final readonly class RestorePoints
         if (!$point->isPreparing()) {
             return;
         }
-        $point->fail(self::FAILURE, $now);
+        $point->markFailed(self::FAILURE, $now);
         $this->auditTrail->inDossier($point->getDossier(), AuditAction::RestorePointFailed, 'Peyra', \sprintf('La copie du point de restauration « %s » a échoué ; le dossier n’a pas changé', $point->getName()), ['name' => $point->getName()]);
         $this->entityManager->flush();
     }

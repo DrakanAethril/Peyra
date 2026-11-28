@@ -151,14 +151,14 @@ class RestorePoint
         return $this->failure;
     }
 
-    public function ready(\DateTimeImmutable $at): void
+    public function markReady(\DateTimeImmutable $at): void
     {
         $this->expectPreparing();
         $this->state = RestorePointState::Ready;
         $this->finishedAt = $at;
     }
 
-    public function fail(string $reason, \DateTimeImmutable $at): void
+    public function markFailed(string $reason, \DateTimeImmutable $at): void
     {
         $this->expectPreparing();
         $this->state = RestorePointState::Failed;

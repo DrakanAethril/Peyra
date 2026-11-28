@@ -122,7 +122,7 @@ final readonly class Restorations
 
         $this->entityManager->clear();
         $restoration = $this->restorations->find($restorationId) ?? throw new \LogicException('The return outlives its own work.');
-        $restoration->done($now);
+        $restoration->markDone($now);
         $this->auditTrail->inDossier($restoration->getDossier(), AuditAction::DossierRestored, $restoration->getRequestedBy() ?? 'Peyra', \sprintf(
             'Dossier revenu au point « %s » posé le %s (date du dossier %s)',
             $restoration->getPointName(),
@@ -138,7 +138,7 @@ final readonly class Restorations
         if (!$restoration->isRunning()) {
             return;
         }
-        $restoration->fail($reason, $now);
+        $restoration->markFailed($reason, $now);
         $this->auditTrail->inDossier($restoration->getDossier(), AuditAction::DossierRestorationFailed, 'Peyra', \sprintf('Le retour au point « %s » a échoué ; le dossier est resté dans l’état d’avant', $restoration->getPointName()), ['name' => $restoration->getPointName()]);
         $this->entityManager->flush();
     }
