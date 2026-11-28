@@ -190,6 +190,16 @@ enum AuditAction: string
     /** A pièce made by the teacher's generator (step 2.1b). */
     case DocumentGenerated = 'document.generated';
 
+    /** A pièce's entry proposed again from its read data, an anomaly reported on it, a pièce rejected (step 2.2a). */
+    case DocumentProposalRebuilt = 'document.proposal_rebuilt';
+
+    case DocumentAnomalyReported = 'document.anomaly_reported';
+
+    case DocumentRejected = 'document.rejected';
+
+    /** A pièce's entry written in the brouillard: the pièce is posted (step 2.2a). */
+    case DocumentPosted = 'document.posted';
+
     public function label(): string
     {
         return match ($this) {
@@ -256,6 +266,10 @@ enum AuditAction: string
             self::DocumentDeposited => 'Pièce déposée',
             self::DocumentReadingChanged => 'Données lues d’une pièce modifiées',
             self::DocumentGenerated => 'Pièce générée',
+            self::DocumentProposalRebuilt => 'Écriture d’une pièce reprise depuis ses données lues',
+            self::DocumentAnomalyReported => 'Anomalie signalée sur une pièce',
+            self::DocumentRejected => 'Pièce rejetée',
+            self::DocumentPosted => 'Pièce comptabilisée',
         };
     }
 }

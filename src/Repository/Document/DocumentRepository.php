@@ -50,18 +50,33 @@ final class DocumentRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
-    /** The rail's counter: the pièces still to process. */
+    /** The rail's counter: the pièces still to process (« à traiter » and « en cours »). */
     public function countToProcess(Dossier $dossier): int
     {
         $count = $this->createQueryBuilder('d')
             ->select('COUNT(d.id)')
             ->andWhere('d.dossier = :dossier')
-            ->andWhere('d.state = :state')
+            ->andWhere('d.state IN (:states)')
             ->setParameter('dossier', $dossier)
-            ->setParameter('state', DocumentState::ToProcess)
+            ->setParameter('states', [DocumentState::ToProcess, DocumentState::InProgress])
             ->getQuery()
             ->getSingleScalarResult();
 
         return is_numeric($count) ? (int) $count : 0;
+    }
+
+    /** The pièce F10 opens after this one (design-ux.md § 4.3): the next one still to process in the inbox's order, else the first. */
+    public function findNextOpen(Dossier $dossier, Document $after): ?Document
+    {
+        $open = array_values(array_filter($this->findByDossier($dossier), static fn (Document $one): bool => $one !== $after && $one->getState()->isOpen()));
+        $all = $this->findByDossier($dossier);
+        $position = array_search($after, $all, true);
+        foreach ($open as $candidate) {
+            if (false !== $position && array_search($candidate, $all, true) > $position) {
+                return $candidate;
+            }
+        }
+
+        return $open[0] ?? null;
     }
 }
