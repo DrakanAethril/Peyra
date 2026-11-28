@@ -1309,6 +1309,10 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   are the pure `PayrollEntries`, handed to `AccountingGateway` by `PayrollPosting` and found again **by their pièce**
   (`PAIE-2026-03`, `VIRSAL-…`, `COT-…`; a pièce standing is never proposed again); a module takes its entry back with
   `AccountingGateway::withdraw()` (draft deleted, validated reversed). `PaidLeaveProvisions::at()` is the provision for paid leave.
+- **Declarations** (step 4.6, `src/Service/Payroll/Declaration/`): the DSN is a **preparatory state, read only** (`DsnPreparation`,
+  pure, with its checks; screen and PDF) - no deposit, no file in the cahier technique's format (README § 9 bis). The withholding
+  tax is paid back like a body's contributions (`PAS-2026-03`, from the account the plan's tax rubrique credits); every payment
+  falls due at `social.dsn.due_day` (`SocialDueDate`, by headcount); the échéancier social reads their pièces (`SocialSchedule`).
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

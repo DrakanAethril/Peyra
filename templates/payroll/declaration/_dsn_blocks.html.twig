@@ -1,0 +1,178 @@
+{#
+ # The blocks of the DSN's preparatory state (step 4.6), on screen and on paper (`pdf`): the establishment,
+ # the individuals and their contracts, their remuneration and withholding tax - each amount opening the
+ # validated payslip it comes from -, the contributions by body - each total opening the payslips it sums -,
+ # and the payments due. Takes `preparation`, `company`, `establishment`, `due_on`.
+ #}
+{% set pdf = pdf|default(false) %}
+{% set num = pdf ? 'px-doc__num' : 'px-u-num' %}
+{% set table_class = pdf ? 'px-doc__table' : 'px-table' %}
+{% set statements = preparation.statements %}
+{% set period = statements.month|date('Y-m') %}
+{% macro payslip(amount, number, period, pdf) -%}
+    {%- if pdf or amount.isZero -%}{{ amount|amount }}{%- else -%}<a class="px-table__drill" href="{{ path('app_payroll_employee_payslip_pdf', {dossier: app.request.attributes.get('dossier').id, number: number, month: period}) }}" target="_blank" data-turbo="false" title="Bulletin {{ number }}">{{ amount|amount }}</a>{%- endif -%}
+{%- endmacro %}
+{% import _self as m %}
+
+{% set establishment_cells %}
+    <tbody>
+        <tr><th scope="row">Raison sociale</th><td>{{ company.denomination }}</td><th scope="row">Mois déclaré</th><td>{{ statements.month|period|capitalize }}</td></tr>
+        <tr><th scope="row">SIRET</th><td class="px-u-code">{{ company.siret }}</td><th scope="row">Échéance de dépôt et de paiement</th><td>{{ due_on ? due_on|date_fr : '—' }}</td></tr>
+        <tr><th scope="row">Code NAF</th><td class="px-u-code">{{ company.nafCode ?? '—' }}</td><th scope="row">Effectif</th><td>{{ establishment ? establishment.headcount|replace({'.': ','}) : '—' }}</td></tr>
+        <tr><th scope="row">Adresse</th><td>{{ company.street }}{{ company.street2 ? ', ' ~ company.street2 : '' }}, {{ company.postalCode }} {{ company.city }}</td><th scope="row">Salariés déclarés</th><td>{{ preparation.individuals|length }}</td></tr>
+    </tbody>
+{% endset %}
+
+{% set individual_cells %}
+    <thead>
+        <tr>
+            <th scope="col">Matricule</th>
+            <th scope="col">Salarié</th>
+            <th scope="col">NIR</th>
+            <th scope="col">Naissance</th>
+            <th scope="col">Contrat</th>
+            <th scope="col">Statut</th>
+            <th scope="col">Temps de travail</th>
+            <th scope="col">Emploi</th>
+            <th scope="col">Fin de contrat</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for individual in preparation.individuals %}
+            <tr>
+                <td class="px-u-code">{{ individual.number }}</td>
+                <td>{{ individual.lastName }} {{ individual.firstName }} ({{ individual.sex.value }})</td>
+                <td class="px-u-code">{{ individual.nir ?? '—' }}</td>
+                <td>{{ individual.birthDate|date_fr }}{{ individual.birthPlace ? ', ' ~ individual.birthPlace : '' }}</td>
+                <td>{{ individual.contract.label }} depuis le {{ individual.hiredOn|date_fr }}{{ individual.contractEndsOn ? ', terme le ' ~ individual.contractEndsOn|date_fr : '' }}</td>
+                <td>{{ individual.executive ? 'Cadre' : 'Non-cadre' }}</td>
+                <td>{{ individual.workingTime.label }}, {{ individual.monthlyHours|replace({'.': ','}) }} h</td>
+                <td>{{ individual.jobTitle }}</td>
+                <td>{{ individual.exitOn ? individual.exitOn|date_fr ~ ' · ' ~ individual.exitReason.label : '—' }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+{% endset %}
+
+{% set totals = statements.totals %}
+{% set pay_cells %}
+    <thead>
+        <tr>
+            <th scope="col">Matricule</th>
+            <th scope="col">Salarié</th>
+            <th scope="col" class="{{ num }}">Brut</th>
+            <th scope="col" class="{{ num }}">Cotisations salariales</th>
+            <th scope="col" class="{{ num }}">Net social</th>
+            <th scope="col" class="{{ num }}">Net imposable</th>
+            <th scope="col" class="{{ num }}">Taux PAS</th>
+            <th scope="col" class="{{ num }}">Prélèvement à la source</th>
+            <th scope="col" class="{{ num }}">Net versé</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for individual in preparation.individuals %}
+            {% set p = individual.payslip %}
+            <tr>
+                <td class="px-u-code">{{ individual.number }}</td>
+                <td>{{ individual.lastName }} {{ individual.firstName }}</td>
+                <td class="{{ num }}">{{ m.payslip(p.gross, individual.number, period, pdf) }}</td>
+                <td class="{{ num }}">{{ m.payslip(p.totals.employeeContributions, individual.number, period, pdf) }}</td>
+                <td class="{{ num }}">{{ m.payslip(p.totals.netSocial, individual.number, period, pdf) }}</td>
+                <td class="{{ num }}">{{ m.payslip(p.totals.netTaxable, individual.number, period, pdf) }}</td>
+                <td class="{{ num }}">{{ p.totals.withholdingRate|percent }}{{ p.totals.neutralRate ? ' (neutre)' : '' }}</td>
+                <td class="{{ num }}">{{ m.payslip(p.totals.withholdingTax, individual.number, period, pdf) }}</td>
+                <td class="{{ num }}">{{ m.payslip(p.totals.netPay, individual.number, period, pdf) }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <th scope="row" colspan="2">Total · {{ preparation.individuals|length }} bulletin{{ preparation.individuals|length > 1 ? 's' : '' }}</th>
+            <td class="{{ num }}">{{ totals.gross|amount }}</td>
+            <td class="{{ num }}">{{ totals.employee|amount }}</td>
+            <td class="{{ num }}">{{ totals.netSocial|amount }}</td>
+            <td class="{{ num }}">{{ totals.netTaxable|amount }}</td>
+            <td></td>
+            <td class="{{ num }}">{{ totals.withholding|amount }}</td>
+            <td class="{{ num }}">{{ totals.netPay|amount }}</td>
+        </tr>
+    </tfoot>
+{% endset %}
+
+{% set body_cells %}
+    <thead>
+        <tr>
+            <th scope="col">Organisme</th>
+            <th scope="col">Référence</th>
+            <th scope="col" class="{{ num }}">Part salariale</th>
+            <th scope="col" class="{{ num }}">Part patronale</th>
+            <th scope="col" class="{{ num }}">Total dû</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for state in preparation.bodies %}
+            <tr>
+                <td>{{ state.body ? state.body.name ~ ' · ' ~ state.body.kind.label : 'Cotisations sans organisme' }}</td>
+                <td class="px-u-code">{{ state.body and state.body.reference ? state.body.reference : '—' }}</td>
+                <td class="{{ num }}">{{ state.employee|amount }}</td>
+                <td class="{{ num }}">{{ state.employer|amount }}</td>
+                <td class="{{ num }}">{% if pdf %}{{ state.total|amount }}{% else %}<a class="px-table__drill" href="{{ path('app_payroll_edition_detail', {dossier: dossier.id, month: period, body: state.key, from: 'bodies'}) }}">{{ state.total|amount }}</a>{% endif %}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <th scope="row" colspan="2">Total des cotisations</th>
+            <td class="{{ num }}">{{ totals.employee|amount }}</td>
+            <td class="{{ num }}">{{ totals.employer|amount }}</td>
+            <td class="{{ num }}">{{ preparation.contributions|amount }}</td>
+        </tr>
+    </tfoot>
+{% endset %}
+
+{% set payment_cells %}
+    <thead>
+        <tr>
+            <th scope="col">Versement</th>
+            <th scope="col">Compte</th>
+            <th scope="col">Échéance</th>
+            <th scope="col" class="{{ num }}">Montant</th>
+            <th scope="col">Pièce</th>
+            <th scope="col">État au {{ dossier.dossierDate|date_fr }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for due in preparation.payments %}
+            <tr>
+                <td>{{ due.label }}</td>
+                <td class="px-u-code">{{ due.account }}</td>
+                <td>{{ due.dueOn|date_fr }}</td>
+                <td class="{{ num }}">{{ due.amount|amount }}</td>
+                <td class="px-u-code">{{ due.document }}</td>
+                <td>{% if pdf %}{{ due.state.label }}{% else %}<twig:Px:Badge :of="due.state"/>{% endif %}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="6">Rien à verser pour ce mois.</td></tr>
+        {% endfor %}
+    </tbody>
+{% endset %}
+
+{% set blocks = [
+    {id: 'dsn-establishment', title: 'Établissement', cells: establishment_cells, caption: 'Établissement déclarant'},
+    {id: 'dsn-individuals', title: 'Individus et contrats', cells: individual_cells, caption: 'Individus et contrats ' ~ statements.month|of_period},
+    {id: 'dsn-pay', title: 'Rémunérations et prélèvement à la source', cells: pay_cells, caption: 'Rémunérations ' ~ statements.month|of_period},
+    {id: 'dsn-bodies', title: 'Cotisations par organisme', cells: body_cells, caption: 'Cotisations par organisme ' ~ statements.month|of_period},
+    {id: 'dsn-payments', title: 'Versements', cells: payment_cells, caption: 'Versements de la paie ' ~ statements.month|of_period},
+] %}
+{% for block in blocks %}
+    {% if pdf %}
+        <h2 class="px-doc__section">{{ block.title }}</h2>
+        <table class="px-doc__table">{{ block.cells }}</table>
+    {% else %}
+        <twig:Px:Card title="{{ block.title }}" :flush="true" id="{{ block.id }}">
+            <twig:block name="content">
+                <twig:Px:Table caption="{{ block.caption }}" density="compact">{{ block.cells }}</twig:Px:Table>
+            </twig:block>
+        </twig:Px:Card>
+    {% endif %}
+{% endfor %}

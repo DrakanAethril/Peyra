@@ -64,7 +64,7 @@
         <section class="px-card" aria-labelledby="payroll-payments-title">
             <header class="px-card__head">
                 <h2 id="payroll-payments-title">Règlements</h2>
-                <small>Au {{ dossier.dossierDate|date_fr }}, date du dossier. Le prélèvement à la source se reverse avec la DSN.</small>
+                <small>Au {{ dossier.dossierDate|date_fr }}, date du dossier. Le prélèvement à la source se reverse avec les cotisations, à l’échéance de la DSN.</small>
             </header>
             <div class="px-card__body px-stack">
                 {% if banks is empty %}
