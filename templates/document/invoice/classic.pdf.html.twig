@@ -1,0 +1,8 @@
+{# The « classic » invoice (InvoiceLayout::Classic): serif title, letterhead on the left, ruled table. #}
+{% extends 'document/invoice/_invoice.html.twig' %}
+
+{% block layout_style %}
+    .inv--classic .inv__title, .inv--classic .inv__name { font-family: "Spectral", Georgia, serif; font-weight: 600; }
+    .inv--classic .inv__mark { border-radius: 50%; font-family: "Spectral", Georgia, serif; font-weight: 600; }
+    .inv--classic .inv__head { padding-bottom: 4mm; border-bottom: .6mm double var(--brand); }
+{% endblock %}

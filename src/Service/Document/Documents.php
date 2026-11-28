@@ -7,10 +7,12 @@ namespace App\Service\Document;
 use App\Entity\Document\Document;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
+use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Audit\AuditAction;
 use App\Enum\Document\DocumentType;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Audit\AuditTrail;
+use App\Service\Document\Generator\PrintedInvoice;
 use App\Service\Shared\Storage\DossierFiles;
 use App\Service\Shared\Storage\UploadPolicy;
 use App\Service\Shared\Storage\UploadRefusal;
@@ -19,8 +21,9 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
  * The one door of a dossier's pièces (lot 2, step 2.1): a deposit (a PDF or a picture, stored by
- * DossierFiles, arriving « à traiter » on the dossier's date) and the read data typed by hand,
- * checked by DocumentReadRules. Every gesture goes to the dossier's trail; the caller flushes.
+ * DossierFiles, arriving « à traiter » on the dossier's date), a pièce the generator made (step
+ * 2.1b: its PDF, its read data = what it prints) and the read data typed by hand, checked by
+ * DocumentReadRules. Every gesture goes to the dossier's trail; the caller flushes.
  * Read inside the dossier's context.
  */
 final readonly class Documents
@@ -51,6 +54,24 @@ final readonly class Documents
         $document = new Document($dossier, $type, $key, $name, $mediaType, $dossier->getDossierDate(), $actor);
         $this->entityManager->persist($document);
         $this->trail->inDossier($dossier, AuditAction::DocumentDeposited, $actor, \sprintf('%s déposée : %s.', $type->label(), $name), ['type' => $type->value, 'file' => $name]);
+
+        return $document;
+    }
+
+    /**
+     * A purchase invoice the generator printed (InvoiceGenerator), arriving « à traiter » on the
+     * dossier's date with what it prints as its read data, and the operation it was made from.
+     *
+     * @param array<string, mixed> $generation
+     */
+    public function generated(Dossier $dossier, string $pdf, string $fileName, ThirdParty $supplier, PrintedInvoice $printed, array $generation, User $actor): Document
+    {
+        $key = $this->files->storeContents((int) $dossier->getId(), self::CATEGORY, 'pdf', $pdf);
+        $document = new Document($dossier, DocumentType::PurchaseInvoice, $key, mb_substr($fileName, 0, 255), 'application/pdf', $dossier->getDossierDate(), $actor);
+        $document->read(DocumentType::PurchaseInvoice, $supplier, $printed->number, $printed->date, $printed->dueDate, $printed->orderReference, $printed->vatLines, $printed->totalExcludingTax, $printed->totalVat, $printed->totalIncludingTax);
+        $document->generatedFrom($generation);
+        $this->entityManager->persist($document);
+        $this->trail->inDossier($dossier, AuditAction::DocumentGenerated, $actor, \sprintf('Facture d’achat générée : %s, %s.', $supplier->getName(), $fileName), ['file' => $fileName, 'supplier' => $supplier->getCode()]);
 
         return $document;
     }

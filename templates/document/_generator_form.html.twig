@@ -1,0 +1,62 @@
+{# The generator's two columns (document/generator.html.twig): the invoice described, its PDF. #}
+<div class="px-split px-split--even">
+    <form method="get" action="{{ path('app_generator_dossier', {dossier: dossier.id}) }}" id="generator" class="px-stack" novalidate data-controller="focus-error">
+        <twig:Px:Card title="Facture d’achat" meta="Ce que la pièce imprime devient ses données lues.">
+            <div class="px-fieldgrid">
+                <twig:Px:Field id="supplier" label="Fournisseur" :required="true" :error="order.error('supplier')">
+                    <twig:Px:Select id="supplier" placeholder="Choisir un fournisseur…" :options="supplier_options" value="{{ order.supplier }}" :required="true" :error="order.error('supplier')" autofocus/>
+                </twig:Px:Field>
+                <twig:Px:Field id="number" label="Numéro" :required="true" :error="order.error('number')">
+                    <twig:Px:Input id="number" value="{{ order.number }}" :error="order.error('number')" :required="true" class="px-u-code" maxlength="40" autocomplete="off" spellcheck="false"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="date" label="Date" :required="true" :error="order.error('date')">
+                    <twig:Px:DateInput id="date" :reference="dossier.dossierDate" :value="order.date ? date(order.date) : null" :required="true" :error="order.error('date')"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="dueDate" label="Échéance" hint="Vide : selon les conditions du fournisseur." :error="order.error('dueDate')">
+                    <twig:Px:DateInput id="dueDate" :reference="dossier.dossierDate" :value="order.dueDate ? date(order.dueDate) : null" hint="1" :error="order.error('dueDate')"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="orderReference" label="Référence de commande" :error="order.error('orderReference')">
+                    <twig:Px:Input id="orderReference" value="{{ order.orderReference }}" :error="order.error('orderReference')" class="px-u-code" maxlength="40" autocomplete="off" spellcheck="false"/>
+                </twig:Px:Field>
+            </div>
+        </twig:Px:Card>
+
+        <twig:Px:Card title="Lignes" meta="Une remise est une ligne à prix négatif.">
+            {% if order.error('lines') %}<twig:Px:Alert tone="danger">{{ order.error('lines') }}</twig:Px:Alert>{% endif %}
+            <div class="px-invoicelines">
+                {% for line in order.lines %}
+                    {% set i = loop.index0 %}
+                    <twig:Px:Field id="line_designation_{{ i }}" label="Désignation" :error="order.error('line.' ~ i ~ '.designation')">
+                        <twig:Px:Input id="line_designation_{{ i }}" value="{{ line.designation }}" :error="order.error('line.' ~ i ~ '.designation')" maxlength="120" autocomplete="off"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="line_quantity_{{ i }}" label="Quantité" :error="order.error('line.' ~ i ~ '.quantity')">
+                        <twig:Px:Input id="line_quantity_{{ i }}" value="{{ line.quantity }}" :error="order.error('line.' ~ i ~ '.quantity')" class="px-u-num" inputmode="decimal" maxlength="12" autocomplete="off"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="line_price_{{ i }}" label="Prix unitaire HT" :error="order.error('line.' ~ i ~ '.price')">
+                        <twig:Px:AmountInput id="line_price_{{ i }}" :value="line.price" unit="€" :error="order.error('line.' ~ i ~ '.price')"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="line_rate_{{ i }}" label="TVA %" :error="order.error('line.' ~ i ~ '.rate')">
+                        <twig:Px:Input id="line_rate_{{ i }}" value="{{ line.rate }}" :error="order.error('line.' ~ i ~ '.rate')" class="px-u-num" inputmode="decimal" maxlength="7" autocomplete="off"/>
+                    </twig:Px:Field>
+                {% endfor %}
+            </div>
+        </twig:Px:Card>
+
+        <twig:Px:Card title="Anomalies volontaires" meta="Dans le document lui-même ; jamais annoncées à l’étudiant.">
+            <div class="px-stack">
+                <twig:Px:Field id="missingMention" label="Mention manquante" :error="order.error('missingMention')">
+                    <twig:Px:Select id="missingMention" placeholder="Aucune : toutes les mentions sont imprimées" :options="mention_options" value="{{ order.missingMention }}" :error="order.error('missingMention')"/>
+                </twig:Px:Field>
+                <twig:Px:CheckGroup legend="Erreurs du fournisseur" name="faults" :options="fault_options"/>
+            </div>
+        </twig:Px:Card>
+    </form>
+
+    <div class="px-document__viewer">
+        {% if preview %}
+            <twig:Px:Viewer src="{{ preview }}" kind="pdf" name="Aperçu · {{ order.number }}"/>
+        {% else %}
+            <twig:Px:Empty title="Aperçu de la facture" text="Décrivez la facture, puis demandez son aperçu (Ctrl Entrée) : le PDF s’affiche ici tel que la pièce arrivera." icon="file-text"/>
+        {% endif %}
+    </div>
+</div>

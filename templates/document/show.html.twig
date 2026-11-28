@@ -41,7 +41,7 @@
             {% if can_edit %}
                 <form method="post" action="{{ path('app_document', {dossier: dossier.id, id: document.id}) }}" id="document-reading" novalidate data-controller="focus-error">
                     <input type="hidden" name="_token" value="{{ csrf_token('document-' ~ document.id) }}">
-                    <twig:Px:Card title="Données lues">
+                    <twig:Px:Card title="Données lues" meta="{{ document.generated ? 'Lecture automatique : à contrôler.' : '' }}">
                         <div class="px-fieldgrid">
                             <twig:Px:Field id="type" label="Nature" :required="true" :error="reading.error('type')">
                                 <twig:Px:Select id="type" placeholder="Choisir la nature…" :options="type_options" value="{{ reading.type }}" :required="true" :error="reading.error('type')"/>
@@ -92,7 +92,7 @@
                     </twig:Px:Card>
                 </form>
             {% else %}
-                <twig:Px:Card title="Données lues">
+                <twig:Px:Card title="Données lues" meta="{{ document.generated ? 'Lecture automatique : à contrôler.' : '' }}">
                     <dl class="px-facts">
                         <dt>Nature</dt><dd>{{ document.type.label }}</dd>
                         <dt>Tiers</dt><dd>{{ document.thirdParty ? document.thirdParty.code ~ ' · ' ~ document.thirdParty.name : '—' }}</dd>
@@ -143,7 +143,7 @@
                 <dl class="px-facts">
                     <dt>Fichier</dt><dd>{{ document.fileName }}</dd>
                     <dt>Arrivée le</dt><dd>{{ document.receivedOn|date_fr }} (date du dossier)</dd>
-                    <dt>Déposée par</dt><dd>{{ document.depositedBy ? document.depositedBy.displayName : '—' }}</dd>
+                    <dt>{{ document.generated ? 'Générée par' : 'Déposée par' }}</dt><dd>{{ document.depositedBy ? document.depositedBy.displayName : '—' }}</dd>
                 </dl>
             </twig:Px:Card>
         </div>
