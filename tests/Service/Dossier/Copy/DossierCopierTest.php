@@ -121,7 +121,7 @@ final class DossierCopierTest extends KernelTestCase
         foreach ($plan->tables(CopyKind::Snapshot) as $table) {
             self::assertNotEmpty($export[$table->table], $table->table.' : ajoutez-en au dossier de démonstration ou à ce test, que la copie en soit éprouvée.');
             foreach ($table->selfReferences as $column) {
-                self::assertGreaterThan(0, (int) $connection->fetchOne(\sprintf('SELECT COUNT(*) FROM %s WHERE dossier_id = ? AND %s IS NOT NULL', $table->table, $column), [$this->source->getId()]), $table->table.'.'.$column.' : aucune ligne ne s’en sert.');
+                self::assertGreaterThan(0, self::rowCount($connection->fetchOne(\sprintf('SELECT COUNT(*) FROM %s WHERE dossier_id = ? AND %s IS NOT NULL', $table->table, $column), [$this->source->getId()])), $table->table.'.'.$column.' : aucune ligne ne s’en sert.');
             }
         }
         foreach ([...array_keys(CopyPlan::NOT_COPIED), ...CopyPlan::PENDING_WORK] as $entity) {
@@ -140,7 +140,7 @@ final class DossierCopierTest extends KernelTestCase
                 if (!$table->isPlain($column)) {
                     continue;
                 }
-                $count = (int) $connection->fetchOne(\sprintf('SELECT COUNT(*) FROM %s WHERE dossier_id = ? AND CAST(%s AS CHAR) LIKE ?', $table->table, $connection->quoteSingleIdentifier($column)), [$this->source->getId(), $prefix.'%']);
+                $count = self::rowCount($connection->fetchOne(\sprintf('SELECT COUNT(*) FROM %s WHERE dossier_id = ? AND CAST(%s AS CHAR) LIKE ?', $table->table, $connection->quoteSingleIdentifier($column)), [$this->source->getId(), $prefix.'%']));
                 if ($count > 0) {
                     $unmarked[] = $table->table.'.'.$column;
                 }
@@ -185,12 +185,17 @@ final class DossierCopierTest extends KernelTestCase
         self::getContainer()->get(DossierEraser::class)->deleteDossier($copy);
 
         $connection = self::getContainer()->get(Connection::class);
-        self::assertSame(0, (int) $connection->fetchOne('SELECT COUNT(*) FROM dossier WHERE id = ?', [$id]));
+        self::assertSame(0, self::rowCount($connection->fetchOne('SELECT COUNT(*) FROM dossier WHERE id = ?', [$id])));
         foreach (self::getContainer()->get(CopyPlan::class)->ownedTables() as $table) {
-            self::assertSame(0, (int) $connection->fetchOne(\sprintf('SELECT COUNT(*) FROM %s WHERE dossier_id = ?', $table->table), [$id]), $table->table);
+            self::assertSame(0, self::rowCount($connection->fetchOne(\sprintf('SELECT COUNT(*) FROM %s WHERE dossier_id = ?', $table->table), [$id])), $table->table);
         }
         self::assertFalse(self::getContainer()->get(DossierFiles::class)->deleteAll($id) > 0);
         self::assertSame($before, $export->of($this->source));
+    }
+
+    private static function rowCount(mixed $value): int
+    {
+        return \is_int($value) || (\is_string($value) && ctype_digit($value)) ? (int) $value : throw new \UnexpectedValueException('A count.');
     }
 
     private function export(): CanonicalDossierExport

@@ -58,14 +58,16 @@ final class DossierShareRepository extends ServiceEntityRepository
         if ([] === $dossiers) {
             return [];
         }
-        $counts = [];
-        foreach ($this->createQueryBuilder('s')
+        /** @var list<array{dossier: int|string, shares: int|string}> $rows */
+        $rows = $this->createQueryBuilder('s')
             ->select('IDENTITY(s.dossier) AS dossier, COUNT(s.id) AS shares')
             ->andWhere('s.dossier IN (:dossiers)')
             ->setParameter('dossiers', $dossiers)
             ->groupBy('s.dossier')
             ->getQuery()
-            ->getArrayResult() as $row) {
+            ->getArrayResult();
+        $counts = [];
+        foreach ($rows as $row) {
             $counts[(int) $row['dossier']] = (int) $row['shares'];
         }
 

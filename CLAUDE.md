@@ -101,7 +101,7 @@ empty, and `PeyraScheduleTest` pins that list, so adding a task is a decision th
 | `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
 | `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, January's purchases and Banque Populaire with two drafts in each, seven entry templates, two subscriptions, three suppliers lettered; date 31/01/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
-| `app:dev:dossiers` | **Development and test only**, until the distribution of step 1.8: gives each student enrolled this year their own Menuiserie Vasseur, built from the fixtures (the template installed first if missing), and one group's Menuiserie Vasseur to `ines.morel` (Comptable fournisseurs), `theo.garnier` (Comptable clients) and `chloe.fabre` (Chef comptable) when enrolled. Sign the students in first: their first sign-in places them |
+| `app:dev:dossiers` | **Development and test only**, until the distribution of step 1.8c: gives each student enrolled this year their own Menuiserie Vasseur, built from the fixtures (the template installed first if missing), and one group's Menuiserie Vasseur to `ines.morel` (Comptable fournisseurs), `theo.garnier` (Comptable clients) and `chloe.fabre` (Chef comptable) when enrolled. Sign the students in first: their first sign-in places them |
 | `app:test:parallel-databases` | **Test only.** Copies the migrated `peyra_test` into `peyra_test1`… for ParaTest (tests/README.md) |
 
 ```console
@@ -557,8 +557,8 @@ Conception § 5, held by code in `src/Entity/Accounting/`, `src/Service/Accounti
   (AN-2026-001, 67 lines, 459 260,31), then January's ACH and BQ2 (step 1.4a; 512200 at 31/01 =
   15 116,78 D, as the prepared data say).
 - **Deleting a dossier** by SQL fails on the intra-dossier `RESTRICT` keys (journal → account,
-  line → account…): delete `entry_line`, `entry`, `third_party`, `journal` first. Step 1.8 erases a
-  dossier in that order.
+  line → account…): `DossierEraser` (« Templates, library and the dossier copier ») deletes table
+  by table in the reverse of the copier's order - never delete a dossier any other way.
 
 ## Keyboard entry (built at step 1.4a)
 
@@ -905,6 +905,60 @@ Lot 1, step 1.7 (conception § 4; design-ux.md §§ 3.2 and 6.1), held by code i
   (`DossierTrailExport`). Lines written before 1.7 have their dossier (migration) but no date.
 - Both screens are in Ctrl K (`SearchScreens`), under the module tabs `dossier/_si_tabs.html.twig`.
 
+## Templates, library and the dossier copier (built at step 1.8a)
+
+Lot 1, step 1.8a (conception § 4; design-ux.md §§ 2.6, 3.3, 6.2), held by code in
+`src/Service/Dossier/Copy/`, `src/Service/Dossier/Library/`, `App\Security\Voter\TemplateVoter`,
+`src/Controller/Library/` and `templates/library/`:
+
+- **`DossierCopier::copy(from, to, CopyKind)` is the one deep copy** (README of the plan, § 8):
+  duplication now, then restore points (1.8b) and the distribution (1.8c). It copies into a dossier
+  that holds nothing yet every table `CopyPlan` reads from the Doctrine mapping of the DossierOwned
+  entities, each after the tables it points at, plus the company's fiche and the chart code
+  (`Dossier::takeContentOf()`) and the files (`DossierFiles::copyAll()`). One `INSERT … SELECT` per
+  table in the source's id order, so a copied row keeps its rank: a reference into the dossier is
+  rewritten through a temporary correspondence table (joined several times in one statement:
+  MariaDB allows it, MySQL does not); a reference into its own table (`entry.reversal_of_id`) once
+  every row is in; a column marked `#[DossierFileKey]` with its file's new key; a JSON column through
+  its `ColumnRemapper` (`PendingEntryGroupsRemapper`: the grid's pending work names the drafts it
+  rewrites). A reference outside the dossier (a person) is kept. DBAL, around the ORM and its
+  guards: a copy reproduces, it changes nothing. A shape it does not know (a many-to-many, a second
+  reference to a dossier, an id that is not a generated `id`) stops `CopyPlan`.
+- **What a copy carries**: `CopyKind::Template` (duplicated or handed out) leaves a person's pending
+  work behind (`CopyPlan::PENDING_WORK`), `CopyKind::Snapshot` (a restore point and the way back)
+  keeps it. `CopyPlan::NOT_COPIED` names what no copy carries, with the reason: `DossierDateChange`
+  (the date's history stays with the dossier). Members, shares and the audit trail are global: never
+  copied.
+- **`DossierEraser`**: `eraseContent()` empties a dossier of what a copy brings back (rows and files;
+  its row, members, shares, date history stay) - the way back from a restore point; `deleteDossier()`
+  deletes it whole, the trail kept. Both DBAL, in the reverse order, self-references set to null
+  first. Entities of the dossier loaded before are stale afterwards: clear the entity manager in a
+  command that goes on. `DossierCopierDoorTest`: nothing else calls `copyAll()` / `deleteAll()`.
+- **The completeness test** (`DossierCopierTest`, `tests/Support/CanonicalDossierExport`): the
+  demonstration plus what it lacks (a pending entry rewriting a draft, a reversal, a moved date, a
+  file), copied, both exports compared - a reference written « table#rank ». It fails when a
+  DossierOwned table holds no row in the source (add some to the demonstration or the test), when a
+  copy differs, and when a column holds a file's key without `#[DossierFileKey]`.
+- **The library** (Bibliothèque, rail entry `book-copy`; `/teacher/library`): « Dossiers modèles »,
+  cards filtered by shelf (`TemplateShelf`: mine, shared with me, provided = the common library) and
+  searched (`TemplateLibrary::cards()`, a fixed number of queries; uses = students' and groups'
+  dossiers made from it), and « Partages » (given and received). A template's card is on `Dossier`
+  (`libraryTitle` - the company's name when empty -, `libraryDescription`, `libraryLevel`
+  (`TemplateLevel`), `libraryProcesses` (`App\Enum\Shared\BtsProcess`, P1 to P7, official
+  wording)), changed through `TemplateCards` (DossierVoter::EDIT, a line of the trail).
+- **Gestures**: « Nouveau dossier modèle » (gabarit E): an empty one (`TemplateFactory`: the fiche
+  société - `dossier/_company_fields.html.twig`, `CompanyDraft::fromRequest()` -, the first exercise,
+  the dossier's date, the reference chart, and five journals ACH, VTE, BQ on 512000, OD, AN), or a
+  copy; « Dupliquer » (`TemplateDuplicator`: the author's own, `CopyKind::Template`, « (copie) »,
+  origin = the template, no share); shares (`TemplateShares`: read or change, changed, taken back;
+  colleague picked by `user_picker_controller.js` on `…/colleagues`); « Supprimer » (`TemplateDeletion`:
+  a récapitulatif, then the title typed; the copies keep their content and lose the link).
+  `TemplateVoter`: SHARE the author alone (nobody for the common library), DELETE the author or, for
+  the common library, an administrator, DUPLICATE whoever reads it. `/teacher/library/{dossier}` of a
+  dossier that is not a template answers 404.
+- A template's ribbon (gold) goes back to its fiche in the library. The demonstration's card is in
+  `fixtures/demo/company.yaml` (`library:`).
+
 ## Cross-cutting building blocks (built at step 0.6a)
 
 Reach for these rather than re-implement them; each has its test.
@@ -936,8 +990,9 @@ Reach for these rather than re-implement them; each has its test.
   `s3:PutObjectAcl` and which a bucket with ACLs disabled refuses - `S3ClientFactory` strips it
   (handler step `peyra.no_acl`), and `documents.s3` has `retain_visibility: false` (else a copy reads
   the source's ACL). `S3BucketPolicyTest` plays every public method of `DossierFiles` against a
-  stubbed S3 and requires `infra/terraform/iam.tf` to grant exactly the IAM actions of what is sent
-  (plus `GRANTED_AHEAD`): a new gesture or a new S3 operation fails it until the policy follows.
+  stubbed S3 and requires `infra/terraform/iam.tf` to grant exactly the IAM actions of what is sent:
+  a new gesture or a new S3 operation fails it until the policy follows. `deleteAll()` (step 1.8a)
+  is what uses `s3:DeleteObject` (`DeleteObjects` in one request).
 - **PDF**: `App\Service\Shared\Pdf\PdfRenderer` (`renderTemplate`, `render`, `merge`,
   `pageCount`) is the one door to Gotenberg. A document extends `doc/_document.html.twig` (a state
   Peyra edits: `doc/_report.html.twig`, header and foot in `@page` margin boxes) and links

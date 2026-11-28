@@ -89,8 +89,8 @@ final class DossierRepository extends ServiceEntityRepository
         if ([] === $templates) {
             return [];
         }
-        $counts = [];
-        foreach ($this->createQueryBuilder('d')
+        /** @var list<array{template: int|string, copies: int|string}> $rows */
+        $rows = $this->createQueryBuilder('d')
             ->select('IDENTITY(d.sourceTemplate) AS template, COUNT(d.id) AS copies')
             ->andWhere('d.sourceTemplate IN (:templates)')
             ->andWhere('d.kind IN (:kinds)')
@@ -98,7 +98,9 @@ final class DossierRepository extends ServiceEntityRepository
             ->setParameter('kinds', [DossierKind::Student, DossierKind::Group])
             ->groupBy('d.sourceTemplate')
             ->getQuery()
-            ->getArrayResult() as $row) {
+            ->getArrayResult();
+        $counts = [];
+        foreach ($rows as $row) {
             $counts[(int) $row['template']] = (int) $row['copies'];
         }
 

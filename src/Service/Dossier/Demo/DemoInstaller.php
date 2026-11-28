@@ -119,6 +119,7 @@ final readonly class DemoInstaller
         $letteringFile = DemoLetteringFile::read($this->directory.'/letterings.yaml');
         $dossier = new Dossier($kind, $file->company, $file->dossierDate, $owner, $year, $at, null);
         $dossier->comesFrom($template, null);
+        $dossier->describeInLibrary($file->library['title'], $file->library['description'], $file->library['level'], $file->library['processes']);
         $this->entityManager->persist($dossier);
         // An id first: the exercises enter the dossier's context.
         $this->entityManager->flush();

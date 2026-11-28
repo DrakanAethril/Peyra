@@ -21,9 +21,18 @@
         font-size: var(--px-fs-12);
     }
 
+    .px-templateshares th[scope="row"] {
+        white-space: nowrap;
+    }
+
     .px-templateshares__actions {
         justify-content: flex-end;
         flex-wrap: nowrap;
+    }
+
+    .px-templateshares__right {
+        flex: 0 0 auto;
+        width: auto;
     }
 
     .px-starts {

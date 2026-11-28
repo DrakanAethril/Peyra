@@ -30,7 +30,7 @@ use Symfony\Component\Yaml\Yaml;
  *
  * The S3 operations seen are mapped to the IAM actions AWS documents for them
  * (https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-with-s3-policy-actions.html), and
- * that set must be the policy's, save the actions granted ahead of the code that needs them.
+ * that set must be the policy's, exactly.
  */
 final class S3BucketPolicyTest extends TestCase
 {
@@ -49,15 +49,6 @@ final class S3BucketPolicyTest extends TestCase
         'ListObjectsV2' => ['s3:ListBucket'],
         'DeleteObject' => ['s3:DeleteObject'],
         'DeleteObjects' => ['s3:DeleteObject'],
-    ];
-
-    /**
-     * Granted before DossierFiles uses them, each with its reason. Once the code needs one, the
-     * test says so: take it off this list.
-     *
-     * @var array<string, string>
-     */
-    private const array GRANTED_AHEAD = [
     ];
 
     /** The public methods of DossierFiles this test plays; one more fails the test until played. */
@@ -87,10 +78,7 @@ final class S3BucketPolicyTest extends TestCase
         }
         $needed = array_keys($needed);
 
-        foreach (array_keys(self::GRANTED_AHEAD) as $ahead) {
-            self::assertNotContains($ahead, $needed, $ahead.' is now used by the code: take it off GRANTED_AHEAD.');
-        }
-        $expected = [...$needed, ...array_keys(self::GRANTED_AHEAD)];
+        $expected = $needed;
         sort($expected);
 
         self::assertSame($expected, $this->grantedActions(), 'infra/terraform/iam.tf must grant exactly what Peyra sends to S3.');

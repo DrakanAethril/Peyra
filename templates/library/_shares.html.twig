@@ -3,8 +3,10 @@
  # right, changed or taken back in place; a colleague picked by name (autocomplete), reading or change.
  #}
 <twig:Px:Card title="Partages" meta="{{ shares is empty ? 'avec personne' : shares|length ~ ' ' ~ (shares|length > 1 ? 'collègues' : 'collègue') }}" id="partages" :flush="shares is not empty">
-    {% if shares is not empty %}
-        <twig:Px:Table caption="Collègues avec qui {{ dossier.libraryTitle }} est partagé">
+    {% if shares is empty %}
+        <p class="px-u-muted">Personne d’autre que vous ne lit ce modèle.</p>
+    {% else %}
+        <twig:Px:Table caption="Collègues avec qui {{ dossier.libraryTitle }} est partagé" class="px-templateshares">
             <thead>
                 <tr><th scope="col">Collègue</th><th scope="col">Droit</th><th scope="col">Depuis</th><th scope="col"><span class="px-u-sr-only">Actions</span></th></tr>
             </thead>
@@ -47,7 +49,7 @@
                             <p class="px-picker__foot"><twig:Px:Kbd combo="ArrowUp"/><twig:Px:Kbd combo="ArrowDown"/> choisir <twig:Px:Kbd combo="Enter"/> valider <twig:Px:Kbd combo="Escape"/> fermer</p>
                         </div>
                     </div>
-                    <twig:Px:Select id="right" :options="[{value: 'read', label: 'Lecture'}, {value: 'edit', label: 'Modification'}]" value="read" size="sm" aria-label="Droit"/>
+                    <twig:Px:Select id="right" :options="[{value: 'read', label: 'Lecture'}, {value: 'edit', label: 'Modification'}]" value="read" aria-label="Droit" class="px-templateshares__right"/>
                     <twig:Px:Button type="submit" icon="send">Partager</twig:Px:Button>
                 </div>
             </twig:Px:Field>

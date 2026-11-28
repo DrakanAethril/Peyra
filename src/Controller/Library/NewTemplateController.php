@@ -58,7 +58,7 @@ final class NewTemplateController extends AbstractController
         return $this->render('library/new.html.twig', [
             'templates' => array_map(static fn (TemplateCard $card): array => ['value' => (string) $card->template->getId(), 'label' => $card->template->getLibraryTitle().' · '.$card->shelf->label()], $readable),
             'error' => $error,
-            'title' => $title,
+            'copy_title' => $title,
             'chosen' => $chosen,
         ], new Response(status: null === $error ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY));
     }

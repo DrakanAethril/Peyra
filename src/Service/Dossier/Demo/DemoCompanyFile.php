@@ -7,7 +7,9 @@ namespace App\Service\Dossier\Demo;
 use App\Entity\Dossier\Company;
 use App\Enum\Dossier\LegalForm;
 use App\Enum\Dossier\ProfitTaxRegime;
+use App\Enum\Dossier\TemplateLevel;
 use App\Enum\Dossier\VatRegime;
+use App\Enum\Shared\BtsProcess;
 use App\Service\Shared\Money;
 use Symfony\Component\Yaml\Yaml;
 
@@ -19,8 +21,11 @@ use Symfony\Component\Yaml\Yaml;
  */
 final readonly class DemoCompanyFile
 {
-    /** @param list<DemoExercise> $exercises */
-    private function __construct(public Company $company, public array $exercises, public \DateTimeImmutable $dossierDate)
+    /**
+     * @param list<DemoExercise>                                                                            $exercises
+     * @param array{title: string, description: string, level: TemplateLevel, processes: list<BtsProcess>} $library
+     */
+    private function __construct(public Company $company, public array $exercises, public \DateTimeImmutable $dossierDate, public array $library)
     {
     }
 
@@ -70,7 +75,26 @@ final readonly class DemoCompanyFile
             ),
             $exercises,
             self::date($data, 'dossier_date'),
+            self::library(self::map($data, 'library')),
         );
+    }
+
+    /**
+     * The template's card: a title, a level, processes of the référentiel, a description.
+     *
+     * @param array<mixed> $card
+     *
+     * @return array{title: string, description: string, level: TemplateLevel, processes: list<BtsProcess>}
+     */
+    private static function library(array $card): array
+    {
+        $level = TemplateLevel::tryFrom(self::string($card, 'level')) ?? throw new \InvalidArgumentException('library.level : first, second ou both.');
+        $processes = [];
+        foreach (\is_array($card['processes'] ?? null) ? $card['processes'] : [] as $code) {
+            $processes[] = \is_string($code) && null !== BtsProcess::tryFrom($code) ? BtsProcess::from($code) : throw new \InvalidArgumentException('library.processes : des codes P1 à P7 sont attendus.');
+        }
+
+        return ['title' => self::string($card, 'title'), 'description' => self::string($card, 'description'), 'level' => $level, 'processes' => $processes];
     }
 
     /**

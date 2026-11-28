@@ -38,7 +38,7 @@
                         <twig:Px:Select id="template" placeholder="Choisir un modèle…" :options="templates" value="{{ chosen }}" :required="true" :error="error"/>
                     </twig:Px:Field>
                     <twig:Px:Field id="title" label="Titre de la copie" hint="Vide : le titre du modèle suivi de « (copie) ».">
-                        <twig:Px:Input id="title" value="{{ title }}" hint="1" maxlength="120" autocomplete="off"/>
+                        <twig:Px:Input id="title" value="{{ copy_title }}" hint="1" maxlength="120" autocomplete="off"/>
                     </twig:Px:Field>
                 </form>
             {% endif %}
