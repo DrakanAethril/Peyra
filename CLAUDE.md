@@ -1296,6 +1296,13 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   cells. A forced value equal to the calculation moves nothing (`PayslipForcing`). What a validated payslip read
   (the employee, the terms, the exit) no longer moves (`ValidatedPayslipLocks`, in `EmployeeSheet`/`EmployeeExits`);
   the last payslip's card is `LastPayslipEntries`; the reçu pour solde de tout compte reads it (`FinalSettlement`).
+- **States and entries** (step 4.5, `src/Service/Payroll/Statement/`): every payroll state and entry reads the
+  **validated** payslips only (`PayrollStatementsReader`, frozen snapshots), each line put where it goes by the pure
+  `PayrollAllocations` (the general reduction cut into its Urssaf and pension shares); accounts come from the item
+  (`PayrollItem::$account`) and the body (`owedAccount()`, `employerChargeAccount()`), else `PayrollAccounts`. The entries
+  are the pure `PayrollEntries`, handed to `AccountingGateway` by `PayrollPosting` and found again **by their pièce**
+  (`PAIE-2026-03`, `VIRSAL-…`, `COT-…`; a pièce standing is never proposed again); a module takes its entry back with
+  `AccountingGateway::withdraw()` (draft deleted, validated reversed). `PaidLeaveProvisions::at()` is the provision for paid leave.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 
