@@ -83,7 +83,7 @@ final class HiringFormalitiesTest extends KernelTestCase
         self::assertSame(2, $events->count(['action' => AuditAction::HiringFormalitiesChanged]));
 
         // The register: the hire in order.
-        $rows = PersonnelRegister::rows([$yanis]);
+        $rows = PersonnelRegister::rows([$yanis], new \DateTimeImmutable('2026-03-31'));
         self::assertSame([1, 'Menuisier poseur', 'Ouvrier qualifié, niveau interne O3 (non-cadre)', 'CDD'], [$rows[0]['rank'], $rows[0]['job'], $rows[0]['qualification'], $rows[0]['contract']]);
 
         $this->expectException(\LogicException::class);

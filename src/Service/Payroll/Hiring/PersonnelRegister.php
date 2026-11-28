@@ -12,9 +12,10 @@ use App\Enum\Payroll\WorkingTime;
  * read from the employees, never typed: every person ever hired by the establishment, in the order
  * of hiring - an order number, name and first names, nationality, birth date, sex, job and
  * qualification at hire, days of entry and of departure, the kind of contract (fixed-term,
- * apprenticeship, part time). A departure day arrives with step 4.2c.
+ * apprenticeship, part time). The departure day is written once it has come (step 4.2c): an exit
+ * recorded for a later day is not yet in the register.
  *
- * @phpstan-type RegisterRow array{rank: int, employee: Employee, job: string, qualification: string, contract: string}
+ * @phpstan-type RegisterRow array{rank: int, employee: Employee, job: string, qualification: string, contract: string, exitOn: ?\DateTimeImmutable}
  */
 final class PersonnelRegister
 {
@@ -23,7 +24,7 @@ final class PersonnelRegister
      *
      * @return list<RegisterRow>
      */
-    public static function rows(array $employees): array
+    public static function rows(array $employees, \DateTimeImmutable $today): array
     {
         usort($employees, static fn (Employee $a, Employee $b): int => [$a->getHiredOn(), $a->getRegistrationNumber()] <=> [$b->getHiredOn(), $b->getRegistrationNumber()]);
         $rows = [];
@@ -39,6 +40,7 @@ final class PersonnelRegister
                 'job' => $first->getJobTitle(),
                 'qualification' => '' === $first->getClassification() ? $first->getStatusLabel() : $first->getClassification().' ('.mb_strtolower($first->getStatusLabel()).')',
                 'contract' => $contract,
+                'exitOn' => null !== $employee->getExitOn() && $employee->getExitOn() <= $today ? $employee->getExitOn() : null,
             ];
         }
 

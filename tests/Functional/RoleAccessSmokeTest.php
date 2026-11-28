@@ -276,7 +276,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/payroll/employees', '/payroll/employees?state=present&q=vas', '/payroll/employees/new', '/payroll/employees/S001',
             '/payroll/employees/S001?from=2012-09-03',
             '/payroll/employees/register', '/payroll/employees/register.pdf', '/payroll/employees/S001/formalities',
-            '/payroll/employees/S001/contract.pdf', '/payroll/social-portal/dpae/S001',
+            '/payroll/employees/S001/contract.pdf', '/payroll/social-portal/dpae/S001', '/payroll/employees/S001/exit',
             '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
