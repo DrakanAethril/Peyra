@@ -94,6 +94,15 @@ final readonly class DossierEraser
     }
 
     /**
+     * The files a copy wrote under a dossier whose rows were rolled back (a distribution's copy that
+     * stopped, step 1.8c): its row never came to be, its files go.
+     */
+    public function deleteFilesOf(int $dossierId): void
+    {
+        $this->files->deleteAll($dossierId);
+    }
+
+    /**
      * @param list<CopiedTable> $tables in the copier's order
      *
      * @return array<string, int>

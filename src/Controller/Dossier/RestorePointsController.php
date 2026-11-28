@@ -150,7 +150,7 @@ final class RestorePointsController extends AbstractController
 
     private function renderSummary(Dossier $dossier, RestorePoint $point, RestoreSummary $summary, ?string $error = null, bool $keep = true, int $status = Response::HTTP_OK): Response
     {
-        $full = RestorePointRules::limitReached($this->points->countByDossier($dossier));
+        $full = RestorePointRules::limitReached($this->points->countAgainstLimit($dossier));
 
         return $this->render('dossier/restore_point_return.html.twig', [
             'dossier' => $dossier,

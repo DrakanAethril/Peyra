@@ -62,7 +62,7 @@ final readonly class Restorations
         $this->points->expectFree($dossier);
         $safety = null;
         if ($keepCurrent) {
-            if (RestorePointRules::limitReached($this->pointRepository->countByDossier($dossier))) {
+            if (RestorePointRules::limitReached($this->pointRepository->countAgainstLimit($dossier))) {
                 throw new RestoreRefused(RestorePointRules::LIMIT_REACHED, 'keep');
             }
             $safety = $this->points->create($dossier, RestorePointRules::safetyName($point->getName()), RestorePointOrigin::BeforeReturn, $by, $now);

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Twig;
 
+use App\Entity\Dossier\Distribution;
 use App\Entity\Dossier\Dossier;
+use App\Service\Dossier\Distribution\DistributionLive;
 use App\Service\Dossier\DossierLive;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -34,18 +36,32 @@ final readonly class DossierLiveExtension
     #[AsTwigFunction('dossier_live_url')]
     public function url(Dossier $dossier): ?string
     {
-        $request = $this->requests->getMainRequest();
         $id = $dossier->getId();
-        if (null === $request || null === $id) {
+
+        return null === $id ? null : $this->subscribe(DossierLive::topic($id), 'dossier', $id);
+    }
+
+    /** A distribution's progress page (step 1.8c), drawn for its author only (DistributionVoter). */
+    #[AsTwigFunction('distribution_live_url')]
+    public function distributionUrl(Distribution $distribution): ?string
+    {
+        $id = $distribution->getId();
+
+        return null === $id ? null : $this->subscribe(DistributionLive::topic($id), 'distribution', $id);
+    }
+
+    private function subscribe(string $topic, string $what, int $id): ?string
+    {
+        $request = $this->requests->getMainRequest();
+        if (null === $request) {
             return null;
         }
-        $topic = DossierLive::topic($id);
         try {
             $this->authorization->setCookie($request, [$topic], hub: self::HUB);
 
             return $this->hubs->getHub(self::HUB)->getPublicUrl().'?topic='.rawurlencode($topic);
         } catch (\Throwable $exception) {
-            $this->logger->warning('No live subscription for dossier {dossier}: {message}', ['dossier' => $id, 'message' => $exception->getMessage(), 'exception' => $exception]);
+            $this->logger->warning('No live subscription for {what} {id}: {message}', ['what' => $what, 'id' => $id, 'message' => $exception->getMessage(), 'exception' => $exception]);
 
             return null;
         }

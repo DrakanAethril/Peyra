@@ -117,4 +117,44 @@ final class DossierRepository extends ServiceEntityRepository
 
         return null;
     }
+
+    /**
+     * Among these students, those who already hold a dossier made from the template - their own, or
+     * a group's they are a member of (design-ux.md § 4.2: « signalé et décoché par défaut »).
+     *
+     * @param list<int> $studentIds
+     *
+     * @return list<int>
+     */
+    public function findStudentIdsHoldingCopyOf(Dossier $template, array $studentIds): array
+    {
+        if ([] === $studentIds) {
+            return [];
+        }
+        /** @var list<array{id: int|string}> $owners */
+        $owners = $this->createQueryBuilder('d')
+            ->select('IDENTITY(d.owner) AS id')
+            ->andWhere('d.kind = :student')
+            ->andWhere('d.sourceTemplate = :template')
+            ->andWhere('d.owner IN (:students)')
+            ->setParameter('student', DossierKind::Student)
+            ->setParameter('template', $template)
+            ->setParameter('students', $studentIds)
+            ->getQuery()
+            ->getArrayResult();
+        /** @var list<array{id: int|string}> $members */
+        $members = $this->getEntityManager()->createQueryBuilder()
+            ->select('IDENTITY(m.student) AS id')
+            ->from(DossierMember::class, 'm')
+            ->join('m.dossier', 'd')
+            ->andWhere('d.sourceTemplate = :template')
+            ->andWhere('m.student IN (:students)')
+            ->setParameter('template', $template)
+            ->setParameter('students', $studentIds)
+            ->getQuery()
+            ->getArrayResult();
+        $ids = array_map(static fn (array $row): int => (int) $row['id'], [...$owners, ...$members]);
+
+        return array_values(array_unique($ids));
+    }
 }

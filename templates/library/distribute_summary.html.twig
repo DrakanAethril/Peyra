@@ -1,0 +1,79 @@
+{#
+ # Distribuer, step 3 « Récapitulatif » (design-ux.md §§ 4.2 and 6.2): the sentence that counts what
+ # will be made - « 6 dossiers seront créés depuis « … », un par étudiant, à la date du … » -, the
+ # students who already hold a copy and get a second one, each dossier with its students and their
+ # profiles, then « Distribuer » (Ctrl Entrée). A choice that stops it is said with the way back.
+ #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'templates' %}
+{% set library_title = 'Distribuer ' ~ template.libraryTitle %}
+{% set query = '?' ~ ({class: plan.schoolClass.id}|merge(plan.choices.query))|url_encode %}
+{% set status_keys = plan.valid ? [{combo: 'Ctrl+Enter', verb: 'Distribuer'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Distribuer « {{ template.libraryTitle }} »" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Dossiers modèles', href: path('app_library')},
+        {label: template.libraryTitle, href: path('app_library_template', {dossier: template.id})},
+        {label: 'Distribuer', href: path('app_library_distribute', {dossier: template.id})},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    <div class="px-split--side px-split">
+        {{ include('library/_distribute_steps.html.twig', {step: 3}) }}
+        <div class="px-stack">
+            {% if error %}<twig:Px:Alert tone="danger">{{ error }}</twig:Px:Alert>{% endif %}
+            <twig:Px:Card title="Récapitulatif">
+                {% if plan.valid %}
+                    <p class="px-u-strong">{{ plan.sentence }}</p>
+                    {% if plan.holdersTicked > 0 %}<p class="px-u-muted">{{ plan.holdersTicked }} {{ plan.holdersTicked > 1 ? 'étudiants ont' : 'étudiant a' }} déjà un dossier issu de ce modèle : {{ plan.holdersTicked > 1 ? 'ils en recevront' : 'il en recevra' }} un second.</p>{% endif %}
+                    <p class="px-u-muted">Chaque dossier garde son état de départ : vous pourrez l’y remettre. Les copies se font en arrière-plan ; vous suivez leur avancement sur la page suivante.</p>
+                {% else %}
+                    <twig:Px:Alert tone="warning" title="La distribution ne peut pas partir ainsi">{% for fault in plan.faults %}{{ fault }}{% if not loop.last %} {% endif %}{% endfor %}</twig:Px:Alert>
+                {% endif %}
+                <twig:block name="foot">
+                    <form method="post" action="{{ path('app_library_distribute_launch', {dossier: template.id}) }}" class="px-cluster">
+                        <input type="hidden" name="_token" value="{{ csrf_token('distribute-' ~ template.id) }}">
+                        {{ include('library/_distribute_carry.html.twig') }}
+                        <twig:Px:Button href="{{ path(plan.fault('students') ? 'app_library_distribute' : 'app_library_distribute_how', {dossier: template.id}) ~ query }}" icon="chevron-left">{{ plan.fault('students') ? 'Revenir aux étudiants' : 'Revenir aux choix' }}</twig:Px:Button>
+                        {% if plan.valid %}
+                            <twig:Px:Button type="submit" variant="primary" icon="send" shortcut="Ctrl+Enter" class="px-u-push">Distribuer</twig:Px:Button>
+                        {% endif %}
+                    </form>
+                </twig:block>
+            </twig:Px:Card>
+
+            {% if plan.valid %}
+                <twig:Px:Card :flush="true" title="Dossier par dossier" meta="{{ plan.schoolClass.label }}">
+                    <twig:Px:Table caption="Les dossiers que la distribution crée">
+                        {% if plan.mode.value == 'group' %}
+                            <thead><tr><th scope="col">Dossier</th><th scope="col">Membres et profils</th></tr></thead>
+                            <tbody>
+                                {% for group in plan.groups %}
+                                    <tr>
+                                        <td class="px-u-nowrap">{{ group.name }}</td>
+                                        <td class="px-u-fill">{% for member in group.members %}{{ member[0].displayName }}{% if member[1] %} <span class="px-u-muted">· {{ member[1].label }}</span>{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        {% else %}
+                            <thead><tr><th scope="col">Étudiant</th><th scope="col">Ce modèle</th></tr></thead>
+                            <tbody>
+                                {% for line in plan.ticked %}
+                                    <tr>
+                                        <td class="px-u-fill">{{ line.student.sortName }}</td>
+                                        <td>{% if line.holds %}<twig:Px:Badge tone="warning" label="Second dossier"/>{% else %}<span class="px-u-muted">—</span>{% endif %}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        {% endif %}
+                    </twig:Px:Table>
+                </twig:Px:Card>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block facts %}<span>Modèle · <b>{{ template.libraryTitle }}</b></span><span>{{ plan.schoolClass.label }}</span>{% endblock %}

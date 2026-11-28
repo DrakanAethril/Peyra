@@ -1,0 +1,52 @@
+{#
+ # Bibliothèque › Distribution (design-ux.md § 2.6, « distributions en cours »): the teacher's
+ # distributions, the newest first - template, class, how, when, how far it stands. A line leads
+ # to its progress page; a template is handed out from its card (« Distribuer »).
+ #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'distributions' %}
+{% set library_title = 'Distribution' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Distribution" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Distribution', href: path('app_library_distributions')},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button variant="primary" href="{{ path('app_library') }}" icon="send">Distribuer un modèle</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card :flush="true">
+        {% if distribution_rows is empty %}
+            <twig:Px:Empty icon="send" title="Aucune distribution" text="Distribuer un modèle donne à chaque étudiant d’une classe, ou à chaque groupe, sa copie du dossier. Choisissez un modèle dans « Dossiers modèles », puis « Distribuer »."/>
+        {% else %}
+            <twig:Px:Table caption="Mes distributions, la plus récente d’abord" :rows="true">
+                <thead><tr>
+                    <th scope="col">Modèle</th>
+                    <th scope="col">Classe</th>
+                    <th scope="col">Dossiers</th>
+                    <th scope="col">Distribué le</th>
+                    <th scope="col">Avancement</th>
+                </tr></thead>
+                <tbody>
+                    {% for row in distribution_rows %}
+                        {% set distribution = row.distribution %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-fill"><a class="px-link" href="{{ path('app_library_distribution', {id: distribution.id}) }}">{{ distribution.title }}</a></td>
+                            <td class="px-u-nowrap">{{ distribution.schoolClass.label }}</td>
+                            <td class="px-u-nowrap">{{ distribution.mode.label }}</td>
+                            <td class="px-u-code px-u-nowrap">{{ distribution.createdAt|date('d/m/Y') }}</td>
+                            <td class="px-u-nowrap">{{ row.progress.sentence }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>Distributions · <b>{{ distribution_rows|length }}</b></span>{% endblock %}

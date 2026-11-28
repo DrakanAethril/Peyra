@@ -44,12 +44,22 @@ final class RestorePointVoterTest extends KernelTestCase
         self::assertFalse($this->grants($people['durand'], RestorePointVoter::POSE, $point->getSnapshot()), 'Jamais de point sur un point.');
     }
 
-    private function point(Dossier $dossier, User $author): RestorePoint
+    public function testTheStartingPointIsDeletedByATeacherOnly(): void
+    {
+        self::bootKernel();
+        [$dossier, $people] = $this->groupDossier();
+        $start = $this->point($dossier, $people['durand'], RestorePointOrigin::Start);
+
+        self::assertSame([true, true, false], $this->rights($people['chloe'], $dossier, $start), 'chloe revient à l’état de départ, sans le supprimer');
+        self::assertSame([true, true, true], $this->rights($people['durand'], $dossier, $start), 'durand, enseignant de la classe');
+    }
+
+    private function point(Dossier $dossier, User $author, RestorePointOrigin $origin = RestorePointOrigin::Manual): RestorePoint
     {
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
         $snapshot = new Dossier(DossierKind::Snapshot, DossierFixtures::company(), $dossier->getDossierDate(), null, null, new \DateTimeImmutable('2026-11-28'), $author);
         $entityManager->persist($snapshot);
-        $point = new RestorePoint($dossier, $snapshot, 'Avant validation', RestorePointOrigin::Manual, $author, new \DateTimeImmutable('2026-11-28'));
+        $point = new RestorePoint($dossier, $snapshot, 'Avant validation', $origin, $author, new \DateTimeImmutable('2026-11-28'));
         $entityManager->persist($point);
         $entityManager->flush();
 

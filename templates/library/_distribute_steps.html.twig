@@ -1,0 +1,7 @@
+{# The three steps of a distribution (design-ux.md § 4.2, design-ui.md § 4.11 vertical). Takes `step` (1 to 3), `template` and, past the first, `plan`. #}
+{% set carried = plan is defined and plan ? '?' ~ ({class: plan.schoolClass.id}|merge(plan.choices.query))|url_encode : '' %}
+<twig:Px:Stepper label="Distribution" :vertical="true" :steps="[
+    {label: 'À qui', href: path('app_library_distribute', {dossier: template.id}) ~ carried, state: step > 1 ? 'done' : 'current'},
+    {label: 'Comment', href: path('app_library_distribute_how', {dossier: template.id}) ~ carried, state: step > 2 ? 'done' : (step == 2 ? 'current' : 'todo')},
+    {label: 'Récapitulatif', state: step == 3 ? 'current' : 'todo'},
+]"/>

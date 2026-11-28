@@ -1,0 +1,54 @@
+{#
+ # Retirer une distribution (lot 1, step 1.8; design-ux.md § 6.2): the récapitulatif of what goes -
+ # every dossier it made, the students' work in them, their restore points - and what stays - the
+ # template, the trails -, then its title typed. A teacher's gesture, never automatic.
+ #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'distributions' %}
+{% set library_title = 'Retirer ' ~ distribution.title %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Retirer la distribution" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Distribution', href: path('app_library_distributions')},
+        {label: distribution.title, href: path('app_library_distribution', {id: distribution.id})},
+        {label: 'Retirer', href: path('app_library_distribution_withdraw', {id: distribution.id})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button variant="quiet" href="{{ path('app_library_distribution', {id: distribution.id}) }}">Annuler</twig:Px:Button>
+            <twig:Px:Button type="submit" variant="danger" form="distribution-withdraw" icon="trash-2">Retirer la distribution</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Stepper label="Retrait" :steps="[{label: 'Récapitulatif', href: path('app_library_distribution_withdraw', {id: distribution.id}), state: 'current'}]"/>
+
+    <div class="px-split">
+        <twig:Px:Card title="Ce qui sera supprimé" meta="sans retour possible">
+            <ul class="px-recap">
+                <li>{% if dossiers > 0 %}Les <b>{{ dossiers }}</b> {{ dossiers > 1 ? 'dossiers' : 'dossier' }} de la distribution en {{ distribution.schoolClass.label }}, avec tout le travail que les étudiants y ont fait.{% else %}Aucun dossier : la distribution n’en a encore créé aucun.{% endif %}</li>
+                {% if points > 0 %}<li>Leurs <b>{{ points }}</b> {{ points > 1 ? 'points de restauration' : 'point de restauration' }}, état de départ compris.</li>{% endif %}
+                <li>La distribution elle-même, et les copies qui attendaient encore.</li>
+            </ul>
+        </twig:Px:Card>
+        <twig:Px:Card title="Ce qui reste">
+            <ul class="px-recap">
+                <li>Le modèle « {{ distribution.title }} » : il n’est pas touché.</li>
+                <li>La piste d’audit de chaque dossier, avec la ligne de ce retrait.</li>
+            </ul>
+        </twig:Px:Card>
+    </div>
+
+    <form method="post" action="{{ path('app_library_distribution_withdraw', {id: distribution.id}) }}" id="distribution-withdraw" novalidate data-controller="focus-error">
+        <input type="hidden" name="_token" value="{{ csrf_token('distribution-withdraw-' ~ distribution.id) }}">
+        <twig:Px:Card title="Confirmer">
+            <twig:Px:Field id="confirmTitle" label="Tapez « {{ distribution.title }} » pour retirer cette distribution" :required="true" :error="error">
+                <twig:Px:Input id="confirmTitle" value="{{ typed }}" :required="true" :error="error" autocomplete="off" spellcheck="false"/>
+            </twig:Px:Field>
+        </twig:Px:Card>
+    </form>
+{% endblock %}
+
+{% block facts %}<span>{{ distribution.schoolClass.label }}</span><span>Dossiers · <b>{{ dossiers }}</b></span>{% endblock %}

@@ -1,0 +1,72 @@
+{#
+ # Distribuer, step 2 « Comment » (design-ux.md § 4.2): a dossier for each student, or one shared
+ # by each group - the students ticked in groups of about three by default, each with a profile
+ # (none = every right) -, and the date the dossiers start at (the template's by default). A GET
+ # form: the récapitulatif carries the choices.
+ #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'templates' %}
+{% set library_title = 'Distribuer ' ~ template.libraryTitle %}
+{% set ticked = plan.ticked %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Distribuer « {{ template.libraryTitle }} »" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Dossiers modèles', href: path('app_library')},
+        {label: template.libraryTitle, href: path('app_library_template', {dossier: template.id})},
+        {label: 'Distribuer', href: path('app_library_distribute', {dossier: template.id})},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    <div class="px-split--side px-split">
+        {{ include('library/_distribute_steps.html.twig', {step: 2}) }}
+        {% if ticked is empty %}
+            <div class="px-stack">
+                <twig:Px:Alert tone="warning">Aucun étudiant n’est coché.</twig:Px:Alert>
+                <div><twig:Px:Button href="{{ path('app_library_distribute', {dossier: template.id}) ~ '?' ~ ({class: plan.schoolClass.id}|merge(plan.choices.query))|url_encode }}" icon="chevron-left">Revenir aux étudiants</twig:Px:Button></div>
+            </div>
+        {% else %}
+            <form method="get" action="{{ path('app_library_distribute_summary', {dossier: template.id}) }}" class="px-stack" data-controller="distribution-mode">
+                {{ include('library/_distribute_carry.html.twig', {how: false}) }}
+                <twig:Px:Card title="Comment" meta="{{ ticked|length }} {{ ticked|length > 1 ? 'étudiants' : 'étudiant' }} de {{ plan.schoolClass.label }}">
+                    <div class="px-fieldgrid">
+                        <twig:Px:CheckGroup legend="Dossiers" name="mode" type="radio" class="px-fieldgrid__full" :options="modes|map(m => m|merge({checked: m.value == plan.mode.value}))" data-action="change->distribution-mode#sync"/>
+                        <twig:Px:Field id="start" label="Date de départ des dossiers" hint="La date du modèle est {{ template.dossierDate|date_fr }}." :error="plan.fault('start')">
+                            <twig:Px:DateInput id="start" :reference="template.dossierDate" :value="plan.startDate" :hint="true" :error="plan.fault('start')"/>
+                        </twig:Px:Field>
+                    </div>
+                </twig:Px:Card>
+
+                <twig:Px:Card :flush="true" title="Groupes" meta="un dossier partagé par groupe ; un profil par membre" data-distribution-mode-target="groups" :hidden="plan.mode.value != 'group'">
+                    <twig:Px:Table caption="Le groupe et le profil de chaque étudiant coché" class="px-distribution-groups">
+                        <thead><tr><th scope="col">Nom</th><th scope="col">Groupe</th><th scope="col">Profil dans le dossier du groupe</th></tr></thead>
+                        <tbody>
+                            {% for line in ticked %}
+                                <tr>
+                                    <td>{{ line.student.sortName }}</td>
+                                    <td>
+                                        <label class="px-u-sr-only" for="group-{{ line.student.id }}">Groupe de {{ line.student.sortName }}</label>
+                                        <twig:Px:Select id="group-{{ line.student.id }}" name="group[{{ line.student.id }}]" size="sm" :options="range(1, ticked|length)|map(n => {value: n, label: 'Groupe ' ~ n})" value="{{ line.group }}"/>
+                                    </td>
+                                    <td>
+                                        <label class="px-u-sr-only" for="profile-{{ line.student.id }}">Profil de {{ line.student.sortName }}</label>
+                                        <twig:Px:Select id="profile-{{ line.student.id }}" name="profile[{{ line.student.id }}]" size="sm" placeholder="Sans profil : tous les droits" :options="profiles" value="{{ line.profile ? line.profile.value : '' }}"/>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                </twig:Px:Card>
+
+                <div class="px-cluster">
+                    <twig:Px:Button href="{{ path('app_library_distribute', {dossier: template.id}) ~ '?' ~ ({class: plan.schoolClass.id}|merge(plan.choices.query))|url_encode }}" icon="chevron-left">Revenir aux étudiants</twig:Px:Button>
+                    <twig:Px:Button type="submit" variant="primary" icon="arrow-right" class="px-u-push">Voir le récapitulatif</twig:Px:Button>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block facts %}<span>Modèle · <b>{{ template.libraryTitle }}</b></span><span>{{ plan.schoolClass.label }} · <b>{{ ticked|length }}</b> {{ ticked|length > 1 ? 'étudiants' : 'étudiant' }}</span>{% endblock %}
