@@ -38,7 +38,7 @@
                 <p class="px-doc__party-name">{{ employee.fullName }}</p>
                 <p>Matricule {{ employee.registrationNumber }} · {{ terms.jobTitle }}</p>
                 <p>{{ terms.statusLabel }}{% if terms.classification %} · {{ terms.classification }}{% endif %}</p>
-                <p>Entré{{ employee.sex.value == 'F' ? 'e' : '' }} le {{ employee.hiredOn|date_fr }}{% if employee.nir %} · n° de sécurité sociale {{ nir }}{% endif %}</p>
+                <p>Entré{{ employee.sex.value == 'F' ? 'e' : '' }} le {{ employee.hiredOn|date_fr }}{% if employee.nir %} · <span class="px-doc__nowrap">n° de sécurité sociale {{ nir }}</span>{% endif %}</p>
             </div>
         </header>
         <p class="px-doc__band">Bulletin de paie · du 1er au {{ pay_day|date('j') }} {{ month|period }} · paiement le {{ pay_day|date_fr }} par virement</p>

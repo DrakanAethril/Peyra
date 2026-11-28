@@ -1,20 +1,21 @@
 {# The livre de paie (step 4.5): each validated payslip of the month, one line per employee, and their total. On screen a matricule opens the payslip's PDF. #}
 {% set pdf = pdf|default(false) %}
 {% set num = pdf ? 'px-doc__num' : 'px-u-num' %}
+{% set num_head = pdf ? 'px-doc__num' : 'px-u-right' %}
 {% set totals = statements.totals %}
 {% set cells %}
     <thead>
         <tr>
             <th scope="col">Matricule</th>
             <th scope="col">Salarié</th>
-            <th scope="col" class="{{ num }}">Salaire brut</th>
-            <th scope="col" class="{{ num }}">Cotisations salariales</th>
-            <th scope="col" class="{{ num }}">Net social</th>
-            <th scope="col" class="{{ num }}">Net imposable</th>
-            <th scope="col" class="{{ num }}">Impôt prélevé</th>
-            <th scope="col" class="{{ num }}">Net à payer</th>
-            <th scope="col" class="{{ num }}">Cotisations patronales</th>
-            <th scope="col" class="{{ num }}">Coût employeur</th>
+            <th scope="col" class="{{ num_head }}">Salaire brut</th>
+            <th scope="col" class="{{ num_head }}">Cotisations salariales</th>
+            <th scope="col" class="{{ num_head }}">Net social</th>
+            <th scope="col" class="{{ num_head }}">Net imposable</th>
+            <th scope="col" class="{{ num_head }}">Impôt prélevé</th>
+            <th scope="col" class="{{ num_head }}">Net à payer</th>
+            <th scope="col" class="{{ num_head }}">Cotisations patronales</th>
+            <th scope="col" class="{{ num_head }}">Coût employeur</th>
         </tr>
     </thead>
     <tbody>
@@ -49,7 +50,7 @@
     </tfoot>
 {% endset %}
 {% if pdf %}
-    <table class="px-doc__table">{{ cells }}</table>
+    <table class="px-doc__table px-doc__table--wraphead"><colgroup><col style="width: 20mm"><col style="width: 40mm"><col span="8"></colgroup>{{ cells }}</table>
 {% else %}
     <twig:Px:Table caption="Livre de paie {{ statements.month|of_period }}" density="compact">{{ cells }}</twig:Px:Table>
 {% endif %}

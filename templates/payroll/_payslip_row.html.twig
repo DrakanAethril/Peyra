@@ -12,13 +12,15 @@
  #}
 {% set open = open_cells[row.code] ?? [] %}
 {% set line_hidden = establishing and not entry_check.isLineComplete(row.code) %}
-{% macro cell(row, field, display, open, cells, errors, texts, check) %}
+{% macro cell(row, field, display, open, cells, errors, texts, check, focus) %}
     {% set key = row.code ~ '.' ~ field %}
+    {% set unit = {base: row.baseUnit, employeeRate: row.employeeRateUnit, employerRate: row.employerRateUnit}[field] ?? null %}
+    {% set suffix = unit ? unit.suffix : null %}
     {% set forced = (check is null or not check.typedByStudent) and row.isForced(field) %}
     {% set state = check is null ? null : check.state(key) %}
     {% if field in open %}
         {% set shown = texts[key] ?? '' %}
-        <input class="px-payslip__cell{{ forced ? ' is-forced' : '' }}{{ state == 'gap' ? ' is-gap' : (state == 'missing' ? ' is-missing' : '') }}" form="payslip-elements" name="cell[{{ key }}]" value="{{ cells[key] ?? shown }}" aria-label="{{ row.label }} : {{ {base: 'base', employeeRate: 'taux salarié', employeeAmount: 'part salarié', employerRate: 'taux employeur', employerAmount: 'part employeur'}[field] }}{{ forced ? ' (valeur forcée)' : '' }}{{ state == 'gap' ? ' (à revoir)' : (state == 'missing' ? ' (à saisir)' : '') }}" autocomplete="off" inputmode="decimal" data-payslip-target="cell"{% if errors[key] is defined %} aria-invalid="true" title="{{ errors[key] }}"{% endif %}>
+        {% if suffix %}<span class="px-payslip__field" data-unit="{{ suffix }}">{% endif %}<input class="px-payslip__cell{{ forced ? ' is-forced' : '' }}{{ state == 'gap' ? ' is-gap' : (state == 'missing' ? ' is-missing' : '') }}" form="payslip-elements" name="cell[{{ key }}]" value="{{ cells[key] ?? shown }}" aria-label="{{ row.label }} : {{ {base: 'base', employeeRate: 'taux salarié', employeeAmount: 'part salarié', employerRate: 'taux employeur', employerAmount: 'part employeur'}[field] }}{{ forced ? ' (valeur forcée)' : '' }}{{ state == 'gap' ? ' (à revoir)' : (state == 'missing' ? ' (à saisir)' : '') }}" autocomplete="off" inputmode="decimal" data-payslip-target="cell"{% if focus and field == open|first %} autofocus{% endif %}{% if errors[key] is defined %} aria-invalid="true" title="{{ errors[key] }}"{% endif %}>{% if suffix %}</span>{% endif %}
         <input type="hidden" form="payslip-elements" name="shown[{{ key }}]" value="{{ shown }}">
         {% if errors[key] is defined %}<span class="px-field__error">{{ errors[key] }}</span>{% elseif state == 'gap' %}<span class="px-payslip__gap">forcée, à revoir</span>{% elseif forced %}<span class="px-payslip__forced">forcée</span>{% endif %}
     {% elseif forced %}
@@ -27,14 +29,14 @@
         {{ display }}
     {% endif %}
 {% endmacro %}
-{% set row_base = row.base is null ? '' : (row.baseUnit ? row.baseUnit.format(row.base) : row.base) %}
+{% set row_base = row.base is null ? '' : (row.baseUnit ? row.baseUnit.cellText(row.base) : row.base) %}
 <tr tabindex="{{ open is empty ? 0 : -1 }}" class="px-payslip__line" data-payslip-target="line" data-code="{{ row.code }}" data-action="click->payslip#explain focusin->payslip#focusLine keydown->payslip#lineKey" title="Détail du calcul (F5)">
-    <th scope="row"><span class="px-u-code px-u-muted">{{ row.code }}</span> {{ row.label }}{% if row.added %} <twig:Px:Badge tone="info" label="ajoutée"/>{% endif %}</th>
-    <td class="px-u-num">{{ _self.cell(row, 'base', row_base, open, cells, errors, cell_texts, entry_check) }}{% if not line_hidden and row.employeeBase is not null and row.base is not null and row.employeeBase != row.base %}<br><small class="px-u-muted">salarié : {{ row.baseUnit ? row.baseUnit.format(row.employeeBase) : row.employeeBase }}</small>{% endif %}</td>
-    <td class="px-u-num">{{ _self.cell(row, 'employeeRate', row.employeeRate is null ? '' : (row.employeeRateUnit ? row.employeeRateUnit.format(row.employeeRate) : row.employeeRate), open, cells, errors, cell_texts, entry_check) }}</td>
-    <td class="px-u-num">{{ _self.cell(row, 'employeeAmount', line_hidden or (row.employeeAmount.isZero and row.employerAmount is not null) ? '' : row.employeeAmount|amount, open, cells, errors, cell_texts, entry_check) }}</td>
-    <td class="px-u-num">{{ _self.cell(row, 'employerRate', row.employerRate is null ? '' : (row.employerRateUnit ? row.employerRateUnit.format(row.employerRate) : row.employerRate), open, cells, errors, cell_texts, entry_check) }}</td>
-    <td class="px-u-num">{{ _self.cell(row, 'employerAmount', line_hidden or row.employerAmount is null ? '' : row.employerAmount|amount, open, cells, errors, cell_texts, entry_check) }}</td>
+    <th scope="row" class="px-payslip__label"><span class="px-u-code px-u-muted">{{ row.code }}</span> {{ row.label }}{% if row.added %} <twig:Px:Badge tone="info" label="ajoutée"/>{% endif %}</th>
+    <td class="px-u-num">{{ _self.cell(row, 'base', row_base, open, cells, errors, cell_texts, entry_check, focus_line == row.code) }}{% if not line_hidden and row.employeeBase is not null and row.base is not null and row.employeeBase != row.base %}<br><small class="px-u-muted">salarié : {{ row.baseUnit ? row.baseUnit.cellText(row.employeeBase) : row.employeeBase }}</small>{% endif %}</td>
+    <td class="px-u-num">{{ _self.cell(row, 'employeeRate', row.employeeRate is null ? '' : (row.employeeRateUnit ? row.employeeRateUnit.cellText(row.employeeRate) : row.employeeRate), open, cells, errors, cell_texts, entry_check, focus_line == row.code) }}</td>
+    <td class="px-u-num">{{ _self.cell(row, 'employeeAmount', line_hidden or (row.employeeAmount.isZero and row.employerAmount is not null) ? '' : row.employeeAmount|amount, open, cells, errors, cell_texts, entry_check, focus_line == row.code) }}</td>
+    <td class="px-u-num">{{ _self.cell(row, 'employerRate', row.employerRate is null ? '' : (row.employerRateUnit ? row.employerRateUnit.cellText(row.employerRate) : row.employerRate), open, cells, errors, cell_texts, entry_check, focus_line == row.code) }}</td>
+    <td class="px-u-num">{{ _self.cell(row, 'employerAmount', line_hidden or row.employerAmount is null ? '' : row.employerAmount|amount, open, cells, errors, cell_texts, entry_check, focus_line == row.code) }}</td>
     <template>
         <h3 class="px-u-strong">{{ row.code }} · {{ row.label }}</h3>
         {% if establishing %}<p class="px-u-muted">Le bulletin est à établir : le calcul de l’outil sert au corrigé. Voici la valeur réglementaire que la rubrique lit.</p>{% endif %}

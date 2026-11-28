@@ -26,13 +26,12 @@
         {label: 'Bulletins', href: path('app_payroll_payslips', {dossier: dossier.id})},
         {label: month|period|capitalize, href: path('app_payroll_payslips', {dossier: dossier.id})},
     ]">
+        <twig:block name="badge"> <twig:Px:Badge :of="status"/>{% if payslip and payslip.sentOn %} <twig:Px:Badge tone="neutral" label="Envoyé le {{ payslip.sentOn|date_fr }}"/>{% endif %}</twig:block>
         <twig:block name="actions">
             <div class="px-entry-confirmable" data-controller="confirm-bar">
                 <div class="px-entry-actions" data-confirm-bar-target="actions">
-                    <twig:Px:Badge :of="status"/>
-                    {% if payslip and payslip.sentOn %}<twig:Px:Badge tone="neutral" label="Envoyé le {{ payslip.sentOn|date_fr }}"/>{% endif %}
-                    {% if previous %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: previous.registrationNumber}) }}" icon="chevron-up" shortcut="Ctrl+ArrowUp" data-payslip-leave="">Précédent</twig:Px:Button>{% endif %}
-                    {% if next %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: next.registrationNumber}) }}" icon="chevron-down" shortcut="Ctrl+ArrowDown" data-payslip-leave="">Suivant</twig:Px:Button>{% endif %}
+                    {% if previous %}<twig:Px:IconButton icon="chevron-up" label="Salarié précédent : {{ previous.fullName }} (Ctrl ↑)" href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: previous.registrationNumber}) }}" shortcut="Ctrl+ArrowUp" data-payslip-leave=""/>{% endif %}
+                    {% if next %}<twig:Px:IconButton icon="chevron-down" label="Salarié suivant : {{ next.fullName }} (Ctrl ↓)" href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: next.registrationNumber}) }}" shortcut="Ctrl+ArrowDown" data-payslip-leave=""/>{% endif %}
                     {% if payslip_view %}<twig:Px:Button shortcut="F5" data-payslip-explain="">Détail d’une rubrique</twig:Px:Button>{% endif %}
                     {% if validated %}
                         <twig:Px:Button href="{{ path('app_payroll_payslip_pdf', {dossier: dossier.id, number: employee.registrationNumber}) }}" icon="file-text" target="_blank">{{ payslip.sentOn ? 'Duplicata PDF' : 'Aperçu PDF' }}</twig:Px:Button>
@@ -46,7 +45,7 @@
                             <twig:Px:Button data-action="confirm-bar#open">Annuler le bulletin</twig:Px:Button>
                         {% endif %}
                     {% elseif can_edit %}
-                        {% if payslip_view %}<twig:Px:Button icon="plus" shortcut="Insert" data-px-open="payslip-add">Ajouter une rubrique</twig:Px:Button>{% endif %}
+                        {% if payslip_view %}<twig:Px:IconButton icon="plus" label="Ajouter une rubrique (Inser)" shortcut="Insert" data-px-open="payslip-add"/>{% endif %}
                         <twig:Px:Button type="submit" form="payslip-elements" :variant="status.toValidate ? 'secondary' : 'primary'" shortcut="F9 F10">{{ status.value == 'todo' ? 'Calculer le bulletin' : 'Recalculer' }}</twig:Px:Button>
                         {% if status.toValidate %}<twig:Px:Button variant="primary" shortcut="Ctrl+Enter" data-action="confirm-bar#open" data-payslip-leave="">Valider le bulletin</twig:Px:Button>{% endif %}
                     {% endif %}
@@ -94,7 +93,7 @@
             {% set missing = entry_check.missing %}
             <twig:Px:Alert tone="info" title="Bulletin à établir">
                 {{- 'Ajoutez chaque rubrique (Inser) et saisissez sa base, son taux ou son montant ; ' -}}
-                F9 recalcule. {{ missing > 0 ? (missing > 1 ? missing ~ ' cellules restent à saisir' : 'Une cellule reste à saisir') ~ ' : les montants d’une ligne et les totaux s’affichent une fois ses cellules saisies.' : 'Toutes les cellules sont saisies.' }}
+                F9 recalcule. {{ missing > 0 ? (missing > 1 ? missing ~ ' cellules restent à saisir' : 'Une cellule reste à saisir') ~ ' : les montants d’une ligne et les totaux s’affichent une fois ses cellules saisies.' : (payslip_view and (payslip_view.gross is not empty or payslip_view.contributions is not empty or payslip_view.after is not empty) ? 'Toutes les cellules sont saisies.' : 'Le bulletin ne porte encore aucune rubrique.') }}
             </twig:Px:Alert>
         {% endif %}
         {% if last_entries.any %}
@@ -121,7 +120,7 @@
                 <twig:Px:Card title="Éléments du mois" :flush="true">
                     <form method="post" id="payslip-elements" action="{{ path('app_payroll_payslip', {dossier: dossier.id, number: employee.registrationNumber}) }}" novalidate data-controller="focus-error" data-payslip-target="form" data-action="submit->payslip#saving">
                         <input type="hidden" name="_token" value="{{ csrf_token('payslip-' ~ employee.id) }}">
-                        <twig:Px:Table caption="Éléments du mois de {{ employee.fullName }}" density="compact">
+                        <twig:Px:Table caption="Éléments du mois de {{ employee.fullName }}" density="compact" class="px-payslip__elements">
                             <tbody>
                                 <tr><th scope="row">Horaire mensuel</th><td class="px-u-num">{{ terms.monthlyHours|hours }}</td></tr>
                                 <tr><th scope="row">Salaire de base</th><td class="px-u-num">{{ terms.baseSalary|amount }}</td></tr>
@@ -130,8 +129,8 @@
                                     {% set field_id = 'el-' ~ field.kind ~ '-' ~ field.code %}
                                     {% set field_error = errors[field.key] ?? null %}
                                     <tr>
-                                        <th scope="row"><label for="{{ field_id }}">{{ field.label }}</label>{% if field_error %}<p class="px-field__error" id="{{ field_id }}_error">{{ field_error }}</p>{% endif %}</th>
-                                        <td class="px-u-num"><twig:Px:Input id="{{ field_id }}" name="{{ field.kind }}[{{ field.code }}]" value="{{ typed[field.key] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" :disabled="not can_edit" placeholder="{{ field.unit }}" :autofocus="loop.first and can_edit"/></td>
+                                        <th scope="row"><label for="{{ field_id }}">{{ field.label|replace({' %': ' %'}) }}</label>{% if field_error %}<p class="px-field__error" id="{{ field_id }}_error">{{ field_error }}</p>{% endif %}</th>
+                                        <td class="px-u-num"><twig:Px:Input id="{{ field_id }}" name="{{ field.kind }}[{{ field.code }}]" value="{{ typed[field.key] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" :disabled="not can_edit" placeholder="{{ field.unit }}" :autofocus="loop.first and can_edit and focus_line == ''"/></td>
                                     </tr>
                                 {% endfor %}
                                 {% if takes_paid_leave %}
@@ -185,18 +184,23 @@
                         {% if refusal %}
                             <twig:Px:Empty icon="triangle-alert" title="Le bulletin ne se calcule pas" text="{{ refusal }}"/>
                         {% else %}
-                            <twig:Px:Empty icon="percent" title="Bulletin à calculer" text="Saisissez les éléments du mois de {{ employee.fullName }}, puis calculez le bulletin (F9) : le calcul de chaque ligne s’affiche d’un clic."/>
+                            {% if assistance and assistance.startsPayslipEmpty %}
+                                <twig:Px:Empty icon="percent" title="Bulletin à établir" text="Saisissez les éléments du mois de {{ employee.fullName }}, puis F9 : le bulletin s’ouvre sans rubrique, et chacune s’ajoute (Inser) et se saisit ligne à ligne."/>
+                            {% else %}
+                                <twig:Px:Empty icon="percent" title="Bulletin à calculer" text="Saisissez les éléments du mois de {{ employee.fullName }}, puis calculez le bulletin (F9) : le calcul de chaque ligne s’affiche d’un clic."/>
+                            {% endif %}
                         {% endif %}
                     {% else %}
                         <twig:Px:Table caption="Bulletin de {{ employee.fullName }}, {{ month|period }}" density="compact">
+                            <colgroup><col><col style="width: 108px"><col style="width: 92px"><col style="width: 100px"><col style="width: 92px"><col style="width: 100px"></colgroup>
                             <thead>
                                 <tr>
                                     <th scope="col">Rubrique</th>
-                                    <th scope="col" class="px-u-num">Base</th>
-                                    <th scope="col" class="px-u-num">Taux salarié</th>
-                                    <th scope="col" class="px-u-num">Part salarié</th>
-                                    <th scope="col" class="px-u-num">Taux employeur</th>
-                                    <th scope="col" class="px-u-num">Part employeur</th>
+                                    <th scope="col" class="px-u-right">Base</th>
+                                    <th scope="col" class="px-u-right">Taux salarié</th>
+                                    <th scope="col" class="px-u-right">Part salarié</th>
+                                    <th scope="col" class="px-u-right">Taux employeur</th>
+                                    <th scope="col" class="px-u-right">Part employeur</th>
                                 </tr>
                             </thead>
                             <tbody>

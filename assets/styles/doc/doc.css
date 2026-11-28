@@ -60,8 +60,9 @@
     font-size: 8pt;
 }
 
-.px-doc__section {
-    margin: 5mm 0 2mm;
+/* Qualified by .px-doc: the reset of .px-doc h2 above would otherwise take its margins away. */
+.px-doc .px-doc__section {
+    margin: 3mm 0 1mm;
     font-size: 7pt;
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -92,6 +93,13 @@
     text-transform: uppercase;
     text-align: left;
     color: var(--doc-muted);
+}
+
+/* A state whose figure columns are narrow (the livre de paie): their heads wrap rather than overlap. */
+.px-doc__table--wraphead thead th,
+.px-doc__table--wraphead thead th.px-doc__num {
+    white-space: normal;
+    vertical-align: bottom;
 }
 
 .px-doc__table td {
@@ -389,4 +397,19 @@
 
 .px-doc__table--year {
     margin-top: 4mm;
+}
+
+/* A run of text kept on one line (a social security number). */
+.px-doc__nowrap {
+    white-space: nowrap;
+}
+
+/* The payslip's sections (design-ui.md § 4.18): an intertitle in 7 pt capitals on the head grey. */
+.px-doc__table--payslip .px-doc__group > th {
+    padding: 1mm 1.5mm;
+    background: var(--doc-head);
+    color: var(--doc-muted);
+    font-size: 7pt;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }

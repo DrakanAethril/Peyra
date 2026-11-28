@@ -69,8 +69,36 @@
         background: var(--px-action-soft);
     }
 
-    .px-payslip__line > td:has(> .px-payslip__cell) {
+    .px-payslip__line > td:has(.px-payslip__cell) {
         padding-block: 0;
+    }
+
+    /* An open cell's unit (« h », « % ») after what is typed, as the mock-up prints it. */
+    .px-payslip__field {
+        position: relative;
+        display: block;
+
+        &::after {
+            content: attr(data-unit);
+            position: absolute;
+            inset-block: 0;
+            inset-inline-end: var(--px-space-6);
+            display: flex;
+            align-items: center;
+            color: var(--px-text-muted);
+            pointer-events: none;
+        }
+
+        & > .px-payslip__cell {
+            padding-inline-end: 18px;
+        }
+    }
+
+    /* A rubrique's name and the month's elements read as text, as on the mock-up; subtotals stay bold. */
+    .px-table tbody th[scope="row"].px-payslip__label,
+    .px-table.px-payslip__elements tbody th[scope="row"] {
+        color: var(--px-text);
+        font-weight: var(--px-fw-regular);
     }
 
     .px-payslip__add {

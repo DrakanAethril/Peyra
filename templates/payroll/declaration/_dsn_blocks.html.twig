@@ -6,6 +6,7 @@
  #}
 {% set pdf = pdf|default(false) %}
 {% set num = pdf ? 'px-doc__num' : 'px-u-num' %}
+{% set num_head = pdf ? 'px-doc__num' : 'px-u-right' %}
 {% set table_class = pdf ? 'px-doc__table' : 'px-table' %}
 {% set statements = preparation.statements %}
 {% set period = statements.month|date('Y-m') %}
@@ -41,11 +42,11 @@
         {% for individual in preparation.individuals %}
             <tr>
                 <td class="px-u-code">{{ individual.number }}</td>
-                <td>{{ individual.lastName }} {{ individual.firstName }} ({{ individual.sex.value }})</td>
-                <td class="px-u-code">{{ individual.nir ?? '—' }}</td>
+                <td class="px-u-nowrap">{{ individual.lastName }} {{ individual.firstName }} ({{ individual.sex.value }})</td>
+                <td class="px-u-code px-u-nowrap">{{ individual.nir ?? '—' }}</td>
                 <td>{{ individual.birthDate|date_fr }}{{ individual.birthPlace ? ', ' ~ individual.birthPlace : '' }}</td>
                 <td>{{ individual.contract.label }} depuis le {{ individual.hiredOn|date_fr }}{{ individual.contractEndsOn ? ', terme le ' ~ individual.contractEndsOn|date_fr : '' }}</td>
-                <td>{{ individual.executive ? 'Cadre' : 'Non-cadre' }}</td>
+                <td class="px-u-nowrap">{{ individual.executive ? 'Cadre' : 'Non-cadre' }}</td>
                 <td>{{ individual.workingTime.label }}, {{ individual.monthlyHours|replace({'.': ','}) }} h</td>
                 <td>{{ individual.jobTitle }}</td>
                 <td>{{ individual.exitOn ? individual.exitOn|date_fr ~ ' · ' ~ individual.exitReason.label : '—' }}</td>
@@ -60,13 +61,13 @@
         <tr>
             <th scope="col">Matricule</th>
             <th scope="col">Salarié</th>
-            <th scope="col" class="{{ num }}">Brut</th>
-            <th scope="col" class="{{ num }}">Cotisations salariales</th>
-            <th scope="col" class="{{ num }}">Net social</th>
-            <th scope="col" class="{{ num }}">Net imposable</th>
-            <th scope="col" class="{{ num }}">Taux PAS</th>
-            <th scope="col" class="{{ num }}">Prélèvement à la source</th>
-            <th scope="col" class="{{ num }}">Net versé</th>
+            <th scope="col" class="{{ num_head }}">Brut</th>
+            <th scope="col" class="{{ num_head }}">Cotisations salariales</th>
+            <th scope="col" class="{{ num_head }}">Net social</th>
+            <th scope="col" class="{{ num_head }}">Net imposable</th>
+            <th scope="col" class="{{ num_head }}">Taux PAS</th>
+            <th scope="col" class="{{ num_head }}">Prélèvement à la source</th>
+            <th scope="col" class="{{ num_head }}">Net versé</th>
         </tr>
     </thead>
     <tbody>
@@ -74,7 +75,7 @@
             {% set p = individual.payslip %}
             <tr>
                 <td class="px-u-code">{{ individual.number }}</td>
-                <td>{{ individual.lastName }} {{ individual.firstName }}</td>
+                <td class="px-u-nowrap">{{ individual.lastName }} {{ individual.firstName }}</td>
                 <td class="{{ num }}">{{ m.payslip(p.gross, individual.number, period, pdf) }}</td>
                 <td class="{{ num }}">{{ m.payslip(p.totals.employeeContributions, individual.number, period, pdf) }}</td>
                 <td class="{{ num }}">{{ m.payslip(p.totals.netSocial, individual.number, period, pdf) }}</td>
@@ -104,9 +105,9 @@
         <tr>
             <th scope="col">Organisme</th>
             <th scope="col">Référence</th>
-            <th scope="col" class="{{ num }}">Part salariale</th>
-            <th scope="col" class="{{ num }}">Part patronale</th>
-            <th scope="col" class="{{ num }}">Total dû</th>
+            <th scope="col" class="{{ num_head }}">Part salariale</th>
+            <th scope="col" class="{{ num_head }}">Part patronale</th>
+            <th scope="col" class="{{ num_head }}">Total dû</th>
         </tr>
     </thead>
     <tbody>
@@ -136,7 +137,7 @@
             <th scope="col">Versement</th>
             <th scope="col">Compte</th>
             <th scope="col">Échéance</th>
-            <th scope="col" class="{{ num }}">Montant</th>
+            <th scope="col" class="{{ num_head }}">Montant</th>
             <th scope="col">Pièce</th>
             <th scope="col">État au {{ dossier.dossierDate|date_fr }}</th>
         </tr>
@@ -159,7 +160,7 @@
 
 {% set blocks = [
     {id: 'dsn-establishment', title: 'Établissement', cells: establishment_cells, caption: 'Établissement déclarant'},
-    {id: 'dsn-individuals', title: 'Individus et contrats', cells: individual_cells, caption: 'Individus et contrats ' ~ statements.month|of_period},
+    {id: 'dsn-individuals', title: 'Individus et contrats', cells: individual_cells, caption: 'Individus et contrats ' ~ statements.month|of_period, cols: ['20mm', '36mm', '40mm', '22mm', null, '20mm', '28mm', '34mm', '24mm']},
     {id: 'dsn-pay', title: 'Rémunérations et prélèvement à la source', cells: pay_cells, caption: 'Rémunérations ' ~ statements.month|of_period},
     {id: 'dsn-bodies', title: 'Cotisations par organisme', cells: body_cells, caption: 'Cotisations par organisme ' ~ statements.month|of_period},
     {id: 'dsn-payments', title: 'Versements', cells: payment_cells, caption: 'Versements de la paie ' ~ statements.month|of_period},
@@ -167,7 +168,7 @@
 {% for block in blocks %}
     {% if pdf %}
         <h2 class="px-doc__section">{{ block.title }}</h2>
-        <table class="px-doc__table">{{ block.cells }}</table>
+        <table class="px-doc__table">{% if block.cols is defined %}<colgroup>{% for width in block.cols %}<col{% if width %} style="width: {{ width }}"{% endif %}>{% endfor %}</colgroup>{% endif %}{{ block.cells }}</table>
     {% else %}
         <twig:Px:Card title="{{ block.title }}" :flush="true" id="{{ block.id }}">
             <twig:block name="content">

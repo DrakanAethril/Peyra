@@ -21,11 +21,11 @@
                     <tr>
                         <th scope="col">Mois</th>
                         <th scope="col">État</th>
-                        <th scope="col" class="px-u-num">Salaire brut</th>
-                        <th scope="col" class="px-u-num">Net à payer</th>
-                        <th scope="col" class="px-u-num">Coût employeur</th>
-                        <th scope="col" class="px-u-num">Validé le</th>
-                        <th scope="col" class="px-u-num">Envoyé le</th>
+                        <th scope="col" class="px-u-right">Salaire brut</th>
+                        <th scope="col" class="px-u-right">Net à payer</th>
+                        <th scope="col" class="px-u-right">Coût employeur</th>
+                        <th scope="col" class="px-u-right">Validé le</th>
+                        <th scope="col" class="px-u-right">Envoyé le</th>
                         <th scope="col"><span class="px-u-sr-only">Actions</span></th>
                     </tr>
                 </thead>
@@ -35,11 +35,11 @@
                         <tr>
                             <td>{{ p.month|period|capitalize }}</td>
                             <td><twig:Px:Badge :of="p.status"/></td>
-                            <td class="px-u-num">{{ row.result ? row.result.gross|amount : '—' }}</td>
-                            <td class="px-u-num">{{ row.result ? row.result.totals.netPay|amount : '—' }}</td>
-                            <td class="px-u-num">{{ row.result ? row.result.totals.employerCost|amount : '—' }}</td>
-                            <td class="px-u-num">{{ p.validatedOn ? p.validatedOn|date_fr : '—' }}</td>
-                            <td class="px-u-num">{{ p.sentOn ? p.sentOn|date_fr : '—' }}</td>
+                            <td class="px-u-num">{{ row.result ? row.result.gross|amount : '' }}</td>
+                            <td class="px-u-num">{{ row.result ? row.result.totals.netPay|amount : '' }}</td>
+                            <td class="px-u-num">{{ row.result ? row.result.totals.employerCost|amount : '' }}</td>
+                            <td class="px-u-num">{{ p.validatedOn ? p.validatedOn|date_fr : '' }}</td>
+                            <td class="px-u-num">{{ p.sentOn ? p.sentOn|date_fr : '' }}</td>
                             <td>
                                 <div class="px-cluster">
                                 {% if p.validated %}

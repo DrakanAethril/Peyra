@@ -52,7 +52,9 @@ final readonly class PayslipControls
                 ? ['tone' => self::PASSED, 'text' => \sprintf('Salaire d’apprenti au moins égal au minimum légal (%s)', FrenchFormat::amountInEuros($apprenticeMinimum))]
                 : ['tone' => self::FAULT, 'text' => \sprintf('Salaire d’apprenti de %s sous le minimum légal de %s : à revoir dans la fiche du salarié', FrenchFormat::amountInEuros($baseSalary), FrenchFormat::amountInEuros($apprenticeMinimum))];
         } else {
-            $items[] = $hourlyRate->compareTo($smicHourly) >= 0
+            // The SMIC is published to the cent, its monthly amount for 151 2/3 hours: 1 823,03 € ÷ 151,67 h gives
+            // 12,0197 €, which is the SMIC of 12,02 € and not under it. The rate is compared once rounded to the cent.
+            $items[] = $hourlyRate->toScale(2, RoundingMode::HalfUp)->compareTo($smicHourly) >= 0
                 ? ['tone' => self::PASSED, 'text' => \sprintf('Salaire horaire de %s € au moins égal au SMIC (%s €)', FrenchFormat::number($hourlyRate), FrenchFormat::number($smicHourly))]
                 : ['tone' => self::FAULT, 'text' => \sprintf('Salaire horaire de %s € sous le SMIC (%s €) : à revoir dans la fiche du salarié', FrenchFormat::number($hourlyRate), FrenchFormat::number($smicHourly))];
         }
