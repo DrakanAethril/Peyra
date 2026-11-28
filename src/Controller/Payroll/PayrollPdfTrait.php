@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace App\Controller\Payroll;
 
 use App\Entity\Dossier\Dossier;
+use App\Entity\Payroll\MonthlyPayslip;
+use App\Service\Payroll\Employee\Nir;
+use App\Service\Payroll\Engine\Payslip;
+use App\Service\Payroll\Payslip\PayslipBook;
+use App\Service\Payroll\Payslip\PayslipPrintLines;
 use App\Service\Shared\Pdf\PdfRenderer;
 use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,5 +27,29 @@ trait PayrollPdfTrait
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_INLINE, $file),
         ]);
+    }
+
+    /** A validated payslip printed on the clarified model (step 4.4b), a duplicata once sent. */
+    private static function payslipPdf(PdfRenderer $renderer, MonthlyPayslip $payslip, Payslip $result): Response
+    {
+        $dossier = $payslip->getDossier();
+        $employee = $payslip->getEmployee();
+        $month = $payslip->getMonth();
+        $day = PayslipBook::payDay($month);
+
+        return self::pdf($renderer, 'payroll/payslip.pdf.html.twig', [
+            'pdf' => true,
+            'dossier' => $dossier,
+            'company' => $dossier->getCompany(),
+            'employee' => $employee,
+            'terms' => $employee->termsAt($day),
+            'nir' => null === $employee->getNir() ? null : Nir::format($employee->getNir()),
+            'month' => $month,
+            'pay_day' => $day,
+            'payslip' => $payslip,
+            'result' => $result,
+            'lines' => PayslipPrintLines::of($result),
+            'duplicate' => null !== $payslip->getSentOn(),
+        ], ($payslip->getSentOn() ? 'duplicata bulletin ' : 'bulletin ').$employee->getRegistrationNumber().' '.$month->format('Y-m'), $dossier);
     }
 }

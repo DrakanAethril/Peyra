@@ -11,7 +11,6 @@ use App\Entity\Payroll\MonthlyPayslip;
 use App\Enum\Payroll\PayslipStatus;
 use App\Security\Voter\DossierRightVoter;
 use App\Security\Voter\DossierVoter;
-use App\Service\Payroll\Employee\Nir;
 use App\Service\Payroll\Engine\PayslipAdjustments;
 use App\Service\Payroll\Engine\PayslipRow;
 use App\Service\Payroll\Payslip\PayslipBook;
@@ -20,7 +19,6 @@ use App\Service\Payroll\Payslip\PayslipElementFields;
 use App\Service\Payroll\Payslip\PayslipElements;
 use App\Service\Payroll\Payslip\PayslipElementsRules;
 use App\Service\Payroll\Payslip\PayslipLineCells;
-use App\Service\Payroll\Payslip\PayslipPrintLines;
 use App\Service\Payroll\Payslip\PayslipView;
 use App\Service\Payroll\Plan\PayrollItemSpec;
 use App\Service\Shared\FrenchFormat;
@@ -252,22 +250,8 @@ final class PayslipsController extends AbstractController
             throw new NotFoundHttpException('Only a validated payslip is printed.');
         }
         $result = $book->resultOf($payslip)['payslip'] ?? throw new NotFoundHttpException('A frozen payslip reads.');
-        $day = PayslipBook::payDay($month);
 
-        return self::pdf($renderer, 'payroll/payslip.pdf.html.twig', [
-            'pdf' => true,
-            'dossier' => $dossier,
-            'company' => $dossier->getCompany(),
-            'employee' => $employee,
-            'terms' => $employee->termsAt($day),
-            'nir' => null === $employee->getNir() ? null : Nir::format($employee->getNir()),
-            'month' => $month,
-            'pay_day' => $day,
-            'payslip' => $payslip,
-            'result' => $result,
-            'lines' => PayslipPrintLines::of($result),
-            'duplicate' => null !== $payslip->getSentOn(),
-        ], ($payslip->getSentOn() ? 'duplicata bulletin ' : 'bulletin ').$employee->getRegistrationNumber().' '.$month->format('Y-m'), $dossier);
+        return self::payslipPdf($renderer, $payslip, $result);
     }
 
     private function readable(Dossier $dossier): void
