@@ -117,4 +117,12 @@
         gap: var(--px-space-8) var(--px-space-12);
         align-items: start;
     }
+
+    /* The generator's lines (step 2.1b): designation, quantity, unit price, rate. */
+    .px-invoicelines {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 6rem 9rem 5rem;
+        gap: var(--px-space-8) var(--px-space-12);
+        align-items: start;
+    }
 }

@@ -1,0 +1,149 @@
+{#
+ # A purchase invoice printed by the generator (step 2.1b): a fictitious supplier's own paper, not
+ # Peyra's. The three layouts (InvoiceLayout) extend it and restyle it; what it prints is
+ # PrintedInvoice - faults included - and the mentions a teacher may leave out are asked with
+ # `invoice.shows(...)`. Variables: invoice, supplier (ThirdParty), charter (InvoiceCharter),
+ # recipient ({name, lines, siren, vatNumber}).
+ #}
+{% extends 'doc/_document.html.twig' %}
+
+{% block title %}Facture {{ invoice.number ?? '' }} · {{ supplier.name }}{% endblock %}
+
+{% block page_style %}
+    <style>
+        .inv { --brand: {{ charter.colour }}; display: flex; flex-direction: column; gap: 6mm; }
+        .inv h1, .inv h2, .inv p { margin: 0; }
+        .inv__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8mm; }
+        .inv__brand { display: flex; gap: 4mm; align-items: flex-start; }
+        .inv__mark { display: flex; align-items: center; justify-content: center; width: 15mm; height: 15mm; flex: none; color: #ffffff; background: var(--brand); font-weight: 700; font-size: 14pt; letter-spacing: .04em; }
+        .inv__name { font-size: 13pt; font-weight: 700; color: var(--brand); }
+        .inv__small { font-size: 8pt; color: #4a5562; }
+        .inv__title { font-size: 20pt; font-weight: 700; letter-spacing: .06em; color: var(--brand); text-align: right; }
+        .inv__meta { display: grid; grid-template-columns: auto auto; gap: 1mm 4mm; justify-content: end; font-size: 9pt; }
+        .inv__meta dt { color: #4a5562; text-align: right; }
+        .inv__meta dd { margin: 0; font-weight: 600; }
+        .inv__parties { display: flex; justify-content: flex-end; }
+        .inv__to { width: 80mm; padding: 3mm 4mm; border: .3mm solid #b8c0c8; }
+        .inv__to b { display: block; font-size: 10pt; }
+        .inv__label { display: block; margin-bottom: 1mm; font-size: 7.5pt; text-transform: uppercase; letter-spacing: .08em; color: #4a5562; }
+        .inv table { width: 100%; border-collapse: collapse; }
+        .inv th, .inv td { padding: 1.6mm 2mm; text-align: left; vertical-align: top; }
+        .inv th { font-size: 8pt; font-weight: 600; }
+        .inv .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .inv__lines thead th { border-bottom: .4mm solid var(--brand); }
+        .inv__lines tbody td { border-bottom: .2mm solid #d5dae0; }
+        .inv__bottom { display: flex; justify-content: space-between; gap: 8mm; align-items: flex-start; }
+        .inv__vat { width: 85mm; }
+        .inv__vat th { border-bottom: .2mm solid #8a95a1; }
+        .inv__totals { width: 70mm; }
+        .inv__totals td { border-bottom: .2mm solid #d5dae0; }
+        .inv__totals tr:last-child td { border-bottom: 0; font-weight: 700; font-size: 11pt; color: var(--brand); }
+        .inv__terms { font-size: 8pt; color: #303a45; border-top: .2mm solid #d5dae0; padding-top: 3mm; display: flex; flex-direction: column; gap: 1mm; }
+        {% block layout_style %}{% endblock %}
+    </style>
+{% endblock %}
+
+{% block body %}
+    <article class="inv inv--{{ charter.layout.value }}">
+        {% block head %}
+            <header class="inv__head">
+                {{ block('brand') }}
+                {{ block('title_block') }}
+            </header>
+        {% endblock %}
+
+        <section class="inv__parties">
+            <div class="inv__to">
+                <span class="inv__label">Facturé à</span>
+                <b>{{ recipient.name }}</b>
+                {% for line in recipient.lines %}<p>{{ line }}</p>{% endfor %}
+                {% if recipient.siren %}<p class="inv__small">SIREN {{ recipient.siren }}</p>{% endif %}
+                {% if recipient.vatNumber %}<p class="inv__small">TVA intracommunautaire {{ recipient.vatNumber }}</p>{% endif %}
+            </div>
+        </section>
+
+        <table class="inv__lines">
+            <thead>
+                <tr>
+                    <th scope="col">Désignation</th>
+                    <th scope="col" class="num">Quantité</th>
+                    <th scope="col" class="num">Prix unitaire HT</th>
+                    <th scope="col" class="num">TVA</th>
+                    <th scope="col" class="num">Montant HT</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in invoice.lines %}
+                    <tr>
+                        <td>{{ row.line.designation }}</td>
+                        <td class="num">{{ row.line.quantity|quantity(row.line.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}</td>
+                        <td class="num">{{ row.line.unitPrice|amount }}</td>
+                        <td class="num">{{ row.line.rate|percent }}</td>
+                        <td class="num">{{ row.amount|amount }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <section class="inv__bottom">
+            <table class="inv__vat">
+                <thead>
+                    <tr><th scope="col">Taux de TVA</th><th scope="col" class="num">Base HT</th><th scope="col" class="num">Montant TVA</th></tr>
+                </thead>
+                <tbody>
+                    {% for line in invoice.vatLines %}
+                        <tr><td>{{ line.rate|percent }}</td><td class="num">{{ line.base|amount }}</td><td class="num">{{ line.vat|amount }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <table class="inv__totals">
+                <tbody>
+                    <tr><td>Total HT</td><td class="num">{{ invoice.totalExcludingTax|amount_eur }}</td></tr>
+                    <tr><td>Total TVA</td><td class="num">{{ invoice.totalVat|amount_eur }}</td></tr>
+                    <tr><td>Net à payer TTC</td><td class="num">{{ invoice.totalIncludingTax|amount_eur }}</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <footer class="inv__terms">
+            {% if invoice.shows('due_date') and invoice.dueDate %}<p><b>Échéance : {{ invoice.dueDate|date_fr }}</b></p>{% endif %}
+            <p>Conditions de règlement : {{ supplier.paymentTerms.label|lower }} · mode de règlement : {{ supplier.paymentMethod.label|lower }}.</p>
+            {% if invoice.shows('early_payment') %}<p>Escompte pour paiement anticipé : néant.</p>{% endif %}
+            {% if invoice.shows('late_penalties') %}<p>En cas de retard de paiement, pénalités au taux de trois fois le taux d’intérêt légal.</p>{% endif %}
+            {% if invoice.shows('recovery_fee') %}<p>Indemnité forfaitaire pour frais de recouvrement due en cas de retard : 40 €.</p>{% endif %}
+        </footer>
+    </article>
+{% endblock %}
+
+{% block brand %}
+    <div class="inv__brand">
+        <span class="inv__mark">{{ charter.monogram }}</span>
+        <div>
+            <p class="inv__name">{{ supplier.name }}</p>
+            {{ block('supplier_identity') }}
+        </div>
+    </div>
+{% endblock %}
+
+{% block supplier_identity %}
+    <div class="inv__small">
+        {% if supplier.street %}<p>{{ supplier.street }}</p>{% endif %}
+        {% if supplier.street2 %}<p>{{ supplier.street2 }}</p>{% endif %}
+        {% if supplier.postalCode or supplier.city %}<p>{{ supplier.postalCode }} {{ supplier.city }}</p>{% endif %}
+        {% if supplier.phone %}<p>Tél. {{ supplier.phone }}</p>{% endif %}
+        {% if supplier.email %}<p>{{ supplier.email }}</p>{% endif %}
+        {% if invoice.shows('supplier_siren') and supplier.siren %}<p>SIREN {{ supplier.siren }}</p>{% endif %}
+        {% if invoice.shows('supplier_vat_number') and supplier.vatNumber %}<p>TVA intracommunautaire {{ supplier.vatNumber }}</p>{% endif %}
+    </div>
+{% endblock %}
+
+{% block title_block %}
+    <div>
+        <h1 class="inv__title">FACTURE</h1>
+        <dl class="inv__meta">
+            {% if invoice.number %}<dt>Numéro</dt><dd>{{ invoice.number }}</dd>{% endif %}
+            <dt>Date</dt><dd>{{ invoice.date|date_fr }}</dd>
+            {% if invoice.orderReference %}<dt>Votre commande</dt><dd>{{ invoice.orderReference }}</dd>{% endif %}
+        </dl>
+    </div>
+{% endblock %}

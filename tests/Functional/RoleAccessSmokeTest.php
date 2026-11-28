@@ -105,6 +105,7 @@ final class RoleAccessSmokeTest extends WebTestCase
         yield 'Nouveau dossier modèle' => ['/teacher/library/new', $teachers];
         yield 'Nouveau dossier modèle vide' => ['/teacher/library/new/empty', $teachers];
         yield 'Nouveau dossier modèle depuis un FEC' => ['/teacher/library/new/fec', $teachers];
+        yield 'Pièces › Générateur' => ['/teacher/documents/generator', $teachers];
     }
 
     /** The sheet of a regulatory value and « Nouvelle valeur datée », on a value written for the test. */
@@ -359,6 +360,9 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/teacher/library/'.$own.'/distribute' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
             '/teacher/library/'.$common.'/distribute' => ['student' => 404, 'teacher' => 200, 'admin' => 200, 'refused' => 302],
             '/teacher/library/'.$student.'/distribute' => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
+            '/teacher/documents/generator/'.$own => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/teacher/documents/generator/'.$common => ['student' => 404, 'teacher' => 404, 'admin' => 200, 'refused' => 302],
+            '/teacher/documents/generator/'.$student => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
         ];
         foreach ($table as $url => $expected) {
             $actual = [];

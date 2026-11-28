@@ -187,6 +187,9 @@ enum AuditAction: string
 
     case DocumentReadingChanged = 'document.reading_changed';
 
+    /** A pièce made by the teacher's generator (step 2.1b). */
+    case DocumentGenerated = 'document.generated';
+
     public function label(): string
     {
         return match ($this) {
@@ -252,6 +255,7 @@ enum AuditAction: string
             self::EmployeeExitCancelled => 'Sortie de salarié annulée',
             self::DocumentDeposited => 'Pièce déposée',
             self::DocumentReadingChanged => 'Données lues d’une pièce modifiées',
+            self::DocumentGenerated => 'Pièce générée',
         };
     }
 }
