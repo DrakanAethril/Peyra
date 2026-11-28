@@ -252,13 +252,8 @@ final class TemplateRulesTest extends TestCase
         self::assertSame(['thirdParty' => 'Indiquez le tiers de l’écriture.'], $missing['errors']);
     }
 
-    public function testTheGuidedEntryOpensAtGAndBAndForTeachers(): void
+    public function testTheNextDocumentOfASeriesKeepsItsWidth(): void
     {
-        self::assertTrue(GuidedEntry::isOpen(\App\Enum\Accounting\AssistanceLevel::Guided, false));
-        self::assertTrue(GuidedEntry::isOpen(\App\Enum\Accounting\AssistanceLevel::Blocking, false));
-        self::assertFalse(GuidedEntry::isOpen(\App\Enum\Accounting\AssistanceLevel::Warnings, false));
-        self::assertFalse(GuidedEntry::isOpen(\App\Enum\Accounting\AssistanceLevel::None, false));
-        self::assertTrue(GuidedEntry::isOpen(\App\Enum\Accounting\AssistanceLevel::None, true));
         self::assertSame('LOY-2026-02', GuidedEntry::nextDocument('LOY-2026-01'));
         self::assertSame('FA-2601-0100', GuidedEntry::nextDocument('FA-2601-0099'));
         self::assertSame('FV9-A', GuidedEntry::nextDocument('FV8-A'));

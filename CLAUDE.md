@@ -446,8 +446,8 @@ and `src/Entity/Accounting/`:
   collective account (« Third parties » below) - an account number has digits only.
 - **`AccountSheet` is the one door by hand** (check field by field, create, update, delete), every
   gesture in the audit trail (subject: the dossier). A number that subdivides no account of ≥ 2
-  digits of the dossier's reference chart is **signalled, never refused** until the assistance
-  levels (step 2.8). An account a journal names as counterpart is not deleted and stays of its
+  digits of the dossier's reference chart is refused at G and B, signalled at A, silent at 0
+  (`Assistance`); an account already outside it keeps its number. An account a journal names as counterpart is not deleted and stays of its
   nature. Once it carries entries, see « Accounting engine » below for what it keeps.
 - **`Journal`** (DossierOwned, `JournalSheet` the one door): code of 1 to 6 capitals or digits, type
   (`JournalType`), a counterpart account for bank (a bank account) and cash (a cash account) journals
@@ -601,8 +601,8 @@ Lot 1, step 1.4a (design-ux.md §§ 4.4 and 5.2, design-ui.md § 4.8), held by c
   third party without a due date gets `PaymentTerms::dueDate()`; **a bank or cash journal's
   counterpart line is automatic** (one line on the journal's account balancing the lines typed,
   drawn read only; `linesOf()` strips it when an entry comes back to the grid).
-- **`EntryControls`** (pure) at the dossier's assistance level (`AssistanceLevels`,
-  `WarningsByDefault` until the missions; enum `AssistanceLevel` G/B/A/0): account unusual for the
+- **`EntryControls`** (pure) at the dossier's assistance level (`AssistanceLevels`, see « Référentiel
+  and assistance levels »; enum `AssistanceLevel` G/B/A/0): account unusual for the
   journal (`isUnusual()`), date outside the month or after the dossier's date, document already in
   the journal in the exercise. A at warning, G and B blocking (F10 and the validation hold the
   entry), 0 none. `JournalGrid::check()` runs EntryRules over an in-memory `GridContext` (one read
@@ -659,7 +659,7 @@ Lot 1, step 1.4b (design-ux.md § 3.2, « Modèles d'écriture », « Saisie gui
   Turbo frame `guided-preview` (`…/guided/preview`, refreshed by `guided_entry_controller.js` as the
   form changes), checked by `JournalGrid::check()` like the grid; F10 drafts it through the Ledger,
   then the page offers the next document. **Open at levels G and B, and always to a teacher**
-  (`GuidedEntry::isOpen()`); a student at A or 0 gets a 404 and no tab, until a mission's setting
+  (`Assistance::opensGuidedEntry()`); a student at A or 0 gets a 404 and no tab, until a mission's setting
   (step 2.9). For whoever may EDIT the dossier.
 - `fixtures/demo/templates.yaml` (`DemoTemplateFile`): LOYER, CBAIL, HONOR, ACHAT20, VENTE20,
   FRAISBQ2, REGLFOUR, installed by `DemoInstaller` through `TemplateSheet`.
@@ -806,7 +806,7 @@ Lot 1, step 1.5c (design-ux.md §§ 2.1 and 4.4, design-ui.md § 4.6), held by c
 - **`GlobalSearch::search()`** never leaves the dossier: empty field → the recent screens
   (`RecentScreens`, session, per dossier, five, completed by `SearchScreens::FIRST_SCREENS`); else, in
   this order, Écrans (`SearchScreens::screens()`, one line per journal's grid, the guided entry when
-  `GuidedEntry::isOpen()`), Comptes and Tiers (F4's rules, `AccountSearch`/`ThirdPartySearch`, then
+  `Assistance::opensGuidedEntry()`), Comptes and Tiers (F4's rules, `AccountSearch`/`ThirdPartySearch`, then
   ordered by `SearchRanking`, with their balance), Écritures (`EntrySearch::first()` by `EntryNumber`
   « ACH-2026-00012 », by document start, by a line's exact amount, over every exercise), Actions
   (`SearchScreens::actions()`, for EDIT only). An account or third party opens its consultation, an
@@ -1059,6 +1059,23 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   between them (a flush per draft over a growing unit of work made 500 entries take 90 s): entities
   loaded before an import are detached after it. 1 000 entries at most (`MAX_ENTRIES`). The
   demonstration's FEC imported then exported again gives back the same bytes (`FecImportTest`).
+
+## Référentiel and assistance levels (built at step 2.8)
+
+- **The référentiel is versioned data**, `config/referential/bts-cg.yaml` (edition 2014: four exams,
+  seven processes, 37 activities, 115 components, official wordings), read and checked whole by
+  `App\Service\Shared\Referential\Referential`; a mission names an activity by its code (`A1.2`).
+  `BtsProcess::label()` must stay equal to the file (`ReferentialTest`).
+- **`App\Service\Shared\Assistance\Assistance` is the only place a level means something**
+  (`Assistance::at($levels->for($dossier))`: runs controls, blocks, partial or proposed lettering,
+  guided entry, account outside the chart). Never compare an `AssistanceLevel` case elsewhere:
+  `AssistanceDecidesTest` refuses it. A new behaviour by level is a method there, with its row in
+  `AssistanceTest`.
+- **The level a dossier is worked at** is `StudentAssistanceLevels` (the `AssistanceLevels`
+  service): the student's own level (`User::$assistanceLevel`, Fiche étudiant › Aménagements,
+  `StudentAssistance` the one door, administration journal) - the owner's for a student's dossier,
+  the working member's for a group's - else « Avertissements ». The missions (2.9) slot theirs in
+  between.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

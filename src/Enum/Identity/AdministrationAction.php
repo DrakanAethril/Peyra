@@ -25,6 +25,7 @@ enum AdministrationAction: string
     case StudentPromoted = 'student_promoted';
     case StudentDeparted = 'student_departed';
     case StudentReturned = 'student_returned';
+    case StudentAssistanceChanged = 'student_assistance_changed';
 
     public function label(): string
     {
@@ -47,6 +48,7 @@ enum AdministrationAction: string
             self::StudentPromoted => 'Passage de classe',
             self::StudentDeparted => 'Étudiant sorti de la filière',
             self::StudentReturned => 'Étudiant remis à placer',
+            self::StudentAssistanceChanged => 'Niveau d’assistance propre changé',
         };
     }
 }

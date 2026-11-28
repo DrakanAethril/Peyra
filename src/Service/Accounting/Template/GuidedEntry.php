@@ -8,7 +8,6 @@ use App\Entity\Accounting\Entry;
 use App\Entity\Accounting\EntryTemplate;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
-use App\Enum\Accounting\AssistanceLevel;
 use App\Enum\Accounting\TemplateAmount;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Dossier\PeriodRepository;
@@ -27,8 +26,8 @@ use App\Service\Shared\Money;
  * the assistance level, the third party's due date). It offers the templates whose every line is
  * computed; one with a line « À saisir » is called with F6 in the grid.
  *
- * Open at levels G and B; hidden at A and 0 - « sauf réglage de la mission », which comes with the
- * missions (step 2.9) -, but always open to a teacher, who prepares what the students will use.
+ * Open or hidden by the assistance level (Assistance::opensGuidedEntry(); « sauf réglage de la
+ * mission » comes with the missions, step 2.9).
  */
 final readonly class GuidedEntry
 {
@@ -38,11 +37,6 @@ final readonly class GuidedEntry
         private AccountRepository $accounts,
         private Ledger $ledger,
     ) {
-    }
-
-    public static function isOpen(AssistanceLevel $level, bool $teacher): bool
-    {
-        return $teacher || AssistanceLevel::Guided === $level || AssistanceLevel::Blocking === $level;
     }
 
     /** The next document of a series: « LOY-2026-01 » → « LOY-2026-02 », the width kept (as the grid's). */

@@ -83,6 +83,7 @@
                             <th scope="col">Identifiant</th>
                             <th scope="col">Placé</th>
                             <th scope="col">Dernière connexion</th>
+                            <th scope="col">Aménagements</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -101,6 +102,7 @@
                                 <td class="px-u-code">{{ student.login }}</td>
                                 <td><twig:Px:Badge :of="enrolment.origin"/> <span class="px-u-muted">le {{ enrolment.enrolledAt|date('d/m/Y') }}{% if enrolment.enrolledBy %}, par {{ enrolment.enrolledBy.displayName }}{% endif %}</span></td>
                                 <td>{{ student.lastLoginAt ? student.lastLoginAt|date('d/m/Y à H \\h i') : 'Jamais connecté' }}</td>
+                                <td>{% if student.assistanceLevel %}Assistance : {{ student.assistanceLevel.label|lower }}{% else %}<span class="px-u-muted">—</span>{% endif %}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
