@@ -11,7 +11,7 @@
 {% block module_tabs %}
     <twig:Px:ModuleTabs label="Ventes" :tabs="[
         {label: 'Clients', href: path('app_sales_customers', {dossier: dossier.id}), current: (sales_tab ?? '') == 'customers'},
-        {label: 'Devis · Commandes · Livraisons', href: path('app_sales_documents', {dossier: dossier.id, type: 'quote'}), current: (sales_tab ?? '') == 'orders'},
-        {label: 'Factures · Avoirs · Acomptes', href: path('app_sales_documents', {dossier: dossier.id, type: 'invoice'}), current: (sales_tab ?? '') == 'invoices'},
+        {label: 'Devis · Commandes · Livraisons', href: path('app_sales_documents', {dossier: dossier.id, side: 'sales', type: 'quote'}), current: (sales_tab ?? '') == 'orders'},
+        {label: 'Factures · Avoirs · Acomptes', href: path('app_sales_documents', {dossier: dossier.id, side: 'sales', type: 'invoice'}), current: (sales_tab ?? '') == 'invoices'},
     ]"/>
 {% endblock %}

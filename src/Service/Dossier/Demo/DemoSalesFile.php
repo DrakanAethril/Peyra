@@ -49,6 +49,8 @@ final readonly class DemoSalesFile
             $draft->unit = self::text($entry, 'unit', $where);
             $price = self::optional($entry, 'price', $where);
             $draft->salePrice = null === $price ? '' : FrenchFormat::amount(self::euros($price, $where.'.price'));
+            $purchase = self::optional($entry, 'purchase_price', $where);
+            $draft->purchasePrice = null === $purchase ? '' : FrenchFormat::amount(self::euros($purchase, $where.'.purchase_price'));
             $draft->vatRate = self::optional($entry, 'rate', $where) ?? '';
             $draft->revenueAccount = self::optional($entry, 'account', $where) ?? '';
             $stock = $entry['stock'] ?? null;

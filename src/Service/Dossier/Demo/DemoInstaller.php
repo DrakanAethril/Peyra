@@ -233,7 +233,7 @@ final readonly class DemoInstaller
         $made = [];
         foreach ($file->documents as $index => $entry) {
             if (null !== $entry['draft']) {
-                $fields = $this->salesDocuments->check($entry['draft'], $dossier) ?? throw new \InvalidArgumentException(\sprintf('sales.yaml : documents[%d] : %s', $index, implode(' ', $entry['draft']->errors)));
+                $fields = $this->salesDocuments->check($entry['draft'], $dossier, $entry['type']) ?? throw new \InvalidArgumentException(\sprintf('sales.yaml : documents[%d] : %s', $index, implode(' ', $entry['draft']->errors)));
                 $document = $this->salesDocuments->create($dossier, $entry['type'], $fields, $actor);
             } else {
                 $document = $this->salesDocuments->transform($made[$entry['madeFrom'] ?? 0], $entry['type'], $actor);

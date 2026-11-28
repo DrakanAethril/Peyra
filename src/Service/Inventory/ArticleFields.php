@@ -17,6 +17,7 @@ final readonly class ArticleFields
         public ?string $vatRate,
         public ?string $revenueAccount,
         public bool $stockTracked,
+        public ?Money $purchasePrice = null,
     ) {
     }
 }

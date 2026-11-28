@@ -35,6 +35,9 @@ use Doctrine\ORM\Mapping as ORM;
  * document goes to the books through AccountingGateway; the entry it led to is linked here, the
  * one thing that is still written on a validated document (SalesPosting).
  *
+ * Step 2.4: the purchasing side's documents are the same entity (a price request, a supplier order,
+ * a receipt): `customer` then holds the supplier - read it as getThirdParty().
+ *
  * @phpstan-type HistoryRow array{event: string, on: string, by: string, detail: string}
  * @phpstan-type CustomerPrint array{name: string, lines: list<string>, siren: ?string, vatNumber: ?string}
  */
@@ -164,6 +167,12 @@ class SalesDocument implements DossierOwned
     }
 
     public function getCustomer(): ThirdParty
+    {
+        return $this->customer;
+    }
+
+    /** The third party it is made for: the customer, or the supplier of a purchasing document (step 2.4). */
+    public function getThirdParty(): ThirdParty
     {
         return $this->customer;
     }

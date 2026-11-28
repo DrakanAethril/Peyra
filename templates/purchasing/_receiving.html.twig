@@ -1,0 +1,49 @@
+{#
+ # The card « Réception » of a purchasing document (step 2.4; design-ux.md § 3.2, « Quantités
+ # commandées, reçues, restantes »): a validated supplier order's lines with what its validated
+ # receipts received and what is left, its status and its receipts; a receipt's order as it stood
+ # before it, beside what it receives - at level G, the gaps flagged. `receiving` is the
+ # controller's reading; `side` is set by the page.
+ #}
+{% set is_receipt = doc_type.value == 'receipt' %}
+{% if receiving.gaps is not empty %}
+    <twig:Px:Alert tone="warning">Écart avec la commande {{ receiving.order.number }} : {{ receiving.gaps|join(' ') }}</twig:Px:Alert>
+{% endif %}
+<twig:Px:Card title="{{ is_receipt ? 'Commande ' ~ receiving.order.number : 'Réceptions' }}" meta="{{ is_receipt ? 'Ce que la commande avait reçu avant ce bon' : '' }}" :flush="true">
+    <twig:block name="actions">
+        {% if receiving.status %}<twig:Px:Badge :of="receiving.status"/>{% endif %}
+        {% if is_receipt %}<twig:Px:Button href="{{ path('app_sales_document', {dossier: dossier.id, side: side, id: receiving.order.id}) }}" size="sm" icon="arrow-right">Ouvrir la commande</twig:Px:Button>{% endif %}
+    </twig:block>
+    <twig:block name="content">
+    <twig:Px:Table caption="{{ is_receipt ? 'Lignes de la commande et quantités de ce bon' : 'Quantités commandées, reçues et restantes' }}">
+        <thead>
+            <tr>
+                <th scope="col">Article</th>
+                <th scope="col">Désignation</th>
+                <th scope="col" class="px-u-num">Commandé</th>
+                <th scope="col" class="px-u-num">{{ is_receipt ? 'Reçu avant' : 'Reçu' }}</th>
+                {% if is_receipt %}<th scope="col" class="px-u-num">Ce bon</th>{% endif %}
+                <th scope="col" class="px-u-num">{{ is_receipt ? 'Restait' : 'Reste à recevoir' }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in receiving.rows %}
+                <tr>
+                    <td class="px-u-code">{{ row.line.article }}</td>
+                    <td>{{ row.line.designation }}</td>
+                    <td class="px-u-num">{{ row.ordered|quantity(row.ordered.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }} {{ row.line.unit }}</td>
+                    <td class="px-u-num">{{ row.received|quantity(row.received.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}</td>
+                    {% if is_receipt %}<td class="px-u-num"><b>{{ row.this|quantity(row.this.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}</b></td>{% endif %}
+                    <td class="px-u-num">{{ row.remaining|quantity(row.remaining.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </twig:Px:Table>
+    </twig:block>
+    <twig:block name="foot">
+        {% if receiving.receipts is not empty %}
+            Bons de réception :
+            {% for receipt in receiving.receipts %}<a class="px-link" href="{{ path('app_sales_document', {dossier: dossier.id, side: side, id: receipt.id}) }}">{{ receipt.number ?? 'brouillon' }}</a> du {{ receipt.date|date_fr }}{{ loop.last ? '.' : ', ' }}{% endfor %}
+        {% endif %}
+    </twig:block>
+</twig:Px:Card>

@@ -4,19 +4,23 @@ declare(strict_types=1);
 
 namespace App\Service\Sales;
 
+use App\Enum\Sales\SalesDocumentType;
+use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Service\Accounting\Template\VatRate;
 use App\Service\Shared\AmountParseError;
 use App\Service\Shared\AmountParser;
 use App\Service\Shared\DateValue;
+use App\Service\Shared\Money;
 use Brick\Math\BigDecimal;
 use Brick\Math\Exception\MathException;
 
 /**
  * The one reading of a commercial document (step 2.3, pure), at each F10 of its fiche and for the
- * demonstration's file: a customer of the dossier, a date, a due date not before it, a reference
+ * demonstration's file: a third party of the dossier of the type's kind (a customer, a supplier on
+ * the purchasing side, step 2.4), a date, a due date not before it, a reference
  * of 80 characters at most, and lines - a row left entirely empty is dropped; every other one has
  * its designation, a quantity above zero (three decimals at most), a price excluding tax (zero or
- * more), a discount from 0 to 100 % (two decimals at most) and a VAT rate; an article named must be
+ * more; an empty one reads zero on a price request, which asks for it), a discount from 0 to 100 % (two decimals at most) and a VAT rate; an article named must be
  * one of the dossier; a cash discount from 0 to 100 % (two decimals at most, step 2.3b). Faults under
  * `customer`, `date`, `dueDate`, `reference`, `cashDiscount`, `line.<i>.<field>`.
  *
@@ -26,21 +30,22 @@ use Brick\Math\Exception\MathException;
 final class SalesDocumentRules
 {
     /**
-     * @param callable(string): ?bool $customerKind true for a customer of the dossier, false for another third party, null for no third party
-     * @param callable(string): bool  $articleExists
+     * @param callable(string): ?ThirdPartyKind $partyKind     the kind of the dossier's third party of that code, null for none
+     * @param callable(string): bool             $articleExists
      */
-    public static function check(SalesDocumentDraft $draft, callable $customerKind, callable $articleExists): ?SalesDocumentFields
+    public static function check(SalesDocumentType $type, SalesDocumentDraft $draft, callable $partyKind, callable $articleExists): ?SalesDocumentFields
     {
         $errors = [];
         $customer = strtoupper(trim($draft->customer));
+        $party = mb_strtolower($type->partyLabel());
         if ('' === $customer) {
-            $errors['customer'] = 'Choisissez le client.';
+            $errors['customer'] = \sprintf('Choisissez le %s.', $party);
         } else {
-            $isCustomer = $customerKind($customer);
-            if (null === $isCustomer) {
+            $kind = $partyKind($customer);
+            if (null === $kind) {
                 $errors['customer'] = \sprintf('Le dossier n’a pas de tiers %s.', $customer);
-            } elseif (!$isCustomer) {
-                $errors['customer'] = \sprintf('Le tiers %s n’est pas un client.', $customer);
+            } elseif ($type->partyKind() !== $kind) {
+                $errors['customer'] = \sprintf('Le tiers %s n’est pas un %s.', $customer, $party);
             }
         }
         $date = DateValue::parse($draft->date);
@@ -78,7 +83,7 @@ final class SalesDocumentRules
         }
         $draft->lines = $kept;
         foreach ($kept as $i => $row) {
-            $line = self::line($row, $i, $errors, $articleExists);
+            $line = self::line($row, $i, $errors, $articleExists, $type->asksPrices());
             if (null !== $line) {
                 $lines[] = $line;
             }
@@ -125,11 +130,11 @@ final class SalesDocumentRules
     }
 
     /**
-     * @param array{article: string, designation: string, unit: string, quantity: string, unitPrice: string, discount: string, rate: string} $row
-     * @param array<string, string>                                                                                                           $errors
-     * @param callable(string): bool                                                                                                          $articleExists
+     * @param array{article: string, designation: string, unit: string, quantity: string, unitPrice: string, discount: string, rate: string, source: string} $row
+     * @param array<string, string>   $errors
+     * @param callable(string): bool  $articleExists
      */
-    private static function line(array $row, int $i, array &$errors, callable $articleExists): ?SalesLine
+    private static function line(array $row, int $i, array &$errors, callable $articleExists, bool $priceOptional): ?SalesLine
     {
         $key = 'line.'.$i.'.';
         $before = \count($errors);
@@ -153,7 +158,7 @@ final class SalesDocumentRules
         }
         $price = null;
         try {
-            $price = AmountParser::parse($row['unitPrice']);
+            $price = $priceOptional && '' === trim($row['unitPrice']) ? Money::zero() : AmountParser::parse($row['unitPrice']);
             if ($price->isNegative()) {
                 $errors[$key.'unitPrice'] = 'Un prix positif ou nul : une remise se donne en pourcentage.';
             }
@@ -175,7 +180,9 @@ final class SalesDocumentRules
             return null;
         }
 
-        return new SalesLine('' === $article ? null : $article, $designation, $unit, $quantity, $price, null === $discount || $discount->isZero() ? null : $discount, VatRate::canonical($rate));
+        $source = 1 === preg_match('/^\d{1,4}$/', trim($row['source'])) ? (int) trim($row['source']) : null;
+
+        return new SalesLine('' === $article ? null : $article, $designation, $unit, $quantity, $price, null === $discount || $discount->isZero() ? null : $discount, VatRate::canonical($rate), $source);
     }
 
     private static function decimal(string $typed, int $scale): ?BigDecimal

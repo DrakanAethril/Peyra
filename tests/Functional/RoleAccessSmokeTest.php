@@ -270,10 +270,23 @@ final class RoleAccessSmokeTest extends WebTestCase
             [$quote->customer, $quote->date] = ['C0019', '2026-01-20'];
             $quote->readLines([['article' => 'PF001', 'designation' => 'Fenêtre chêne', 'unit' => 'pièce', 'quantity' => '2', 'unitPrice' => '1380', 'discount' => '', 'rate' => '20']]);
             $sales = $client->getContainer()->get(SalesDocuments::class);
-            $document = $sales->create($saved, SalesDocumentType::Quote, $sales->check($quote, $saved) ?? throw new \LogicException(implode(' ', $quote->errors)), 'test');
+            $document = $sales->create($saved, SalesDocumentType::Quote, $sales->check($quote, $saved, SalesDocumentType::Quote) ?? throw new \LogicException(implode(' ', $quote->errors)), 'test');
             $entityManager->flush();
 
             return $document->getId();
+        });
+        [$orderId, $receiptId] = $client->getContainer()->get(DossierContext::class)->within($saved, static function () use ($client, $saved): array {
+            $order = new SalesDocumentDraft();
+            [$order->customer, $order->date] = ['F0001', $saved->getDossierDate()->format('Y-m-d')];
+            $order->readLines([['article' => '', 'designation' => 'Chêne avivé 27 mm', 'unit' => 'm³', 'quantity' => '1,8', 'unitPrice' => '1150', 'discount' => '5', 'rate' => '20']]);
+            $sales = $client->getContainer()->get(SalesDocuments::class);
+            $document = $sales->create($saved, SalesDocumentType::PurchaseOrder, $sales->check($order, $saved, SalesDocumentType::PurchaseOrder) ?? throw new \LogicException(implode(' ', $order->errors)), 'test');
+            $client->getContainer()->get(EntityManagerInterface::class)->flush();
+            $sales->validate($document, 'test');
+            $receipt = $sales->transform($document, SalesDocumentType::Receipt, 'test');
+            $client->getContainer()->get(EntityManagerInterface::class)->flush();
+
+            return [$document->getId(), $receipt->getId()];
         });
         $dossier = (int) $saved->getId();
         $point = $client->getContainer()->get(RestorePoints::class)->pose($saved, 'Avant validation', $ines, new \DateTimeImmutable('2026-11-28 10:00'));
@@ -319,6 +332,8 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/inventory/articles', '/inventory/articles?q=fen', '/inventory/articles/new', '/inventory/articles/PF001',
             '/sales/customers', '/sales/customers?q=gir', '/sales/quote', '/sales/order', '/sales/invoice', '/sales/credit_note', '/sales/deposit',
             '/sales/quote/new', '/sales/invoice/new', '/sales/documents/'.$salesId, '/sales/documents/'.$salesId.'.pdf',
+            '/purchases/suppliers', '/purchases/suppliers?q=scie', '/purchases/price_request', '/purchases/purchase_order', '/purchases/receipt',
+            '/purchases/purchase_order/new', '/purchases/documents/'.$orderId, '/purchases/documents/'.$receiptId, '/purchases/documents/'.$orderId.'.pdf',
             '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {

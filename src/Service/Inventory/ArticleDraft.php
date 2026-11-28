@@ -14,6 +14,7 @@ final class ArticleDraft
     public string $designation = '';
     public string $unit = '';
     public string $salePrice = '';
+    public string $purchasePrice = '';
     public string $vatRate = '';
     public string $revenueAccount = '';
     public bool $stockTracked = false;
@@ -28,6 +29,7 @@ final class ArticleDraft
         $draft->designation = $article->getDesignation();
         $draft->unit = $article->getUnit();
         $draft->salePrice = null === $article->getSalePrice() ? '' : FrenchFormat::amount($article->getSalePrice());
+        $draft->purchasePrice = null === $article->getPurchasePrice() ? '' : FrenchFormat::amount($article->getPurchasePrice());
         $draft->vatRate = str_replace('.', ',', $article->getVatRate() ?? '');
         $draft->revenueAccount = $article->getRevenueAccount() ?? '';
         $draft->stockTracked = $article->isStockTracked();

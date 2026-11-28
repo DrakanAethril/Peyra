@@ -12,7 +12,8 @@ use App\Service\Shared\AmountParser;
  * The one reading of an article (step 2.3, pure): the fiche and the demonstration's file go
  * through it. A code of 1 to 12 capitals or digits, unique in the dossier; a designation and a
  * unit; a selling price (zero or more) asks a VAT rate and a revenue account - a raw material
- * has none of the three -; the account must be a class-7 account of the plan.
+ * has none of the three -; the account must be a class-7 account of the plan. A purchase price
+ * (step 2.4, zero or more) asks a VAT rate too.
  */
 final class ArticleRules
 {
@@ -53,6 +54,17 @@ final class ArticleRules
                 $errors['salePrice'] = $error->getMessage();
             }
         }
+        $purchasePrice = null;
+        if ('' !== trim($draft->purchasePrice)) {
+            try {
+                $purchasePrice = AmountParser::parse($draft->purchasePrice);
+                if ($purchasePrice->isNegative()) {
+                    $errors['purchasePrice'] = 'Un prix d’achat est positif ou nul.';
+                }
+            } catch (AmountParseError $error) {
+                $errors['purchasePrice'] = $error->getMessage();
+            }
+        }
         $rate = null;
         if ('' !== trim($draft->vatRate)) {
             $parsed = VatRate::parse($draft->vatRate);
@@ -80,11 +92,15 @@ final class ArticleRules
             }
         }
 
+        if (null !== $purchasePrice && '' === trim($draft->vatRate) && !isset($errors['vatRate'])) {
+            $errors['vatRate'] = 'Un article acheté a son taux de TVA.';
+        }
+
         $draft->errors = $errors;
         if ([] !== $errors) {
             return null;
         }
 
-        return new ArticleFields($code, $designation, $unit, $price, $rate, '' === $account ? null : $account, $draft->stockTracked);
+        return new ArticleFields($code, $designation, $unit, $price, $rate, '' === $account ? null : $account, $draft->stockTracked, $purchasePrice);
     }
 }

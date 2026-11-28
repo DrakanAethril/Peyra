@@ -1,42 +1,47 @@
 {#
  # Ventes › Devis · Commandes · Livraisons and Factures · Avoirs · Acomptes (step 2.3, gabarit L): the
  # documents of one type, the chips of its tab's family. Drafts first; then by number, newest first.
+ # Achats et stocks › Commandes · Réceptions (step 2.4) is the same list on the purchasing side, an
+ # order with its receipt status.
  #}
-{% extends 'sales/_layout.html.twig' %}
+{% extends doc_type.purchase ? 'inventory/_layout.html.twig' : 'sales/_layout.html.twig' %}
 
 {% set sales_tab = doc_type.invoicing ? 'invoices' : 'orders' %}
+{% set inventory_tab = 'orders' %}
+{% set side = doc_type.side %}
+{% set module_label = doc_type.purchase ? 'Achats et stocks' : 'Ventes' %}
 {% set dossier_title = doc_type.plural %}
-{% set can_enter = is_granted('SALES_ENTER', dossier) %}
-{% set can_create = can_enter and doc_type.value not in ['credit_note', 'deposit'] %}
+{% set can_enter = is_granted(doc_type.purchase ? 'PURCHASES_ENTER' : 'SALES_ENTER', dossier) %}
+{% set can_create = can_enter and doc_type.value not in ['credit_note', 'deposit', 'receipt'] %}
 {% set status_keys = can_create ? [{combo: 'N', verb: 'Nouveau'}] : [] %}
 
 {% block page_head %}
     <twig:Px:PageHead title="{{ doc_type.plural }}" :trail="[
-        {label: 'Ventes', href: path('app_sales_documents', {dossier: dossier.id, type: 'quote'})},
-        {label: doc_type.plural, href: path('app_sales_documents', {dossier: dossier.id, type: doc_type.value})},
+        {label: module_label, href: path('app_sales_documents', {dossier: dossier.id, side: side, type: doc_type.family[0].value})},
+        {label: doc_type.plural, href: path('app_sales_documents', {dossier: dossier.id, side: side, type: doc_type.value})},
     ]">
         <twig:block name="actions">
-            {% if can_create %}<twig:Px:Button href="{{ path('app_sales_document_new', {dossier: dossier.id, type: doc_type.value}) }}" variant="primary" icon="plus" shortcut="N">Nouveau : {{ doc_type.label|lower }}</twig:Px:Button>{% endif %}
+            {% if can_create %}<twig:Px:Button href="{{ path('app_sales_document_new', {dossier: dossier.id, side: side, type: doc_type.value}) }}" variant="primary" icon="plus" shortcut="N">Nouveau : {{ doc_type.label|lower }}</twig:Px:Button>{% endif %}
         </twig:block>
     </twig:Px:PageHead>
 {% endblock %}
 
 {% block page %}
     <twig:Px:Card :flush="true">
-        <twig:Px:Filters action="{{ path('app_sales_documents', {dossier: dossier.id, type: doc_type.value}) }}">
+        <twig:Px:Filters action="{{ path('app_sales_documents', {dossier: dossier.id, side: side, type: doc_type.value}) }}">
             {% for case in family %}
-                <twig:Px:FilterChip label="{{ case.plural }}" href="{{ path('app_sales_documents', {dossier: dossier.id, type: case.value}) }}" :count="counts[case.value]" :current="case == doc_type"/>
+                <twig:Px:FilterChip label="{{ case.plural }}" href="{{ path('app_sales_documents', {dossier: dossier.id, side: side, type: case.value}) }}" :count="counts[case.value]" :current="case == doc_type"/>
             {% endfor %}
         </twig:Px:Filters>
         {% if document_rows is empty %}
-            <twig:Px:Empty icon="file-text" title="Aucun document" text="{{ doc_type.value == 'credit_note' ? 'Un avoir se crée depuis la facture validée qu’il corrige : « Créer un avoir » sur sa fiche.' : (doc_type.value == 'deposit' ? 'Une facture d’acompte se crée depuis la commande validée : « Facturer un acompte » sur sa fiche.' : 'Aucun document de ce type pour l’instant. « Nouveau » en ouvre un brouillon ; un document validé se transforme en le suivant.') }}"/>
+            <twig:Px:Empty icon="file-text" title="Aucun document" text="{{ doc_type.value == 'credit_note' ? 'Un avoir se crée depuis la facture validée qu’il corrige : « Créer un avoir » sur sa fiche.' : (doc_type.value == 'deposit' ? 'Une facture d’acompte se crée depuis la commande validée : « Facturer un acompte » sur sa fiche.' : (doc_type.value == 'receipt' ? 'Un bon de réception se crée depuis la commande validée : « Réceptionner » sur sa fiche reprend ce qui reste à recevoir.' : 'Aucun document de ce type pour l’instant. « Nouveau » en ouvre un brouillon ; un document validé se transforme en le suivant.')) }}"/>
         {% else %}
             <twig:Px:Table caption="{{ doc_type.plural }} de {{ dossier.name }}" :rows="true">
                 <thead>
                     <tr>
                         <th scope="col">Numéro</th>
                         <th scope="col" class="px-u-num">Date</th>
-                        <th scope="col">Client</th>
+                        <th scope="col">{{ doc_type.partyLabel }}</th>
                         <th scope="col">Référence</th>
                         <th scope="col">Origine</th>
                         <th scope="col" class="px-u-num">Total HT</th>
@@ -48,14 +53,14 @@
                     {% for row in document_rows %}
                         {% set totals = row.totals %}
                         <tr data-rows-target="row">
-                            <td class="px-u-code"><a class="px-link" href="{{ path('app_sales_document', {dossier: dossier.id, id: row.id}) }}">{{ row.number ?? 'Brouillon' }}</a></td>
+                            <td class="px-u-code"><a class="px-link" href="{{ path('app_sales_document', {dossier: dossier.id, side: side, id: row.id}) }}">{{ row.number ?? 'Brouillon' }}</a></td>
                             <td class="px-u-num">{{ row.date|date_fr }}</td>
                             <td class="px-u-fill" title="{{ row.customer.name }}">{{ row.customer.name }}</td>
                             <td>{{ row.reference }}</td>
                             <td class="px-u-code">{{ row.source ? row.source.number : '' }}</td>
                             <td class="px-u-num">{{ totals.excludingTax|amount }}</td>
                             <td class="px-u-num">{{ totals.includingTax|amount }}</td>
-                            <td><twig:Px:Badge :of="row.state"/>{% if row.sentOn %} <twig:Px:Badge tone="info" label="Envoyé"/>{% endif %}</td>
+                            <td><twig:Px:Badge :of="row.state"/>{% if row.sentOn %} <twig:Px:Badge tone="info" label="Envoyé"/>{% endif %}{% if receipt_statuses[row.id] ?? null %} <twig:Px:Badge :of="receipt_statuses[row.id]"/>{% endif %}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

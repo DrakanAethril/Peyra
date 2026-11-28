@@ -5,7 +5,7 @@
  # l'écriture au brouillard »; under « Laisser saisir », only the journal to enter it in: the
  # proposal is the correction's, never shown.
  #}
-{% set back = path('app_sales_document', {dossier: dossier.id, id: document.id}) %}
+{% set back = path('app_sales_document', {dossier: dossier.id, side: 'sales', id: document.id}) %}
 {% if posting.entries is not empty %}
     {% for entry in posting.entries %}
         {{ include('document/_written_entry.html.twig', {entry: entry, back_path: back}) }}
@@ -26,7 +26,7 @@
             <small>Journal <span class="px-u-code">{{ proposal.journal }}</span> · {{ date(proposal.date)|date_fr }} · pièce <span class="px-u-code">{{ proposal.document }}</span></small>
             {% if can_post and check.writable %}
                 <div class="px-card__actions">
-                    <form method="post" action="{{ path('app_sales_document_post', {dossier: dossier.id, id: document.id}) }}">
+                    <form method="post" action="{{ path('app_sales_document_post', {dossier: dossier.id, side: 'sales', id: document.id}) }}">
                         <input type="hidden" name="_token" value="{{ csrf_token('sales-post-' ~ document.id) }}">
                         <twig:Px:Button type="submit" size="sm" variant="primary" icon="check">Passer l’écriture au brouillard</twig:Px:Button>
                     </form>

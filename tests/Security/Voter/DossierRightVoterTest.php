@@ -72,6 +72,18 @@ final class DossierRightVoterTest extends KernelTestCase
         self::assertSame([true, true, true], $this->sales($people['durand'], $dossier));
     }
 
+    /** Achats (step 2.4): the supplier accountant's, closed to the customer accountant; every right without a profile. */
+    public function testThePurchasesFollowThePurchasesArea(): void
+    {
+        self::bootKernel();
+        [$dossier, $people] = $this->groupDossier();
+
+        self::assertSame([true, true, true], $this->purchases($people['ines'], $dossier));
+        self::assertSame([false, false, false], $this->purchases($people['theo'], $dossier));
+        self::assertSame([true, true, true], $this->purchases($people['chloe'], $dossier));
+        self::assertSame([true, true, true], $this->purchases($people['durand'], $dossier));
+    }
+
     public function testNobodyOutsideTheDossier(): void
     {
         self::bootKernel();
@@ -107,6 +119,15 @@ final class DossierRightVoterTest extends KernelTestCase
         $voter = self::getContainer()->get(DossierRightVoter::class);
 
         return array_map(static fn (string $attribute): bool => VoterInterface::ACCESS_GRANTED === $voter->vote($token, $dossier, [$attribute]), [DossierRightVoter::SALES_READ, DossierRightVoter::SALES_ENTER, DossierRightVoter::SALES_VALIDATE]);
+    }
+
+    /** @return list<bool> PURCHASES_READ, PURCHASES_ENTER, PURCHASES_VALIDATE on the dossier */
+    private function purchases(User $user, Dossier $dossier): array
+    {
+        $token = new UsernamePasswordToken($user, 'main', $user->getRoles());
+        $voter = self::getContainer()->get(DossierRightVoter::class);
+
+        return array_map(static fn (string $attribute): bool => VoterInterface::ACCESS_GRANTED === $voter->vote($token, $dossier, [$attribute]), [DossierRightVoter::PURCHASES_READ, DossierRightVoter::PURCHASES_ENTER, DossierRightVoter::PURCHASES_VALIDATE]);
     }
 
     /** @return list<bool> PAYROLL_READ, PAYROLL_SETTINGS, PAYROLL_ENTER on the dossier */

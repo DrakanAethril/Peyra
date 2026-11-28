@@ -1,0 +1,65 @@
+{#
+ # Achats et stocks › Fournisseurs (step 2.4, gabarit L): the suppliers of the dossier with their terms and
+ # what is owed to them at the dossier's date; a supplier opens its third party's fiche.
+ #}
+{% extends 'inventory/_layout.html.twig' %}
+
+{% set inventory_tab = 'suppliers' %}
+{% set dossier_title = 'Fournisseurs' %}
+{% set can_edit = is_granted('DOSSIER_SETTINGS', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouveau fournisseur'}, {combo: '/', verb: 'Rechercher'}] : [{combo: '/', verb: 'Rechercher'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Fournisseurs" :trail="[
+        {label: 'Achats et stocks', href: path('app_sales_documents', {dossier: dossier.id, side: 'purchases', type: 'purchase_order'})},
+        {label: 'Fournisseurs', href: path('app_purchase_suppliers', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button href="{{ path('app_third_party_new', {dossier: dossier.id, kind: 'supplier'}) }}" variant="primary" icon="plus" shortcut="N">Nouveau fournisseur</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if total == 0 %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="users" title="Aucun fournisseur" text="Les fournisseurs sont des tiers de nature « Fournisseur », tenus sur le collectif 401000 (404000 pour les immobilisations) avec leur code auxiliaire et leurs conditions de règlement."/>
+        </twig:Px:Card>
+    {% else %}
+        <twig:Px:Card :flush="true">
+            <twig:Px:Filters action="{{ path('app_purchase_suppliers', {dossier: dossier.id}) }}" search="{{ search }}" searchLabel="Code ou nom" resetHref="{{ search ? path('app_purchase_suppliers', {dossier: dossier.id}) : null }}"/>
+            {% if supplier_rows is empty %}
+                <twig:Px:Empty icon="search" title="Aucun fournisseur" text="Aucun fournisseur ne correspond à « {{ search }} »."/>
+            {% else %}
+                <twig:Px:Table caption="Fournisseurs de {{ dossier.name }}" :rows="true">
+                    <thead>
+                        <tr>
+                            <th scope="col">Code</th>
+                            <th scope="col">Auxiliaire</th>
+                            <th scope="col">Nom</th>
+                            <th scope="col">Ville</th>
+                            <th scope="col">Règlement</th>
+                            <th scope="col" class="px-u-num">Dû au fournisseur</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for supplier in supplier_rows %}
+                            <tr data-rows-target="row">
+                                <td class="px-u-code"><a class="px-link" href="{{ path('app_third_party', {dossier: dossier.id, code: supplier.code}) }}">{{ supplier.code }}</a></td>
+                                <td class="px-u-code">{{ supplier.auxiliaryCode }}</td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ supplier.name }}">{{ supplier.name }}</td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ supplier.city }}">{{ supplier.city }}</td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ supplier.paymentTerms.label }} · {{ supplier.paymentMethod.label }}">{{ supplier.paymentTerms.label }} · {{ supplier.paymentMethod.label|lower }}</td>
+                                {% set owed = outstanding[supplier.id] ?? null %}
+                                <td class="px-u-num">{% if owed is not null and not owed.balance.isZero %}<a class="px-link" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: supplier.auxiliaryCode ?? supplier.code}) }}">{{ owed.balance|balance }}</a>{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+            <twig:Px:Pager :total="shown_total" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>Fournisseurs · <b>{{ total }}</b></span>{% endblock %}

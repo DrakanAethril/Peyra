@@ -44,6 +44,9 @@
                     <twig:Px:Field id="salePrice" label="Prix de vente HT" hint="Vide : l’article n’est pas vendu (une matière première)." :error="draft.error('salePrice')">
                         <twig:Px:Input id="salePrice" value="{{ draft.salePrice }}" hint="1" :error="draft.error('salePrice')" class="px-u-num" inputmode="decimal" autocomplete="off"/>
                     </twig:Px:Field>
+                    <twig:Px:Field id="purchasePrice" label="Prix d’achat HT" hint="Le dernier prix du fournisseur : il remplit les commandes. Vide : l’article n’est pas acheté." :error="draft.error('purchasePrice')">
+                        <twig:Px:Input id="purchasePrice" value="{{ draft.purchasePrice }}" hint="1" :error="draft.error('purchasePrice')" class="px-u-num" inputmode="decimal" autocomplete="off"/>
+                    </twig:Px:Field>
                     <twig:Px:Field id="vatRate" label="Taux de TVA" hint="En % : 20 ou 5,5." :error="draft.error('vatRate')">
                         <twig:Px:Input id="vatRate" value="{{ draft.vatRate }}" hint="1" :error="draft.error('vatRate')" class="px-u-num" inputmode="decimal" autocomplete="off"/>
                     </twig:Px:Field>
@@ -68,6 +71,7 @@
                 <dt>Désignation</dt><dd>{{ article.designation }}</dd>
                 <dt>Unité</dt><dd>{{ article.unit }}</dd>
                 <dt>Prix de vente HT</dt><dd class="px-u-num">{{ article.salePrice ? article.salePrice|amount_eur : 'Non vendu' }}</dd>
+                <dt>Prix d’achat HT</dt><dd class="px-u-num">{{ article.purchasePrice ? article.purchasePrice|amount_eur : 'Non acheté' }}</dd>
                 <dt>Taux de TVA</dt><dd>{{ article.vatRate is not null ? article.vatRate|percent : '—' }}</dd>
                 <dt>Compte de produits</dt><dd class="px-u-code">{{ article.revenueAccount ?? '—' }}</dd>
                 <dt>Stock</dt><dd>{{ article.stockTracked ? 'Suivi' : 'Non suivi' }}</dd>
