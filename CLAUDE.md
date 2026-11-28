@@ -1134,6 +1134,17 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
 - At G and B the fiche requires the DPAE's fields (`Assistance::requiresHiringDeclarationFields()`:
   birth place, hour of hire).
 
+## End of contract (built at step 4.2c)
+
+- **Salariés › {matricule} › Fin de contrat** (`EmployeeExitController`): the exit on `Employee`
+  (`ExitReason`, notification day, last day), checked by the pure `ExitRules` (which reason ends
+  which contract, a term on its day without notification) and written by `EmployeeExits` alone
+  (audit trail); cancelled in two steps. **Present on the last day, `Departed` the next**
+  (`stateAt()`); the register writes the day once it has come. `EmployeeSheet` re-reads the exit
+  against a changed contract and refuses terms after it. The work certificate is a PDF
+  (`JobPeriods`: same job merged). The reçu pour solde de tout compte and the France Travail
+  attestation read payslips: steps 4.4 and 4.6.
+
 ## Cross-cutting building blocks (built at step 0.6a)
 
 Reach for these rather than re-implement them; each has its test.
