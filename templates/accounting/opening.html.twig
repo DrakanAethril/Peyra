@@ -1,0 +1,148 @@
+{#
+ # Comptabilité › Saisie › À-nouveaux (lot 1, step 1.6): the opening balance of an exercise. Its
+ # controls first (balanced - the typing left unbalanced in the grid included -, validated, balance
+ # sheet accounts only), then the balance by account - each figure leads to the account's
+ # consultation on the exercise's first day - and the entries of the à-nouveaux journal. The
+ # balance is typed in that journal's grid (« Saisir les à-nouveaux », its first month).
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set module_current = 'entry' %}
+{% set entry_view = 'opening' %}
+{% set dossier_title = 'À-nouveaux' ~ (report ? ' ' ~ report.exercise.code : '') %}
+{% set grid_href = report and report.journal and report.firstPeriod ? path('app_accounting_entry', {dossier: dossier.id, journal: report.journal.code, period: report.firstPeriod.startsOn|date('Y-m-d')}) : null %}
+{% set status_keys = [{combo: 'Enter', verb: 'Ouvrir'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ report ? 'À-nouveaux de l’exercice ' ~ report.exercise.code : 'À-nouveaux' }}" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_entry', {dossier: dossier.id})},
+        {label: 'Saisie', href: path('app_accounting_entry', {dossier: dossier.id})},
+        {label: 'À-nouveaux', href: path('app_accounting_opening', {dossier: dossier.id})},
+    ]">
+        <twig:block name="badge">{% if report and report.journal %} {% if report.entries is empty and report.pending is empty %}<twig:Px:Badge tone="neutral" label="À saisir"/>{% elseif not report.balanced %}<twig:Px:Badge tone="danger" label="Écart"/>{% elseif report.drafts > 0 or report.pending is not empty %}<twig:Px:Badge tone="warning" label="Brouillard"/>{% else %}<twig:Px:Badge tone="success" label="Validés"/>{% endif %}{% endif %}</twig:block>
+        <twig:block name="actions">
+            {% if report and report.journal and report.drafts > 0 %}
+                <twig:Px:Button href="{{ path('app_accounting_brouillard', {dossier: dossier.id, journal: report.journal.code, period: report.firstPeriod ? report.firstPeriod.startsOn|date('Y-m-d') : null}) }}" icon="check">Valider au brouillard</twig:Px:Button>
+            {% endif %}
+            {% if grid_href and can_edit and not report.exercise.closed %}
+                <twig:Px:Button href="{{ grid_href }}" variant="primary" icon="pencil">Saisir les à-nouveaux</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_entry_tabs.html.twig') }}
+
+    {% if report is null %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="calendar" title="Aucun exercice ouvert" text="Les à-nouveaux ouvrent un exercice : ouvrez d’abord l’exercice du dossier, sur la fiche de la société.">
+                <twig:block name="action"><twig:Px:Button href="{{ path('app_dossier_company', {dossier: dossier.id}) }}">Fiche de la société</twig:Px:Button></twig:block>
+            </twig:Px:Empty>
+        </twig:Px:Card>
+    {% elseif report.journal is null %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="book-text" title="Aucun journal d’à-nouveaux" text="La balance d’ouverture se saisit dans un journal dédié, de type « À-nouveaux » (code AN le plus souvent). Créez-le, puis revenez ici.">
+                <twig:block name="action">{% if can_edit %}<twig:Px:Button href="{{ path('app_accounting_journal_new', {dossier: dossier.id}) }}" variant="primary" icon="plus">Nouveau journal</twig:Px:Button>{% endif %}</twig:block>
+            </twig:Px:Empty>
+        </twig:Px:Card>
+    {% else %}
+        {% set from = report.exercise.startsOn|date('Y-m-d') %}
+        <div class="px-kpis">
+            <twig:Px:Kpi label="Total débit" value="{{ report.debit|amount }}" note="au {{ report.exercise.startsOn|date('d/m/Y') }}, journal {{ report.journal.code }}"/>
+            <twig:Px:Kpi label="Total crédit" value="{{ report.credit|amount }}" note="{{ report.rows|length }} compte{{ report.rows|length > 1 ? 's' : '' }}"/>
+            <twig:Px:Kpi label="Écart" value="{{ report.gap|balance }}" note="{{ report.balanced ? 'la balance d’ouverture tombe juste' : 'saisie en attente comprise' }}" :state="report.entries is empty and report.pending is empty ? null : (report.balanced ? 'ok' : 'alert')"/>
+            <twig:Px:Kpi label="Écritures" value="{{ report.entries|length }}" note="{{ report.drafts > 0 ? report.drafts ~ ' au brouillard' : (report.entries is empty ? 'aucune' : 'toutes validées') }}"/>
+        </div>
+
+        <div class="px-split px-split--doc">
+            <twig:Px:Card title="Contrôles">
+                <twig:block name="content">
+                    <twig:Px:Checks :items="report.checks"/>
+                    {% if report.pending is not empty and grid_href %}
+                        <p><a class="px-link" href="{{ grid_href }}">Reprendre la saisie dans le journal {{ report.journal.code }}</a></p>
+                    {% endif %}
+                </twig:block>
+            </twig:Px:Card>
+            <twig:Px:Card title="Écritures du journal {{ report.journal.code }}" meta="exercice {{ report.exercise.code }}" :flush="report.entries is not empty">
+                <twig:block name="content">
+                    {% if report.entries is empty %}
+                        <p class="px-u-muted">Aucune écriture d’à-nouveaux pour cet exercice.</p>
+                    {% else %}
+                        <twig:Px:Table caption="Écritures d’à-nouveaux de l’exercice {{ report.exercise.code }}" :rows="true" density="compact">
+                            <thead><tr>
+                                <th scope="col">Pièce</th>
+                                <th scope="col">Libellé</th>
+                                <th scope="col">État</th>
+                                <th scope="col" class="px-u-right">Montant</th>
+                            </tr></thead>
+                            <tbody>
+                                {% for entry in report.entries %}
+                                    <tr data-rows-target="row"{% if not entry.validated %} class="is-todo"{% endif %}>
+                                        <td class="px-u-code"><a class="px-link" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id, return: here}) }}">{{ entry.document }}</a></td>
+                                        <td class="px-u-truncate px-u-fill" title="{{ entry.label }}">{{ entry.label }}</td>
+                                        <td>{% if entry.validated %}<twig:Px:Badge tone="success" label="{{ entry.numberLabel }}"/>{% else %}<twig:Px:Badge tone="warning" label="Brouillard"/>{% endif %}</td>
+                                        <td class="px-u-num">{{ entry.totalDebit|amount }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </twig:Px:Table>
+                    {% endif %}
+                </twig:block>
+            </twig:Px:Card>
+        </div>
+
+        <twig:Px:Card title="Balance d’ouverture au {{ report.exercise.startsOn|date('d/m/Y') }}" meta="écritures du journal {{ report.journal.code }}, brouillard compris" :flush="report.rows is not empty">
+            <twig:block name="actions">
+                {% if exercises|length > 1 %}
+                    {% for exercise in exercises %}
+                        <twig:Px:FilterChip label="Exercice {{ exercise.code }}" href="{{ path('app_accounting_opening', {dossier: dossier.id, exercise: exercise.code}) }}" :current="exercise.id == report.exercise.id"/>
+                    {% endfor %}
+                {% endif %}
+            </twig:block>
+            <twig:block name="content">
+                {% if report.rows is empty %}
+                    <twig:Px:Empty icon="scale" title="Balance d’ouverture vide" text="Saisissez les soldes de bilan à l’ouverture : une ligne par compte, les comptes de tiers détaillés par facture (tiers, libellé et échéance) pour le lettrage. F10 enregistre au brouillard dès que l’écriture s’équilibre.">
+                        <twig:block name="action">{% if grid_href and can_edit %}<twig:Px:Button href="{{ grid_href }}" variant="primary" icon="pencil">Saisir les à-nouveaux</twig:Px:Button>{% endif %}</twig:block>
+                    </twig:Px:Empty>
+                {% else %}
+                    <twig:Px:Table caption="Balance d’ouverture par compte" :rows="true">
+                        <thead><tr>
+                            <th scope="col">Compte</th>
+                            <th scope="col">Intitulé</th>
+                            <th scope="col" class="px-u-right">Lignes</th>
+                            <th scope="col" class="px-u-right">Débit</th>
+                            <th scope="col" class="px-u-right">Crédit</th>
+                        </tr></thead>
+                        <tbody>
+                            {% for row in report.rows %}
+                                {% set consult = path('app_accounting_consultation', {dossier: dossier.id, account: row.account.number, from: from, to: from, return: here}) %}
+                                <tr data-rows-target="row"{% if row.account.classDigit in [6, 7] %} class="is-todo"{% endif %}>
+                                    <td class="px-u-code"><a class="px-link" href="{{ consult }}">{{ row.account.number }}</a></td>
+                                    <td class="px-u-truncate px-u-fill" title="{{ row.account.label }}">{{ row.account.label }}</td>
+                                    <td class="px-u-num">{{ row.lines }}</td>
+                                    <td class="px-u-num">{{ row.debit|amount_cell }}</td>
+                                    <td class="px-u-num">{{ row.credit|amount_cell }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot><tr class="px-table__total">
+                            <th scope="row" colspan="3">Totaux {% if report.debit.equals(report.credit) %}<twig:Px:Badge tone="success" label="Équilibrée"/>{% else %}<twig:Px:Badge tone="danger" label="Écart"/>{% endif %}</th>
+                            <td class="px-u-num">{{ report.debit|amount }}</td>
+                            <td class="px-u-num">{{ report.credit|amount }}</td>
+                        </tr></tfoot>
+                    </twig:Px:Table>
+                {% endif %}
+            </twig:block>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}
+    {% if report and report.journal %}
+        <span>À-nouveaux {{ report.exercise.code }} · <b>{{ report.debit|amount }}</b> au débit et au crédit</span>
+        <span>Journal {{ report.journal.code }}</span>
+    {% else %}
+        {{ parent() }}
+    {% endif %}
+{% endblock %}

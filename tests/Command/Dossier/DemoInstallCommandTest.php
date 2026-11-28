@@ -14,12 +14,14 @@ use App\Enum\Accounting\EntryOrigin;
 use App\Enum\Dossier\DossierKind;
 use App\Enum\ThirdParty\PaymentMethod;
 use App\Enum\ThirdParty\ThirdPartyKind;
+use App\Repository\Accounting\EntryLineRepository;
 use App\Repository\Accounting\EntryRepository;
 use App\Repository\Accounting\EntrySubscriptionRepository;
 use App\Repository\Accounting\EntryTemplateRepository;
 use App\Repository\Dossier\DossierRepository;
 use App\Service\Accounting\Ledger\EntryScope;
 use App\Service\Accounting\Ledger\LedgerReader;
+use App\Service\Accounting\Lettering\LetteringBoard;
 use App\Service\Accounting\Subscription\SubscriptionRun;
 use App\Service\Accounting\Subscription\SubscriptionSchedule;
 use App\Service\Accounting\Template\TemplateCall;
@@ -163,6 +165,24 @@ final class DemoInstallCommandTest extends KernelTestCase
             array_map(static fn ($s): string => implode(' ', [$s->getLabel(), $s->getTemplate()->getCode(), $s->getAmount()?->cents, $s->getDayOfMonth(), $s->getFirstMonth()->format('Y-m'), $s->getOccurrences(), $s->getGenerated(), $s->getTarget()->value]), $subscriptions),
         );
         self::assertSame('2026-02-01', SubscriptionSchedule::next($subscriptions[1]->getFirstMonth(), 1, 11, 0)?->format('Y-m-d'));
+
+        // A lettering under way (letterings.yaml): the Scierie's two December invoices and their
+        // transfers (A 7 878,00, B 4 704,00), SCI Vasseur's rent and Loire Bail's lease (A each);
+        // January's invoice of the Scierie, 4 158,12, is left open, and the other suppliers.
+        $context->within($vasseur, static function (): void {
+            $board = self::getContainer()->get(LetteringBoard::class);
+            $lettered = [];
+            foreach (self::getContainer()->get(EntryLineRepository::class)->findBy(['letter' => ['A', 'B']]) as $line) {
+                $lettered[] = $line->getThirdParty()?->getCode().' '.$line->getLetter().' '.($line->getDebit()->cents ?: -$line->getCredit()->cents).' '.$line->getLetteredOn()?->format('Y-m-d');
+            }
+            sort($lettered);
+            self::assertSame([
+                'F0001 A -787800 2026-01-31', 'F0001 A 787800 2026-01-31', 'F0001 B -470400 2026-01-31', 'F0001 B 470400 2026-01-31',
+                'F0009 A -384000 2026-01-31', 'F0009 A 384000 2026-01-31', 'F0018 A -49440 2026-01-31', 'F0018 A 49440 2026-01-31',
+            ], $lettered);
+            $scierie = array_values(array_filter($board->rows(), static fn ($row): bool => '401SCIE' === $row->key->code()));
+            self::assertSame([1, -415_812], [$scierie[0]->openLines, $scierie[0]->openBalance()->cents]);
+        });
 
         // Up to 31/03, February and March of both: four drafts, LOY-2026-02 = 3 840,00, LBE-2026-03 = 494,40.
         $outcome = $context->within($vasseur, static fn () => self::getContainer()->get(SubscriptionRun::class)->generate($vasseur, new \DateTimeImmutable('2026-03-31'), 'test', new \DateTimeImmutable('2026-11-28 10:00')));

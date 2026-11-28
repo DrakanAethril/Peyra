@@ -53,7 +53,8 @@
                             <twig:Px:Input id="label" value="{{ draft.label }}" :required="true" :error="draft.error('label')" autocomplete="off" maxlength="200"/>
                         </twig:Px:Field>
                         <div class="px-field px-fieldgrid__full">
-                            <label class="px-check"><input type="checkbox" name="lettrable" value="1"{% if draft.lettrable %} checked{% endif %}> <span>Lettrable : ses écritures se rapprochent les unes des autres (factures et règlements)</span></label>
+                            <label class="px-check"><input type="checkbox" name="lettrable" value="1"{% if draft.lettrable %} checked{% endif %}{% if draft.error('lettrable') %} aria-invalid="true" aria-describedby="lettrable_error"{% endif %}> <span>Lettrable : ses écritures se rapprochent les unes des autres (factures et règlements)</span></label>
+                            {% if draft.error('lettrable') %}<p class="px-field__error" id="lettrable_error"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ draft.error('lettrable') }}</p>{% endif %}
                             <label class="px-check"><input type="checkbox" name="collective" value="1"{% if draft.collective %} checked{% endif %}{% if draft.error('collective') %} aria-invalid="true" aria-describedby="collective_error"{% endif %}> <span>Collectif : chaque ligne nomme un tiers (clients, fournisseurs)</span></label>
                             {% if draft.error('collective') %}<p class="px-field__error" id="collective_error"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ draft.error('collective') }}</p>{% endif %}
                         </div>

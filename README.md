@@ -65,15 +65,17 @@ code auxiliaire, ou sur son compte), sa balance d'ouverture du 1er janvier 2026 
 validée du journal des à-nouveaux équilibrée à 459 260,31), les achats et la Banque Populaire de
 janvier et ses sept modèles d'écriture (loyer, crédit-bail, honoraires, achat et vente à 20 %, frais
 bancaires, règlement fournisseur), ses deux abonnements (le loyer et le crédit-bail, à partir de
-février), datée du 31 janvier 2026 ; `app:dev:dossiers` en donne une copie à chaque étudiant placé
+février) et un lettrage commencé (trois fournisseurs réglés en janvier), datée du 31 janvier 2026 ; `app:dev:dossiers` en donne une copie à chaque étudiant placé
 (en attendant la distribution), qu'il ouvre depuis « Mes dossiers » et que les enseignants de sa classe ouvrent
 depuis sa fiche. Comptabilité › Saisie y est la grille de saisie au clavier, par journal et par
 mois, à la manière de Sage : F6 y appelle un modèle d'écriture (HT, TVA et TTC calculés du montant
 tapé), la saisie guidée part d'un modèle et de quelques champs, et un abonnement appelle un modèle
-chaque mois (« Générer jusqu'au » la date du dossier, au brouillard ou en saisie en attente). Le
+chaque mois (« Générer jusqu'au » la date du dossier, au brouillard ou en saisie en attente), et la
+vue À-nouveaux contrôle la balance d'ouverture saisie dans le journal d'à-nouveaux. Le
 Brouillard liste les écritures à valider et valide une sélection ; la Consultation lit un compte ou
-un tiers (mouvements, solde progressif, de l'écriture à la ligne et retour, F5 depuis la grille) et
-recherche les écritures ; les Éditions donnent les journaux, le grand livre, la balance générale, la
+un tiers (mouvements, solde progressif, de l'écriture à la ligne et retour, F5 depuis la grille),
+lettre un compte en face-à-face (débits à gauche, crédits à droite, lettrage partiel, délettrage,
+lettrage automatique par montant ou par pièce) et recherche les écritures ; les Éditions donnent les journaux, le grand livre, la balance générale, la
 balance auxiliaire et la balance âgée à l'écran (chaque montant mène à la consultation du compte),
 en PDF et en tableur ; chaque liste s'exporte en tableur (XLSX) ou en CSV. `Ctrl K` cherche dans le
 dossier un écran, un compte, un tiers, une écriture (numéro, pièce ou montant) ou une action, et

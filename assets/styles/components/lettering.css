@@ -1,0 +1,51 @@
+/*
+ * Comptabilité › Consultation › Lettrage (design-ux.md § 3.1, gabarit X): the two sides of an
+ * account, the lines chosen tinted as a pressed toggle (a box ticked says it too), the letter and
+ * its « Délettrer » in the last column, a proposed group's first line set off by a rule, and the
+ * selection's balance under the two tables.
+ */
+@layer px.components {
+    .px-lettering .px-table tbody tr:has(.px-check input:checked) > * {
+        background: var(--px-action-tint);
+    }
+
+    .px-lettering .px-table tbody tr:has(.px-check input:checked) > :first-child {
+        box-shadow: inset 2px 0 0 var(--px-action);
+    }
+
+    .px-lettering__letter {
+        white-space: nowrap;
+
+        & > .px-iconbtn {
+            margin-inline-start: var(--px-space-4);
+            vertical-align: middle;
+        }
+    }
+
+    .px-table tbody tr.px-table__groupstart > * {
+        border-block-start: 1px solid var(--px-border-strong);
+    }
+
+    .px-lettering__selection {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--px-space-12);
+    }
+
+    .px-lettering__summary {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--px-space-8);
+        margin: 0;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* A word that names the chips after it in a filter bar (« Lettrage automatique »). */
+    .px-filters__label {
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+        font-weight: var(--px-fw-semibold);
+    }
+}

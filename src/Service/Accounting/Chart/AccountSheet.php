@@ -27,6 +27,9 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 final readonly class AccountSheet
 {
+    /** Why an account whose lines carry letters stays lettrable (step 1.6). */
+    public const string LETTERED_REFUSAL = 'Des lignes de ce compte sont lettrées : délettrez-les avant de le rendre non lettrable.';
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private AccountRepository $accounts,
@@ -87,6 +90,10 @@ final readonly class AccountSheet
             } elseif ($this->lines->countOnAccount($account) > 0) {
                 $draft->errors['collective'] = self::entriesCollectiveRefusal($account->isCollective());
             }
+        }
+
+        if (null !== $account && $account->isLettrable() && !$draft->lettrable && $this->lines->countLetteredOnAccount($account) > 0) {
+            $draft->errors['lettrable'] = self::LETTERED_REFUSAL;
         }
 
         return [] === $draft->errors;

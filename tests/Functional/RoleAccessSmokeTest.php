@@ -225,6 +225,8 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/accounting/editions/third-party-balance/export.csv', '/accounting/editions/aged-balance', '/accounting/editions/aged-balance?kind=supplier',
             '/accounting/editions/aged-balance.pdf?kind=supplier', '/accounting/editions/aged-balance/export.xlsx',
             '/search', '/search?q=ach', '/search?q=401SCIE&here=/d/'.$saved->getId().'/accounting/brouillard',
+            '/accounting/lettering', '/accounting/lettering?account=401SCIE', '/accounting/lettering?account=401SCIE&all=1&auto=amount',
+            '/accounting/lettering?account=401000', '/accounting/opening', '/accounting/opening?exercise=2026',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
             $actual = [];

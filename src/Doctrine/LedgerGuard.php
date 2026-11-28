@@ -17,7 +17,8 @@ use Doctrine\ORM\UnitOfWork;
  * conception § 5) - the Ledger checks first, this guard is what makes a mistake elsewhere fail:
  *
  * - a validated entry never changes and is never deleted, nor does any of its lines, apart from
- *   the lettering letter (EntryLine::MUTABLE_WHEN_VALIDATED);
+ *   the lettering (EntryLine::MUTABLE_WHEN_VALIDATED);
+ * - only a validated entry's line is lettered: a draft may still change, its letter would lie;
  * - every entry written is balanced: two lines at least, each with a debit or a credit - one of
  *   them, positive - and as much debit as credit.
  *
@@ -31,6 +32,12 @@ final class LedgerGuard
         $unitOfWork = $event->getObjectManager()->getUnitOfWork();
         /** @var array<int, Entry> $touched */
         $touched = [];
+
+        foreach ([...$unitOfWork->getScheduledEntityInsertions(), ...$unitOfWork->getScheduledEntityUpdates()] as $entity) {
+            if ($entity instanceof EntryLine && $entity->isLettered() && !$entity->getEntry()->isValidated()) {
+                throw new LedgerRefused(\sprintf('A line of entry %s carries the letter %s: only a validated entry is lettered.', $entity->getEntry()->getId() ?? 'new', $entity->getLetter()));
+            }
+        }
 
         foreach ($unitOfWork->getScheduledEntityInsertions() as $entity) {
             if ($entity instanceof Entry) {

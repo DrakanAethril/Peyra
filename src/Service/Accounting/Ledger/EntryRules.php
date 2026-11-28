@@ -8,6 +8,7 @@ use App\Entity\Accounting\Account;
 use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Period;
 use App\Entity\ThirdParty\ThirdParty;
+use App\Enum\Accounting\JournalType;
 use App\Service\Accounting\Chart\AccountNumber;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\Money;
@@ -19,7 +20,7 @@ use App\Service\Shared\Money;
  * key (EntryDraft), the draft's texts come back normalized.
  *
  * - a journal of the dossier, a date inside an exercise that is not closed, in a period that is not
- *   closed;
+ *   closed; an entry of the à-nouveaux journal is dated the first day of its exercise (step 1.6);
  * - a document reference and a label;
  * - two lines at least (a blank line is skipped), each on an account of the plan, with a debit or a
  *   credit - one of them, positive;
@@ -69,6 +70,11 @@ final class EntryRules
             } elseif ($period->isClosed()) {
                 $draft->errors['date'] = \sprintf('La période %s est close : elle ne prend plus d’écriture.', mb_strtolower($period->getLabel()));
             }
+        }
+
+        if (null !== $journal && null !== $period && !isset($draft->errors['date']) && JournalType::Opening === $journal->getType()
+            && $draft->date->format('Y-m-d') !== $period->getExercise()->getStartsOn()->format('Y-m-d')) {
+            $draft->errors['date'] = \sprintf('Les à-nouveaux se datent du premier jour de l’exercice : le %s.', FrenchFormat::date($period->getExercise()->getStartsOn()));
         }
 
         if ('' === $draft->document) {

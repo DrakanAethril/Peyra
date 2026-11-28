@@ -127,4 +127,28 @@ final class EntryRepository extends ServiceEntityRepository
         /* @var list<Entry> */
         return $query->getQuery()->getResult();
     }
+
+    /**
+     * The entries of a journal in an exercise, by date then as written, their lines, accounts and
+     * third parties loaded (the à-nouveaux of an exercise).
+     *
+     * @return list<Entry>
+     */
+    public function findInJournalExercise(Journal $journal, Exercise $exercise): array
+    {
+        /* @var list<Entry> */
+        return $this->createQueryBuilder('e')
+            ->addSelect('l', 'a', 't')
+            ->leftJoin('e.lines', 'l')
+            ->leftJoin('l.account', 'a')
+            ->leftJoin('l.thirdParty', 't')
+            ->andWhere('e.journal = :journal')
+            ->andWhere('e.exercise = :exercise')
+            ->setParameter('journal', $journal)
+            ->setParameter('exercise', $exercise)
+            ->orderBy('e.entryDate', 'ASC')
+            ->addOrderBy('e.id', 'ASC')
+            ->addOrderBy('l.position', 'ASC')
+            ->getQuery()->getResult();
+    }
 }

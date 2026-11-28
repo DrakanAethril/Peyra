@@ -28,6 +28,8 @@
                 {% else %}
                     <twig:Px:Button href="{{ path('app_accounting_account', {dossier: dossier.id, number: subject.account.number}) }}" icon="book-text">Fiche du compte</twig:Px:Button>
                 {% endif %}
+                {% set letterable = subject.thirdParty ? (subject.thirdParty.account and subject.thirdParty.account.lettrable) : (subject.account.lettrable and not subject.account.collective) %}
+                {% if letterable %}<twig:Px:Button href="{{ path('app_accounting_lettering', {dossier: dossier.id, account: subject.code, return: here}) }}" icon="link-2">Lettrer</twig:Px:Button>{% endif %}
                 <twig:Px:ExportMenu xlsx="{{ path('app_accounting_consultation_export', {dossier: dossier.id, format: 'xlsx'}|merge(keep)) }}" csv="{{ path('app_accounting_consultation_export', {dossier: dossier.id, format: 'csv'}|merge(keep)) }}"/>
             {% endif %}
         </twig:block>

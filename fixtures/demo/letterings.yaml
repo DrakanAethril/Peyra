@@ -1,0 +1,12 @@
+# Menuiserie Vasseur SARL - a lettering under way (step 1.6): three suppliers paid in January,
+# lettered automatically by amount through App\Service\Accounting\Lettering\Lettering (Scierie du
+# Haut-Forez: its two December invoices of the opening balance with their transfers, A and B;
+# SCI Vasseur Immobilier and Loire Bail Équipement: January's rent and lease with their direct
+# debits). The other suppliers and the customers are left to letter (mission M1-B, missions.md).
+# `account` is a lettrable account, `third_party` the third party's code on a collective one, `by`
+# the automatic lettering's mode (amount or document).
+
+letterings:
+  - { account: '401000', third_party: F0001, by: amount }
+  - { account: '401000', third_party: F0009, by: amount }
+  - { account: '401000', third_party: F0018, by: amount }

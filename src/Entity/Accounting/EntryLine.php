@@ -17,8 +17,10 @@ use Doctrine\ORM\Mapping as ORM;
  * the third party's own general account), a label, a debit or a credit - one of them, positive -,
  * and the due date of an invoice. Balances are the sum of these lines, never a stored counter.
  *
- * Made only by App\Service\Accounting\Ledger\Ledger. The lettering letter is the one field a
- * validated entry's line may still take (step 1.6; App\Doctrine\LedgerGuard).
+ * Made only by App\Service\Accounting\Ledger\Ledger. The lettering - its letter and the dossier's
+ * date it was set on - is the one thing a validated entry's line may still take (step 1.6;
+ * App\Doctrine\LedgerGuard), set and cleared by App\Service\Accounting\Lettering\Lettering alone
+ * (LetteringDoorTest); a line of the brouillard carries none.
  */
 #[ORM\Entity(repositoryClass: EntryLineRepository::class)]
 #[ORM\Table(name: 'entry_line')]
@@ -29,7 +31,7 @@ class EntryLine implements DossierOwned
     use DossierOwnedTrait;
 
     /** The fields a validated entry's line may still change (lettering, step 1.6). */
-    public const array MUTABLE_WHEN_VALIDATED = ['letter'];
+    public const array MUTABLE_WHEN_VALIDATED = ['letter', 'letteredOn'];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -64,9 +66,17 @@ class EntryLine implements DossierOwned
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $dueDate;
 
-    /** The lettering letter (« A », « AB »), continuous per account (step 1.6). */
+    /**
+     * The lettering letter, continuous per account (or per third party on a collective): « A »,
+     * « AB » in capitals for a group that balances, in small letters (« b ») for a partial one, as
+     * Sage writes them (App\Service\Accounting\Lettering\LetterSequence).
+     */
     #[ORM\Column(length: 4, nullable: true)]
     private ?string $letter = null;
+
+    /** The dossier's date the line was lettered on (the FEC's DateLet), never the server's. */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $letteredOn = null;
 
     public function __construct(Entry $entry, int $position, Account $account, ?ThirdParty $thirdParty, string $label, Money $debit, Money $credit, ?\DateTimeImmutable $dueDate)
     {
@@ -129,5 +139,35 @@ class EntryLine implements DossierOwned
     public function getLetter(): ?string
     {
         return $this->letter;
+    }
+
+    public function getLetteredOn(): ?\DateTimeImmutable
+    {
+        return $this->letteredOn;
+    }
+
+    public function isLettered(): bool
+    {
+        return null !== $this->letter;
+    }
+
+    /** Lettered in a group that does not balance yet (its letter in small letters). */
+    public function isPartiallyLettered(): bool
+    {
+        return null !== $this->letter && mb_strtolower($this->letter) === $this->letter;
+    }
+
+    /** The one door of the lettering sets the letter of a validated line (Lettering, LetteringDoorTest). */
+    public function letteringSet(string $letter, \DateTimeImmutable $on): void
+    {
+        $this->letter = $letter;
+        $this->letteredOn = $on->setTime(0, 0);
+    }
+
+    /** The one door of the lettering clears it (« délettrer »). */
+    public function letteringClear(): void
+    {
+        $this->letter = null;
+        $this->letteredOn = null;
     }
 }

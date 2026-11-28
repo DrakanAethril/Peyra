@@ -38,6 +38,8 @@ final class EntryRulesTest extends TestCase
 
     private Journal $purchases;
 
+    private Journal $opening;
+
     private Period $january;
 
     private Period $february;
@@ -55,6 +57,7 @@ final class EntryRulesTest extends TestCase
         $this->thirdParties['A0001'] = $this->thirdParty($dossier, 'A0001', ThirdPartyKind::Other, '455100', null);
         $this->thirdParties['F0021'] = $this->thirdParty($dossier, 'F0021', ThirdPartyKind::Supplier, null, null);
         $this->purchases = new Journal($dossier, 'ACH', 'Achats', JournalType::Purchases, null);
+        $this->opening = new Journal($dossier, 'AN', 'À-nouveaux', JournalType::Opening, null);
 
         $exercise = new Exercise($dossier, '2026', new \DateTimeImmutable('2026-01-01'), new \DateTimeImmutable('2026-12-31'));
         $this->january = new Period($exercise, new \DateTimeImmutable('2026-01-01'), new \DateTimeImmutable('2026-01-31'));
@@ -239,6 +242,24 @@ final class EntryRulesTest extends TestCase
         return [$draft->journal, $draft->document, $draft->label, $draft->lines[2]->thirdParty, $draft->lines[2]->account];
     }
 
+    public function testAnOpeningEntryIsDatedTheFirstDayOfItsExercise(): void
+    {
+        $lines = [EntryLineDraft::debit('512000', Money::cents(1_000_000)), EntryLineDraft::credit('101300', Money::cents(1_000_000))];
+
+        $first = new EntryDraft('AN', new \DateTimeImmutable('2026-01-01'), 'AN-2026-001', 'À-nouveaux', $lines);
+        self::assertNotNull($this->check($first));
+        self::assertSame([], $first->errors);
+
+        $second = new EntryDraft('AN', new \DateTimeImmutable('2026-01-02'), 'AN-2026-002', 'À-nouveaux', $lines);
+        self::assertNull($this->check($second));
+        self::assertSame(['date' => 'Les à-nouveaux se datent du premier jour de l’exercice : le 01/01/2026.'], $second->errors);
+
+        // A closed period says so first.
+        $closed = new EntryDraft('AN', new \DateTimeImmutable('2026-02-01'), 'AN-2026-003', 'À-nouveaux', $lines);
+        self::assertNull($this->check($closed));
+        self::assertSame(['date' => 'La période février 2026 est close : elle ne prend plus d’écriture.'], $closed->errors);
+    }
+
     private function purchase(): EntryDraft
     {
         return new EntryDraft('ACH', new \DateTimeImmutable('2026-01-08'), 'FA-2601-0012', 'Scierie du Haut-Forez, chêne', [
@@ -252,7 +273,7 @@ final class EntryRulesTest extends TestCase
     {
         return EntryRules::check(
             $draft,
-            fn (string $code): ?Journal => 'ACH' === $code ? $this->purchases : null,
+            fn (string $code): ?Journal => ['ACH' => $this->purchases, 'AN' => $this->opening][$code] ?? null,
             function (\DateTimeImmutable $day): ?Period {
                 foreach ([$this->january, $this->february, $this->december2025] as $period) {
                     if ($day >= $period->getStartsOn() && $day <= $period->getEndsOn()) {

@@ -97,6 +97,12 @@ enum AuditAction: string
     /** A subscription's occurrences generated up to the dossier's date. */
     case EntrySubscriptionGenerated = 'accounting.entry_subscription_generated';
 
+    /** Lines of an account lettered together, by hand or automatically (step 1.6). */
+    case LinesLettered = 'accounting.lines_lettered';
+
+    /** A lettering undone (« délettrer »). */
+    case LinesUnlettered = 'accounting.lines_unlettered';
+
     public function label(): string
     {
         return match ($this) {
@@ -129,6 +135,8 @@ enum AuditAction: string
             self::EntrySubscriptionChanged => 'Abonnement modifié',
             self::EntrySubscriptionDeleted => 'Abonnement supprimé',
             self::EntrySubscriptionGenerated => 'Écritures d’abonnement générées',
+            self::LinesLettered => 'Lignes lettrées',
+            self::LinesUnlettered => 'Lettrage défait',
         };
     }
 }
