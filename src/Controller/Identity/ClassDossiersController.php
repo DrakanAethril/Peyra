@@ -43,12 +43,16 @@ final class ClassDossiersController extends AbstractController
     {
         $this->denyAccessUnlessGranted(SchoolClassVoter::VIEW, $class);
         $rows = $this->visible($dossiers->rows($class));
-        // The page asks again every two seconds while dossiers go back: each asking queues their
-        // returns, so the ones the reset's request left (its WorkBudget spent) are done after it.
+        // The page asks again every two seconds while dossiers go back or points posed for the
+        // class are prepared: each asking queues that work, so what the gesture's request left (its
+        // WorkBudget spent) is done after it.
         foreach ($rows as $row) {
             $running = $row->restoring ? $restorations->findRunning($row->dossier) : null;
             if (null !== $running) {
                 $queue->restoration($running);
+            }
+            if (null !== $row->lastPoint && $row->lastPoint->isPreparing()) {
+                $queue->point($row->lastPoint);
             }
         }
 
@@ -58,7 +62,7 @@ final class ClassDossiersController extends AbstractController
             'tickable' => array_map(fn (ClassDossierRow $row): bool => $this->isGranted(RestorePointVoter::POSE, $row->dossier), $rows),
             'history' => !$this->isGranted(SchoolClassVoter::PLACE, $class),
             'point_name' => 'Point de la classe du '.$clock->now()->format('d/m/Y'),
-            'restoring' => array_any($rows, static fn (ClassDossierRow $row): bool => $row->restoring),
+            'busy' => array_any($rows, static fn (ClassDossierRow $row): bool => $row->restoring || (null !== $row->lastPoint && $row->lastPoint->isPreparing())),
         ]);
     }
 

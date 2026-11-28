@@ -66,7 +66,13 @@ final class ClassDossiersScreensTest extends WebTestCase
         $ids = $boxes->each(static fn ($box): int => (int) $box->attr('value'));
         self::assertSelectorTextContains('main', 'Bernard Lucas');
         self::assertSelectorTextContains('main', 'État de départ');
-        $token = (string) $crawler->filter('#class-dossiers-lot input[name="_token"]')->attr('value');
+        $token = (string) $crawler->filter('#class-dossiers-lot button[name="_token"]')->attr('value');
+        // The récapitulatif is a GET of the same form: no input of the form may carry the token.
+        self::assertCount(0, $crawler->filter('#class-dossiers-lot input[name="_token"]'));
+        $summary = $crawler->filter('#class-dossiers-lot button.px-btn--primary')->form();
+        $summary['dossiers'] = array_map('strval', $ids);
+        self::assertSame('GET', $summary->getMethod());
+        self::assertStringNotContainsString('_token', $summary->getUri());
 
         // « Poser un point » on both, under one name.
         $client->request('POST', $page.'/points', ['_token' => $token, 'name' => 'Avant la séance', 'dossiers' => $ids]);

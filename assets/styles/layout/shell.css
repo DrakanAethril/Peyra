@@ -137,9 +137,13 @@
         }
     }
 
+    /* A long entry (« Immobilisations et clôture ») goes onto a second line rather than lose its
+       end: the rail keeps its 200 px (B9) and a label is never cut. */
     .px-rail__text {
-        overflow: hidden;
-        text-overflow: ellipsis;
+        min-width: 0;
+        white-space: normal;
+        line-height: var(--px-lh-tight);
+        overflow-wrap: break-word;
     }
 
     .px-rail__count {
