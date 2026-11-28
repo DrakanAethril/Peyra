@@ -1018,6 +1018,24 @@ Lot 1, step 1.8c (design-ux.md § 4.2), held by code in `src/Service/Dossier/Dis
   dossier through `DossierEraser::deleteDossier()` (the copies detached first: the unit of work must not
   hold a dossier it deletes), after the title is typed.
 
+## FEC (built at step 1.9a)
+
+Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by code in
+`src/Service/Accounting/Fec/` and `App\Controller\Closing\FecController`:
+
+- **Immobilisations et clôture › Clôture › FEC** (`/d/{dossier}/closing/fec[?exercise=2026]`, rail entry
+  `closing`, `templates/closing/_layout.html.twig` - lot 3 adds its other tabs there), and
+  `…/download`: a reading, open to whoever enters the dossier.
+- **`FecExport::of(dossier, exercise)`**: the exercise's validated entries only (the brouillard is
+  counted apart), the à-nouveaux first then by `validatedOn`, entry date, journal, number; UTF-8
+  without BOM, tab, CRLF (`FecWriter`); `EcritureNum` is `getNumberLabel()`, `PieceDate` the entry's
+  date until lot 2's documents carry theirs; named `SirenFECAAAAMMJJ.txt` (`FecFormat`).
+- **`FecConformity::check(bytes, name, start, end)`** is pure and checks the bytes handed over: name,
+  header (or Montant/Sens), zones, required zones, formats, paired zones, entries contiguous, one
+  day, balanced, in the exercise, numbering without a gap per journal, chronological order of
+  validation after the leading reprise. **`FecReader`** (tab or `|`, UTF-8 or ISO 8859-15, BOM
+  dropped) is the reader the FEC import (1.9b) starts from.
+
 ## Cross-cutting building blocks (built at step 0.6a)
 
 Reach for these rather than re-implement them; each has its test.

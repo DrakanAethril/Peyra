@@ -2,7 +2,7 @@
  # The PGI inside a dossier (design-ux.md § 2.1): the rail of its modules, the switcher, the global
  # search (Ctrl K), the date chip and - in a group's dossier - the member's profile chip in the top bar, and, for a teacher, the ribbon that says whose dossier this is (C4). Only the
  # modules that exist are in the rail: Pièces, Ventes, Achats et stocks and the others arrive with
- # their steps. A screen sets `rail_current` (dashboard, accounting, si) and `dossier_title` outside
+ # their steps. A screen sets `rail_current` (dashboard, accounting, closing, si) and `dossier_title` outside
  # any block, and fills page_head, page, module_tabs and `facts` (the status bar without a message).
  #}
 {% extends 'layout/pgi.html.twig' %}
@@ -16,6 +16,7 @@
     <twig:Px:RailItem href="{{ path('app_dossier_dashboard', {dossier: dossier.id}) }}" icon="house" label="Tableau de bord" :current="(rail_current ?? '') == 'dashboard'"/>
     <twig:Px:RailGroup label="Comptabilité">
         <twig:Px:RailItem href="{{ path('app_accounting_entry', {dossier: dossier.id}) }}" icon="book-text" label="Comptabilité" :current="(rail_current ?? '') == 'accounting'"/>
+        <twig:Px:RailItem href="{{ path('app_closing_fec', {dossier: dossier.id}) }}" icon="lock" label="Immobilisations et clôture" :current="(rail_current ?? '') == 'closing'"/>
     </twig:Px:RailGroup>
     <twig:Px:RailGroup label="Analyse">
         <twig:Px:RailItem href="{{ path('app_dossier_company', {dossier: dossier.id}) }}" icon="database" label="Système d’information" :current="(rail_current ?? '') == 'si'"/>

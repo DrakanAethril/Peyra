@@ -14,7 +14,7 @@ use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
  * The screens and actions of a dossier the global search offers (Ctrl K, design-ux.md § 2.1): the
  * catalogue of what exists today - the dashboard, Comptabilité's screens (Saisie, one line per
  * journal, the guided entry when it is open to the person, À-nouveaux, Brouillard, Consultation,
- * Lettrage, Recherche d'écritures, the five editions, the five views of the settings), Système d'information ›
+ * Lettrage, Recherche d'écritures, the five editions, the five views of the settings), Immobilisations et clôture › FEC, Système d'information ›
  * Société, Utilisateurs et droits, Piste d'audit - and, for whoever may change the dossier, the
  * actions that create (« Nouvelle écriture », « Nouveau compte »…). The search never offers a
  * module a mission closes, nor what a profile closes (a journal it does not open, the settings'
@@ -33,7 +33,7 @@ final readonly class SearchScreens
         'app_accounting_edition_general_ledger', 'app_accounting_edition_trial_balance',
         'app_accounting_edition_third_party_balance', 'app_accounting_edition_aged_balance',
         'app_accounting_accounts', 'app_accounting_journals', 'app_third_parties', 'app_accounting_templates',
-        'app_accounting_subscriptions', 'app_dossier_company', 'app_dossier_users', 'app_dossier_audit',
+        'app_accounting_subscriptions', 'app_closing_fec', 'app_dossier_company', 'app_dossier_users', 'app_dossier_audit',
         'app_dossier_restore_points',
     ];
 
@@ -124,6 +124,7 @@ final readonly class SearchScreens
             $screen('app_third_parties', 'Tiers', self::SETTINGS, 'settings', 'clients fournisseurs'),
             $screen('app_accounting_templates', 'Modèles d’écriture', self::SETTINGS, 'settings', 'saisie f6'),
             $screen('app_accounting_subscriptions', 'Abonnements', self::SETTINGS, 'settings', 'loyer echeances generer'),
+            $screen('app_closing_fec', 'FEC', 'Immobilisations et clôture › Clôture', 'lock', 'fichier des ecritures comptables export controle fiscal conformite archivage telecharger'),
             $screen('app_dossier_company', 'Société', 'Système d’information', 'database', 'entreprise siret dossier'),
             $screen('app_dossier_users', 'Utilisateurs et droits', 'Système d’information', 'users', 'profils membres groupe matrice'),
             $screen('app_dossier_audit', 'Piste d’audit', 'Système d’information', 'history', 'historique journal qui quoi quand'),

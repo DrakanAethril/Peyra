@@ -151,4 +151,39 @@ final class EntryRepository extends ServiceEntityRepository
             ->addOrderBy('l.position', 'ASC')
             ->getQuery()->getResult();
     }
+
+    /**
+     * The validated entries of an exercise with their journal, lines, accounts and third parties
+     * (the FEC, step 1.9a), in no particular order.
+     *
+     * @return list<Entry>
+     */
+    public function findValidatedInExercise(Exercise $exercise): array
+    {
+        /* @var list<Entry> */
+        return $this->createQueryBuilder('e')
+            ->addSelect('j', 'l', 'a', 't')
+            ->join('e.journal', 'j')
+            ->leftJoin('e.lines', 'l')
+            ->leftJoin('l.account', 'a')
+            ->leftJoin('l.thirdParty', 't')
+            ->andWhere('e.exercise = :exercise')
+            ->andWhere('e.state = :validated')
+            ->setParameter('exercise', $exercise)
+            ->setParameter('validated', EntryState::Validated)
+            ->addOrderBy('l.position', 'ASC')
+            ->getQuery()->getResult();
+    }
+
+    /** How many entries of the exercise are still in the brouillard. */
+    public function countDraftsInExercise(Exercise $exercise): int
+    {
+        return (int) $this->createQueryBuilder('e')
+            ->select('COUNT(e.id)')
+            ->andWhere('e.exercise = :exercise')
+            ->andWhere('e.state = :draft')
+            ->setParameter('exercise', $exercise)
+            ->setParameter('draft', EntryState::Draft)
+            ->getQuery()->getSingleScalarResult();
+    }
 }
