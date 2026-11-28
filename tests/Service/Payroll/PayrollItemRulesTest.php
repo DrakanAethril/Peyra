@@ -131,6 +131,24 @@ final class PayrollItemRulesTest extends TestCase
         self::assertNotNull(PayrollItemRules::check($draft, null), implode(' ', $draft->errors));
     }
 
+    /** Step 4.3d: the days outside the contract carry their own rate (salary ÷ days), the sick pay a percent of the salary kept. */
+    public function testTheMonthOutsideTheContractAndTheSickPay(): void
+    {
+        $draft = new PayrollItemDraft();
+        [$draft->code, $draft->label, $draft->kind, $draft->base, $draft->subtracts] = ['1230', 'Absence entrée ou sortie en cours de mois', PayrollItemKind::Gross->value, PayrollBase::EntryExitDays->value, true];
+        self::assertNotNull(PayrollItemRules::check($draft, null), implode(' ', $draft->errors));
+        $draft->employeeSource = PayrollRateSource::HourlyRate->value;
+        self::assertNull(PayrollItemRules::check($draft, null));
+        self::assertNotNull($draft->error('employeeSource'), 'The days outside the contract are counted at the salary over the days of the month.');
+
+        $draft = new PayrollItemDraft();
+        [$draft->code, $draft->label, $draft->kind, $draft->base] = ['1220', 'Maintien de salaire maladie', PayrollItemKind::Gross->value, PayrollBase::SickPay->value];
+        self::assertNull(PayrollItemRules::check($draft, null));
+        self::assertSame('Une rubrique sur « maintien maladie : heures, ijss déduites » a son taux.', $draft->error('employeeSource'));
+        [$draft->employeeSource, $draft->employeeKey, $draft->employeePath] = [PayrollRateSource::Regulatory->value, 'social.sick_pay.employer_complement', 'first_period_rate'];
+        self::assertNotNull(PayrollItemRules::check($draft, null), implode(' ', $draft->errors));
+    }
+
     public function testHoursNeedTheirRateAndAnEnteredAmountNone(): void
     {
         $draft = new PayrollItemDraft();

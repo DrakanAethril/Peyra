@@ -31,7 +31,11 @@ use Brick\Math\RoundingMode;
  * - a number at a price (meals provided, valued at the regulatory amount);
  * - an amount entered (a bonus, a company car);
  * - the paid leave: its hours off the salary, and its pay, the better of the salary kept and the
- *   tenth of the reference period's gross pay for the days taken (L3141-24).
+ *   tenth of the reference period's gross pay for the days taken (L3141-24);
+ * - step 4.3d: the days of the month outside the contract (hired or leaving during the month), the
+ *   sick pay (the salary kept less the daily allowances), and the absences cut so that they never take
+ *   more than the salary (PayslipPresence). The month's ceiling and SMIC of reference follow
+ *   (PayslipMonth, PayslipPresence::ratio()).
  */
 final class PayslipCalculator
 {

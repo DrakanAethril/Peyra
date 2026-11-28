@@ -1204,6 +1204,12 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   **health** share only. A gross rubrique `benefit_in_kind` is taken back off the net by 4000.
   Reference payslips: `tests/Service/Payroll/Engine/reference/bulletins_4_3c.py`, a decimal script
   that never reads the repository - extend it, never copy an expected amount from the engine.
+- **An incomplete month** (step 4.3d, `PayslipMonth`, `PayslipPresence`): the month is the payslip's
+  day's; `PayslipEmployee` carries the hiring and last days, `PayslipVariables::$unpaidDays` the whole
+  days paid nothing. The ceiling is prorated on calendar days, the SMIC of reference corrected by salary
+  due ÷ whole-month salary. **Absences are recognised by their base, never their code**: the salary is
+  `contract_hours`, an absence `entry_exit_days` or subtracting `entered_hours` at the hourly rate, the
+  sick pay `sick_pay` (hours as quantity, daily allowances as amount, on the same code).
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

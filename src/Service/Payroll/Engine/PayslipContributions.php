@@ -22,7 +22,8 @@ use Brick\Math\RoundingMode;
 
 /**
  * The contributions of a payslip (lot 4, step 4.3b), read from the rubriques of the plan de paie:
- * their base cut into the brackets of the monthly ceiling, their employee's and employer's rates,
+ * their base cut into the brackets of the month's ceiling (prorated in a month the contract does not
+ * cover whole or with whole days paid nothing, PayslipMonth, step 4.3d), their employee's and employer's rates,
  * their conditions (status, headcount, salary above the ceiling) - plus what the rubriques do not
  * say and the law does:
  *
