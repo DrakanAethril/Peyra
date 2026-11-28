@@ -546,6 +546,20 @@ entries:
     consulted_on: 2026-11-27
     verified: true
     note: Seuil de 250 salariés supprimé au 1er janvier 2026 (art. 21 LFSS 2026) - tout employeur éligible à la RGDU. Aussi par jour de repos racheté en forfait jours (montant × 7). CTP 004.
+  - key: social.overtime.income_tax_exemption
+    label: Heures supplémentaires et complémentaires - exonération d'impôt sur le revenu
+    value: {annual_limit: 7500}
+    unit: EUR/an (montant net imposable)
+    effective_from: 2026-01-01
+    source_url: https://www.impots.gouv.fr/node/26331
+    consulted_on: 2026-11-28
+    verified: false
+    note: >-
+      Article 81 quater du CGI : exonération « dans la limite de 7 500 € nets » par an (impots.gouv.fr, fiche des
+      revenus 2022 ; « montant brut × 0,93319 = montant net », soit le brut moins la CSG déductible de 98,25 % × 6,80 %).
+      Plafond reconduit selon service-public pour les revenus 2025, non relu sur une page datée 2026. Le montant
+      exonéré est la rémunération des heures, moins les cotisations salariales qui restent dues sur elles et la CSG
+      déductible (méthode de l'étape 4.3c, non relue sur le BOSS).
 
   # --- Avantages en nature ----------------------------------------------------------------------
   - key: social.benefit_in_kind.meal
@@ -748,13 +762,19 @@ entries:
   # --- Montant net social -----------------------------------------------------------------------
   - key: social.net_social_amount
     label: Montant net social - définition
-    value: "Ensemble des sommes brutes (salaires, primes, HS, avantages en nature, indemnités de rupture, part patronale santé/prévoyance, IJSS subrogées nettes…) diminuées des cotisations et contributions sociales obligatoires à la charge du salarié."
+    value: "Revenus d'activité bruts (salaires, primes, HS, avantages en nature…), hors financement par l'employeur des garanties collectives de santé, de prévoyance et de retraite supplémentaire, diminués des cotisations et contributions sociales à la charge du salarié, y compris sa part de ces garanties collectives."
     unit: text
-    effective_from: 2023-07-01
-    source_url: https://boss.gouv.fr/portail/accueil/bulletin-de-paie/montant-net-social.html
-    consulted_on: 2026-11-27
-    verified: true
-    note: Article R. 3243-1, 9° bis du code du travail ; affichage obligatoire depuis les paies de juillet 2023. Ni l'assiette fiscale, ni l'assiette sociale.
+    effective_from: 2024-01-01
+    source_url: https://open.lefebvre-dalloz.fr/actualites/droit-social/definition-montant-net-social-codifiee_fa5ce929c-b860-48bd-b174-a41bd747646e
+    consulted_on: 2026-11-28
+    verified: false
+    note: >-
+      Article R. 844-1, II du code de la sécurité sociale (décret n° 2023-1378), affiché en application de R. 3243-1,
+      9° bis du code du travail ; revenus perçus à compter du 1er janvier 2024. Lu sur une source secondaire
+      (boss.gouv.fr et Légifrance injoignables le 28/11/2026). La part patronale santé et prévoyance, ajoutée dans
+      la première définition (juillet 2023), n'y entre plus ; sa réintégration annoncée vise 2027. Le moteur de
+      bulletin (étape 4.3c) en fait : brut - cotisations salariales.
+
   # --- Formalités d'embauche (étape 4.2b) ---------------------------------------------------------
   - key: social.hiring.dpae_earliest_days
     label: DPAE - dépôt au plus tôt avant l'embauche

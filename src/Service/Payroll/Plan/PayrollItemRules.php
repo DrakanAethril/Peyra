@@ -27,7 +27,8 @@ use Brick\Math\BigDecimal;
  *
  * - a code of four digits, a label, a family, a place in the payslip (the code's number by default);
  * - a base the family knows (PayrollItemKind::bases()), cut by a ceiling only when it is the gross
- *   salary; only an element of gross pay or a contribution comes off what it adds to;
+ *   salary; only an element of gross pay or a contribution comes off what it adds to, and only an
+ *   element of gross pay that adds is a benefit in kind;
  * - each side's rate from a source that side, family and base accept
  *   (PayrollRateSource::allowedOnEmployeeSide() / allowedOnEmployerSide()), with what the source
  *   needs - a regulatory key of the social domain and its path, a percent above 0 up to 100 with
@@ -91,6 +92,9 @@ final class PayrollItemRules
         if ($draft->subtracts && null !== $kind && !\in_array($kind, [PayrollItemKind::Gross, PayrollItemKind::Contribution], true)) {
             $draft->errors['subtracts'] = 'Seuls un élément de brut (une absence) et une cotisation (une réduction) viennent en déduction.';
         }
+        if ($draft->benefitInKind && null !== $kind && (PayrollItemKind::Gross !== $kind || $draft->subtracts)) {
+            $draft->errors['benefitInKind'] = 'Seul un élément de brut qui s’ajoute au salaire est un avantage en nature.';
+        }
 
         $employee = null === $kind || null === $base ? null : self::side($draft, 'employee', $kind, $base);
         $employer = null === $kind || null === $base ? null : self::side($draft, 'employer', $kind, $base);
@@ -140,7 +144,7 @@ final class PayrollItemRules
             return null;
         }
 
-        return new PayrollItemSpec($draft->code, $draft->label, $kind, $sortOrder, $draft->subtracts, $base, $ceiling, $employee, $employer, $status, $headcount, $salary, $body, $line);
+        return new PayrollItemSpec($draft->code, $draft->label, $kind, $sortOrder, $draft->subtracts, $base, $ceiling, $employee, $employer, $status, $headcount, $salary, $body, $line, $draft->benefitInKind);
     }
 
     /** @param 'employee'|'employer' $side */

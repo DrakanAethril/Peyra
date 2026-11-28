@@ -54,6 +54,8 @@
                         <div class="px-field px-fieldgrid__full">
                             <label class="px-check"><input type="checkbox" name="subtracts" value="1"{% if draft.subtracts %} checked{% endif %}{% if draft.error('subtracts') %} aria-invalid="true" aria-describedby="subtracts_error"{% endif %}> <span>En déduction : une absence vient en moins du brut, une réduction en moins des cotisations</span></label>
                             {% if draft.error('subtracts') %}<p class="px-field__error" id="subtracts_error"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ draft.error('subtracts') }}</p>{% endif %}
+                            <label class="px-check"><input type="checkbox" name="benefitInKind" value="1"{% if draft.benefitInKind %} checked{% endif %}{% if draft.error('benefitInKind') %} aria-invalid="true" aria-describedby="benefitInKind_error"{% endif %}> <span>Avantage en nature : ajouté au brut, puis retenu sur le net</span></label>
+                            {% if draft.error('benefitInKind') %}<p class="px-field__error" id="benefitInKind_error"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ draft.error('benefitInKind') }}</p>{% endif %}
                         </div>
                     </div>
                 </twig:Px:Card>
@@ -107,7 +109,7 @@
                 <dl class="px-facts">
                     <dt>Code</dt><dd class="px-u-code">{{ item.code }}</dd>
                     <dt>Intitulé</dt><dd>{{ item.label }}</dd>
-                    <dt>Famille</dt><dd>{{ item.kind.label }}{% if item.subtracts %} · en déduction{% endif %}</dd>
+                    <dt>Famille</dt><dd>{{ item.kind.label }}{% if item.subtracts %} · en déduction{% endif %}{% if item.benefitInKind %} · avantage en nature{% endif %}</dd>
                     <dt>Assiette</dt><dd>{{ item.base.label }}{% if item.ceiling.short %} · {{ item.ceiling.label }}{% endif %}</dd>
                     <dt>Conditions</dt><dd>{{ item.statusCondition.label }} · {{ item.headcountCondition.label }} · {{ item.salaryCondition.label }}</dd>
                     {% if item.body %}<dt>Organisme</dt><dd>{{ item.body.name }}</dd><dt>Ligne du bulletin</dt><dd>{{ item.payslipLine.section.label }} › {{ item.payslipLine.label }}</dd>{% endif %}

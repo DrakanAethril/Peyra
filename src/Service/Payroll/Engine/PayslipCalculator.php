@@ -19,7 +19,9 @@ use Brick\Math\RoundingMode;
  * database, no clock, no rate written here. Each rubrique of the plan de paie is read for what it
  * says (its base, the source of its rate, its conditions) and becomes a line that explains itself.
  *
- * Step 4.3a calculates the gross pay, step 4.3b the contributions (PayslipContributions):
+ * Step 4.3a calculates the gross pay, step 4.3b the contributions (PayslipContributions), step 4.3c
+ * the items not subject (read as an element of gross pay is), then the deductions, the net figures and
+ * the year to date (PayslipNet). The gross pay:
  * - the salary of the contract, mensualised: its monthly hours at the hourly rate, the amount being
  *   the salary itself (an hourly rate rounded to four decimals would miss it by a few cents);
  * - hours entered (overtime, complementary hours, an absence) at the hourly rate, raised by the
@@ -48,8 +50,19 @@ final class PayslipCalculator
         }
         $gross = Money::sum(array_map(static fn (PayslipRow $row): Money => $row->employeeAmount, $rows));
         $contributions = PayslipContributions::calculate($input, $ordered, $rows, $gross);
+        $notSubject = [];
+        foreach ($ordered as $spec) {
+            if (PayrollItemKind::NotSubject === $spec->kind && $spec->status->holds($input->employee->executive)) {
+                $row = self::grossRow($spec, $input);
+                if (null !== $row) {
+                    $notSubject[] = $row;
+                }
+            }
+        }
+        $lines = [...$rows, ...$contributions['rows'], ...$notSubject];
+        $net = PayslipNet::calculate($input, $ordered, $lines, $gross, $contributions['overtimePay'], $contributions['reduction'], $contributions['smic']);
 
-        return new Payslip([...$rows, ...$contributions['rows']], $gross, $contributions['reduction']);
+        return new Payslip([...$lines, ...$net['rows']], $gross, $contributions['reduction'], $net['totals'], $net['yearToDate']);
     }
 
     /**

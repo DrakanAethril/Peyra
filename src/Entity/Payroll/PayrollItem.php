@@ -56,6 +56,10 @@ class PayrollItem implements DossierOwned
     #[ORM\Column]
     private bool $subtracts;
 
+    /** An element of gross pay received in kind (a company car, meals): in the gross pay, then off the net. */
+    #[ORM\Column]
+    private bool $benefitInKind;
+
     #[ORM\Column(length: 20, enumType: PayrollBase::class)]
     private PayrollBase $base;
 
@@ -121,6 +125,11 @@ class PayrollItem implements DossierOwned
         return $this->subtracts;
     }
 
+    public function isBenefitInKind(): bool
+    {
+        return $this->benefitInKind;
+    }
+
     public function getBase(): PayrollBase
     {
         return $this->base;
@@ -174,6 +183,7 @@ class PayrollItem implements DossierOwned
         $this->kind = $spec->kind;
         $this->sortOrder = $spec->sortOrder;
         $this->subtracts = $spec->subtracts;
+        $this->benefitInKind = $spec->benefitInKind;
         $this->base = $spec->base;
         $this->ceiling = $spec->ceiling;
         $this->employeeRate = $spec->employeeRate;

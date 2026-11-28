@@ -33,6 +33,11 @@ final class GeneralReductionRgcp extends GeneralReductionFormula
         return 'social.general_reduction.covered_contributions';
     }
 
+    protected function maximum(string $band): BigDecimal
+    {
+        return $this->regulatory->decimal($this->parametersKey(), 't', $band);
+    }
+
     protected function coefficient(BigDecimal $remuneration, BigDecimal $smic, string $band): array
     {
         $key = $this->parametersKey();

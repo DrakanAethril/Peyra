@@ -33,8 +33,8 @@ items:
   - {code: '1220', label: Maintien de salaire maladie, kind: gross, base: entered_amount}
   - {code: '1300', label: Absence congés payés, kind: gross, subtracts: true, base: paid_leave_hours, employee: {source: hourly_rate}}
   - {code: '1310', label: Indemnité de congés payés, kind: gross, base: paid_leave_pay, employee: {source: regulatory, key: social.paid_leave.pay, path: tenth_of_reference_pay}}
-  - {code: '1400', label: Avantage en nature véhicule, kind: gross, base: entered_amount}
-  - {code: '1410', label: Avantage en nature nourriture, kind: gross, base: entered_count, employee: {source: regulatory, key: social.benefit_in_kind.meal, path: per_meal}}
+  - {code: '1400', label: Avantage en nature véhicule, kind: gross, benefit_in_kind: true, base: entered_amount}
+  - {code: '1410', label: Avantage en nature nourriture, kind: gross, benefit_in_kind: true, base: entered_count, employee: {source: regulatory, key: social.benefit_in_kind.meal, path: per_meal}}
 
   # --- Cotisations : santé ------------------------------------------------------------------------
   - {code: '2000', label: 'Maladie, maternité, invalidité, décès', kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.health, path: employer_rate}, body: urssaf, line: social_security_health}
