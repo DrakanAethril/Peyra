@@ -370,7 +370,8 @@
         border-block-end: 1px solid var(--px-border-row);
         background: var(--px-action-soft);
 
-        & > .px-select {
+        & > .px-select,
+        & > .px-input {
             width: auto;
             max-width: 280px;
         }

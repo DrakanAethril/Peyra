@@ -57,4 +57,33 @@ final class DossierMemberRepository extends ServiceEntityRepository
 
         return array_map(static fn (DossierMember $member): User => $member->getStudent(), $members);
     }
+
+    /**
+     * The members of several groups' dossiers, by dossier id, each by name.
+     *
+     * @param list<Dossier> $dossiers
+     *
+     * @return array<int, list<User>>
+     */
+    public function findStudentsOf(array $dossiers): array
+    {
+        if ([] === $dossiers) {
+            return [];
+        }
+        /** @var list<DossierMember> $members */
+        $members = $this->createQueryBuilder('m')
+            ->join('m.student', 's')
+            ->addSelect('s')
+            ->andWhere('m.dossier IN (:dossiers)')
+            ->setParameter('dossiers', $dossiers)
+            ->orderBy('s.sortName', 'ASC')
+            ->getQuery()
+            ->getResult();
+        $byDossier = [];
+        foreach ($members as $member) {
+            $byDossier[(int) $member->getDossier()->getId()][] = $member->getStudent();
+        }
+
+        return $byDossier;
+    }
 }

@@ -14,9 +14,15 @@ use App\Repository\Dossier\RestorePointRepository;
 use App\Repository\Identity\UserRepository;
 use App\Security\Voter\DistributionVoter;
 use App\Security\Voter\DossierVoter;
+use App\Security\Voter\RestorePointVoter;
+use App\Service\Dossier\ClassDossierRow;
+use App\Service\Dossier\ClassDossiers;
 use App\Service\Dossier\Distribution\DistributionProgress;
 use App\Service\Dossier\Distribution\DistributionRefused;
 use App\Service\Dossier\Distribution\Distributions;
+use App\Service\Dossier\DossierLive;
+use App\Service\Dossier\Restore\RestoreBatches;
+use App\Service\Dossier\Restore\RestorePointRules;
 use App\Service\Shared\DateValue;
 use App\Service\Shared\PostValue;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
@@ -33,7 +39,8 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * first, with how far each stands; a distribution's progress page - one line per dossier (en
  * attente, en copie, prêt, en échec), the global bar, redrawn live and asked again while copies
  * are pending -, « Relancer » on a failed line, the date of all its dossiers in one gesture, and
- * « Retirer la distribution » (a récapitulatif, then its title typed). All its author's
+ * « Remettre la distribution à l'état de départ » (its ready dossiers, through the récapitulatif of
+ * Classe › Dossiers), « Retirer la distribution » (a récapitulatif, then its title typed). All its author's
  * (DistributionVoter): anybody else gets a 404.
  */
 #[Route('/teacher/library/distributions')]
@@ -133,6 +140,57 @@ final class DistributionsController extends AbstractController
             'error' => $error,
             'typed' => $typed,
         ], new Response(status: null === $error ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY));
+    }
+
+    /** « Remettre la distribution à l'état de départ »: the récapitulatif of its ready dossiers. */
+    #[Route('/{id}/reset', name: 'app_library_distribution_reset', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function resetSummary(#[MapEntity] Distribution $distribution, DistributionCopyRepository $copies, ClassDossiers $dossiers, RestoreBatches $batches): Response
+    {
+        $this->guard($distribution);
+        $rows = $this->resettable($distribution, $copies, $dossiers);
+        if ([] === $rows) {
+            $this->addFlash('status', 'Aucun dossier de cette distribution à remettre à l’état de départ : aucun n’est prêt, ou vous n’enseignez pas dans la classe de leurs étudiants cette année.');
+
+            return $this->redirectToRoute('app_library_distribution', ['id' => $distribution->getId()], Response::HTTP_SEE_OTHER);
+        }
+
+        return $this->render('library/distribution_reset.html.twig', [
+            'distribution' => $distribution,
+            'lines' => $batches->summaries($rows),
+            'max_points' => RestorePointRules::LIMIT,
+        ]);
+    }
+
+    #[Route('/{id}/reset', name: 'app_library_distribution_reset_start', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function reset(#[MapEntity] Distribution $distribution, Request $request, DistributionCopyRepository $copies, ClassDossiers $dossiers, RestoreBatches $batches, DossierLive $live, ClockInterface $clock, #[CurrentUser] User $me): Response
+    {
+        $this->guard($distribution);
+        if (!$this->isCsrfTokenValid('distribution-reset-'.$distribution->getId(), $request->request->getString('_token'))) {
+            throw new NotFoundHttpException('A stale form.');
+        }
+        $ids = PostValue::intList($request, 'dossiers');
+        $rows = array_values(array_filter($this->resettable($distribution, $copies, $dossiers), static fn (ClassDossierRow $row): bool => \in_array((int) $row->dossier->getId(), $ids, true)));
+        $outcome = $batches->resetToStart($rows, $request->request->getBoolean('keep'), $me, $clock->now());
+        foreach ($rows as $row) {
+            $live->announce($row->dossier, DossierLive::RESTORING);
+        }
+        $this->addFlash('status', $outcome->sentence('dossier remis à l’état de départ', 'dossiers remis à l’état de départ'));
+
+        return $this->redirectToRoute('app_library_distribution', ['id' => $distribution->getId()], Response::HTTP_SEE_OTHER);
+    }
+
+    /**
+     * The distribution's ready dossiers the person may go back in (a teacher of their students'
+     * class this year: the distributor alone only reads them).
+     *
+     * @return list<ClassDossierRow>
+     */
+    private function resettable(Distribution $distribution, DistributionCopyRepository $copies, ClassDossiers $dossiers): array
+    {
+        $made = array_values(array_filter(array_map(static fn (DistributionCopy $copy): ?Dossier => $copy->getDossier(), $copies->findByDistribution($distribution))));
+
+        return array_values(array_filter($dossiers->rowsOf($made), fn (ClassDossierRow $row): bool => $this->isGranted(RestorePointVoter::POSE, $row->dossier)
+            && (null === $row->start || $this->isGranted(RestorePointVoter::RETURN, $row->start))));
     }
 
     private function guard(Distribution $distribution): void

@@ -6,6 +6,7 @@ namespace App\Repository\Dossier;
 
 use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\DossierMember;
+use App\Entity\Identity\SchoolYear;
 use App\Entity\Identity\User;
 use App\Enum\Dossier\DossierKind;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -156,5 +157,33 @@ final class DossierRepository extends ServiceEntityRepository
         $ids = array_map(static fn (array $row): int => (int) $row['id'], [...$owners, ...$members]);
 
         return array_values(array_unique($ids));
+    }
+
+    /**
+     * The dossiers of a school year held by these students: their own, and those of the groups
+     * one of them is in (Classe › Dossiers), by company then id.
+     *
+     * @param list<int> $studentIds
+     *
+     * @return list<Dossier>
+     */
+    public function findOfStudentsInYear(array $studentIds, SchoolYear $year): array
+    {
+        if ([] === $studentIds) {
+            return [];
+        }
+
+        /* @var list<Dossier> */
+        return $this->createQueryBuilder('d')
+            ->andWhere('d.schoolYear = :year')
+            ->andWhere('(d.kind = :student AND d.owner IN (:students)) OR (d.kind = :group AND d.id IN (SELECT IDENTITY(m.dossier) FROM '.DossierMember::class.' m WHERE m.student IN (:students)))')
+            ->setParameter('year', $year)
+            ->setParameter('student', DossierKind::Student)
+            ->setParameter('group', DossierKind::Group)
+            ->setParameter('students', $studentIds)
+            ->orderBy('d.company.denomination', 'ASC')
+            ->addOrderBy('d.id', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 }

@@ -143,6 +143,8 @@ final class RoleAccessSmokeTest extends WebTestCase
         $screens = [
             '/teacher/classes/'.$cg1->getId() => $teachers,
             '/teacher/classes/'.$lastCg1->getId() => $teachers,
+            '/teacher/classes/'.$cg1->getId().'/dossiers' => $teachers,
+            '/teacher/classes/'.$lastCg1->getId().'/dossiers' => $teachers,
             '/teacher/students/'.$ines => $teachers,
             '/teacher/classes/promotion/'.$lastCg1->getId() => $teachers,
             '/teacher/classes/promotion/'.$lastCg1->getId().'/summary?step=2' => $teachers,
@@ -360,6 +362,8 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/teacher/library/'.$template.'/distribute/summary?class='.$cg1->getId().'&step=1' => $readers,
             '/teacher/library/distributions/'.$id => $author,
             '/teacher/library/distributions/'.$id.'/withdraw' => $author,
+            // No ready dossier yet: the reset sends back to the distribution's page.
+            '/teacher/library/distributions/'.$id.'/reset' => ['student' => 404, 'teacher' => 303, 'admin' => 404, 'refused' => 302],
         ];
         foreach ($table as $url => $expected) {
             $actual = [];
