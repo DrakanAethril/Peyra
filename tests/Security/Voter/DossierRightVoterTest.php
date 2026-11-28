@@ -60,6 +60,18 @@ final class DossierRightVoterTest extends KernelTestCase
         }
     }
 
+    /** Ventes (step 2.3): the customer accountant's, closed to the supplier accountant; every right without a profile. */
+    public function testTheSalesFollowTheSalesArea(): void
+    {
+        self::bootKernel();
+        [$dossier, $people] = $this->groupDossier();
+
+        self::assertSame([false, false, false], $this->sales($people['ines'], $dossier));
+        self::assertSame([true, true, true], $this->sales($people['theo'], $dossier));
+        self::assertSame([true, true, true], $this->sales($people['chloe'], $dossier));
+        self::assertSame([true, true, true], $this->sales($people['durand'], $dossier));
+    }
+
     public function testNobodyOutsideTheDossier(): void
     {
         self::bootKernel();
@@ -86,6 +98,15 @@ final class DossierRightVoterTest extends KernelTestCase
 
         self::assertSame([true, true, true], $this->payroll($people['theo'], $dossier));
         self::assertFalse($this->settings($people['theo'], $dossier), 'The accounting settings stay the chief’s.');
+    }
+
+    /** @return list<bool> SALES_READ, SALES_ENTER, SALES_VALIDATE on the dossier */
+    private function sales(User $user, Dossier $dossier): array
+    {
+        $token = new UsernamePasswordToken($user, 'main', $user->getRoles());
+        $voter = self::getContainer()->get(DossierRightVoter::class);
+
+        return array_map(static fn (string $attribute): bool => VoterInterface::ACCESS_GRANTED === $voter->vote($token, $dossier, [$attribute]), [DossierRightVoter::SALES_READ, DossierRightVoter::SALES_ENTER, DossierRightVoter::SALES_VALIDATE]);
     }
 
     /** @return list<bool> PAYROLL_READ, PAYROLL_SETTINGS, PAYROLL_ENTER on the dossier */
