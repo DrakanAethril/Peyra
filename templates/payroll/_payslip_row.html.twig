@@ -22,7 +22,7 @@
     {% endif %}
 {% endmacro %}
 {% set row_base = row.base is null ? '' : (row.baseUnit ? row.baseUnit.format(row.base) : row.base) %}
-<tr tabindex="{{ open is empty ? 0 : -1 }}" class="px-payslip__line" data-payslip-target="line" data-code="{{ row.code }}" data-removable="{{ (removable[row.code] ?? false) ? '1' : '' }}" data-action="click->payslip#explain focusin->payslip#focusLine keydown->payslip#lineKey" title="Détail du calcul (F5)">
+<tr tabindex="{{ open is empty ? 0 : -1 }}" class="px-payslip__line" data-payslip-target="line" data-code="{{ row.code }}" data-action="click->payslip#explain focusin->payslip#focusLine keydown->payslip#lineKey" title="Détail du calcul (F5)">
     <th scope="row"><span class="px-u-code px-u-muted">{{ row.code }}</span> {{ row.label }}{% if row.added %} <twig:Px:Badge tone="info" label="ajoutée"/>{% endif %}</th>
     <td class="px-u-num">{{ _self.cell(row, 'base', row_base, open, cells, errors, cell_texts) }}{% if row.employeeBase is not null and row.base is not null and row.employeeBase != row.base %}<br><small class="px-u-muted">salarié : {{ row.baseUnit ? row.baseUnit.format(row.employeeBase) : row.employeeBase }}</small>{% endif %}</td>
     <td class="px-u-num">{{ _self.cell(row, 'employeeRate', row.employeeRate is null ? '' : (row.employeeRateUnit ? row.employeeRateUnit.format(row.employeeRate) : row.employeeRate), open, cells, errors, cell_texts) }}</td>

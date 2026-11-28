@@ -183,7 +183,6 @@ final class PayslipsController extends AbstractController
             'payslip_view' => null === $current['payslip'] ? null : PayslipView::of($current['payslip']),
             'open_cells' => $open,
             'cell_texts' => $texts,
-            'removable' => array_map(static fn (PayrollItemSpec $spec): bool => PayslipLineCells::removable($spec), $specs),
             'addable' => null === $current['payslip'] ? [] : array_values(array_filter($plan, static fn (PayrollItemSpec $spec): bool => !\in_array($spec->code, $shown, true))),
         ], new Response(null, [] === $errors ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY));
     }

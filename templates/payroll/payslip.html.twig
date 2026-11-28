@@ -150,7 +150,6 @@
                             <twig:Px:Empty icon="percent" title="Bulletin à calculer" text="Saisissez les éléments du mois de {{ employee.fullName }}, puis calculez le bulletin (F9) : le calcul de chaque ligne s’affiche d’un clic."/>
                         {% endif %}
                     {% else %}
-                        {% if open_cells is not empty %}<p class="px-u-muted px-u-small px-card__note">Les bases et les taux se saisissent dans le bulletin : une valeur changée est forcée et le reste suit au calcul (F9) ; videz la cellule pour revenir au calcul.</p>{% endif %}
                         <twig:Px:Table caption="Bulletin de {{ employee.fullName }}, {{ month|period }}" density="compact">
                             <thead>
                                 <tr>

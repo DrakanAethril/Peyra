@@ -6,8 +6,8 @@ import { Controller } from '@hotwired/stimulus';
  *   (each line carries its explanation in a <template>);
  * - the lines are a grid: Entrée in a cell goes to the next open cell (Tab visits them too), F9 / F10
  *   post the payslip - the elements of the month and the cells typed - which calculates it again;
- * - Ctrl+Suppr on a line removes its rubrique when it may be removed (the post says why not
- *   otherwise); Inser opens the list of the rubriques to add (a button of the head);
+ * - Ctrl+Suppr on a line removes its rubrique - the server refuses one the law makes due, and
+ *   says so; Inser opens the list of the rubriques to add (a button of the head);
  * - what was typed and not saved holds the way to another employee (Ctrl ↑ / Ctrl ↓, the list) and
  *   the validation: F10 first, as the status line says.
  */
@@ -36,6 +36,10 @@ export default class extends Controller {
 
     focusLine(event) {
         this.current = event.currentTarget;
+        // Entering a cell selects what it shows: typing replaces it (design-ux.md § 5.2).
+        if (event.target instanceof HTMLInputElement && this.cellTargets.includes(event.target)) {
+            event.target.select();
+        }
     }
 
     explain(event) {
@@ -74,7 +78,8 @@ export default class extends Controller {
     }
 
     remove(line) {
-        if (!this.hasFormTarget || line.dataset.removable !== '1') {
+        // A rubrique the law makes due is refused by the server, which says why.
+        if (!this.hasFormTarget) {
             return;
         }
         const field = document.createElement('input');
