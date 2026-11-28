@@ -34,6 +34,30 @@ final readonly class StockReader
         return StockBalances::byLocation(self::moves($this->movements->findOfArticle($article, $at)));
     }
 
+    /**
+     * What a storage place holds of each article at that day, by article id (an article it holds
+     * nothing of is absent).
+     *
+     * @return array<int, \Brick\Math\BigDecimal>
+     */
+    public function quantitiesAt(Dossier $dossier, \DateTimeImmutable $at, string $location): array
+    {
+        $byArticle = [];
+        foreach ($this->movements->findUntil($dossier, $at) as $movement) {
+            $byArticle[(int) $movement->getArticle()->getId()][] = $movement->toMove();
+        }
+        $quantities = [];
+        foreach ($byArticle as $id => $moves) {
+            foreach (StockBalances::byLocation($moves) as $place) {
+                if ($place['location'] === $location) {
+                    $quantities[$id] = $place['quantity'];
+                }
+            }
+        }
+
+        return $quantities;
+    }
+
     /** @return list<StockLine> every article whose stock is followed, by code, at that day */
     public function state(Dossier $dossier, \DateTimeImmutable $at): array
     {
@@ -90,6 +114,17 @@ final readonly class StockReader
         sort($names);
 
         return $names;
+    }
+
+    /** @return list<string> the storage places a form offers: the main one first, then every one a movement names */
+    public function offeredPlaces(Dossier $dossier): array
+    {
+        $places = [StockMovement::MAIN_LOCATION => true];
+        foreach ($this->placesUsed($dossier) as $place) {
+            $places[$place] = true;
+        }
+
+        return array_map('strval', array_keys($places));
     }
 
     /**

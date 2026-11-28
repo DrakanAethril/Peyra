@@ -129,4 +129,10 @@ final readonly class Assistance
     {
         return AssistanceLevel::Guided === $this->level;
     }
+
+    /** A gap a physical inventory finds is justified before the inventory is validated (G and B: « écart à justifier avant validation »). */
+    public function requiresStockGapReason(): bool
+    {
+        return $this->blocks();
+    }
 }

@@ -1,0 +1,54 @@
+{#
+ # Achats et stocks › Stocks › Inventaire physique (step 2.5b, gabarit L): the dossier's physical
+ # inventories, the latest first - day, storage place, state, articles counted -; « Nouvel inventaire »
+ # opens one under PURCHASES_ENTER.
+ #}
+{% extends 'inventory/_layout.html.twig' %}
+
+{% set inventory_tab = 'stock' %}
+{% set stock_current = 'counts' %}
+{% set dossier_title = 'Inventaire physique' %}
+{% set can_enter = is_granted('PURCHASES_ENTER', dossier) %}
+{% set status_keys = can_enter ? [{combo: 'N', verb: 'Nouvel inventaire'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Inventaire physique" :trail="[
+        {label: 'Achats et stocks', href: path('app_inventory_articles', {dossier: dossier.id})},
+        {label: 'Stocks', href: path('app_inventory_stock_movements', {dossier: dossier.id})},
+        {label: 'Inventaire physique', href: path('app_inventory_stock_counts', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_enter %}<twig:Px:Button href="{{ path('app_inventory_stock_count_new', {dossier: dossier.id}) }}" variant="primary" icon="plus" shortcut="N">Nouvel inventaire</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('inventory/stock/_tabs.html.twig') }}
+    <twig:Px:Card :flush="true">
+        {% if count_rows is empty %}
+            <twig:Px:Empty icon="package" title="Aucun inventaire" text="Un inventaire physique compte ce qu’un dépôt contient à une date ; chaque écart avec le stock théorique devient un ajustement à sa validation."/>
+        {% else %}
+            <twig:Px:Table caption="Inventaires physiques de {{ dossier.name }}" :rows="true">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Dépôt</th>
+                        <th scope="col">État</th>
+                        <th scope="col" class="px-u-num">Articles comptés</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in count_rows %}
+                        <tr data-rows-target="row">
+                            <td><a class="px-link" href="{{ path('app_inventory_stock_count', {dossier: dossier.id, id: row.count.id}) }}">{{ row.count.date|date_fr }}</a></td>
+                            <td class="px-u-fill">{{ row.count.location }}</td>
+                            <td><twig:Px:Badge :of="row.count.state"/></td>
+                            <td class="px-u-num">{{ row.counted }} / {{ row.lines }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}

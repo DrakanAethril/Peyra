@@ -1155,6 +1155,12 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
 - **Only an entry stores its value**: exits are valued by replaying the article's movements (pure
   `StockValuation`: CMUP after each entry, CMUP of the month, PEPS - `Article::$valuationMethod`), read by
   `StockReader` (fiche de stock, état du stock, list values). An article with movements keeps its method and stays.
+- **A physical inventory** (step 2.5b, `StockCount`, `StockCounts` the one door, pure `StockCountRules`) counts one
+  storage place at a day, a line per followed article (JSON, by code); uncounted keeps its stock. Validation
+  (PURCHASES_VALIDATE) reads the theoretical quantities again under the articles' locks, checks everything, then
+  writes one `Adjustment` per gap (`StockMovement::$stockCount`) and freezes them: a refusal must come **before any
+  `persist`**, inside a plain connection transaction - `wrapInTransaction()` closes the EntityManager on a refusal.
+- `BigDecimal` in Twig: write `x.isZero()` / `x.isPositive()`, never `x.zero` - Twig calls the static `zero()`.
 
 ## Référentiel and assistance levels (built at step 2.8)
 

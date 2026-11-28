@@ -65,7 +65,7 @@
                         <tr>
                             <td>{{ row.move.date|date_fr }}</td>
                             <td>
-                                {% if movement.salesDocument %}<a class="px-link" href="{{ path('app_sales_document', {dossier: dossier.id, side: movement.salesDocument.type.side, id: movement.salesDocument.id}) }}">{{ movement.label }}</a>{% else %}{{ movement.label }}{% endif %}
+                                {% if movement.salesDocument %}<a class="px-link" href="{{ path('app_sales_document', {dossier: dossier.id, side: movement.salesDocument.type.side, id: movement.salesDocument.id}) }}">{{ movement.label }}</a>{% elseif movement.stockCount %}<a class="px-link" href="{{ path('app_inventory_stock_count', {dossier: dossier.id, id: movement.stockCount.id}) }}">{{ movement.label }}</a>{% else %}{{ movement.label }}{% endif %}
                             </td>
                             <td>{{ movement.location }}{% if movement.toLocation %} → {{ movement.toLocation }} ({{ movement.quantity|quantity(movement.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}){% endif %}</td>
                             <td class="px-u-num">{{ row.inQuantity is not null ? row.inQuantity|quantity(row.inQuantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) : '' }}</td>
