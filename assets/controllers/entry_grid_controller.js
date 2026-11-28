@@ -105,6 +105,8 @@ export default class extends Controller {
             account: document.querySelector('[data-entry-account]'),
         };
         this.listeners = [];
+        // The global search (Ctrl K) closed without opening anything: back to the cell left.
+        this.listen(this.element, 'px:focus-return', () => this.refocus());
         this.listen(this.head.template, 'click', () => this.openTemplates());
         this.listen(this.head.save, 'click', () => this.save());
         this.listen(this.head.validate, 'click', () => this.askValidation());
@@ -774,6 +776,13 @@ export default class extends Controller {
         input.select();
 
         return true;
+    }
+
+    /** The focus back in the grid after a panel outside it closed: the cell left, else the line at the end. */
+    refocus() {
+        if (!this.editableValue || !this.pos || !this.focusCell(this.pos.key, this.pos.line, this.pos.field)) {
+            this.place(null);
+        }
     }
 
     /** The first focus: the entry asked (`?entry=`, -1 for the last one), else the empty line at the end. */

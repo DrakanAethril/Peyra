@@ -34,6 +34,18 @@ final class PxComponentsTest extends KernelTestCase
         self::assertStringContainsString('<p class="px-picker__chosen" id="counterpart_account" data-account-picker-target="chosen" aria-live="polite">Crédit Coopératif</p>', $html);
     }
 
+    public function testCommandPaletteIsATriggerAndAModalSearchOverAFrame(): void
+    {
+        $html = $this->renderTwigComponent('Px:CommandPalette', ['src' => '/d/1/search'])->toString();
+
+        self::assertStringContainsString('<button type="button" class="px-cmdk-trigger" aria-haspopup="dialog" data-px-open="px-cmdk" data-px-shortcut="Ctrl+K" data-px-shortcut-label="Recherche globale">', $html);
+        self::assertStringContainsString('<kbd class="px-kbd">Ctrl K</kbd>', $html);
+        self::assertStringContainsString('<dialog id="px-cmdk" class="px-cmdk" aria-label="Recherche globale" data-controller="command-palette" data-command-palette-src-value="/d/1/search"', $html);
+        self::assertStringContainsString('role="combobox" aria-expanded="true" aria-controls="px-cmdk-list" aria-autocomplete="list"', $html);
+        self::assertStringContainsString('<turbo-frame id="px-cmdk-results" class="px-cmdk__results" target="_top"', $html);
+        self::assertStringContainsString('dans un nouvel onglet', $html);
+    }
+
     public function testButtonIsAButtonThatNeverSubmitsByAccident(): void
     {
         $html = $this->renderTwigComponent('Px:Button', [], 'Enregistrer')->toString();

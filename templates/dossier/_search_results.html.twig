@@ -1,0 +1,33 @@
+{#
+ # The global search's results (Ctrl K, design-ux.md § 2.1), the Turbo Frame Px:CommandPalette
+ # loads: groups of options drawn as the account picker's (design-ui.md § 4.6) - a code in mono or
+ # the screen's pictogram, the label and what places it, a figure or a key on the right. The
+ # palette marks the current option and gives a rail entry its Alt key.
+ #}
+<turbo-frame id="px-cmdk-results">
+    {% if sections is empty %}
+        <p class="px-picker__empty" role="status">{% if query is empty %}Aucun écran à proposer.{% else %}Rien ne répond à « {{ query }} » dans ce dossier.{% endif %}</p>
+    {% else %}
+        <div class="px-cmdk__list" id="px-cmdk-list" role="listbox" aria-label="Résultats de la recherche">
+            {% for section in sections %}
+                {% set group_id = 'px-cmdk-group-' ~ section.group.value %}
+                <div role="group" aria-labelledby="{{ group_id }}">
+                    <div class="px-picker__group" id="{{ group_id }}">{{ section.group.label }}</div>
+                    {% for item in section.items %}
+                        <a class="px-picker__option px-cmdk__option" role="option" id="px-cmdk-{{ section.group.value }}-{{ loop.index }}" href="{{ item.href }}" aria-selected="false" tabindex="-1">
+                            <span class="px-cmdk__code">
+                                {%- if item.code is not null -%}
+                                    {%- if item.codeMark > 0 %}<mark>{{ item.code|slice(0, item.codeMark) }}</mark>{% endif %}{{ item.code|slice(item.codeMark) -}}
+                                {%- elseif item.icon is not null -%}
+                                    {{ ux_icon(item.icon, {'aria-hidden': 'true'}) }}
+                                {%- endif -%}
+                            </span>
+                            <span class="px-cmdk__text"><span class="px-cmdk__label">{{ item.label }}</span>{% if item.detail is not null %} <small>{{ item.detail }}</small>{% endif %}</span>
+                            <span class="px-picker__balance" data-command-palette-aside>{{ item.aside }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</turbo-frame>
