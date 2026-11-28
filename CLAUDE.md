@@ -1202,6 +1202,15 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   `MissionModulesListener`; `MissionModule::ofPath()` maps an address to its module; a teacher reaches everything).
 - **A pièce arrives on its `receivedOn`**: `DocumentRepository` shows a student's or group's dossier only the pièces whose day has
   come (a template shows all); Mission › Pièces sets the day (`Documents::scheduleArrival()`).
+- **The answer key** (step 2.9b, `src/Service/Mission/AnswerKey/`, `AnswerKeys` the one door, Mission › Corrigé): the teacher plays
+  the mission in a copy of the template of kind `DossierKind::AnswerKey` (theirs alone), « Enregistrer comme corrigé » reads it into
+  `MissionAnswerKey` - the entries its starting state did not hold (`baseline` of fingerprints, `AnswerKeyReading`), the arrived
+  pièces, the tolerances; the recorded shape is documented on the entity, for 2.11. Outside its door one asks `AnswerKeyStatus`
+  (`AnswerKeyStaysHomeTest`).
+- **The student's side** (`src/Service/Mission/Play/`): the banner and its panel (`dossier/_mission.html.twig`, Alt+M, the shell's
+  `page_banner` block), tasks by key (`Mission::TASK_KEY`, never reused) ticked by the student or by the dossier
+  (`MissionTaskCheck`, `MissionDetections`: « fait », never « juste »), `StudentMissions` the door of « Tâche terminée » and of the
+  hand-in - a `RestorePointOrigin::Submitted` point outside the limit; `MissionProgress` (global) keeps both.
 
 ## Référentiel and assistance levels (built at step 2.8)
 

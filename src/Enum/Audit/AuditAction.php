@@ -301,6 +301,14 @@ enum AuditAction: string
 
     case MissionGiven = 'mission.given';
 
+    /** A mission's answer key recorded from the teacher's copy (step 2.9b). */
+    case MissionAnswerKeyRecorded = 'mission.answer_key_recorded';
+
+    /** A task ticked or reopened by the student, a mission handed in (step 2.9b). */
+    case MissionTaskDeclared = 'mission.task_declared';
+
+    case MissionSubmitted = 'mission.submitted';
+
     /** A fixed asset's fiche created (step 3.4). */
     case FixedAssetCreated = 'assets.fixed_asset_created';
 
@@ -424,6 +432,9 @@ enum AuditAction: string
             self::MissionCreated => 'Mission créée',
             self::MissionChanged => 'Mission modifiée',
             self::MissionGiven => 'Mission donnée',
+            self::MissionAnswerKeyRecorded => 'Corrigé de mission enregistré',
+            self::MissionTaskDeclared => 'Tâche de mission cochée ou rouverte',
+            self::MissionSubmitted => 'Mission rendue',
             self::FixedAssetCreated => 'Immobilisation créée',
             self::FixedAssetChanged => 'Immobilisation modifiée',
             self::FixedAssetDeleted => 'Immobilisation supprimée',

@@ -9,6 +9,7 @@ use App\Entity\Identity\User;
 use App\Enum\Accounting\AccountingBehaviour;
 use App\Enum\Accounting\AssistanceLevel;
 use App\Enum\Mission\MissionModule;
+use App\Enum\Mission\MissionTaskCheck;
 use App\Repository\Mission\MissionRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -25,6 +26,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'mission')]
 class Mission
 {
+    /** A task's key: « t » and up to eight hexadecimal digits (« t1 » for the tasks of step 2.9a). */
+    public const string TASK_KEY = '/^t[0-9a-f]{1,8}$/';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -44,7 +48,13 @@ class Mission
     #[ORM\Column(type: Types::TEXT)]
     private string $statement = '';
 
-    /** @var list<array{title: string, instruction: string}> in their order */
+    /**
+     * In their order. `key` names a task for good (« t3f9a01c2 »: what the student ticked follows it when the
+     * tasks are reordered), `check` is what ticks it (MissionTaskCheck). Rows of step 2.9a have neither:
+     * getTasks() reads them as « t<rank> », declared.
+     *
+     * @var list<array{key?: string, title: string, instruction: string, check?: string}>
+     */
     #[ORM\Column(type: Types::JSON)]
     private array $tasks = [];
 
@@ -107,10 +117,16 @@ class Mission
         return $this->statement;
     }
 
-    /** @return list<array{title: string, instruction: string}> */
+    /** @return list<array{key: string, title: string, instruction: string, check: string}> */
     public function getTasks(): array
     {
-        return $this->tasks;
+        $tasks = [];
+        foreach ($this->tasks as $i => $task) {
+            $check = MissionTaskCheck::tryFrom($task['check'] ?? '') ?? MissionTaskCheck::Declared;
+            $tasks[] = ['key' => $task['key'] ?? 't'.($i + 1), 'title' => $task['title'], 'instruction' => $task['instruction'], 'check' => $check->value];
+        }
+
+        return $tasks;
     }
 
     /** @return list<string> */
@@ -158,10 +174,26 @@ class Mission
         $this->modules = array_map(static fn (MissionModule $module): string => $module->value, $modules);
     }
 
-    /** @param array<array-key, array{title: string, instruction: string}> $tasks */
+    /**
+     * A task without a key, or with one another task already holds, gets a new one, drawn at random
+     * (« t3f9a01c2 »): a key is never given again, so a task removed takes what students ticked with it.
+     *
+     * @param array<array-key, array{key?: string, title: string, instruction: string, check?: string}> $tasks
+     */
     public function setTasks(array $tasks): void
     {
-        $this->tasks = array_values($tasks);
+        $rows = [];
+        $taken = [];
+        foreach (array_values($tasks) as $task) {
+            $key = $task['key'] ?? '';
+            while (1 !== preg_match(self::TASK_KEY, $key) || isset($taken[$key])) {
+                $key = 't'.bin2hex(random_bytes(4));
+            }
+            $taken[$key] = true;
+            $check = MissionTaskCheck::tryFrom($task['check'] ?? '') ?? MissionTaskCheck::Declared;
+            $rows[] = ['key' => $key, 'title' => $task['title'], 'instruction' => $task['instruction'], 'check' => $check->value];
+        }
+        $this->tasks = $rows;
     }
 
     /** @param array<array-key, string> $activities */

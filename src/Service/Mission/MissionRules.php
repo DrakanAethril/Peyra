@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Mission;
 
 use App\Enum\Mission\MissionModule;
+use App\Enum\Mission\MissionTaskCheck;
 
 /**
  * What a mission's tabs must hold (step 2.9a), pure: each check answers its faults by field, empty
@@ -45,10 +46,10 @@ final class MissionRules
     }
 
     /**
-     * Each task has its title; the instruction is optional. Faults under `task.<i>.title` /
-     * `task.<i>.instruction`, or `tasks`.
+     * Each task has its title; the instruction is optional; what ticks it is one of MissionTaskCheck.
+     * Faults under `task.<i>.title` / `task.<i>.instruction` / `task.<i>.check`, or `tasks`.
      *
-     * @param list<array{title: string, instruction: string}> $tasks
+     * @param list<array{key?: string, title: string, instruction: string, check?: string}> $tasks
      *
      * @return array<string, string>
      */
@@ -66,6 +67,9 @@ final class MissionRules
             }
             if (mb_strlen($task['instruction']) > self::TASK_INSTRUCTION_MAX) {
                 $errors['task.'.$i.'.instruction'] = \sprintf('Une consigne tient en %d caractères.', self::TASK_INSTRUCTION_MAX);
+            }
+            if (isset($task['check']) && null === MissionTaskCheck::tryFrom($task['check'])) {
+                $errors['task.'.$i.'.check'] = 'Choisissez ce qui coche la tâche.';
             }
         }
 

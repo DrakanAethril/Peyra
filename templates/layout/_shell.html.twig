@@ -2,7 +2,7 @@
  # The application shell shared by the student PGI and the teacher space (design-ui.md § 4.1,
  # design-ux.md §§ 2.1 and 2.4). Included by layout/pgi.html.twig and layout/teacher.html.twig with
  # the parts already rendered: rail, rail_foot, context_bar, topbar_start, topbar_search,
- # topbar_end, module_tabs, page_head, page, status, foot (HTML; a foot replaces the status bar), status_keys (list of {combo, verb}),
+ # topbar_end, module_tabs, page_head, page_banner (optional, the page's first line), page, status, foot (HTML; a foot replaces the status bar), status_keys (list of {combo, verb}),
  # rail_home (the brand's link), rail_label.
  #}
 <a class="px-skip" href="#main">Aller au contenu</a>
@@ -21,7 +21,7 @@
         {{ module_tabs }}
         <main class="px-main" id="main" tabindex="-1" data-controller="scroll-shadow">
             {{ page_head }}
-            <div class="px-page">{{ page }}</div>
+            <div class="px-page">{{ page_banner ?? '' }}{{ page }}</div>
         </main>
         {% if foot|trim is not empty %}
             {{ foot }}

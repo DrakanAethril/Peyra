@@ -6,6 +6,7 @@ namespace App\Service\Mission;
 
 use App\Entity\Dossier\Dossier;
 use App\Entity\Mission\Mission;
+use App\Entity\Mission\MissionAssignment;
 use App\Enum\Mission\MissionModule;
 use App\Repository\Mission\MissionAssignmentRepository;
 use Symfony\Contracts\Service\ResetInterface;
@@ -18,7 +19,7 @@ use Symfony\Contracts\Service\ResetInterface;
  */
 final class CurrentMission implements ResetInterface
 {
-    /** @var array<int, ?Mission> */
+    /** @var array<int, ?MissionAssignment> */
     private array $memo = [];
 
     public function __construct(private readonly MissionAssignmentRepository $assignments)
@@ -27,12 +28,18 @@ final class CurrentMission implements ResetInterface
 
     public function of(Dossier $dossier): ?Mission
     {
+        return $this->assignmentOf($dossier)?->getMission();
+    }
+
+    /** The giving of that mission to the dossier's distribution (its due date, step 2.9b's progress). */
+    public function assignmentOf(Dossier $dossier): ?MissionAssignment
+    {
         $id = $dossier->getId();
         if (null === $id || $dossier->isTemplate()) {
             return null;
         }
         if (!\array_key_exists($id, $this->memo)) {
-            $this->memo[$id] = $this->assignments->findCurrentFor($dossier)?->getMission();
+            $this->memo[$id] = $this->assignments->findCurrentFor($dossier);
         }
 
         return $this->memo[$id];

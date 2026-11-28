@@ -65,7 +65,7 @@ final readonly class MissionSheet
         $this->changed($mission, $actor, 'général');
     }
 
-    /** @param list<array{title: string, instruction: string}> $tasks in their order */
+    /** @param list<array{key?: string, title: string, instruction: string, check?: string}> $tasks in their order */
     public function setTasks(Mission $mission, array $tasks, User $actor): void
     {
         $errors = MissionRules::tasks($tasks);

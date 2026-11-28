@@ -82,6 +82,20 @@ final class DocumentRepository extends ServiceEntityRepository
         return is_numeric($count) ? (int) $count : 0;
     }
 
+    /** The pièces that have arrived in the dossier (a mission's task « pièces traitées », step 2.9b). */
+    public function countArrived(Dossier $dossier): int
+    {
+        $count = $this->createQueryBuilder('d')
+            ->select('COUNT(d.id)')
+            ->andWhere('d.dossier = :dossier')
+            ->andWhere($this->arrived($dossier, 'd'))
+            ->setParameter('dossier', $dossier)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return is_numeric($count) ? (int) $count : 0;
+    }
+
     /** The pièce F10 opens after this one (design-ux.md § 4.3): the next one still to process in the inbox's order, else the first. */
     public function findNextOpen(Dossier $dossier, Document $after): ?Document
     {

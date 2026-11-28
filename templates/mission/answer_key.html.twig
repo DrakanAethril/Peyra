@@ -1,0 +1,121 @@
+{#
+ # Mission › Corrigé (step 2.9b; design-ux.md § 3.3): the teacher plays the mission in their own copy
+ # of the template (« mode corrigé »), then records it; the recorded entries and pièces, and the
+ # tolerances (F10). Never a student's screen: MissionAnswerKeyController answers them a 404.
+ #}
+{% extends 'mission/_layout.html.twig' %}
+
+{% set recorded = answer_key is not null and answer_key.recorded %}
+{% set save = recorded %}
+{% set copy = answer_key ? answer_key.dossier : null %}
+
+{% block mission_page %}
+    <div class="px-stack">
+        <twig:Px:Card title="Dossier du corrigé" meta="{{ recorded ? 'Enregistré le ' ~ answer_key.recordedAt|date('d/m/Y à H:i') : 'Pas encore enregistré' }}">
+            {% if errors.answerKey is defined %}<twig:Px:Alert tone="danger">{{ errors.answerKey }}</twig:Px:Alert>{% endif %}
+            {% if mission.template is null and copy is null %}
+                <p class="px-u-muted">Le dossier modèle de cette mission a été supprimé : il n’y a plus où la jouer.</p>
+            {% elseif copy is null %}
+                <p>Jouez la mission comme un étudiant, dans une copie du dossier modèle qui n’est qu’à vous : traitez les pièces, passez les écritures, rapprochez la banque. « Enregistrer comme corrigé » lit ensuite ce dossier : ce que vous y avez fait devient ce que la correction comparée attend.</p>
+                <form method="post" action="{{ path('app_mission_answer_key_play', {id: mission.id}) }}" class="px-cluster">
+                    <input type="hidden" name="_token" value="{{ csrf_token('mission-' ~ mission.id) }}">
+                    <twig:Px:Button type="submit" variant="primary" icon="play">Jouer la mission en mode corrigé</twig:Px:Button>
+                </form>
+            {% else %}
+                <p>Ce que vous faites dans le dossier du corrigé n’est lu qu’à l’enregistrement. Enregistrer à nouveau remplace le corrigé ; les lignes facultatives des écritures inchangées le restent.</p>
+                <form method="post" action="{{ path('app_mission_answer_key_record', {id: mission.id}) }}" class="px-cluster">
+                    <input type="hidden" name="_token" value="{{ csrf_token('mission-' ~ mission.id) }}">
+                    <twig:Px:Button href="{{ path('app_dossier_dashboard', {dossier: copy.id}) }}" icon="folder-open">Ouvrir le dossier du corrigé</twig:Px:Button>
+                    {% if recorded %}
+                        <twig:Px:ConfirmButton label="Enregistrer à nouveau comme corrigé" confirmLabel="Remplacer le corrigé" variant="secondary" icon="check"/>
+                    {% else %}
+                        <twig:Px:Button type="submit" variant="secondary" icon="check">Enregistrer comme corrigé</twig:Px:Button>
+                    {% endif %}
+                </form>
+            {% endif %}
+        </twig:Px:Card>
+
+        {% if recorded %}
+            <form method="post" action="{{ path('app_mission_answer_key', {id: mission.id}) }}" id="mission-form" class="px-stack" novalidate data-controller="focus-error">
+                <input type="hidden" name="_token" value="{{ csrf_token('mission-' ~ mission.id) }}">
+                <twig:Px:Card title="Tolérances">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="equivalentAccounts" label="Comptes équivalents admis" :wide="true" hint="Une ligne par groupe de comptes acceptés l’un pour l’autre, par exemple « 601000 607000 »." :error="errors.equivalentAccounts ?? null">
+                            <twig:Px:Input id="equivalentAccounts" :area="true" value="{{ form.equivalentAccounts }}" rows="3" class="px-u-code" hint="Une ligne par groupe de comptes acceptés l’un pour l’autre, par exemple « 601000 607000 »." :error="errors.equivalentAccounts ?? null"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="dateWindow" label="Fenêtre de dates (jours)" hint="Une écriture datée jusqu’à ce nombre de jours avant ou après la date attendue est admise." :error="errors.dateWindow ?? null">
+                            <twig:Px:Input id="dateWindow" value="{{ form.dateWindow }}" maxlength="2" inputmode="numeric" autocomplete="off" hint="Une écriture datée jusqu’à ce nombre de jours avant ou après la date attendue est admise." :error="errors.dateWindow ?? null"/>
+                        </twig:Px:Field>
+                    </div>
+                    <p class="px-u-muted">Les lignes facultatives se cochent dans les écritures attendues, ci-dessous.</p>
+                </twig:Px:Card>
+
+                <twig:Px:Card :flush="true" title="Écritures attendues" meta="{{ answer_key.entries|length }}">
+                    {% if answer_key.entries is empty %}
+                        <twig:Px:Empty icon="book-text" title="Aucune écriture" text="Le dossier du corrigé ne portait aucune écriture de plus que le dossier modèle à l’enregistrement."/>
+                    {% else %}
+                        <twig:Px:Table caption="Écritures attendues du corrigé">
+                            <thead><tr>
+                                <th scope="col">Journal</th>
+                                <th scope="col">Date</th>
+                                <th scope="col">Pièce</th>
+                                <th scope="col">Compte</th>
+                                <th scope="col">Tiers</th>
+                                <th scope="col">Libellé</th>
+                                <th scope="col" class="px-u-right">Débit</th>
+                                <th scope="col" class="px-u-right">Crédit</th>
+                                <th scope="col">Facultative</th>
+                            </tr></thead>
+                            <tbody>
+                                {% for i, entry in answer_key.entries %}
+                                    {% for j, line in entry.lines %}
+                                        <tr>
+                                            {% if loop.first %}
+                                                <td class="px-u-code">{{ entry.journal }}</td>
+                                                <td class="px-u-num">{{ entry.date|date('d/m/Y') }}</td>
+                                                <td class="px-u-code">{{ entry.document }}{% if entry.state == 'draft' %} <twig:Px:Badge tone="warning">brouillard</twig:Px:Badge>{% endif %}</td>
+                                            {% else %}
+                                                <td></td><td></td><td></td>
+                                            {% endif %}
+                                            <td class="px-u-code">{{ line.account }}</td>
+                                            <td class="px-u-code">{{ line.thirdParty }}</td>
+                                            <td class="px-u-fill">{{ line.label }}</td>
+                                            <td class="px-u-num">{{ line.debit ? line.debit|amount : '' }}</td>
+                                            <td class="px-u-num">{{ line.credit ? line.credit|amount : '' }}</td>
+                                            <td><label class="px-check"><input type="checkbox" name="optional[]" value="{{ i }}.{{ j }}"{% if line.optional %} checked{% endif %}><span class="px-u-sr-only">Ligne {{ line.account }} facultative</span></label></td>
+                                        </tr>
+                                    {% endfor %}
+                                {% endfor %}
+                            </tbody>
+                        </twig:Px:Table>
+                    {% endif %}
+                </twig:Px:Card>
+            </form>
+
+            <twig:Px:Card :flush="true" title="Pièces" meta="{{ answer_key.pieces|length }}">
+                {% if answer_key.pieces is empty %}
+                    <twig:Px:Empty icon="files" title="Aucune pièce arrivée" text="Aucune pièce n’était arrivée dans le dossier du corrigé à l’enregistrement."/>
+                {% else %}
+                    <twig:Px:Table caption="Pièces du corrigé">
+                        <thead><tr>
+                            <th scope="col">Pièce</th>
+                            <th scope="col">Tiers</th>
+                            <th scope="col">État attendu</th>
+                            <th scope="col">Écriture attendue</th>
+                        </tr></thead>
+                        <tbody>
+                            {% for piece in answer_key.pieces %}
+                                <tr>
+                                    <td class="px-u-nowrap"><span class="px-u-code">{{ piece.number }}</span>{% if piece.duplicate %} <twig:Px:Badge tone="warning">doublon</twig:Px:Badge>{% endif %}</td>
+                                    <td class="px-u-code">{{ piece.thirdParty }}</td>
+                                    <td>{{ piece_states[piece.state] ?? piece.state }}</td>
+                                    <td class="px-u-fill">{% if piece.entry is not null %}{% set expected = answer_key.entries[piece.entry] %}<span class="px-u-code">{{ expected.journal }} · {{ expected.document }}</span> du {{ expected.date|date('d/m/Y') }}{% endif %}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                {% endif %}
+            </twig:Px:Card>
+        {% endif %}
+    </div>
+{% endblock %}
