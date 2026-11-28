@@ -77,24 +77,7 @@
         </div>
 
         {% if not fec.report.conform %}
-            <twig:Px:Card :flush="true" title="Anomalies" meta="{{ fec.report.findings|length }}">
-                <twig:Px:Table caption="Anomalies du fichier, dans son ordre">
-                    <thead><tr>
-                        <th scope="col" class="px-u-right">Ligne</th>
-                        <th scope="col">Zone</th>
-                        <th scope="col">Anomalie</th>
-                    </tr></thead>
-                    <tbody>
-                        {% for finding in fec.report.findings %}
-                            <tr class="is-error">
-                                <td class="px-u-num">{{ finding.line ?? '' }}</td>
-                                <td class="px-u-code">{{ finding.zone ?? '' }}</td>
-                                <td>{{ finding.message }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </twig:Px:Table>
-            </twig:Px:Card>
+            {{ include('closing/_fec_findings.html.twig', {findings: fec.report.findings}) }}
         {% endif %}
     {% endif %}
 {% endblock %}

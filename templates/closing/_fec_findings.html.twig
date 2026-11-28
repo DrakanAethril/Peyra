@@ -1,0 +1,22 @@
+{#
+ # The anomalies of a FEC, in the order of the file (FecFinding: the line, the zone, the sentence):
+ # the FEC screen's conformity check and the import of a FEC into a new template (step 1.9b).
+ #}
+<twig:Px:Card :flush="true" title="Anomalies" meta="{{ findings|length }}">
+    <twig:Px:Table caption="Anomalies du fichier, dans son ordre">
+        <thead><tr>
+            <th scope="col" class="px-u-right">Ligne</th>
+            <th scope="col">Zone</th>
+            <th scope="col">Anomalie</th>
+        </tr></thead>
+        <tbody>
+            {% for finding in findings %}
+                <tr class="is-error">
+                    <td class="px-u-num">{{ finding.line ?? '' }}</td>
+                    <td class="px-u-code">{{ finding.zone ?? '' }}</td>
+                    <td>{{ finding.message }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </twig:Px:Table>
+</twig:Px:Card>
