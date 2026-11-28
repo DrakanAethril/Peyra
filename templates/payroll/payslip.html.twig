@@ -88,6 +88,9 @@
         {% if not has_establishment %}
             <twig:Px:Alert tone="warning" actionLabel="Renseigner l’établissement" actionHref="{{ path('app_payroll_establishment', {dossier: dossier.id}) }}">L’établissement n’est pas renseigné : son effectif et ses taux décident des cotisations.</twig:Px:Alert>
         {% endif %}
+        {% if last_entries.any %}
+            <twig:Px:Alert tone="info">Dernier bulletin du contrat : {{ employee.exitReason.label|lower }}, dernier jour le {{ employee.exitOn|date_fr }}. Les éléments de la fin de contrat se saisissent dans la carte.</twig:Px:Alert>
+        {% endif %}
         {% if employee.withholdingRate is null %}
             <twig:Px:Alert tone="info">Le taux de prélèvement à la source de {{ employee.fullName }} n’est pas renseigné. Le taux neutre s’applique.</twig:Px:Alert>
         {% endif %}
@@ -129,6 +132,26 @@
                                             <th scope="row"><label for="el-leave-{{ part }}">{{ part_label }}</label>{% if field_error %}<p class="px-field__error">{{ field_error }}</p>{% endif %}</th>
                                             <td class="px-u-num"><twig:Px:Input id="el-leave-{{ part }}" name="paidLeave[{{ part }}]" value="{{ typed['paidLeave.' ~ part] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" :disabled="not can_edit" placeholder="{{ part == 'referenceGross' ? '€' : (part == 'hours' ? 'h' : 'j') }}"/></td>
                                         </tr>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if last_entries.compensatoryLeave %}
+                                    {% for part, part_label in {hours: 'Congés acquis non pris : heures', daysTaken: 'Congés acquis non pris : jours restants', daysAcquired: 'Congés : jours acquis', referenceGross: 'Congés : brut de la période de référence avant ce mois'} %}
+                                        {% set field_error = errors['compensatoryLeave.' ~ part] ?? (loop.first ? errors['compensatoryLeave'] ?? null : null) %}
+                                        <tr>
+                                            <th scope="row"><label for="el-comp-{{ part }}">{{ part_label }}</label>{% if field_error %}<p class="px-field__error">{{ field_error }}</p>{% endif %}</th>
+                                            <td class="px-u-num"><twig:Px:Input id="el-comp-{{ part }}" name="compensatoryLeave[{{ part }}]" value="{{ typed['compensatoryLeave.' ~ part] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" :disabled="not can_edit" placeholder="{{ part == 'referenceGross' ? '€' : (part == 'hours' ? 'h' : 'j') }}"/></td>
+                                        </tr>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if last_entries.severance %}
+                                    {% for part, part_label in {referenceSalary: 'Indemnité de rupture : salaire de référence', agreed: 'Indemnité convenue (rupture conventionnelle)', previousYearGross: 'Brut de l’année précédant la rupture'} %}
+                                        {% if part != 'agreed' or last_entries.agreed %}
+                                            {% set field_error = errors['severance.' ~ part] ?? null %}
+                                            <tr>
+                                                <th scope="row"><label for="el-sev-{{ part }}">{{ part_label }}</label>{% if field_error %}<p class="px-field__error">{{ field_error }}</p>{% endif %}</th>
+                                                <td class="px-u-num"><twig:Px:Input id="el-sev-{{ part }}" name="severance[{{ part }}]" value="{{ typed['severance.' ~ part] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" :disabled="not can_edit" placeholder="€"/></td>
+                                            </tr>
+                                        {% endif %}
                                     {% endfor %}
                                 {% endif %}
                                 {% set field_error = errors['unpaidDays'] ?? null %}

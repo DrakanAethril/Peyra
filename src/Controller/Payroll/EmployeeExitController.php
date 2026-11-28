@@ -45,7 +45,10 @@ final class EmployeeExitController extends AbstractController
             $draft->notifiedOn = PostValue::trimmed($request, 'notifiedOn');
             $draft->exitOn = PostValue::trimmed($request, 'exitOn');
             $fields = $exits->check($draft, $employee);
-            if (null !== $fields) {
+            $refusal = null === $fields ? null : $exits->refusal($employee, $fields);
+            if (null !== $refusal) {
+                $draft->errors['exitOn'] = $refusal;
+            } elseif (null !== $fields) {
                 $changed = $exits->record($employee, $fields, $me);
                 $entityManager->flush();
                 $this->addFlash('status', $changed ? 'Sortie enregistrée.' : 'Rien à enregistrer : la sortie est inchangée.');
@@ -70,7 +73,10 @@ final class EmployeeExitController extends AbstractController
     {
         $employee = $this->employee($dossier, $number, $employees);
         $this->mayChange($dossier, $request, 'exit-cancel-'.$employee->getId());
-        if (null !== $employee->getExitOn()) {
+        $refusal = $exits->refusal($employee, null);
+        if (null !== $refusal) {
+            $this->addFlash('status', $refusal);
+        } elseif (null !== $employee->getExitOn()) {
             $exits->cancel($employee, $me);
             $entityManager->flush();
             $this->addFlash('status', 'Sortie annulée.');

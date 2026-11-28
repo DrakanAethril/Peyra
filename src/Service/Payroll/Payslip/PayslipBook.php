@@ -115,6 +115,12 @@ final readonly class PayslipBook
         return null !== $this->establishments->findOfDossier($dossier);
     }
 
+    /** @param list<PayrollItemSpec> $plan */
+    public static function lastEntries(Employee $employee, \DateTimeImmutable $month, array $plan): LastPayslipEntries
+    {
+        return LastPayslipEntries::of($employee->getExitReason(), $employee->getExitOn(), $month, $plan);
+    }
+
     /** The employee's year to date before that month: their validated payslips of the calendar year, summed. */
     public function yearToDate(Employee $employee, \DateTimeImmutable $month): PayslipYearToDate
     {
@@ -160,7 +166,7 @@ final readonly class PayslipBook
         }
         $day = self::payDay($month);
         try {
-            $input = new PayslipInput(PayslipEmployee::at($employee, $day), $elements->toVariables(), $this->regulatory->at($day), $plan, PayslipEstablishment::of($establishment), $this->yearToDate($employee, $month), $adjustments ?? PayslipAdjustments::none());
+            $input = new PayslipInput(PayslipEmployee::at($employee, $day), $elements->toVariables(self::lastEntries($employee, $month, $plan)), $this->regulatory->at($day), $plan, PayslipEstablishment::of($establishment), $this->yearToDate($employee, $month), $adjustments ?? PayslipAdjustments::none());
 
             return ['payslip' => PayslipCalculator::calculate($input), 'refusal' => null];
         } catch (\InvalidArgumentException|\LogicException $error) {

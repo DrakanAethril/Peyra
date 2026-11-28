@@ -115,7 +115,8 @@ final class PayslipsController extends AbstractController
         [$employees, $index] = $this->place($book, $dossier, $month, $number);
         $employee = $employees[$index];
         $plan = $book->plan($dossier);
-        $fields = PayslipElementFields::of($plan);
+        $last = PayslipBook::lastEntries($employee, $month, $plan);
+        $fields = PayslipElementFields::of($plan, $last);
         $takesPaidLeave = PayslipElementFields::takesPaidLeave($plan);
         $payslip = $book->payslipOf($employee, $month);
         $elements = PayslipElements::fromArray($payslip?->getElements() ?? []);
@@ -131,7 +132,7 @@ final class PayslipsController extends AbstractController
             }
             $typed = $this->posted($request, $fields);
             $cells = PostValue::stringsByKey($request, 'cell');
-            $read = PayslipElementsRules::read($fields, $takesPaidLeave, $typed);
+            $read = PayslipElementsRules::read($fields, $takesPaidLeave, $typed, $last);
             $errors = $read['errors'];
             $lines = PayslipLineCells::read($current['payslip']->rows ?? [], $plan, $adjustments, $cells, PostValue::stringsByKey($request, 'shown'));
             $errors += $lines['errors'];
@@ -174,6 +175,7 @@ final class PayslipsController extends AbstractController
             'next' => $employees[$index + 1] ?? null,
             'fields' => $fields,
             'takes_paid_leave' => $takesPaidLeave,
+            'last_entries' => $last,
             'typed' => $typed,
             'cells' => $cells,
             'errors' => $errors,
@@ -402,11 +404,16 @@ final class PayslipsController extends AbstractController
         foreach ($fields as $field) {
             $typed[$field->key()] = $elements->shown($field);
         }
-        $leave = $elements->paidLeave;
-        $typed['paidLeave.hours'] = null === $leave ? '' : PayslipElements::french($leave->hours);
-        $typed['paidLeave.daysTaken'] = null === $leave ? '' : PayslipElements::french($leave->daysTaken);
-        $typed['paidLeave.daysAcquired'] = null === $leave ? '' : PayslipElements::french($leave->daysAcquired);
-        $typed['paidLeave.referenceGross'] = null === $leave ? '' : PayslipElements::french($leave->referenceGross->toDecimal());
+        foreach (['paidLeave' => $elements->paidLeave, 'compensatoryLeave' => $elements->compensatoryLeave] as $prefix => $leave) {
+            $typed[$prefix.'.hours'] = null === $leave ? '' : PayslipElements::french($leave->hours);
+            $typed[$prefix.'.daysTaken'] = null === $leave ? '' : PayslipElements::french($leave->daysTaken);
+            $typed[$prefix.'.daysAcquired'] = null === $leave ? '' : PayslipElements::french($leave->daysAcquired);
+            $typed[$prefix.'.referenceGross'] = null === $leave ? '' : PayslipElements::french($leave->referenceGross->toDecimal());
+        }
+        $severance = $elements->severance;
+        $typed['severance.referenceSalary'] = null === $severance ? '' : PayslipElements::french($severance->referenceSalary->toDecimal());
+        $typed['severance.agreed'] = null === $severance?->agreed ? '' : PayslipElements::french($severance->agreed->toDecimal());
+        $typed['severance.previousYearGross'] = null === $severance?->previousYearGross ? '' : PayslipElements::french($severance->previousYearGross->toDecimal());
         $typed['unpaidDays'] = 0 === $elements->unpaidDays ? '' : (string) $elements->unpaidDays;
 
         return $typed;
@@ -427,9 +434,15 @@ final class PayslipsController extends AbstractController
         foreach ($fields as $field) {
             $typed[$field->key()] = $byKind[$field->kind][$field->code] ?? '';
         }
-        $leave = PostValue::stringsByKey($request, 'paidLeave');
-        foreach (PayslipElementsRules::PAID_LEAVE as $part) {
-            $typed['paidLeave.'.$part] = $leave[$part] ?? '';
+        foreach (['paidLeave', 'compensatoryLeave'] as $prefix) {
+            $leave = PostValue::stringsByKey($request, $prefix);
+            foreach (PayslipElementsRules::PAID_LEAVE as $part) {
+                $typed[$prefix.'.'.$part] = $leave[$part] ?? '';
+            }
+        }
+        $severance = PostValue::stringsByKey($request, 'severance');
+        foreach (PayslipElementsRules::SEVERANCE as $part) {
+            $typed['severance.'.$part] = $severance[$part] ?? '';
         }
         $typed['unpaidDays'] = PostValue::trimmed($request, 'unpaidDays');
 

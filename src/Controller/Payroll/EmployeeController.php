@@ -105,7 +105,7 @@ final class EmployeeController extends AbstractController
         if (null === $terms || !$this->isGranted(DossierRightVoter::PAYROLL_ENTER, $dossier) || !$this->isCsrfTokenValid('employee-terms-delete-'.$terms->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
         }
-        $refusal = EmployeeSheet::termsDeletionRefusal($terms);
+        $refusal = $sheet->termsDeletionRefusal($terms);
         if (null === $refusal) {
             $sheet->deleteTerms($terms, $me);
             $entityManager->flush();
@@ -121,6 +121,12 @@ final class EmployeeController extends AbstractController
         $employee = $this->employee($dossier, $number, $employees);
         if (!$this->isGranted(DossierRightVoter::PAYROLL_ENTER, $dossier) || !$this->isCsrfTokenValid('employee-delete-'.$employee->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
+        }
+        $refusal = $sheet->deletionRefusal($employee);
+        if (null !== $refusal) {
+            $this->addFlash('status', $refusal);
+
+            return $this->redirectToRoute('app_payroll_employee', ['dossier' => $dossier->getId(), 'number' => $number], Response::HTTP_SEE_OTHER);
         }
         $name = $employee->getFullName();
         $sheet->delete($employee, $me);

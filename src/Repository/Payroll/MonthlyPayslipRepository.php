@@ -52,4 +52,21 @@ final class MonthlyPayslipRepository extends ServiceEntityRepository
             ->orderBy('p.month')
             ->getQuery()->getResult();
     }
+
+    /** @return list<MonthlyPayslip> every payslip of the employee, by month */
+    public function findOfEmployee(Employee $employee): array
+    {
+        return $this->findBy(['employee' => $employee], ['month' => 'ASC']);
+    }
+
+    /** @return list<\DateTimeImmutable> the months of the employee's validated payslips, in order */
+    public function findValidatedMonths(Employee $employee): array
+    {
+        $months = [];
+        foreach ($this->findBy(['employee' => $employee, 'status' => PayslipStatus::Validated], ['month' => 'ASC']) as $payslip) {
+            $months[] = $payslip->getMonth();
+        }
+
+        return $months;
+    }
 }
