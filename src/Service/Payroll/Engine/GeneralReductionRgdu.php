@@ -33,6 +33,11 @@ final class GeneralReductionRgdu extends GeneralReductionFormula
         return 'social.rgdu.covered_contributions';
     }
 
+    protected function maximum(string $band): BigDecimal
+    {
+        return $this->regulatory->decimal($this->parametersKey(), 'coefficient_max', $band);
+    }
+
     protected function coefficient(BigDecimal $remuneration, BigDecimal $smic, string $band): array
     {
         $key = $this->parametersKey();

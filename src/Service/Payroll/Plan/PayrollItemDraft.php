@@ -17,6 +17,8 @@ final class PayrollItemDraft
     /** Its place in the payslip; empty: the code's number. */
     public string $sortOrder = '';
     public bool $subtracts = false;
+    /** An element of gross pay received in kind, taken back off the net (« Avantages en nature », 4000). */
+    public bool $benefitInKind = false;
     public string $base = '';
     public string $ceiling = 'none';
     public string $employeeSource = 'none';
@@ -46,6 +48,7 @@ final class PayrollItemDraft
         $draft->kind = $item->getKind()->value;
         $draft->sortOrder = (string) $item->getSortOrder();
         $draft->subtracts = $item->subtracts();
+        $draft->benefitInKind = $item->isBenefitInKind();
         $draft->base = $item->getBase()->value;
         $draft->ceiling = $item->getCeiling()->value;
         [$draft->employeeSource, $draft->employeeKey, $draft->employeePath, $draft->employeeValue] = self::side($item->getEmployeeRate());

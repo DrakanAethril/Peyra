@@ -35,7 +35,12 @@ use Brick\Math\RoundingMode;
  *   never abates;
  * - **the overtime**: the employee reduction at the effective rate of the old-age contributions,
  *   within the rate the rubrique reads; the employer's flat deduction on overtime hours only;
- * - **the general reduction** of the millésime (GeneralReductionFormula).
+ * - **the general reduction** of the millésime (GeneralReductionFormula);
+ * - **the progressive regularisation** (step 4.3c): with the year so far (PayslipYearToDate), a bracket
+ *   is the year's bracket - the year's gross pay between multiples of the year's ceilings - less the
+ *   year's before this payslip, so a month may carry a ceiling left unused or give a tranche 2 back
+ *   (a negative base); the contribution due above the ceiling looks at the year; the general reduction
+ *   is the year's less what was made.
  *
  * Every share is its base times its rate, rounded half up to the cent on its own (DECISIONS 4.3b).
  * A rubrique whose base is nil, or whose sides have nothing to apply, makes no line.
@@ -96,7 +101,7 @@ final class PayslipContributions
      * @param list<PayrollItemSpec> $ordered the plan in its order
      * @param list<PayslipRow>      $grossRows
      *
-     * @return array{rows: list<PayslipRow>, reduction: ?GeneralReduction}
+     * @return array{rows: list<PayslipRow>, reduction: ?GeneralReduction, smic: Money, overtimePay: BigDecimal}
      */
     public static function calculate(PayslipInput $input, array $ordered, array $grossRows, Money $gross): array
     {
@@ -122,7 +127,7 @@ final class PayslipContributions
             }
         }
 
-        return ['rows' => $rows, 'reduction' => $self->reduction];
+        return ['rows' => $rows, 'reduction' => $self->reduction, 'smic' => $self->smic(), 'overtimePay' => $self->premiumPay];
     }
 
     private function applies(PayrollItemSpec $spec): bool
@@ -130,7 +135,18 @@ final class PayslipContributions
         return PayrollItemKind::Contribution === $spec->kind
             && $spec->status->holds($this->input->employee->executive)
             && $spec->headcount->holds($this->input->establishment->headcount)
-            && (SalaryCondition::Always === $spec->salary || $this->gross->isGreaterThan($this->ceiling));
+            && (SalaryCondition::Always === $spec->salary || $this->aboveCeiling());
+    }
+
+    /** The salary exceeds the ceiling: the month's alone, or the year's against the year's ceilings. */
+    private function aboveCeiling(): bool
+    {
+        $before = $this->input->yearToDate;
+        if ($before->isEmpty()) {
+            return $this->gross->isGreaterThan($this->ceiling);
+        }
+
+        return $before->gross->toDecimal()->plus($this->gross)->isGreaterThan($before->ceiling->toDecimal()->plus($this->ceiling));
     }
 
     private static function phase(PayrollItemSpec $spec): int
@@ -215,7 +231,8 @@ final class PayslipContributions
     }
 
     /**
-     * The part of the gross pay between two multiples of the monthly ceiling (social.ceiling_brackets).
+     * The part of the gross pay between two multiples of the monthly ceiling (social.ceiling_brackets);
+     * with the year so far, the year's part less the part before this payslip.
      *
      * @return array{value: BigDecimal, unit: PayslipUnit, origin: string}
      */
@@ -227,22 +244,52 @@ final class PayslipContributions
         }
         $from = $this->input->regulatory->decimal('social.ceiling_brackets', $ceiling->value, 'from');
         $to = $this->input->regulatory->decimal('social.ceiling_brackets', $ceiling->value, 'to');
-        $low = $from->multipliedBy($this->ceiling);
-        $high = $to->multipliedBy($this->ceiling);
-        $value = $this->gross->isLessThan($low) ? BigDecimal::zero() : BigDecimal::min($this->gross, $high)->minus($low);
+        $before = $this->input->yearToDate;
+        if ($before->isEmpty()) {
+            $low = $from->multipliedBy($this->ceiling);
+            $high = $to->multipliedBy($this->ceiling);
 
-        return ['value' => $value, 'unit' => $euros, 'origin' => \sprintf(
-            '%s. Part du brut (%s) entre %s et %s plafond%s mensuel%s (%s et %s ; plafond %s).',
+            return ['value' => self::part($this->gross, $this->ceiling, $from, $to), 'unit' => $euros, 'origin' => \sprintf(
+                '%s. Part du brut (%s) entre %s et %s plafond%s mensuel%s (%s et %s ; plafond %s).',
+                $ceiling->label(),
+                $euros->format($this->gross),
+                FrenchFormat::number($from),
+                FrenchFormat::number($to),
+                $to->isGreaterThan(1) ? 's' : '',
+                $to->isGreaterThan(1) ? 's' : '',
+                $euros->format($low),
+                $euros->format($high),
+                $euros->format($this->ceiling),
+            )];
+        }
+        $grossBefore = $before->gross->toDecimal();
+        $ceilingBefore = $before->ceiling->toDecimal();
+        $yearGross = $grossBefore->plus($this->gross);
+        $yearCeiling = $ceilingBefore->plus($this->ceiling);
+        $partBefore = self::part($grossBefore, $ceilingBefore, $from, $to);
+        $yearPart = self::part($yearGross, $yearCeiling, $from, $to);
+
+        return ['value' => $yearPart->minus($partBefore), 'unit' => $euros, 'origin' => \sprintf(
+            '%s, régularisée sur l’année : part du brut de l’année (%s) entre %s et %s fois les plafonds de l’année (%s) = %s, moins la part des mois précédents (brut %s, plafonds %s) = %s ; %s pour ce mois.',
             $ceiling->label(),
-            $euros->format($this->gross),
+            $euros->format($yearGross),
             FrenchFormat::number($from),
             FrenchFormat::number($to),
-            $to->isGreaterThan(1) ? 's' : '',
-            $to->isGreaterThan(1) ? 's' : '',
-            $euros->format($low),
-            $euros->format($high),
-            $euros->format($this->ceiling),
+            $euros->format($yearCeiling),
+            $euros->format($yearPart),
+            $euros->format($grossBefore),
+            $euros->format($ceilingBefore),
+            $euros->format($partBefore),
+            $euros->format($yearPart->minus($partBefore)),
         )];
+    }
+
+    /** The part of a gross pay between from and to times a ceiling. */
+    private static function part(BigDecimal $gross, BigDecimal $ceiling, BigDecimal $from, BigDecimal $to): BigDecimal
+    {
+        $low = $from->multipliedBy($ceiling);
+
+        return $gross->isLessThan($low) ? BigDecimal::zero() : BigDecimal::min($gross, $to->multipliedBy($ceiling))->minus($low);
     }
 
     /**
@@ -427,12 +474,18 @@ final class PayslipContributions
 
     private function generalReductionRow(PayrollItemSpec $spec): ?PayslipRow
     {
-        $reduction = $this->formula()->calculate(Money::euros($this->gross), $this->smic(), $this->input->establishment->headcount);
-        if (null === $reduction) {
+        $reduction = $this->formula()->regularised(Money::euros($this->gross), $this->smic(), $this->input->yearToDate, $this->input->establishment->headcount);
+        if (null === $reduction || $reduction->amount->isZero()) {
+            $this->reduction = $reduction;
+
             return null;
         }
         $this->reduction = $reduction;
         $coefficient = PayslipUnit::Coefficient;
+        $regularised = !$this->input->yearToDate->isEmpty() || !$this->input->yearToDate->generalReduction->isZero();
+        $formula = $regularised
+            ? \sprintf('Part employeur : %s × %s = %s pour l’année, moins %s déjà faite = %s%s.', PayslipUnit::Euros->format($reduction->yearRemuneration->toDecimal()), $coefficient->format($reduction->coefficient), FrenchFormat::amountInEuros($reduction->yearAmount), FrenchFormat::amountInEuros($this->input->yearToDate->generalReduction), FrenchFormat::amountInEuros($reduction->amount->abs()), $reduction->amount->isNegative() ? ', réintégrée' : ', en déduction')
+            : \sprintf('Part employeur : %s × %s = %s, en déduction.', PayslipUnit::Euros->format($this->gross), $coefficient->format($reduction->coefficient), FrenchFormat::amountInEuros($reduction->amount));
 
         return new PayslipRow(
             $spec->code,
@@ -444,9 +497,9 @@ final class PayslipContributions
             null,
             Money::zero(),
             new PayslipExplanation(
-                \sprintf('Part employeur : %s × %s = %s, en déduction.', PayslipUnit::Euros->format($this->gross), $coefficient->format($reduction->coefficient), FrenchFormat::amountInEuros($reduction->amount)),
+                $formula,
                 \sprintf('Rémunération brute du mois : %s. %s', PayslipUnit::Euros->format($this->gross), $this->formula()->smicExplanation($this->input->employee->monthlyHours, $this->input->establishment->monthlyHours, $this->premiumHours, $reduction->smic)),
-                'Coefficient de la réduction générale du millésime : '.$coefficient->format($reduction->coefficient).'.',
+                'Coefficient de la réduction générale du millésime : '.$coefficient->format($reduction->coefficient).($regularised ? ', calculé sur l’année.' : '.'),
                 $reduction->source,
                 $reduction->steps,
             ),

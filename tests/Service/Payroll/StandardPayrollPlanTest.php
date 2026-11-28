@@ -37,6 +37,8 @@ final class StandardPayrollPlanTest extends TestCase
         self::assertSame($codes, array_values(array_unique($codes)), 'Each code once.');
         $families = array_count_values(array_map(static fn (PayrollItemSpec $spec): string => $spec->kind->value, $specs));
         self::assertSame(['gross' => 14, 'contribution' => 30, 'not_subject' => 2, 'deduction' => 3], $families);
+        // The benefits in kind the deduction 4000 takes back off the net.
+        self::assertSame(['1400', '1410'], array_values(array_map(static fn (PayrollItemSpec $spec): string => $spec->code, array_filter($specs, static fn (PayrollItemSpec $spec): bool => $spec->benefitInKind))));
     }
 
     public function testEveryRegulatoryValueReadsInBothMillesimes(): void

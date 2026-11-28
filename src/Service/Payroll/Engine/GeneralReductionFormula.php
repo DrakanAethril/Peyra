@@ -16,8 +16,10 @@ use Brick\Math\RoundingMode;
  * The general reduction of employer contributions (lot 4, step 4.3b): **one formula per millésime**,
  * chosen by the regulatory value `social.general_reduction.regime` in force on the payslip's day -
  * « rgcp », the formula of article D241-7 (2025), or « rgdu », the single degressive reduction
- * (2026) - each reading its own parameters. Calculated on the month (« calcul mensuel anticipé »):
- * the regularisation over the year is step 4.3c's.
+ * (2026) - each reading its own parameters. Calculated on the month (calculate()), or regularised
+ * over the year so far (regularised(), step 4.3c: « régularisation progressive »): the coefficient of
+ * the year's remuneration and SMIC, times that remuneration, less the reduction already made - a month
+ * may then give some back. The parameters are those of the payslip's day, for the whole year.
  *
  * Both compare the month's gross remuneration to a SMIC of reference: the monthly SMIC the
  * millésime retains (its value on 1 January, whatever happens in June), prorated on the contract's
@@ -58,6 +60,9 @@ abstract class GeneralReductionFormula
      * @return array{raw: BigDecimal, max: BigDecimal, steps: list<string>}
      */
     abstract protected function coefficient(BigDecimal $remuneration, BigDecimal $smic, string $band): array;
+
+    /** The coefficient's maximum for that headcount band, the T of the imputation. */
+    abstract protected function maximum(string $band): BigDecimal;
 
     /** The SMIC of reference of the month (see the class). */
     public function smic(BigDecimal $contractHours, BigDecimal $collectiveHours, BigDecimal $premiumHours): Money
@@ -105,13 +110,61 @@ abstract class GeneralReductionFormula
         $amount = Money::euros(PayslipUnit::Coefficient->times($remuneration->toDecimal(), $coefficient));
         $steps[] = \sprintf('Réduction : %s × %s = %s.', PayslipUnit::Euros->format($remuneration->toDecimal()), PayslipUnit::Coefficient->format($coefficient), FrenchFormat::amountInEuros($amount));
 
+        $imputation = $this->impute($amount, $calculated['max']);
+        $steps[] = $imputation['step'];
+
+        return new GeneralReduction(static::regime(), $remuneration, $smic, $coefficient, $amount, $imputation['urssaf'], $imputation['retirement'], $steps, PayslipSource::of($this->regulatory, $key, null), $remuneration, $smic, $amount);
+    }
+
+    /**
+     * The reduction of the month, regularised over the year: calculated on the year's remuneration and SMIC
+     * of reference (this month included), less the reduction already made; negative when the year's
+     * reduction falls (a reintegration). Null when the year has none and none was made.
+     */
+    public function regularised(Money $remuneration, Money $smic, PayslipYearToDate $before, BigDecimal $headcount): ?GeneralReduction
+    {
+        if ($before->isEmpty() && $before->generalReduction->isZero()) {
+            return $this->calculate($remuneration, $smic, $headcount);
+        }
+        $yearRemuneration = $before->gross->plus($remuneration);
+        $yearSmic = $before->smic->plus($smic);
+        $already = $before->generalReduction;
+        $year = $this->calculate($yearRemuneration, $yearSmic, $headcount);
+        if (null === $year && $already->isZero()) {
+            return null;
+        }
+        $band = HeadcountCondition::Below50->holds($headcount) ? 'lt_50' : 'ge_50';
+        $coefficient = $year->coefficient ?? BigDecimal::zero();
+        $yearAmount = $year->amount ?? Money::zero();
+        $amount = $yearAmount->minus($already);
+        $euros = PayslipUnit::Euros;
+        $steps = [\sprintf('Régularisation progressive : rémunération de l’année %s (%s avant ce mois + %s), SMIC de référence de l’année %s (%s + %s).', $euros->format($yearRemuneration->toDecimal()), $euros->format($before->gross->toDecimal()), $euros->format($remuneration->toDecimal()), $euros->format($yearSmic->toDecimal()), $euros->format($before->smic->toDecimal()), $euros->format($smic->toDecimal()))];
+        if (null === $year) {
+            $steps[] = \sprintf('La rémunération de l’année atteint %s SMIC : pas de réduction pour l’année.', $this->number($this->regulatory->decimal($this->parametersKey(), 'exit_threshold_smic')));
+        } else {
+            // The year's own calculation, without its imputation: the month's amount is imputed below.
+            array_push($steps, ...\array_slice($year->steps, 0, -1));
+        }
+        $steps[] = \sprintf('Réduction du mois : %s pour l’année − %s déjà faite = %s%s.', FrenchFormat::amountInEuros($yearAmount), FrenchFormat::amountInEuros($already), FrenchFormat::amountInEuros($amount), $amount->isNegative() ? ', réintégrée' : '');
+        $imputation = $this->impute($amount, $this->maximum($band));
+        $steps[] = $imputation['step'];
+
+        return new GeneralReduction(static::regime(), $remuneration, $smic, $coefficient, $amount, $imputation['urssaf'], $imputation['retirement'], $steps, PayslipSource::of($this->regulatory, $this->parametersKey(), null), $yearRemuneration, $yearSmic, $yearAmount);
+    }
+
+    /**
+     * The imputation of an amount: on the Urssaf by the share of its rates in the maximum, rounded to the
+     * cent; the rest on the Agirc-Arrco.
+     *
+     * @return array{urssaf: Money, retirement: Money, step: string}
+     */
+    private function impute(Money $amount, BigDecimal $max): array
+    {
         $retirementRate = $this->regulatory->decimal($this->coveredContributionsKey(), 'agirc_arrco')->dividedBy(100, self::SCALE);
-        $max = $calculated['max'];
         $urssaf = Money::euros($amount->toDecimal()->multipliedBy($max->minus($retirementRate))->dividedBy($max, 2, RoundingMode::HalfUp));
         $retirement = $amount->minus($urssaf);
-        $steps[] = \sprintf('Imputation : Urssaf %s × (%s − %s) ÷ %s = %s ; retraite complémentaire, le reste : %s.', FrenchFormat::amountInEuros($amount), PayslipUnit::Coefficient->format($max), PayslipUnit::Coefficient->format($retirementRate->strippedOfTrailingZeros()), PayslipUnit::Coefficient->format($max), FrenchFormat::amountInEuros($urssaf), FrenchFormat::amountInEuros($retirement));
 
-        return new GeneralReduction(static::regime(), $remuneration, $smic, $coefficient, $amount, $urssaf, $retirement, $steps, PayslipSource::of($this->regulatory, $key, null));
+        return ['urssaf' => $urssaf, 'retirement' => $retirement, 'step' => \sprintf('Imputation : Urssaf %s × (%s − %s) ÷ %s = %s ; retraite complémentaire, le reste : %s.', FrenchFormat::amountInEuros($amount), PayslipUnit::Coefficient->format($max), PayslipUnit::Coefficient->format($retirementRate->strippedOfTrailingZeros()), PayslipUnit::Coefficient->format($max), FrenchFormat::amountInEuros($urssaf), FrenchFormat::amountInEuros($retirement))];
     }
 
     abstract public static function regime(): string;
