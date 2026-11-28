@@ -182,6 +182,11 @@ enum AuditAction: string
 
     case EmployeeExitCancelled = 'payroll.employee_exit_cancelled';
 
+    /** A pièce deposited into the dossier, or its read data changed (step 2.1a). */
+    case DocumentDeposited = 'document.deposited';
+
+    case DocumentReadingChanged = 'document.reading_changed';
+
     public function label(): string
     {
         return match ($this) {
@@ -245,6 +250,8 @@ enum AuditAction: string
             self::EmployeeDeleted => 'Salarié supprimé',
             self::EmployeeExitRecorded => 'Sortie de salarié enregistrée',
             self::EmployeeExitCancelled => 'Sortie de salarié annulée',
+            self::DocumentDeposited => 'Pièce déposée',
+            self::DocumentReadingChanged => 'Données lues d’une pièce modifiées',
         };
     }
 }

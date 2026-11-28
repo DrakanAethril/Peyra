@@ -6,9 +6,11 @@ namespace App\Service\Dossier\Search;
 
 use App\Entity\Accounting\Account;
 use App\Entity\Accounting\Entry;
+use App\Entity\Document\Document;
 use App\Entity\Dossier\Dossier;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Repository\Accounting\AccountRepository;
+use App\Repository\Document\DocumentRepository;
 use App\Repository\Dossier\ExerciseRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Accounting\Chart\AccountSearch;
@@ -30,15 +32,18 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * outside it: on an empty field, the screens opened last (RecentScreens), completed up to five by
  * the first screens of the accounting; otherwise, by group - the catalogue's screens (SearchRanking), the accounts
  * (number's start or label's words, as F4), the third parties (code, auxiliary code, name), the
+ * pièces (their read number's start, their third party's name, their total's exact amount), the
  * entries (a validated entry's number, a document's start, a line's exact amount, over every
  * exercise of the dossier), the actions. An account or a third party opens its consultation, an
- * entry its fiche, both with the way back to the screen the search was made from (`back`).
+ * entry its fiche, both with the way back to the screen the search was made from (`back`); a pièce
+ * opens its sheet.
  */
 final readonly class GlobalSearch
 {
     public const int SCREENS = 6;
     public const int ACCOUNTS = 5;
     public const int THIRD_PARTIES = 5;
+    public const int DOCUMENTS = 5;
     public const int ENTRIES = 5;
     public const int ACTIONS = 4;
 
@@ -52,6 +57,7 @@ final readonly class GlobalSearch
         private ThirdPartyRepository $thirdParties,
         private ExerciseRepository $exercises,
         private EntrySearch $entries,
+        private DocumentRepository $documents,
         private LedgerReader $ledger,
         private UrlGeneratorInterface $urls,
     ) {
@@ -74,6 +80,7 @@ final readonly class GlobalSearch
             self::section(SearchGroup::Screens, \array_slice(self::ranked($screens, $query), 0, self::SCREENS)),
             self::section(SearchGroup::Accounts, $this->accounts($dossier, $query, $back)),
             self::section(SearchGroup::ThirdParties, $this->thirdParties($dossier, $query, $back)),
+            self::section(SearchGroup::Documents, $this->documents($dossier, $query)),
             self::section(SearchGroup::Entries, $this->entries($dossier, $query, $back)),
             self::section(SearchGroup::Actions, \array_slice(self::ranked($this->catalogue->actions($dossier, $canEdit), $query), 0, self::ACTIONS)),
         ];
@@ -209,6 +216,49 @@ final readonly class GlobalSearch
                 codeMark: str_starts_with($code, $typed) ? \strlen($typed) : 0,
             );
         }, $found);
+    }
+
+    /**
+     * The pièces whose read number starts with what is typed (case aside), whose third party's name
+     * holds its words, or whose total including tax is the amount typed; the latest arrived first.
+     *
+     * @return list<SearchItem>
+     */
+    private function documents(Dossier $dossier, string $query): array
+    {
+        $amount = null;
+        if (1 === preg_match('/^[\d\s.,−+-]+$/u', $query) && 1 === preg_match('/\d/', $query)) {
+            try {
+                $amount = AmountParser::parse($query)->abs();
+            } catch (AmountParseError) {
+            }
+        }
+        $typed = mb_strtoupper((string) preg_replace('/\s+/u', '', $query));
+        $words = array_values(array_filter(explode(' ', AccountSearch::fold($query))));
+        $found = [];
+        foreach ($this->documents->findByDossier($dossier) as $document) {
+            $number = mb_strtoupper($document->getNumber() ?? '');
+            $name = AccountSearch::fold($document->getThirdParty()?->getName() ?? '');
+            $byNumber = '' !== $number && '' !== $typed && str_starts_with($number, $typed);
+            $byName = '' !== $name && [] !== $words && [] === array_filter($words, static fn (string $word): bool => !str_contains(' '.$name, ' '.$word));
+            $byAmount = null !== $amount && null !== $document->getTotalIncludingTax() && $document->getTotalIncludingTax()->equals($amount);
+            if ($byNumber || $byName || $byAmount) {
+                $found[] = $document;
+            }
+            if (\count($found) >= self::DOCUMENTS) {
+                break;
+            }
+        }
+
+        return array_map(fn (Document $document): SearchItem => new SearchItem(
+            SearchGroup::Documents,
+            $document->getThirdParty()?->getName() ?? $document->getFileName(),
+            $this->urls->generate('app_document', ['dossier' => $dossier->getId(), 'id' => $document->getId()]),
+            $document->getType()->label().' · '.$document->getState()->label().(null === $document->getDocumentDate() ? '' : ' · '.$document->getDocumentDate()->format('d/m/Y')),
+            $document->getNumber(),
+            null === $document->getTotalIncludingTax() ? null : FrenchFormat::amount($document->getTotalIncludingTax()),
+            codeMark: '' !== $typed && str_starts_with(mb_strtoupper($document->getNumber() ?? ''), $typed) ? mb_strlen($typed) : 0,
+        ), $found);
     }
 
     /** @return list<SearchItem> */

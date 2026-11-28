@@ -1,0 +1,20 @@
+{# Px:Viewer - see App\Twig\Components\Px\Viewer. #}
+<section{{ attributes.defaults({class: 'px-viewer', 'aria-label': 'Pièce ' ~ name, 'data-controller': 'viewer'}) }}>
+    <header class="px-viewer__bar">
+        <b class="px-viewer__name" title="{{ name }}">{{ name }}</b>
+        <span class="px-viewer__zoom" aria-live="polite" data-viewer-target="label">{% if kind == 'image' %}100 %{% endif %}</span>
+        {% if kind == 'image' %}
+            <twig:Px:IconButton icon="zoom-out" label="Réduire" size="sm" data-action="viewer#zoomOut"/>
+            <twig:Px:IconButton icon="zoom-in" label="Agrandir le zoom" size="sm" data-action="viewer#zoomIn"/>
+        {% endif %}
+        {% if download %}<twig:Px:IconButton icon="download" label="Télécharger" size="sm" href="{{ download }}" data-turbo="false"/>{% endif %}
+        <twig:Px:IconButton icon="maximize-2" label="Voir la pièce en grand" size="sm" shortcut="F7" data-action="viewer#toggleFull" data-viewer-target="full"/>
+    </header>
+    <div class="px-viewer__stage" data-viewer-target="stage"{% if kind == 'image' %} tabindex="0" data-action="keydown->viewer#keydown wheel->viewer#wheel"{% endif %}>
+        {% if kind == 'image' %}
+            <img class="px-viewer__page" src="{{ src }}" alt="{{ alt }}" data-viewer-target="page">
+        {% else %}
+            <iframe class="px-viewer__frame" src="{{ src }}" title="{{ name }}"></iframe>
+        {% endif %}
+    </div>
+</section>

@@ -1072,6 +1072,20 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   (the hidden template deleted, the teacher's gesture). 10 000 entries at most (`MAX_ENTRIES`). The
   demonstration's FEC imported then exported again gives back the same bytes (`FecImportTest`).
 
+## Pièces (built at step 2.1a)
+
+- **`Document`** (DossierOwned, `src/Entity/Document/`): nature (`DocumentType`), state (`DocumentState`:
+  à traiter, en cours, comptabilisée, écartée), its file (`#[DossierFileKey]`, category `pieces`, PDF or
+  picture: `Documents::policy()`), the dossier's date it arrived on, and its **read data** - third party,
+  number, dates, order reference, VAT by rate (JSON of `VatLine`), three totals - **read, never
+  computed**: `DocumentReadRules` (pure) checks their shape only, a faulty pièce keeps what it prints.
+  `Documents` is the one door (deposit, read data; trail). Its entries are read, not linked: those whose
+  pièce reference is its number (`EntryRepository::findByDocumentReference()`).
+- Screens: Pièces › Boîte de réception (`/d/{dossier}/documents`, the rail's counter is
+  `DossierShellView::$documentsToProcess`), `…/new`, the sheet `…/{id}` (`Px:Viewer`: a picture zoomed
+  by the page, a PDF by the browser's reader in a frame; F7 lays it over the window), `…/{id}/file`
+  (the private storage's one door, inline or `?download=1`). Ctrl K's group « Pièces ».
+
 ## Référentiel and assistance levels (built at step 2.8)
 
 - **The référentiel is versioned data**, `config/referential/bts-cg.yaml` (edition 2014: four exams,
