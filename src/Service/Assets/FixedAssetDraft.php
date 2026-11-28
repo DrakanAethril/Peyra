@@ -35,6 +35,8 @@ final class FixedAssetDraft
     public array $components = [];
     /** @var array<string, string> the units consumed as typed, by the last day of an exercise */
     public array $unitsUsed = [];
+    /** @var array<string, ?int> the impairment's balance in cents as typed, by the last day of an exercise */
+    public array $impairments = [];
 
     /** @var array<string, string> by field */
     public array $errors = [];
@@ -61,6 +63,7 @@ final class FixedAssetDraft
         $draft->fiscalDeclining = $asset->isFiscalDeclining();
         $draft->components = array_map(static fn (array $component): array => ['label' => $component['label'], 'cost' => $component['cost'], 'years' => (string) $component['years']], $asset->getComponents());
         $draft->unitsUsed = array_map(static fn (int $units): string => (string) $units, $asset->getUnitsUsed());
+        $draft->impairments = $asset->getImpairments();
 
         return $draft;
     }

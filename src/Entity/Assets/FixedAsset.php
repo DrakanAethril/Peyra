@@ -10,7 +10,9 @@ use App\Entity\Dossier\DossierOwned;
 use App\Entity\Dossier\DossierOwnedTrait;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Assets\AssetOrigin;
+use App\Enum\Assets\AssetPostingKind;
 use App\Enum\Assets\DepreciationMethod;
+use App\Enum\Assets\DisposalKind;
 use App\Repository\Assets\FixedAssetRepository;
 use App\Service\Assets\FixedAssetValues;
 use App\Service\Shared\Money;
@@ -22,8 +24,11 @@ use Doctrine\ORM\Mapping as ORM;
  * depreciation account, how it entered the company and when it was put into service, its cost
  * (price before VAT and incidental costs; the VAT paid beside it), how it is depreciated - with,
  * for the simple approach by components, the components' own costs and lengths, and for the units
- * of work the units consumed by exercise. Its plan is never stored: DepreciationPlan reads it.
- * FixedAssetSheet is the one writer.
+ * of work the units consumed by exercise, and the impairment's balance (« dépréciation ») at the end of
+ * an exercise. Its plan is never stored: DepreciationPlan reads it. Its way out - a sale (« cession »)
+ * or a scrapping (« mise au rebut »), its day, price, VAT and buyer (step 3.4b) - and the pièces of the
+ * entries the module asked for (`postings`, what FixedAssetPostings finds them by: the books are read,
+ * never these). FixedAssetSheet is the one writer of the fiche, FixedAssetDisposals of its way out.
  */
 #[ORM\Entity(repositoryClass: FixedAssetRepository::class)]
 #[ORM\Table(name: 'fixed_asset')]
@@ -109,6 +114,32 @@ class FixedAsset implements DossierOwned
     #[ORM\Column(type: Types::JSON)]
     private array $components = [];
 
+    /** @var array<string, int> the impairment's balance, by the last day of an exercise (Y-m-d), in cents */
+    #[ORM\Column(type: Types::JSON)]
+    private array $impairments = [];
+
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $disposedOn = null;
+
+    #[ORM\Column(length: 12, nullable: true, enumType: DisposalKind::class)]
+    private ?DisposalKind $disposalKind = null;
+
+    /** The sale price before VAT; zero for a scrapping. */
+    #[ORM\Column(type: 'money')]
+    private Money $disposalPrice;
+
+    /** The VAT invoiced on the sale price. */
+    #[ORM\Column(type: 'money')]
+    private Money $disposalVat;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?ThirdParty $buyer = null;
+
+    /** @var list<array{kind: string, document: string, on: string}> the entries asked for, by pièce and day (Y-m-d) */
+    #[ORM\Column(type: Types::JSON)]
+    private array $postings = [];
+
     public function __construct(Dossier $dossier, Account $account, \DateTimeImmutable $acquiredOn)
     {
         $this->dossier = $dossier;
@@ -119,6 +150,8 @@ class FixedAsset implements DossierOwned
         $this->incidentalCosts = Money::zero();
         $this->vat = Money::zero();
         $this->residualValue = Money::zero();
+        $this->disposalPrice = Money::zero();
+        $this->disposalVat = Money::zero();
     }
 
     public function getId(): ?int
@@ -229,6 +262,83 @@ class FixedAsset implements DossierOwned
         return $this->components;
     }
 
+    /** @return array<string, int> */
+    public function getImpairments(): array
+    {
+        return $this->impairments;
+    }
+
+    /** @return array<string, Money> the impairment's balances, by the last day of an exercise */
+    public function impairmentBalances(): array
+    {
+        return array_map(static fn (int $cents): Money => Money::cents($cents), $this->impairments);
+    }
+
+    public function getDisposedOn(): ?\DateTimeImmutable
+    {
+        return $this->disposedOn;
+    }
+
+    public function getDisposalKind(): ?DisposalKind
+    {
+        return $this->disposalKind;
+    }
+
+    public function getDisposalPrice(): Money
+    {
+        return $this->disposalPrice;
+    }
+
+    public function getDisposalVat(): Money
+    {
+        return $this->disposalVat;
+    }
+
+    public function getBuyer(): ?ThirdParty
+    {
+        return $this->buyer;
+    }
+
+    /** Disposed of by the end of that day. */
+    public function isDisposedBy(\DateTimeImmutable $day): bool
+    {
+        return null !== $this->disposedOn && $this->disposedOn <= $day;
+    }
+
+    /** The sale or the scrapping, as FixedAssetDisposals checked it. */
+    public function dispose(DisposalKind $kind, \DateTimeImmutable $on, Money $price, Money $vat, ?ThirdParty $buyer): void
+    {
+        $this->disposalKind = $kind;
+        $this->disposedOn = $on;
+        $this->disposalPrice = $price;
+        $this->disposalVat = $vat;
+        $this->buyer = $buyer;
+    }
+
+    public function cancelDisposal(): void
+    {
+        $this->disposalKind = null;
+        $this->disposedOn = null;
+        $this->disposalPrice = Money::zero();
+        $this->disposalVat = Money::zero();
+        $this->buyer = null;
+    }
+
+    /** @return list<array{kind: string, document: string, on: string}> */
+    public function getPostings(): array
+    {
+        return $this->postings;
+    }
+
+    /** The pièce of an entry the module asked for (FixedAssetPostings). */
+    public function recordPosting(AssetPostingKind $kind, string $document, \DateTimeImmutable $on): void
+    {
+        $posting = ['kind' => $kind->value, 'document' => $document, 'on' => $on->format('Y-m-d')];
+        if (!\in_array($posting, $this->postings, true)) {
+            $this->postings[] = $posting;
+        }
+    }
+
     /** Everything at once, as FixedAssetSheet checked it. */
     public function describe(FixedAssetValues $values): void
     {
@@ -251,5 +361,6 @@ class FixedAsset implements DossierOwned
         $this->unitsUsed = $values->unitsUsed;
         $this->fiscalDeclining = $values->fiscalDeclining;
         $this->components = $values->components;
+        $this->impairments = $values->impairments;
     }
 }

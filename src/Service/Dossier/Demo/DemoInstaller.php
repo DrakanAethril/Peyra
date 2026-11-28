@@ -37,6 +37,7 @@ use App\Service\Accounting\Subscription\SubscriptionSheet;
 use App\Service\Accounting\Template\StandardTemplates;
 use App\Service\Accounting\Template\TemplateFile;
 use App\Service\Accounting\Template\TemplateSheet;
+use App\Service\Assets\FixedAssetDisposals;
 use App\Service\Assets\FixedAssetSheet;
 use App\Service\Audit\AuditTrail;
 use App\Service\Banking\Reconciliation\Pointings;
@@ -90,6 +91,7 @@ final readonly class DemoInstaller
         private TemplateSheet $templateSheet,
         private StandardTemplates $standardTemplates,
         private FixedAssetSheet $fixedAssetSheet,
+        private FixedAssetDisposals $fixedAssetDisposals,
         private SubscriptionSheet $subscriptionSheet,
         private SubscriptionRun $subscriptionRun,
         private Lettering $lettering,
@@ -463,9 +465,18 @@ final readonly class DemoInstaller
             if (null === $values) {
                 throw new \InvalidArgumentException(\sprintf('fixed_assets.yaml : %s : %s', $draft->code, implode(' ', $draft->errors)));
             }
-            $this->fixedAssetSheet->create($dossier, $values, $actor);
+            $asset = $this->fixedAssetSheet->create($dossier, $values, $actor);
             // Flushed one by one: the next one's code is checked against the database.
             $this->entityManager->flush();
+            $disposal = $file->disposals[$values->code] ?? null;
+            if (null !== $disposal) {
+                $out = $this->fixedAssetDisposals->check($disposal, $dossier, $asset);
+                if (null === $out) {
+                    throw new \InvalidArgumentException(\sprintf('fixed_assets.yaml : %s, sortie : %s', $values->code, implode(' ', $disposal->errors)));
+                }
+                $this->fixedAssetDisposals->record($dossier, $asset, $out, $actor);
+                $this->entityManager->flush();
+            }
         }
     }
 

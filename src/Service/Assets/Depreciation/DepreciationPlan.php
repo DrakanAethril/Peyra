@@ -25,6 +25,10 @@ use Brick\Math\RoundingMode;
  *   give; the plan stops at the first exercise whose units are not known.
  * - Beside a linear plan, a **fiscal declining** one gives the dérogatoire: the fiscal annuity
  *   above the accounting one is a dotation, below it a reprise of what was set aside.
+ * - After an **impairment** (« dépréciation », its balance at the end of an exercise), the
+ *   accounting annuities spread what is left to depreciate, net of it, over the time left (PCG
+ *   art. 214-17): the days left for the linear method, the units left for the units of work, the net
+ *   value less the impairment for the declining one. The fiscal plan does not move.
  */
 final class DepreciationPlan
 {
@@ -34,12 +38,12 @@ final class DepreciationPlan
         $base = $input->base();
         $annuities = match ($input->method) {
             DepreciationMethod::None => [],
-            DepreciationMethod::Linear => self::linear($base, $input->inServiceOn, (int) $input->years, $input->windows, $input->disposedOn),
-            DepreciationMethod::Declining => self::declining($base, $input->acquiredOn, (int) $input->years, $input->coefficient ?? BigDecimal::one(), $input->windows, $input->disposedOn),
-            DepreciationMethod::Units => self::units($base, $input->inServiceOn, (int) $input->totalUnits, $input->units, $input->windows, $input->disposedOn),
+            DepreciationMethod::Linear => self::linear($base, $input->inServiceOn, (int) $input->years, $input->windows, $input->disposedOn, $input->impairments),
+            DepreciationMethod::Declining => self::declining($base, $input->acquiredOn, (int) $input->years, $input->coefficient ?? BigDecimal::one(), $input->windows, $input->disposedOn, $input->impairments),
+            DepreciationMethod::Units => self::units($base, $input->inServiceOn, (int) $input->totalUnits, $input->units, $input->windows, $input->disposedOn, $input->impairments),
         };
         $fiscal = DepreciationMethod::Linear === $input->method && $input->fiscalDeclining && null !== $input->coefficient
-            ? self::declining($base, $input->acquiredOn, (int) $input->years, $input->coefficient, $input->windows, $input->disposedOn)
+            ? self::declining($base, $input->acquiredOn, (int) $input->years, $input->coefficient, $input->windows, $input->disposedOn, [])
             : null;
 
         $indexes = array_keys($annuities + ($fiscal ?? []));
@@ -59,6 +63,7 @@ final class DepreciationPlan
                 $derogatory = $gap->isNegative() ? (0 < $gap->abs()->compareTo($balance) ? $balance : $gap->abs())->negated() : $gap;
                 $balance = $balance->plus($derogatory);
             }
+            $impairment = self::impairmentAt($input->impairments, $input->windows[$index]['end']);
             $rows[] = new PlanRow(
                 $input->windows[$index]['start'],
                 $input->windows[$index]['end'],
@@ -66,11 +71,12 @@ final class DepreciationPlan
                 $opening,
                 $annuity['amount'],
                 $cumul,
-                $input->cost->minus($cumul),
+                $input->cost->minus($cumul)->minus($impairment ?? Money::zero()),
                 $annuity['switched'],
                 $fiscalAmount,
                 $derogatory,
                 null === $fiscal ? null : $balance,
+                $impairment,
             );
         }
 
@@ -130,10 +136,11 @@ final class DepreciationPlan
 
     /**
      * @param list<array{start: \DateTimeImmutable, end: \DateTimeImmutable}> $windows
+     * @param array<string, Money>                                             $impairments
      *
      * @return array<int, array{counted: int, amount: Money, switched: bool}>
      */
-    private static function linear(Money $base, \DateTimeImmutable $from, int $years, array $windows, ?\DateTimeImmutable $disposedOn): array
+    private static function linear(Money $base, \DateTimeImmutable $from, int $years, array $windows, ?\DateTimeImmutable $disposedOn, array $impairments): array
     {
         $end = $from->modify('+'.$years.' years')->modify('-1 day');
         $stop = null !== $disposedOn && $disposedOn < $end ? $disposedOn : $end;
@@ -143,9 +150,18 @@ final class DepreciationPlan
             if ($window['end'] < $from || $window['start'] > $stop) {
                 continue;
             }
-            $days = DayCount::days(max($window['start'], $from), min($window['end'], $stop));
-            $left = $base->minus($done);
-            $amount = $window['end'] >= $end ? $left : self::share($base, BigRational::of($days)->dividedBy($years * 360));
+            $first = max($window['start'], $from);
+            $days = DayCount::days($first, min($window['end'], $stop));
+            $impaired = self::impairmentAt($impairments, $first->modify('-1 day'));
+            $left = $base->minus($done)->minus($impaired ?? Money::zero());
+            if ($left->isNegative()) {
+                $left = Money::zero();
+            }
+            $amount = match (true) {
+                $window['end'] >= $end => $left,
+                null !== $impaired => self::share($left, BigRational::of($days)->dividedBy(max(1, DayCount::days($first, $end)))),
+                default => self::share($base, BigRational::of($days)->dividedBy($years * 360)),
+            };
             if ($amount->compareTo($left) > 0) {
                 $amount = $left;
             }
@@ -158,10 +174,11 @@ final class DepreciationPlan
 
     /**
      * @param list<array{start: \DateTimeImmutable, end: \DateTimeImmutable}> $windows
+     * @param array<string, Money>                                             $impairments
      *
      * @return array<int, array{counted: int, amount: Money, switched: bool}>
      */
-    private static function declining(Money $base, \DateTimeImmutable $acquiredOn, int $years, BigDecimal $coefficient, array $windows, ?\DateTimeImmutable $disposedOn): array
+    private static function declining(Money $base, \DateTimeImmutable $acquiredOn, int $years, BigDecimal $coefficient, array $windows, ?\DateTimeImmutable $disposedOn, array $impairments): array
     {
         $from = $acquiredOn->modify('first day of this month');
         $end = $from->modify('+'.$years.' years')->modify('-1 day');
@@ -171,25 +188,37 @@ final class DepreciationPlan
         $elapsed = 0;
         $net = $base;
         $switch = null;
+        $seen = null;
         $annuities = [];
         foreach ($windows as $index => $window) {
             if ($window['end'] < $from || $window['start'] > $stop) {
                 continue;
             }
-            $months = DayCount::months(max($window['start'], $from), min($window['end'], $stop));
+            $first = max($window['start'], $from);
+            $months = DayCount::months($first, min($window['end'], $stop));
             $remaining = $total - $elapsed;
+            $impaired = self::impairmentAt($impairments, $first->modify('-1 day'));
+            $basis = $net->minus($impaired ?? Money::zero());
+            if ($basis->isNegative()) {
+                $basis = Money::zero();
+            }
+            if (null !== $impaired && $impaired !== $seen) {
+                // A new impairment: what is left is spread anew from here.
+                $seen = $impaired;
+                $switch = null === $switch ? null : [$basis, $remaining];
+            }
             if ($window['end'] >= $end) {
-                $amount = $net;
+                $amount = $basis;
             } else {
                 // The linear rate over the months left, against the declining rate: 12 / remaining ≥ rate.
                 if (null === $switch && BigRational::of(12)->dividedBy($remaining)->compareTo($rate) >= 0) {
-                    $switch = [$net, $remaining];
+                    $switch = [$basis, $remaining];
                 }
                 $amount = null === $switch
-                    ? self::share($net, $rate->multipliedBy($months)->dividedBy(12))
+                    ? self::share($basis, $rate->multipliedBy($months)->dividedBy(12))
                     : self::share($switch[0], BigRational::of($months)->dividedBy($switch[1]));
-                if ($amount->compareTo($net) > 0) {
-                    $amount = $net;
+                if ($amount->compareTo($basis) > 0) {
+                    $amount = $basis;
                 }
             }
             $annuities[$index] = ['counted' => $months, 'amount' => $amount, 'switched' => null !== $switch];
@@ -203,10 +232,11 @@ final class DepreciationPlan
     /**
      * @param array<string, int>                                               $units
      * @param list<array{start: \DateTimeImmutable, end: \DateTimeImmutable}> $windows
+     * @param array<string, Money>                                             $impairments
      *
      * @return array<int, array{counted: int, amount: Money, switched: bool}>
      */
-    private static function units(Money $base, \DateTimeImmutable $from, int $total, array $units, array $windows, ?\DateTimeImmutable $disposedOn): array
+    private static function units(Money $base, \DateTimeImmutable $from, int $total, array $units, array $windows, ?\DateTimeImmutable $disposedOn, array $impairments): array
     {
         $consumed = 0;
         $done = Money::zero();
@@ -222,14 +252,45 @@ final class DepreciationPlan
             if (null === $used) {
                 break;
             }
+            $impaired = self::impairmentAt($impairments, max($window['start'], $from)->modify('-1 day'));
+            $left = $base->minus($done)->minus($impaired ?? Money::zero());
+            if ($left->isNegative()) {
+                $left = Money::zero();
+            }
+            $amount = match (true) {
+                $consumed + $used >= $total => $left,
+                null !== $impaired => self::share($left, BigRational::of($used)->dividedBy($total - $consumed)),
+                default => self::share($base, BigRational::of($used)->dividedBy($total)),
+            };
+            if ($amount->compareTo($left) > 0) {
+                $amount = $left;
+            }
             $consumed += $used;
-            $left = $base->minus($done);
-            $amount = $consumed >= $total ? $left : self::share($base, BigRational::of($used)->dividedBy($total));
             $annuities[$index] = ['counted' => $used, 'amount' => $amount, 'switched' => false];
             $done = $done->plus($amount);
         }
 
         return $annuities;
+    }
+
+    /**
+     * The impairment's balance at the end of that day: the last one given on or before it; null when
+     * none was.
+     *
+     * @param array<string, Money> $impairments by the last day of a window (Y-m-d)
+     */
+    public static function impairmentAt(array $impairments, \DateTimeImmutable $day): ?Money
+    {
+        $found = null;
+        $key = $day->format('Y-m-d');
+        ksort($impairments, \SORT_STRING);
+        foreach ($impairments as $at => $balance) {
+            if ((string) $at <= $key) {
+                $found = $balance;
+            }
+        }
+
+        return $found;
     }
 
     /** The part of an amount, rounded to the cent half up. */
