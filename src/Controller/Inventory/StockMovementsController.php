@@ -75,7 +75,7 @@ final class StockMovementsController extends AbstractController
         $this->denyUnless(DossierRightVoter::PURCHASES_ENTER, $dossier);
         $draft = new StockMovementDraft();
         $draft->date = $dossier->getDossierDate()->format('Y-m-d');
-        $draft->kind = StockMovementKind::tryFrom(QueryValue::trimmed($request, 'kind'))?->value ?? $draft->kind;
+        $draft->kind = (StockMovementKind::tryFrom(QueryValue::trimmed($request, 'kind')) ?? StockMovementKind::Exit)->value;
         $draft->article = QueryValue::trimmed($request, 'article');
         $status = Response::HTTP_OK;
         if ($request->isMethod('POST')) {

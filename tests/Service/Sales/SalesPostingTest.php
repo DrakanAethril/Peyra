@@ -26,6 +26,7 @@ use App\Service\Accounting\Gateway\AccountingGateway;
 use App\Service\Accounting\Ledger\Ledger;
 use App\Service\Audit\AuditTrail;
 use App\Service\Document\Processing\ProposedEntryCheck;
+use App\Service\Inventory\Stock\StockMovements;
 use App\Service\Purchasing\Receipts;
 use App\Service\Regulatory\RegulatoryReader;
 use App\Service\Sales\SalesDocumentDraft;
@@ -196,6 +197,7 @@ final class SalesPostingTest extends KernelTestCase
             $container->get(RegulatoryReader::class),
             $posting,
             $container->get(Receipts::class),
+            $container->get(StockMovements::class),
         );
 
         return [$documents, $posting];

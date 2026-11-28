@@ -10,8 +10,6 @@
 {% set can_enter = is_granted('PURCHASES_ENTER', dossier) %}
 {% set status_keys = can_enter ? [{combo: 'N', verb: 'Nouveau mouvement'}] : [] %}
 
-{% macro qty(value) %}{{ value|quantity(value.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}{% endmacro %}
-
 {% block page_head %}
     <twig:Px:PageHead title="Fiche de stock · {{ article.code }} {{ article.designation }}" :trail="[
         {label: 'Achats et stocks', href: path('app_inventory_articles', {dossier: dossier.id})},
@@ -26,12 +24,11 @@
 {% endblock %}
 
 {% block page %}
-    {% import _self as format %}
     <div class="px-kpis">
-        <twig:Px:Kpi label="Quantité en stock" value="{{ format.qty(card.closing.quantity) ~ ' ' ~ article.unit }}" note="au {{ at|date_fr }}"/>
+        <twig:Px:Kpi label="Quantité en stock" value="{{ card.closing.quantity|quantity(card.closing.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) ~ ' ' ~ article.unit }}" note="au {{ at|date_fr }}"/>
         <twig:Px:Kpi label="Valeur du stock" value="{{ card.closing.value|amount_eur }}" note="{{ article.valuationMethod.label }}"/>
         <twig:Px:Kpi label="Coût unitaire" value="{{ card.closing.unitCost ? card.closing.unitCost|amount_eur : '—' }}" note="valeur ÷ quantité"/>
-        <twig:Px:Kpi label="Stock minimum" value="{{ article.minimumStock is not null ? format.qty(article.minimumStock) ~ ' ' ~ article.unit : '—' }}" note="{{ article.minimumStock is not null and card.closing.quantity.isLessThan(article.minimumStock) ? 'en dessous : à réapprovisionner' : 'seuil d’alerte' }}" :state="article.minimumStock is not null and card.closing.quantity.isLessThan(article.minimumStock) ? 'alert' : null"/>
+        <twig:Px:Kpi label="Stock minimum" value="{{ article.minimumStock is not null ? article.minimumStock|quantity(article.minimumStock.strippedOfTrailingZeros.scale > 2 ? 3 : 2) ~ ' ' ~ article.unit : '—' }}" note="{{ article.minimumStock is not null and card.closing.quantity.isLessThan(article.minimumStock) ? 'en dessous : à réapprovisionner' : 'seuil d’alerte' }}" :state="article.minimumStock is not null and card.closing.quantity.isLessThan(article.minimumStock) ? 'alert' : null"/>
     </div>
     <twig:Px:Card :flush="true">
         <twig:Px:Filters action="{{ path('app_inventory_stock_card', {dossier: dossier.id, code: article.code}) }}" resetHref="{{ at != dossier.dossierDate ? path('app_inventory_stock_card', {dossier: dossier.id, code: article.code}) : null }}">
@@ -70,14 +67,14 @@
                             <td>
                                 {% if movement.salesDocument %}<a class="px-link" href="{{ path('app_sales_document', {dossier: dossier.id, side: movement.salesDocument.type.side, id: movement.salesDocument.id}) }}">{{ movement.label }}</a>{% else %}{{ movement.label }}{% endif %}
                             </td>
-                            <td>{{ movement.location }}{% if movement.toLocation %} → {{ movement.toLocation }} ({{ format.qty(movement.quantity) }}){% endif %}</td>
-                            <td class="px-u-num">{{ row.inQuantity is not null ? format.qty(row.inQuantity) : '' }}</td>
+                            <td>{{ movement.location }}{% if movement.toLocation %} → {{ movement.toLocation }} ({{ movement.quantity|quantity(movement.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}){% endif %}</td>
+                            <td class="px-u-num">{{ row.inQuantity is not null ? row.inQuantity|quantity(row.inQuantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) : '' }}</td>
                             <td class="px-u-num">{{ row.inQuantity is not null and row.unitCost ? row.unitCost|amount : '' }}</td>
                             <td class="px-u-num">{{ row.inValue ? row.inValue|amount : '' }}</td>
-                            <td class="px-u-num">{{ row.outQuantity is not null ? format.qty(row.outQuantity) : '' }}</td>
+                            <td class="px-u-num">{{ row.outQuantity is not null ? row.outQuantity|quantity(row.outQuantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) : '' }}</td>
                             <td class="px-u-num">{{ row.outQuantity is not null and row.unitCost ? row.unitCost|amount : '' }}</td>
                             <td class="px-u-num">{{ row.outValue ? row.outValue|amount : '' }}</td>
-                            <td class="px-u-num">{{ format.qty(row.balance.quantity) }}</td>
+                            <td class="px-u-num">{{ row.balance.quantity|quantity(row.balance.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}</td>
                             <td class="px-u-num">{{ row.balance.unitCost ? row.balance.unitCost|amount : '' }}</td>
                             <td class="px-u-num">{{ row.balance.value|amount }}</td>
                         </tr>
@@ -89,7 +86,7 @@
     {% if article_places|length > 1 or (article_places|length == 1 and article_places[0].location != main_location) %}
         <twig:Px:Card title="Par dépôt au {{ at|date_fr }}">
             <dl class="px-facts">
-                {% for place in article_places %}<dt>{{ place.location }}</dt><dd class="px-u-num">{{ format.qty(place.quantity) }} {{ article.unit }}</dd>{% endfor %}
+                {% for place in article_places %}<dt>{{ place.location }}</dt><dd class="px-u-num">{{ place.quantity|quantity(place.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }} {{ article.unit }}</dd>{% endfor %}
             </dl>
         </twig:Px:Card>
     {% endif %}

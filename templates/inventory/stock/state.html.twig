@@ -9,8 +9,6 @@
 {% set stock_current = 'state' %}
 {% set dossier_title = 'État du stock' %}
 
-{% macro qty(value) %}{{ value|quantity(value.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}{% endmacro %}
-
 {% block page_head %}
     <twig:Px:PageHead title="État du stock au {{ at|date_fr }}" :trail="[
         {label: 'Achats et stocks', href: path('app_inventory_articles', {dossier: dossier.id})},
@@ -24,7 +22,6 @@
 {% endblock %}
 
 {% block page %}
-    {% import _self as format %}
     {{ include('inventory/stock/_tabs.html.twig') }}
     {% if below_total > 0 %}
         <twig:Px:Alert tone="warning">{{ below_total }} article{{ below_total > 1 ? 's sont' : ' est' }} sous {{ below_total > 1 ? 'leur' : 'son' }} stock minimum au {{ at|date_fr }} : à réapprovisionner.</twig:Px:Alert>
@@ -65,11 +62,11 @@
                             <td class="px-u-code"><a class="px-link" href="{{ path('app_inventory_stock_card', {dossier: dossier.id, code: item.code, at: at|date('Y-m-d')}) }}">{{ item.code }}</a></td>
                             <td class="px-u-fill" title="{{ item.designation }}">{{ item.designation }}</td>
                             <td>{{ item.valuationMethod.shortLabel }}</td>
-                            <td class="px-u-num">{{ format.qty(line.position.quantity) }}</td>
+                            <td class="px-u-num">{{ line.position.quantity|quantity(line.position.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}</td>
                             <td>{{ item.unit }}</td>
                             <td class="px-u-num">{{ line.position.unitCost ? line.position.unitCost|amount : '' }}</td>
                             <td class="px-u-num">{{ line.position.value|amount_cell }}</td>
-                            <td class="px-u-num">{{ item.minimumStock is not null ? format.qty(item.minimumStock) : '' }}</td>
+                            <td class="px-u-num">{{ item.minimumStock is not null ? item.minimumStock|quantity(item.minimumStock.strippedOfTrailingZeros.scale > 2 ? 3 : 2) : '' }}</td>
                             <td>{% if line.belowMinimum %}<twig:Px:Badge tone="warning" label="Sous le minimum"/>{% endif %}</td>
                         </tr>
                     {% endfor %}

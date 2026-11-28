@@ -59,6 +59,8 @@ final readonly class DemoSalesFile
                 throw new \InvalidArgumentException($where.'.stock : true ou false est attendu.');
             }
             $draft->stockTracked = $stock;
+            $draft->valuationMethod = self::optional($entry, 'method', $where) ?? $draft->valuationMethod;
+            $draft->minimumStock = self::optional($entry, 'minimum', $where) ?? '';
             $articles[] = $draft;
             $known[$draft->code] = $draft;
         }

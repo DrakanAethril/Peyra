@@ -1,0 +1,62 @@
+# Menuiserie Vasseur SARL - its stock (step 2.5), read by DemoStockFile and recorded through
+# StockMovements, the screen's door: the opening stock of 2026 - the stock at 31/12/2025 of
+# design/validated/plan/donnees/demo/articles.yaml, 41 352,18 of raw materials, 4 953,10 of
+# consumables and 7 847,80 of finished goods (54 153,08), one entry per article, one per lot for the
+# glazing valued first in, first out (MP014 to MP016) -, then a few movements of March. The receipt
+# BR-2026-0029 of 26/03 (sales.yaml) brings its glazing in by itself.
+#
+# Quantities and unit costs are text, read exactly (`unit_cost` for an entry only); `location` is
+# the main storage place when left out, `to` the destination of a transfer.
+movements:
+  - { article: MP001, date: "2026-01-01", kind: entry, quantity: "2.85", unit_cost: "1132.40", label: "Stock au 31/12/2025" }
+  - { article: MP002, date: "2026-01-01", kind: entry, quantity: "1.90", unit_cost: "1180.00", label: "Stock au 31/12/2025" }
+  - { article: MP003, date: "2026-01-01", kind: entry, quantity: "2.40", unit_cost: "1228.75", label: "Stock au 31/12/2025" }
+  - { article: MP004, date: "2026-01-01", kind: entry, quantity: "420", unit_cost: "14.62", label: "Stock au 31/12/2025" }
+  - { article: MP005, date: "2026-01-01", kind: entry, quantity: "260", unit_cost: "7.90", label: "Stock au 31/12/2025" }
+  - { article: MP006, date: "2026-01-01", kind: entry, quantity: "1.60", unit_cost: "520.00", label: "Stock au 31/12/2025" }
+  - { article: MP007, date: "2026-01-01", kind: entry, quantity: "1.20", unit_cost: "780.00", label: "Stock au 31/12/2025" }
+  - { article: MP008, date: "2026-01-01", kind: entry, quantity: "0.95", unit_cost: "890.00", label: "Stock au 31/12/2025" }
+  - { article: MP009, date: "2026-01-01", kind: entry, quantity: "24", unit_cost: "64.50", label: "Stock au 31/12/2025" }
+  - { article: MP010, date: "2026-01-01", kind: entry, quantity: "36", unit_cost: "38.90", label: "Stock au 31/12/2025" }
+  - { article: MP011, date: "2026-01-01", kind: entry, quantity: "18", unit_cost: "46.20", label: "Stock au 31/12/2025" }
+  - { article: MP012, date: "2026-01-01", kind: entry, quantity: "14", unit_cost: "132.00", label: "Stock au 31/12/2025" }
+  - { article: MP013, date: "2026-01-01", kind: entry, quantity: "6", unit_cost: "186.00", label: "Stock au 31/12/2025" }
+  - { article: MP014, date: "2026-01-01", kind: entry, quantity: "14.30", unit_cost: "60.80", label: "Stock au 31/12/2025, lot du 18/11/2025" }
+  - { article: MP014, date: "2026-01-01", kind: entry, quantity: "24.20", unit_cost: "62.00", label: "Stock au 31/12/2025, lot du 09/12/2025" }
+  - { article: MP015, date: "2026-01-01", kind: entry, quantity: "9.20", unit_cost: "98.00", label: "Stock au 31/12/2025, lot du 09/12/2025" }
+  - { article: MP016, date: "2026-01-01", kind: entry, quantity: "2.40", unit_cost: "115.00", label: "Stock au 31/12/2025, lot du 21/10/2025" }
+  - { article: MP016, date: "2026-01-01", kind: entry, quantity: "4.00", unit_cost: "118.00", label: "Stock au 31/12/2025, lot du 09/12/2025" }
+  - { article: MP017, date: "2026-01-01", kind: entry, quantity: "42", unit_cost: "47.90", label: "Stock au 31/12/2025" }
+  - { article: MP018, date: "2026-01-01", kind: entry, quantity: "55", unit_cost: "18.40", label: "Stock au 31/12/2025" }
+  - { article: MP019, date: "2026-01-01", kind: entry, quantity: "480", unit_cost: "3.10", label: "Stock au 31/12/2025" }
+  - { article: MP020, date: "2026-01-01", kind: entry, quantity: "260", unit_cost: "4.60", label: "Stock au 31/12/2025" }
+  - { article: MP021, date: "2026-01-01", kind: entry, quantity: "9", unit_cost: "112.00", label: "Stock au 31/12/2025" }
+  - { article: MP022, date: "2026-01-01", kind: entry, quantity: "14", unit_cost: "38.00", label: "Stock au 31/12/2025" }
+  - { article: MP023, date: "2026-01-01", kind: entry, quantity: "70", unit_cost: "9.80", label: "Stock au 31/12/2025" }
+  - { article: MP024, date: "2026-01-01", kind: entry, quantity: "40", unit_cost: "24.50", label: "Stock au 31/12/2025" }
+  - { article: MP025, date: "2026-01-01", kind: entry, quantity: "900", unit_cost: "0.62", label: "Stock au 31/12/2025" }
+  - { article: MP026, date: "2026-01-01", kind: entry, quantity: "95", unit_cost: "8.90", label: "Stock au 31/12/2025" }
+  - { article: MP027, date: "2026-01-01", kind: entry, quantity: "22", unit_cost: "21.00", label: "Stock au 31/12/2025" }
+  - { article: MP028, date: "2026-01-01", kind: entry, quantity: "36", unit_cost: "16.20", label: "Stock au 31/12/2025" }
+  - { article: MC001, date: "2026-01-01", kind: entry, quantity: "48", unit_cost: "9.40", label: "Stock au 31/12/2025" }
+  - { article: MC002, date: "2026-01-01", kind: entry, quantity: "30", unit_cost: "14.80", label: "Stock au 31/12/2025" }
+  - { article: MC003, date: "2026-01-01", kind: entry, quantity: "12", unit_cost: "36.00", label: "Stock au 31/12/2025" }
+  - { article: MC004, date: "2026-01-01", kind: entry, quantity: "85", unit_cost: "17.50", label: "Stock au 31/12/2025" }
+  - { article: MC005, date: "2026-01-01", kind: entry, quantity: "40", unit_cost: "21.90", label: "Stock au 31/12/2025" }
+  - { article: MC006, date: "2026-01-01", kind: entry, quantity: "60", unit_cost: "15.60", label: "Stock au 31/12/2025" }
+  - { article: MC007, date: "2026-01-01", kind: entry, quantity: "96", unit_cost: "3.40", label: "Stock au 31/12/2025" }
+  - { article: PF001, date: "2026-01-01", kind: entry, quantity: "2", unit_cost: "752.40", label: "Stock au 31/12/2025" }
+  - { article: PF002, date: "2026-01-01", kind: entry, quantity: "3", unit_cost: "386.10", label: "Stock au 31/12/2025" }
+  - { article: PF005, date: "2026-01-01", kind: entry, quantity: "1", unit_cost: "1648.00", label: "Stock au 31/12/2025" }
+  - { article: PF006, date: "2026-01-01", kind: entry, quantity: "4", unit_cost: "352.80", label: "Stock au 31/12/2025" }
+  - { article: PF007, date: "2026-01-01", kind: entry, quantity: "6", unit_cost: "148.30", label: "Stock au 31/12/2025" }
+  - { article: PF008, date: "2026-01-01", kind: entry, quantity: "2", unit_cost: "318.60", label: "Stock au 31/12/2025" }
+  - { article: PF014, date: "2026-01-01", kind: entry, quantity: "1", unit_cost: "598.50", label: "Stock au 31/12/2025" }
+  # March: a consumption of the laminated glazing that takes the old lot first and leaves the
+  # article below its minimum; a production of windows; fittings moved to the workshop; a roll of
+  # abrasive found torn; the double glazing of the week, from two lots (14,30 + 5,70 m²).
+  - { article: MP016, date: "2026-03-12", kind: exit, quantity: "2.40", label: "Consommation atelier, porte coupe-feu" }
+  - { article: MP017, date: "2026-03-16", kind: transfer, quantity: "4", to: "Atelier", label: "Ferrures pour la série de fenêtres" }
+  - { article: PF001, date: "2026-03-20", kind: entry, quantity: "2", unit_cost: "768.00", label: "Production, fenêtres chêne 2 vantaux" }
+  - { article: MC003, date: "2026-03-25", kind: adjustment, quantity: "-1", label: "Rouleau abîmé, mis au rebut" }
+  - { article: MP014, date: "2026-03-30", kind: exit, quantity: "20", label: "Consommation atelier, vitrages de la semaine" }
