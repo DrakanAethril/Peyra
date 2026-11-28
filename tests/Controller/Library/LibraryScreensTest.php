@@ -93,6 +93,8 @@ final class LibraryScreensTest extends WebTestCase
 
         $this->signOut($client);
         $this->submitLogin($client, 'prof.martin');
+        $client->request('GET', '/teacher/library?shelf=mine');
+        self::assertSelectorTextContains('main', 'Vous n’avez pas encore de modèle');
         $crawler = $client->request('GET', '/teacher/library?shelf=shared');
         self::assertSame(['Ravel, création'], $crawler->filter('.px-templatecard h2')->each(static fn ($title): string => trim($title->text())));
         $crawler = $client->request('GET', '/teacher/library/'.$ravel->getId());
