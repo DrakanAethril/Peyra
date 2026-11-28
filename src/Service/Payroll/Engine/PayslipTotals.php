@@ -11,7 +11,8 @@ use Brick\Math\BigDecimal;
  * The figures under the lines of a payslip (lot 4, step 4.3c), as the clarified payslip prints them,
  * each with how it was calculated (`explanations`, by the property's name): the contributions summed,
  * the net social amount, the net taxable and the overtime exempt from it, the net to pay before tax,
- * the withholding tax (its rate, sent by the tax office or neutral) and the net paid, the employer's cost.
+ * the withholding tax (its rate, sent by the tax office or neutral) and the net paid, the employer's cost;
+ * and an apprentice's salary exempt from income tax (step 4.3e).
  */
 final readonly class PayslipTotals
 {
@@ -29,6 +30,7 @@ final readonly class PayslipTotals
         public Money $netPay,
         public Money $employerCost,
         public array $explanations,
+        public ?Money $apprenticeExempt = null,
     ) {
     }
 }

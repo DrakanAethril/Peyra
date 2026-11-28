@@ -845,3 +845,87 @@ entries:
       Page modifiée le 29/10/2026 - 20 % taux normal ; 10 % restauration, transport de voyageurs, travaux
       d'amélioration du logement, hôtellerie ; 5,5 % produits alimentaires de première nécessité, livres,
       énergie, rénovation énergétique ; 2,1 % taux particulier (presse, médicaments remboursables).
+
+  # --- Apprenti et fin de contrat (étape 4.3e) ---------------------------------------------------
+  - key: social.apprentice.exemption
+    label: Apprentis - part du SMIC exonérée de cotisations salariales (et de CSG/CRDS) selon la date du contrat
+    value: {regime_from: "2025-03-01", smic_share: 50, former_smic_share: 79}
+    unit: percent of SMIC
+    effective_from: 2025-01-01
+    source_url: https://www.service-public.gouv.fr/particuliers/vosdroits/F2918
+    consulted_on: 2026-11-28
+    verified: true
+    note: >-
+      Contrats débutant à partir du 1er mars 2025 : « salaire de l'apprenti exonéré de cotisations salariales dans la
+      limite de 50 % du Smic » et « exonéré de CSG et de CRDS dans la limite de 50 % du Smic » ; contrats débutant au
+      plus tard le 28 février 2025 : cotisations salariales « dans la limite de 79 % du Smic », « salaire exonéré de
+      CSG et de CRDS » (page vérifiée le 08/09/2026 ; décret 2025-290). Le moteur lit le SMIC mensuel du jour
+      (social.smic_monthly), proratise le seuil aux jours de la période d'emploi d'un mois d'entrée ou de sortie (pas au
+      temps partiel ni aux absences, selon des sources secondaires) et n'exonère que les cotisations salariales dont le
+      taux est réglementaire (non relu sur le BOSS, injoignable).
+  - key: social.end_of_contract.fixed_term_indemnity
+    label: Indemnité de fin de contrat à durée déterminée (prime de précarité)
+    value: {rate: 10}
+    unit: percent
+    effective_from: 2025-01-01
+    source_url: https://www.service-public.gouv.fr/particuliers/vosdroits/F803
+    consulted_on: 2026-11-28
+    verified: true
+    note: >-
+      « au minimum à 10 % de la rémunération brute totale versée durant le contrat de travail » (page vérifiée le
+      06/10/2026 ; L1243-8 du code du travail). Non due notamment en cas de faute grave, de rupture anticipée à
+      l'initiative du salarié, de force majeure, de refus d'un CDI proposé. Règle stable, reprise pour 2025 et 2026.
+  - key: social.severance.dismissal_legal
+    label: Indemnité légale de licenciement - ancienneté minimale et fractions de mois de salaire par année
+    value: {min_seniority_months: 8, threshold_years: 10, first_numerator: 1, first_denominator: 4, beyond_numerator: 1, beyond_denominator: 3}
+    unit: fraction of monthly salary
+    effective_from: 2025-01-01
+    source_url: https://www.service-public.gouv.fr/particuliers/vosdroits/F987
+    consulted_on: 2026-11-28
+    verified: true
+    note: >-
+      « au moins 8 mois d'ancienneté ininterrompus » ; « 1/4 de mois de salaire par année d'ancienneté jusqu'à 10 ans,
+      1/3 de mois de salaire par année d'ancienneté après 10 ans » ; « en cas d'année incomplète, l'indemnité est
+      calculée proportionnellement au nombre de mois complets » ; salaire de référence : le plus favorable de la moyenne
+      des 12 ou des 3 derniers mois (page vérifiée le 20/11/2026 ; R1234-2 et R1234-4 du code du travail). Règle stable
+      depuis 2017, reprise pour 2025 et 2026.
+  - key: social.severance.exemption
+    label: Indemnités de rupture - limites d'exonération (impôt, cotisations) en multiples du PASS
+    value: {tax_pss: 6, tax_remuneration_times: 2, tax_indemnity_percent: 50, social_pss: 2, fully_subject_pss: 10}
+    unit: multiple of PASS
+    effective_from: 2025-01-01
+    source_url: https://www.service-public.gouv.fr/particuliers/vosdroits/F408
+    consulted_on: 2026-11-28
+    verified: false
+    note: >-
+      Impôt (F408, vérifiée le 15/04/2026 ; CGI art. 80 duodecies) : montant légal ou conventionnel exonéré en totalité ;
+      au-delà, exonération dans la limite du plus favorable de « 2 fois le montant de la rémunération brute » de l'année
+      précédente et de la « moitié de l'indemnité », au plus 282 600 € en 2025 et 288 360 € en 2026 (6 PASS). Cotisations
+      (exonérées dans la même limite et dans celle de 2 PASS, rien d'exonéré au-delà de 10 PASS) et CSG/CRDS (dues sans
+      abattement sur ce qui dépasse le plus petit du montant légal et de la part exonérée de cotisations) : sources
+      secondaires seulement (culture-rh.com, legisocial.fr), urssaf.fr et boss.gouv.fr injoignables.
+  - key: social.apprentice.income_tax_exemption
+    label: Apprentis - salaire exonéré d'impôt sur le revenu dans la limite du SMIC annuel
+    value: {annual_limit: 21876}
+    unit: EUR/an
+    effective_from: 2026-01-01
+    source_url: https://www.service-public.gouv.fr/particuliers/vosdroits/F11249
+    consulted_on: 2026-11-28
+    verified: false
+    note: >-
+      Montant annuel du SMIC (CGI art. 81 bis) : 12,02 € × 1 820 h = 21 876,40, arrondi à l'euro comme les 21 622 € de
+      2025 (F11249). Aucune page officielle datée 2026 lue ; des sources secondaires citent 21 876 € (SMIC du 1er
+      janvier) ou 22 404 € (SMIC de juin). Limite consommée au fil de l'année par le moteur, non relue sur le BOFiP.
+  - key: social.contrib.conventional_termination
+    label: Contribution patronale spécifique sur l'indemnité de rupture conventionnelle
+    value: {employer_rate: 40}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.francetravail.org/accueil/actualites/2026/rupture-conventionnelle-en-2026-quelles-nouvelles-regles-et-impacts-pour-employeurs-et-salaries.html
+    consulted_on: 2026-11-28
+    verified: false
+    note: >-
+      LFSS 2026 (article 15, CSS L137-12) : 40 % au lieu de 30 %, sur la part de l'indemnité exonérée de cotisations
+      sociales, pour les ruptures dont le terme est postérieur au 1er janvier 2026. Lu sur des sources secondaires (France
+      Travail, open.lefebvre-dalloz.fr), urssaf.fr injoignable. Le salarié en droit à une retraite à taux plein n'est pas
+      couvert.

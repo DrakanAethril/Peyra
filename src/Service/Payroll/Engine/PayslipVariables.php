@@ -14,7 +14,11 @@ use Brick\Math\BigDecimal;
  * a percent on an item whose rate is entered (the seniority bonus) - and the paid leave taken. A
  * sick pay item takes both: the hours its salary is kept for, and the daily allowances of the social
  * security for those days (step 4.3d). The whole calendar days of absence the employer paid nothing for
- * (`unpaidDays`, step 4.3d) take their days off the month's ceiling.
+ * (`unpaidDays`, step 4.3d) take their days off the month's ceiling. The last payslip of a contract
+ * (step 4.3e) takes the paid leave acquired and not taken (`compensatoryLeave`: the days left, the hours
+ * they stand for, the reference period's gross pay before this month) and, for a dismissal or a
+ * conventional termination, what its indemnity is calculated on (`severance`); the end-of-contract
+ * indemnity of a fixed-term contract reads the contract's gross pay before this month on its own code.
  * A rubrique with nothing entered does not appear on the payslip.
  */
 final readonly class PayslipVariables
@@ -30,6 +34,8 @@ final readonly class PayslipVariables
         public array $rates = [],
         public ?PaidLeave $paidLeave = null,
         public int $unpaidDays = 0,
+        public ?PaidLeave $compensatoryLeave = null,
+        public ?Severance $severance = null,
     ) {
         if ($unpaidDays < 0) {
             throw new \InvalidArgumentException('A number of days of absence is not negative.');

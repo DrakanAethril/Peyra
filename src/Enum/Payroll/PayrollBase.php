@@ -15,6 +15,12 @@ namespace App\Enum\Payroll;
  * month outside the contract (an employee hired or leaving during the month), their rate the salary
  * over the days of the month, and the sick pay: the hours whose salary is kept, at the hourly rate
  * times the item's rate, less the daily allowances of the social security entered beside them.
+ * Step 4.3e adds the end of a contract: the end-of-contract indemnity of a fixed-term contract (the
+ * contract's gross pay times the item's rate), the compensatory paid leave indemnity (the days left, as
+ * the paid leave), the legal dismissal indemnity and the conventional termination indemnity (items not
+ * subject, their exempt regime read by PayslipSeverance), the part of either subject to the CSG and the
+ * CRDS, and the part of a conventional termination's exempt from contributions, which the employer's
+ * specific contribution stands on.
  */
 enum PayrollBase: string
 {
@@ -36,6 +42,12 @@ enum PayrollBase: string
     case NetTaxable = 'net_taxable';
     case EntryExitDays = 'entry_exit_days';
     case SickPay = 'sick_pay';
+    case FixedTermEnd = 'fixed_term_end';
+    case LeaveCompensation = 'leave_compensation';
+    case Dismissal = 'dismissal';
+    case ConventionalBreak = 'conventional_break';
+    case SeveranceCsg = 'severance_csg';
+    case ConventionalExempt = 'conventional_exempt';
 
     public function label(): string
     {
@@ -58,6 +70,12 @@ enum PayrollBase: string
             self::NetTaxable => 'Net imposable',
             self::EntryExitDays => 'Jours hors contrat du mois',
             self::SickPay => 'Maintien maladie : heures, IJSS déduites',
+            self::FixedTermEnd => 'Brut du CDD (fin de contrat)',
+            self::LeaveCompensation => 'Congés payés non pris : maintien ou dixième',
+            self::Dismissal => 'Indemnité légale de licenciement',
+            self::ConventionalBreak => 'Indemnité de rupture conventionnelle',
+            self::SeveranceCsg => 'Indemnité de rupture soumise à CSG',
+            self::ConventionalExempt => 'Rupture conventionnelle exonérée',
         };
     }
 
