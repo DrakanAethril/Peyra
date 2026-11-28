@@ -6,6 +6,7 @@ namespace App\Controller\Identity;
 
 use App\Entity\Identity\SchoolClass;
 use App\Entity\Identity\User;
+use App\Repository\Dossier\DossierRestorationRepository;
 use App\Security\Voter\DossierVoter;
 use App\Security\Voter\RestorePointVoter;
 use App\Security\Voter\SchoolClassVoter;
@@ -14,6 +15,7 @@ use App\Service\Dossier\ClassDossiers;
 use App\Service\Dossier\DossierLive;
 use App\Service\Dossier\Restore\RestoreBatches;
 use App\Service\Dossier\Restore\RestorePointRules;
+use App\Service\Dossier\Restore\RestoreQueue;
 use App\Service\Dossier\Restore\RestoreRefused;
 use App\Service\Shared\PostValue;
 use App\Service\Shared\QueryValue;
@@ -37,10 +39,18 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 final class ClassDossiersController extends AbstractController
 {
     #[Route('', name: 'app_teacher_class_dossiers', methods: ['GET'])]
-    public function index(#[MapEntity] SchoolClass $class, ClassDossiers $dossiers, ClockInterface $clock): Response
+    public function index(#[MapEntity] SchoolClass $class, ClassDossiers $dossiers, DossierRestorationRepository $restorations, RestoreQueue $queue, ClockInterface $clock): Response
     {
         $this->denyAccessUnlessGranted(SchoolClassVoter::VIEW, $class);
         $rows = $this->visible($dossiers->rows($class));
+        // The page asks again every two seconds while dossiers go back: each asking queues their
+        // returns, so the ones the reset's request left (its WorkBudget spent) are done after it.
+        foreach ($rows as $row) {
+            $running = $row->restoring ? $restorations->findRunning($row->dossier) : null;
+            if (null !== $running) {
+                $queue->restoration($running);
+            }
+        }
 
         return $this->render('classes/dossiers.html.twig', [
             'class' => $class,
