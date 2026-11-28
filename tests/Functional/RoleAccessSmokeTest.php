@@ -23,6 +23,8 @@ use App\Service\Accounting\Template\TemplateDraft;
 use App\Service\Accounting\Template\TemplateLineDraft;
 use App\Service\Accounting\Template\TemplateSheet;
 use App\Service\Dossier\DossierContext;
+use App\Service\Dossier\Restore\RestorePoints;
+use App\Service\Dossier\Restore\RestoreRunner;
 use App\Service\Identity\SchoolClasses;
 use App\Service\Shared\Money;
 use App\Tests\Support\BuildsSchool;
@@ -205,6 +207,9 @@ final class RoleAccessSmokeTest extends WebTestCase
             EntryLineDraft::credit('512100', Money::cents(1_000)),
         ]), 'test'));
         $dossier = (int) $saved->getId();
+        $point = $client->getContainer()->get(RestorePoints::class)->pose($saved, 'Avant validation', $ines, new \DateTimeImmutable('2026-11-28 10:00'));
+        $pointId = (int) $point->getId();
+        self::assertTrue($client->getContainer()->get(RestoreRunner::class)->preparePoint($pointId, new \DateTimeImmutable('2026-11-28 10:00')));
 
         $holders = ['student' => 200, 'teacher' => 200, 'admin' => 404, 'refused' => 302];
         $screens = [
@@ -234,6 +239,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/accounting/lettering?account=401000', '/accounting/opening', '/accounting/opening?exercise=2026',
             '/users', '/audit', '/audit?role=teacher&action=accounting.entry_validated&q=ACH', '/audit/export.csv', '/audit/export.xlsx',
             '/closing/fec', '/closing/fec?exercise=2026', '/closing/fec/download',
+            '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
             $actual = [];
@@ -257,6 +263,17 @@ final class RoleAccessSmokeTest extends WebTestCase
             $actual[$role] = $client->getResponse()->getStatusCode();
         }
         self::assertSame(['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302], $actual, '/accounting/entry/guided');
+
+        // The waiting page sends on to the dashboard when no return is running.
+        $actual = [];
+        foreach (self::ACCOUNTS as $role => $login) {
+            self::ensureKernelShutdown();
+            $client = static::createClient();
+            $this->submitLogin($client, $login);
+            $client->request('GET', '/d/'.$dossier.'/restoring');
+            $actual[$role] = $client->getResponse()->getStatusCode();
+        }
+        self::assertSame(['student' => 302, 'teacher' => 302, 'admin' => 404, 'refused' => 302], $actual, '/restoring');
     }
 
     /**

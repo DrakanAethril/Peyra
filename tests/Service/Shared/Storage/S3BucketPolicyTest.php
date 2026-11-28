@@ -53,7 +53,7 @@ final class S3BucketPolicyTest extends TestCase
     ];
 
     /** The public methods of DossierFiles this test plays; one more fails the test until played. */
-    private const array PLAYED = ['prefix', 'storeUpload', 'storeContents', 'read', 'readStream', 'exists', 'size', 'copyAll', 'deleteAll', 'owned'];
+    private const array PLAYED = ['prefix', 'storeUpload', 'storeContents', 'read', 'readStream', 'exists', 'size', 'copyAll', 'keys', 'deleteKeys', 'deleteAll', 'owned'];
 
     /** @var list<array{operation: string, key: ?string, prefix: ?string, copySource: ?string, acl: ?string, aclHeader: string}> */
     private array $sent = [];
@@ -182,6 +182,8 @@ final class S3BucketPolicyTest extends TestCase
         $files->exists(7, $key);
         $files->size(7, $key);
         self::assertSame(['dossiers/7/pieces/0123456789abcdef0123456789abcdef.pdf' => 'dossiers/8/pieces/0123456789abcdef0123456789abcdef.pdf'], $files->copyAll(7, 8));
+        self::assertSame(['dossiers/7/pieces/0123456789abcdef0123456789abcdef.pdf'], $files->keys(7));
+        $files->deleteKeys(8, ['dossiers/8/pieces/0123456789abcdef0123456789abcdef.pdf']);
         self::assertSame(1, $files->deleteAll(7));
     }
 

@@ -40,6 +40,7 @@
 {% block topbar_search %}<twig:Px:CommandPalette src="{{ path('app_dossier_search', {dossier: dossier.id}) }}"/>{% endblock %}
 
 {% block topbar_end %}
+    <span hidden data-controller="dossier-live" data-dossier-live-url-value="{{ dossier_live_url(dossier) }}" data-dossier-live-waiting-value="{{ path('app_dossier_restoring', {dossier: dossier.id}) }}"></span>
     {{ include('dossier/_date_chip.html.twig') }}
     {% if view.profile %}<twig:Px:Chip tone="role" icon="user" title="Votre profil dans ce dossier de groupe : {{ view.profile.description }}">{{ view.profile.label }}</twig:Px:Chip>{% endif %}
     {{ include('layout/_user_menu.html.twig') }}

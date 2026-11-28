@@ -128,6 +128,37 @@ final readonly class DossierFiles
     }
 
     /**
+     * The keys of every file of a dossier, sorted: what a return to a restore point compares with
+     * the keys its copy brings, to delete the files no row names any more.
+     *
+     * @return list<string>
+     */
+    public function keys(int $dossierId): array
+    {
+        $keys = [];
+        foreach ($this->storage->listContents(rtrim(self::prefix($dossierId), '/'), true)->sortByPath() as $item) {
+            if ($item->isFile()) {
+                $keys[] = $item->path();
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * Deletes some files of a dossier, each key checked to be one of its own: the files a return to
+     * a restore point replaced, or those of a copy that failed.
+     *
+     * @param list<string> $keys
+     */
+    public function deleteKeys(int $dossierId, array $keys): void
+    {
+        foreach ($keys as $key) {
+            $this->storage->delete($this->owned($dossierId, $key));
+        }
+    }
+
+    /**
      * Deletes every file of a dossier and answers how many there were: the dossier is deleted, or
      * its content is about to be replaced by a restore point's (App\Service\Dossier\Copy\DossierEraser).
      */

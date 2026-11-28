@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Scheduler;
 
+use Symfony\Component\Console\Messenger\RunCommandMessage;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
+use Symfony\Component\Scheduler\RecurringMessage;
 use Symfony\Component\Scheduler\Schedule;
 use Symfony\Component\Scheduler\ScheduleProviderInterface;
 use Symfony\Contracts\Cache\CacheInterface;
@@ -27,6 +29,8 @@ final class PeyraSchedule implements ScheduleProviderInterface
         return (new Schedule())
             // A task whose time fell while the worker restarted runs when it comes back, once.
             ->stateful($this->cache)
-            ->processOnlyLastMissedRun(true);
+            ->processOnlyLastMissedRun(true)
+            // Restore points and returns a request left half done (step 1.8b): usually nothing.
+            ->add(RecurringMessage::every('1 minute', new RunCommandMessage('app:restore-points:advance')));
     }
 }

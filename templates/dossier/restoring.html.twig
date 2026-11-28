@@ -1,0 +1,25 @@
+{#
+ # The waiting page of a dossier going back to a restore point (design-ux.md § 4.9, step 3): every
+ # tab open on the dossier shows it (RestorationInProgressListener, dossier_live_controller.js),
+ # then reloads - restoring_controller.js asks the state every two seconds and hears the live
+ # topic. No module tab, no action: nothing is done in the dossier meanwhile.
+ #}
+{% extends 'dossier/_layout.html.twig' %}
+
+{% set rail_current = '' %}
+{% set dossier_title = 'Retour à un point' %}
+
+{% block page_head %}{% endblock %}
+
+{% block page %}
+    <div class="px-restoring" role="status" aria-live="polite" data-controller="restoring"
+         data-restoring-state-value="{{ path('app_dossier_restoring_state', {dossier: dossier.id}) }}"
+         data-restoring-page-value="{{ path('app_dossier_restoring', {dossier: dossier.id}) }}">
+        <span class="px-restoring__spinner" aria-hidden="true"></span>
+        <h1 class="px-restoring__title">Retour au point « {{ restoration.pointName }} »…</h1>
+        <p class="px-restoring__text">Le dossier reprend l’état de ce point{% if restoration.safetyPoint %}, après avoir posé un point de son état actuel{% endif %}. Cette page se recharge d’elle-même dans un instant.</p>
+        <p class="px-restoring__meta">Demandé {% if restoration.requestedBy %}par {{ restoration.requestedBy.displayName }} {% endif %}à {{ restoration.requestedAt|date('H:i') }}.</p>
+    </div>
+{% endblock %}
+
+{% block facts %}<span>Retour à un point en cours</span>{% endblock %}

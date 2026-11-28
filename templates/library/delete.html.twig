@@ -30,6 +30,7 @@
             <ul class="px-recap">
                 <li>Le dossier modèle « {{ dossier.libraryTitle }} » ({{ dossier.name }}) et sa fiche.</li>
                 <li><b>{{ contents.validated }}</b> écritures validées, <b>{{ contents.drafts }}</b> au brouillard, <b>{{ contents.accounts }}</b> comptes, <b>{{ contents.journals }}</b> journaux, <b>{{ contents.thirdParties }}</b> tiers, <b>{{ contents.entryTemplates }}</b> modèles d’écriture et <b>{{ contents.subscriptions }}</b> abonnements.</li>
+                {% if points > 0 %}<li>{{ points > 1 ? 'Ses ' ~ points ~ ' points de restauration' : 'Son point de restauration' }}.</li>{% endif %}
                 {% if shares > 0 %}<li>Ses partages : <b>{{ shares }}</b> {{ shares > 1 ? 'collègues ne le liront plus' : 'collègue ne le lira plus' }}.</li>{% endif %}
             </ul>
         </twig:Px:Card>

@@ -9,12 +9,13 @@ use App\Entity\Identity\User;
 use App\Enum\Dossier\TemplateLevel;
 use App\Enum\Shared\BtsProcess;
 use App\Repository\Dossier\DossierShareRepository;
+use App\Repository\Dossier\RestorePointRepository;
 use App\Security\Voter\DossierVoter;
 use App\Security\Voter\TemplateVoter;
+use App\Service\Dossier\DossierContents;
 use App\Service\Dossier\Library\TemplateCard;
 use App\Service\Dossier\Library\TemplateCardDraft;
 use App\Service\Dossier\Library\TemplateCards;
-use App\Service\Dossier\Library\TemplateContents;
 use App\Service\Dossier\Library\TemplateDeletion;
 use App\Service\Dossier\Library\TemplateDuplicator;
 use App\Service\Dossier\Library\TemplateLibrary;
@@ -37,7 +38,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 final class TemplateController extends AbstractController
 {
     #[Route('/teacher/library/{dossier}', name: 'app_library_template', requirements: ['dossier' => '\d+'], methods: ['GET', 'POST'])]
-    public function show(Dossier $dossier, Request $request, TemplateLibrary $library, TemplateCards $cards, TemplateContents $contents, DossierShareRepository $shares, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
+    public function show(Dossier $dossier, Request $request, TemplateLibrary $library, TemplateCards $cards, DossierContents $contents, DossierShareRepository $shares, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $card = $this->card($library, $me, $dossier);
         $draft = TemplateCardDraft::of($dossier);
@@ -83,7 +84,7 @@ final class TemplateController extends AbstractController
     }
 
     #[Route('/teacher/library/{dossier}/delete', name: 'app_library_delete', requirements: ['dossier' => '\d+'], methods: ['GET', 'POST'])]
-    public function delete(Dossier $dossier, Request $request, TemplateLibrary $library, TemplateContents $contents, TemplateDeletion $deletion, DossierShareRepository $shares, #[CurrentUser] User $me): Response
+    public function delete(Dossier $dossier, Request $request, TemplateLibrary $library, DossierContents $contents, TemplateDeletion $deletion, DossierShareRepository $shares, RestorePointRepository $points, #[CurrentUser] User $me): Response
     {
         $card = $this->card($library, $me, $dossier);
         if (!$this->isGranted(TemplateVoter::DELETE, $dossier)) {
@@ -110,6 +111,7 @@ final class TemplateController extends AbstractController
             'card' => $card,
             'contents' => $contents->of($dossier),
             'shares' => \count($shares->findByDossier($dossier)),
+            'points' => $points->countByDossier($dossier),
             'error' => $error,
             'typed' => $typed,
         ], new Response(status: null === $error ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY));
