@@ -7,7 +7,9 @@ namespace App\Enum\Payroll;
 /**
  * The « assiette » of an item of the plan de paie: the quantity its rate multiplies. The payslip
  * engine (step 4.3) reads each one; the plan only names it. A flat item (« forfait », the health
- * insurance of a company contract) has no base: its rate is an amount.
+ * insurance of a company contract) has no base: its rate is an amount. The paid leave of the month
+ * stands on two: its hours, taken off the salary, and its pay - the better of the salary kept
+ * (« maintien ») and the tenth of the reference period's gross pay, the item's rate being the tenth.
  */
 enum PayrollBase: string
 {
@@ -15,6 +17,8 @@ enum PayrollBase: string
     case EnteredHours = 'entered_hours';
     case EnteredCount = 'entered_count';
     case EnteredAmount = 'entered_amount';
+    case PaidLeaveHours = 'paid_leave_hours';
+    case PaidLeavePay = 'paid_leave_pay';
     case BaseSalary = 'base_salary';
     case Gross = 'gross';
     case CsgBase = 'csg_base';
@@ -32,6 +36,8 @@ enum PayrollBase: string
             self::EnteredHours => 'Heures du mois',
             self::EnteredCount => 'Nombre du mois',
             self::EnteredAmount => 'Montant du mois',
+            self::PaidLeaveHours => 'Heures de congés payés',
+            self::PaidLeavePay => 'Congés payés : maintien ou dixième',
             self::BaseSalary => 'Salaire de base',
             self::Gross => 'Salaire brut',
             self::CsgBase => 'Assiette CSG et CRDS',

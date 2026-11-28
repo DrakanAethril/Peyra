@@ -116,6 +116,21 @@ final class PayrollItemRulesTest extends TestCase
         self::assertSame('Seule une cotisation figure sur une ligne du bulletin clarifié.', $draft->error('line'));
     }
 
+    public function testThePaidLeavePayNamesItsTenth(): void
+    {
+        $draft = new PayrollItemDraft();
+        [$draft->code, $draft->label, $draft->kind, $draft->base] = ['1310', 'Indemnité de congés payés', PayrollItemKind::Gross->value, PayrollBase::PaidLeavePay->value];
+        $draft->employeeSource = PayrollRateSource::HourlyRate->value;
+        self::assertNull(PayrollItemRules::check($draft, null));
+        self::assertNotNull($draft->error('employeeSource'), 'The pay of the leave is a tenth, not an hourly rate.');
+
+        [$draft->employeeSource, $draft->employeeKey, $draft->employeePath] = [PayrollRateSource::Regulatory->value, 'social.paid_leave.pay', 'tenth_of_reference_pay'];
+        self::assertNotNull(PayrollItemRules::check($draft, null), implode(' ', $draft->errors));
+
+        [$draft->code, $draft->base, $draft->subtracts, $draft->employeeSource] = ['1300', PayrollBase::PaidLeaveHours->value, true, PayrollRateSource::HourlyRate->value];
+        self::assertNotNull(PayrollItemRules::check($draft, null), implode(' ', $draft->errors));
+    }
+
     public function testHoursNeedTheirRateAndAnEnteredAmountNone(): void
     {
         $draft = new PayrollItemDraft();

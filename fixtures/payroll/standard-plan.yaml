@@ -30,8 +30,8 @@ items:
   - {code: '1200', label: Absence non rémunérée, kind: gross, subtracts: true, base: entered_hours, employee: {source: hourly_rate}}
   - {code: '1210', label: Absence maladie, kind: gross, subtracts: true, base: entered_hours, employee: {source: hourly_rate}}
   - {code: '1220', label: Maintien de salaire maladie, kind: gross, base: entered_amount}
-  - {code: '1300', label: Absence congés payés, kind: gross, subtracts: true, base: entered_hours, employee: {source: hourly_rate}}
-  - {code: '1310', label: Indemnité de congés payés, kind: gross, base: entered_amount}
+  - {code: '1300', label: Absence congés payés, kind: gross, subtracts: true, base: paid_leave_hours, employee: {source: hourly_rate}}
+  - {code: '1310', label: Indemnité de congés payés, kind: gross, base: paid_leave_pay, employee: {source: regulatory, key: social.paid_leave.pay, path: tenth_of_reference_pay}}
   - {code: '1400', label: Avantage en nature véhicule, kind: gross, base: entered_amount}
   - {code: '1410', label: Avantage en nature nourriture, kind: gross, base: entered_count, employee: {source: regulatory, key: social.benefit_in_kind.meal, path: per_meal}}
 
