@@ -14,6 +14,7 @@ use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Accounting\Template\GuidedEntry;
 use App\Service\Accounting\Template\GuidedEntryInput;
 use App\Service\Accounting\Template\GuidedEntryPreview;
+use App\Service\Mission\CurrentMission;
 use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\DateValue;
 use App\Service\Shared\FrenchFormat;
@@ -36,6 +37,10 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 #[Route('/d/{dossier}/accounting/entry/guided', requirements: ['dossier' => '\d+'])]
 final class GuidedEntryController extends AbstractController
 {
+    public function __construct(private readonly CurrentMission $missions)
+    {
+    }
+
     #[Route('', name: 'app_accounting_guided', methods: ['GET'])]
     public function index(Dossier $dossier, Request $request, EntryTemplateRepository $templates, GuidedEntry $guided, AssistanceLevels $levels): Response
     {
@@ -91,7 +96,7 @@ final class GuidedEntryController extends AbstractController
     /** For whoever works in the dossier, at a level that opens it (or a teacher). */
     private function open(Dossier $dossier, AssistanceLevels $levels): void
     {
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !Assistance::at($levels->for($dossier))->opensGuidedEntry($this->isGranted('ROLE_TEACHER'))) {
+        if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !Assistance::at($levels->for($dossier))->opensGuidedEntry($this->isGranted('ROLE_TEACHER'), $this->missions->opensGuidedEntry($dossier))) {
             throw new NotFoundHttpException('No guided entry here.');
         }
     }

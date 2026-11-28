@@ -130,4 +130,18 @@ final readonly class Documents
 
         return true;
     }
+
+    /**
+     * The dossier's date a template's open pièce arrives on (a mission's « Pièces », step 2.9a): a
+     * student's copy shows it once its date has come (DocumentRepository). The caller flushes.
+     */
+    public function scheduleArrival(Document $document, \DateTimeImmutable $on, User $actor): void
+    {
+        $dossier = $document->getDossier();
+        if (!$dossier->isTemplate() || !$document->getState()->isOpen()) {
+            throw new \LogicException('Only an open pièce of a template is given its arrival.');
+        }
+        $document->arriveOn($on);
+        $this->trail->inDossier($dossier, AuditAction::DocumentArrivalScheduled, $actor, \sprintf('La pièce %s arrive le %s.', $document->getNumber() ?? $document->getFileName(), $on->format('d/m/Y')), ['document' => $document->getId(), 'on' => $on->format('Y-m-d')]);
+    }
 }

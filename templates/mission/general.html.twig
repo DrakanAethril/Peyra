@@ -1,0 +1,22 @@
+{# Mission › Général (step 2.9a): title, statement, the modules the student's rail shows. #}
+{% extends 'mission/_layout.html.twig' %}
+
+{% block mission_page %}
+    <form method="post" action="{{ path('app_mission', {id: mission.id}) }}" id="mission-form" class="px-stack" novalidate data-controller="focus-error">
+        <input type="hidden" name="_token" value="{{ csrf_token('mission-' ~ mission.id) }}">
+        <twig:Px:Card title="Mission">
+            <div class="px-fieldgrid">
+                <twig:Px:Field id="title" label="Titre" :required="true" :wide="true" :error="errors.title ?? null">
+                    <twig:Px:Input id="title" value="{{ form.title }}" :required="true" :error="errors.title ?? null" maxlength="120" autocomplete="off" autofocus/>
+                </twig:Px:Field>
+                <twig:Px:Field id="statement" label="Énoncé" class="px-fieldgrid__full" hint="Ce que l’étudiant lit en ouvrant la mission : le contexte, ce qui est attendu." :error="errors.statement ?? null">
+                    <twig:Px:Input id="statement" :area="true" value="{{ form.statement }}" :error="errors.statement ?? null" rows="8" maxlength="6000"/>
+                </twig:Px:Field>
+            </div>
+        </twig:Px:Card>
+        <twig:Px:Card title="Modules ouverts">
+            <p class="px-u-muted">Le rail de l’étudiant ne montre que ces modules, avec le tableau de bord et le système d’information ; les autres lui répondent « Page introuvable ». L’enseignant les voit tous.</p>
+            <twig:Px:CheckGroup legend="Modules" name="modules" :error="errors.modules ?? null" :options="module_options|map(m => {value: m.value, label: m.label, checked: m.value in form.modules})"/>
+        </twig:Px:Card>
+    </form>
+{% endblock %}

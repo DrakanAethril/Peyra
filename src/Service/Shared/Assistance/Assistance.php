@@ -54,12 +54,12 @@ final readonly class Assistance
     }
 
     /**
-     * The guided entry (Saisie › guidée) is offered at G and B, hidden at A and 0; a teacher, who
-     * prepares what the students will use, always has it.
+     * The guided entry (Saisie › guidée) is offered at G and B, hidden at A and 0 « sauf réglage de la
+     * mission » (`$mission`, step 2.9a); a teacher, who prepares what the students will use, always has it.
      */
-    public function opensGuidedEntry(bool $teacher): bool
+    public function opensGuidedEntry(bool $teacher, bool $mission = false): bool
     {
-        return $teacher || $this->blocks();
+        return $teacher || $mission || $this->blocks();
     }
 
     /** An account number that subdivides no account of the reference chart is refused (G and B: « numéro hors PCG refusé »). */

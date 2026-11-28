@@ -10,6 +10,7 @@ use App\Security\Voter\DossierRightVoter;
 use App\Security\Voter\DossierVoter;
 use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Accounting\Opening\OpeningBalance;
+use App\Service\Mission\CurrentMission;
 use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\QueryValue;
 use App\Service\Shared\ReturnPath;
@@ -28,6 +29,10 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/d/{dossier}/accounting/opening', requirements: ['dossier' => '\d+'])]
 final class OpeningController extends AbstractController
 {
+    public function __construct(private readonly CurrentMission $missions)
+    {
+    }
+
     #[Route('', name: 'app_accounting_opening', methods: ['GET'])]
     public function index(Dossier $dossier, Request $request, ExerciseRepository $exercises, OpeningBalance $openings, AssistanceLevels $assistance): Response
     {
@@ -49,7 +54,7 @@ final class OpeningController extends AbstractController
             'report' => $report,
             'can_edit' => null !== $report?->journal && $this->isGranted(DossierRightVoter::JOURNAL_ENTER, $report->journal),
             'can_settings' => $this->isGranted(DossierRightVoter::SETTINGS, $dossier),
-            'guided_open' => $editable && Assistance::at($assistance->for($dossier))->opensGuidedEntry($this->isGranted('ROLE_TEACHER')),
+            'guided_open' => $editable && Assistance::at($assistance->for($dossier))->opensGuidedEntry($this->isGranted('ROLE_TEACHER'), $this->missions->opensGuidedEntry($dossier)),
             'here' => ReturnPath::here($request->getPathInfo(), (string) $request->getQueryString()),
         ]);
     }

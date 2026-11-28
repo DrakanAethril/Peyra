@@ -21,6 +21,7 @@ use App\Service\Accounting\Consultation\EntrySearchCriteria;
 use App\Service\Accounting\Ledger\EntryScope;
 use App\Service\Accounting\Ledger\LedgerReader;
 use App\Service\Accounting\Ledger\Totals;
+use App\Service\Mission\MissionModuleAccess;
 use App\Service\Shared\AmountParseError;
 use App\Service\Shared\AmountParser;
 use App\Service\Shared\FrenchFormat;
@@ -60,6 +61,7 @@ final readonly class GlobalSearch
         private DocumentRepository $documents,
         private LedgerReader $ledger,
         private UrlGeneratorInterface $urls,
+        private MissionModuleAccess $modules,
     ) {
     }
 
@@ -73,7 +75,7 @@ final readonly class GlobalSearch
         $query = trim($query);
         $screens = $this->catalogue->screens($dossier, $canEdit, $guidedOpen);
         if ('' === $query) {
-            return $this->empty($dossier, $screens);
+            return $this->withinMission($dossier, $this->empty($dossier, $screens));
         }
 
         $sections = [
@@ -85,7 +87,28 @@ final readonly class GlobalSearch
             self::section(SearchGroup::Actions, \array_slice(self::ranked($this->catalogue->actions($dossier, $canEdit), $query), 0, self::ACTIONS)),
         ];
 
-        return array_values(array_filter($sections));
+        return $this->withinMission($dossier, array_values(array_filter($sections)));
+    }
+
+    /**
+     * What the dossier's mission closes is never offered to a student (design-ux.md § 2.1, step 2.9a):
+     * a line leading into a closed module goes, and a section left empty with it.
+     *
+     * @param list<SearchSection> $sections
+     *
+     * @return list<SearchSection>
+     */
+    private function withinMission(Dossier $dossier, array $sections): array
+    {
+        $kept = [];
+        foreach ($sections as $section) {
+            $section = self::section($section->group, array_values(array_filter($section->items, fn (SearchItem $item): bool => $this->modules->allowsPath($dossier, (string) parse_url($item->href, \PHP_URL_PATH)))));
+            if (null !== $section) {
+                $kept[] = $section;
+            }
+        }
+
+        return $kept;
     }
 
     /**

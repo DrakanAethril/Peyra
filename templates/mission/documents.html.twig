@@ -1,0 +1,57 @@
+{#
+ # Mission › Pièces (step 2.9a; design-ux.md § 3.3): the template's pièces in the order they arrive,
+ # the dossier's date each arrives on - a student's dossier shows a pièce once its date has come -,
+ # its errors to spot (« Mode préparation », step 2.2b). The generator adds pièces to the template.
+ #}
+{% extends 'mission/_layout.html.twig' %}
+
+{% set save = editable and pieces is not empty %}
+
+{% block mission_page %}
+    {% if mission.template is null %}
+        <twig:Px:Card><twig:Px:Empty icon="files" title="Dossier modèle supprimé" text="Les pièces de la mission étaient celles de son dossier modèle."/></twig:Px:Card>
+    {% elseif pieces is empty %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="files" title="Aucune pièce" text="Le dossier modèle de la mission n’a pas de pièce. Le générateur en produit, avec leurs données lues.">
+                <twig:block name="action">{% if editable %}<twig:Px:Button href="{{ path('app_generator_dossier', {dossier: mission.template.id}) }}" icon="files">Générer une pièce</twig:Px:Button>{% endif %}</twig:block>
+            </twig:Px:Empty>
+        </twig:Px:Card>
+    {% else %}
+        <form method="post" action="{{ path('app_mission_documents', {id: mission.id}) }}" id="mission-form" novalidate data-controller="focus-error">
+            <input type="hidden" name="_token" value="{{ csrf_token('mission-' ~ mission.id) }}">
+            <twig:Px:Card :flush="true" title="Pièces du dossier modèle">
+                <twig:Px:Table caption="Pièces de {{ mission.template.libraryTitle }}">
+                    <thead><tr>
+                        <th scope="col">Arrive le</th>
+                        <th scope="col">Pièce</th>
+                        <th scope="col">Tiers</th>
+                        <th scope="col" class="px-u-right">Total TTC</th>
+                        <th scope="col">Erreurs à repérer</th>
+                    </tr></thead>
+                    <tbody>
+                        {% for piece in pieces %}
+                            {% set key = 'arrival.' ~ piece.id %}
+                            <tr>
+                                <td>
+                                    {% if editable and piece.state.open %}
+                                        <twig:Px:DateInput id="arrival-{{ piece.id }}" name="arrival[{{ piece.id }}]" :value="piece.receivedOn" :reference="mission.template.dossierDate" :error="errors[key] ?? null"/>
+                                        {% if errors[key] is defined %}<p class="px-field__error">{{ errors[key] }}</p>{% endif %}
+                                    {% else %}
+                                        <span class="px-u-num">{{ piece.receivedOn|date('d/m/Y') }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-u-nowrap"><a class="px-link px-u-code" href="{{ path('app_document', {dossier: mission.template.id, id: piece.id}) }}">{{ piece.number ?? piece.fileName }}</a> <span class="px-u-muted">{{ piece.type.label }}</span></td>
+                                <td class="px-u-fill">{{ piece.thirdParty ? piece.thirdParty.name : '' }}</td>
+                                <td class="px-u-num">{{ piece.totalIncludingTax ? piece.totalIncludingTax|amount : '' }}</td>
+                                <td>
+                                    {% if error_counts[piece.id] ?? 0 %}<twig:Px:Badge tone="warning">{{ error_counts[piece.id] }}</twig:Px:Badge>{% endif %}
+                                    {% if editable and piece.state.open %}<a class="px-link" href="{{ path('app_document_prepare', {dossier: mission.template.id, id: piece.id}) }}">Préparer</a>{% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            </twig:Px:Card>
+        </form>
+    {% endif %}
+{% endblock %}
