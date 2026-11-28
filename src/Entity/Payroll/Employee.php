@@ -9,6 +9,7 @@ use App\Entity\Dossier\DossierOwned;
 use App\Entity\Dossier\DossierOwnedTrait;
 use App\Enum\Payroll\ContractType;
 use App\Enum\Payroll\EmployeeState;
+use App\Enum\Payroll\ExitReason;
 use App\Enum\Payroll\Sex;
 use App\Repository\Payroll\EmployeeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -108,6 +109,18 @@ class Employee implements DossierOwned
     /** The day of the information and prevention visit (« visite d'information et de prévention »), planned or held; HiringFormalities writes it. */
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $informationVisitOn = null;
+
+    /** Why the contract ends (step 4.2c); null with the two dates below while no exit is recorded. EmployeeExits writes the three. */
+    #[ORM\Column(length: 30, nullable: true, enumType: ExitReason::class)]
+    private ?ExitReason $exitReason = null;
+
+    /** The day the exit was notified (the letter, the convention); null for a contract reaching its term. */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $exitNotifiedOn = null;
+
+    /** The last day of the contract: the employee is present that day, departed the next. */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $exitOn = null;
 
     /** @var Collection<int, EmploymentTerms> */
     #[ORM\OneToMany(targetEntity: EmploymentTerms::class, mappedBy: 'employee', cascade: ['persist', 'remove'], orphanRemoval: true)]
@@ -256,6 +269,29 @@ class Employee implements DossierOwned
         $this->informationVisitOn = $on;
     }
 
+    public function getExitReason(): ?ExitReason
+    {
+        return $this->exitReason;
+    }
+
+    public function getExitNotifiedOn(): ?\DateTimeImmutable
+    {
+        return $this->exitNotifiedOn;
+    }
+
+    public function getExitOn(): ?\DateTimeImmutable
+    {
+        return $this->exitOn;
+    }
+
+    /** EmployeeExits is the caller; three nulls cancel the exit. */
+    public function leave(?ExitReason $reason, ?\DateTimeImmutable $notifiedOn, ?\DateTimeImmutable $exitOn): void
+    {
+        $this->exitReason = $reason;
+        $this->exitNotifiedOn = $notifiedOn;
+        $this->exitOn = $exitOn;
+    }
+
     /** The age in whole years on a day. */
     public function ageOn(\DateTimeImmutable $day): int
     {
@@ -345,6 +381,10 @@ class Employee implements DossierOwned
 
     public function stateAt(\DateTimeImmutable $day): EmployeeState
     {
-        return $this->hiredOn > $day ? EmployeeState::Upcoming : EmployeeState::Present;
+        if ($this->hiredOn > $day) {
+            return EmployeeState::Upcoming;
+        }
+
+        return null !== $this->exitOn && $this->exitOn < $day ? EmployeeState::Departed : EmployeeState::Present;
     }
 }

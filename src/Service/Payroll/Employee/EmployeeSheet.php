@@ -12,6 +12,8 @@ use App\Enum\Audit\AuditAction;
 use App\Repository\Payroll\EmployeeRepository;
 use App\Repository\Payroll\PayrollEstablishmentRepository;
 use App\Service\Audit\AuditTrail;
+use App\Service\Payroll\Exit\ExitDraft;
+use App\Service\Payroll\Exit\ExitRules;
 use App\Service\Shared\FrenchFormat;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -82,7 +84,30 @@ final readonly class EmployeeSheet
             }
         }
 
-        return $fields;
+        return $this->keepsTheExit($draft, $employee, $fields) ? $fields : null;
+    }
+
+    /** An exit recorded (step 4.2c) must still hold with the contract as changed: ExitRules read again over it. */
+    private function keepsTheExit(EmployeeDraft $draft, Employee $employee, EmployeeFields $fields): bool
+    {
+        $exitOn = $employee->getExitOn();
+        if (null === $exitOn) {
+            return true;
+        }
+        if ($fields->termsFrom > $exitOn) {
+            $draft->errors['termsFrom'] = \sprintf('Le contrat prend fin le %s : aucune condition ne commence après.', FrenchFormat::date($exitOn));
+
+            return false;
+        }
+        $terms = $employee->getTerms();
+        $latest = max($fields->termsFrom, $terms[array_key_last($terms) ?? 0]->getEffectiveFrom());
+        $exit = ExitDraft::of($employee);
+        if (null !== ExitRules::check($exit, $fields->contractType, $fields->hiredOn, $fields->contractEndsOn, $latest)) {
+            return true;
+        }
+        $draft->errors['contractType'] = 'La sortie enregistrée ne tiendrait plus : '.lcfirst(implode(' ', $exit->errors)).' Modifiez ou annulez la sortie d’abord (onglet Fin de contrat).';
+
+        return false;
     }
 
     public function create(Dossier $dossier, EmployeeFields $fields, User|string $by): Employee
