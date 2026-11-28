@@ -49,13 +49,14 @@
                         <th scope="col" class="px-u-right">Taux salarial</th>
                         <th scope="col" class="px-u-right">Taux patronal</th>
                         <th scope="col">Conditions</th>
-                        <th scope="col">Organisme · ligne du bulletin</th>
+                        <th scope="col">Organisme</th>
+                        <th scope="col">Ligne du bulletin</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for kind in kinds %}
                         {% if families[kind.value] is defined %}
-                            <tr class="px-table__section"><th colspan="7" scope="rowgroup">{{ kind.heading }}</th></tr>
+                            <tr class="px-table__section"><th colspan="8" scope="rowgroup">{{ kind.heading }}</th></tr>
                             {% for plan_row in families[kind.value] %}
                                 {% set payroll_item = plan_row.item %}
                                 <tr data-rows-target="row">
@@ -63,10 +64,11 @@
                                     <td>{{ payroll_item.label }}{% if payroll_item.subtracts %} <span class="px-u-muted">(en déduction)</span>{% endif %}</td>
                                     <td>{{ payroll_item.base.label }}{% if payroll_item.ceiling.short %} · {{ payroll_item.ceiling.short }}{% endif %}</td>
                                     {% for side in [plan_row.employee, plan_row.employer] %}
-                                        <td class="px-u-num"{% if side.source %} title="{{ side.source }}"{% endif %}>{% if side.missing %}<twig:Px:Badge tone="warning">{{ side.text }}</twig:Px:Badge>{% else %}{{ side.text }}{% endif %}</td>
+                                        <td class="{{ side.figure ? 'px-u-num' : 'px-u-right px-u-muted' }}"{% if side.source %} title="{{ side.source }}"{% endif %}>{% if side.missing %}<twig:Px:Badge tone="warning">{{ side.text }}</twig:Px:Badge>{% else %}{{ side.text }}{% endif %}</td>
                                     {% endfor %}
                                     <td>{{ [payroll_item.statusCondition.value != 'all' ? payroll_item.statusCondition.label : null, payroll_item.headcountCondition.value != 'all' ? payroll_item.headcountCondition.label : null, payroll_item.salaryCondition.value != 'always' ? payroll_item.salaryCondition.label : null]|filter(c => c is not null)|join(' · ') }}</td>
-                                    <td>{% if payroll_item.body %}{{ payroll_item.body.name }} · {{ payroll_item.payslipLine.label }}{% endif %}</td>
+                                    <td>{{ payroll_item.body ? payroll_item.body.name : '' }}</td>
+                                    <td>{{ payroll_item.payslipLine ? payroll_item.payslipLine.label : '' }}</td>
                                 </tr>
                             {% endfor %}
                         {% endif %}

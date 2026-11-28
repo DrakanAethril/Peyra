@@ -59,19 +59,19 @@
                 </twig:Px:Card>
                 <twig:Px:Card title="Assiette et conditions">
                     <div class="px-fieldgrid">
-                        <twig:Px:Field id="base" label="Assiette" :required="true" :error="draft.error('base')">
+                        <twig:Px:Field id="base" :wide="true" label="Assiette" :required="true" :error="draft.error('base')">
                             <twig:Px:Select id="base" placeholder="Choisir l’assiette…" :options="base_options" value="{{ draft.base }}" :required="true" :error="draft.error('base')"/>
                         </twig:Px:Field>
-                        <twig:Px:Field id="ceiling" label="Plafonnement" :error="draft.error('ceiling')">
+                        <twig:Px:Field id="ceiling" :wide="true" label="Plafonnement" :error="draft.error('ceiling')">
                             <twig:Px:Select id="ceiling" :options="ceiling_options" value="{{ draft.ceiling }}" :error="draft.error('ceiling')"/>
                         </twig:Px:Field>
-                        <twig:Px:Field id="status" label="Salariés" :error="draft.error('status')">
+                        <twig:Px:Field id="status" :wide="true" label="Salariés" :error="draft.error('status')">
                             <twig:Px:Select id="status" :options="status_options" value="{{ draft.status }}" :error="draft.error('status')"/>
                         </twig:Px:Field>
-                        <twig:Px:Field id="headcount" label="Effectif" :error="draft.error('headcount')">
+                        <twig:Px:Field id="headcount" :wide="true" label="Effectif" :error="draft.error('headcount')">
                             <twig:Px:Select id="headcount" :options="headcount_options" value="{{ draft.headcount }}" :error="draft.error('headcount')"/>
                         </twig:Px:Field>
-                        <twig:Px:Field id="salary" label="Tranche" :error="draft.error('salary')">
+                        <twig:Px:Field id="salary" :wide="true" label="Tranche" :error="draft.error('salary')">
                             <twig:Px:Select id="salary" :options="salary_options" value="{{ draft.salary }}" :error="draft.error('salary')"/>
                         </twig:Px:Field>
                     </div>

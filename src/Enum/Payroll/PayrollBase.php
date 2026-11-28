@@ -29,17 +29,17 @@ enum PayrollBase: string
     {
         return match ($this) {
             self::ContractHours => 'Horaire du contrat',
-            self::EnteredHours => 'Heures saisies dans le mois',
-            self::EnteredCount => 'Nombre saisi dans le mois',
-            self::EnteredAmount => 'Montant saisi dans le mois',
+            self::EnteredHours => 'Heures du mois',
+            self::EnteredCount => 'Nombre du mois',
+            self::EnteredAmount => 'Montant du mois',
             self::BaseSalary => 'Salaire de base',
             self::Gross => 'Salaire brut',
-            self::CsgBase => 'Assiette de la CSG et de la CRDS',
-            self::MonthlyCeiling => 'Plafond mensuel de la sécurité sociale',
+            self::CsgBase => 'Assiette CSG et CRDS',
+            self::MonthlyCeiling => 'Plafond mensuel',
             self::Flat => 'Forfait (sans base)',
-            self::OvertimePay => 'Rémunération des heures supplémentaires',
-            self::OvertimeHours => 'Nombre d’heures supplémentaires',
-            self::BenefitsInKind => 'Avantages en nature du mois',
+            self::OvertimePay => 'Rémunération des heures sup.',
+            self::OvertimeHours => 'Heures supplémentaires',
+            self::BenefitsInKind => 'Avantages en nature',
             self::NetTaxable => 'Net imposable',
         };
     }

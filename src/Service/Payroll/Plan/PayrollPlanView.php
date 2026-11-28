@@ -14,7 +14,7 @@ use App\Service\Regulatory\RegulatoryReader;
  * The plan de paie as its list shows it: the rubriques by family, each rate read at the dossier's
  * date with its source (PayrollRateReading). Inside the dossier's context.
  *
- * @phpstan-type Reading array{text: string, source: string, missing: bool}
+ * @phpstan-type Reading array{text: string, source: string, missing: bool, figure: bool}
  * @phpstan-type PlanRow array{item: PayrollItem, employee: Reading, employer: Reading}
  */
 final readonly class PayrollPlanView

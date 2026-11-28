@@ -21,7 +21,7 @@ use App\Service\Shared\FrenchFormat;
  */
 final class PayrollRateReading
 {
-    /** @return array{text: string, source: string, missing: bool} */
+    /** @return array{text: string, source: string, missing: bool, figure: bool} */
     public static function of(PayrollRate $rate, RegulatorySnapshot $snapshot, ?PayrollEstablishment $establishment): array
     {
         $source = $rate->getSource();
@@ -31,34 +31,38 @@ final class PayrollRateReading
             try {
                 $decimal = $snapshot->decimal($key, ...$rate->pathSegments());
                 $unit = $snapshot->value($key)->getUnit();
-                $value = str_starts_with($unit, 'percent') ? FrenchFormat::percent($decimal) : FrenchFormat::number($decimal).(str_starts_with($unit, 'EUR') ? "\u{a0}€" : '');
-                $text = PayrollRateSource::HourlyRateWithPremium === $source ? 'taux horaire + '.$value : $value;
+                $value = match (true) {
+                    str_starts_with($unit, 'percent') => FrenchFormat::percent($decimal),
+                    str_starts_with($unit, 'EUR') => FrenchFormat::quantity($decimal)."\u{a0}€",
+                    default => FrenchFormat::number($decimal),
+                };
+                $premium = PayrollRateSource::HourlyRateWithPremium === $source;
 
-                return ['text' => $text, 'source' => $source->label().' : '.$where, 'missing' => false];
+                return ['text' => $premium ? '+ '.$value : $value, 'source' => $source->label().' : '.$where, 'missing' => false, 'figure' => !$premium];
             } catch (MissingRegulatoryValue) {
-                return ['text' => 'non lue', 'source' => $source->label().' : '.$where.', sans valeur au '.FrenchFormat::date($snapshot->day), 'missing' => true];
+                return ['text' => 'non lue', 'source' => $source->label().' : '.$where.', sans valeur au '.FrenchFormat::date($snapshot->day), 'missing' => true, 'figure' => false];
             }
         }
 
         return match ($source) {
-            PayrollRateSource::None => ['text' => '', 'source' => '', 'missing' => false],
-            PayrollRateSource::Fixed => ['text' => FrenchFormat::percent((string) $rate->getPercent()), 'source' => $source->label(), 'missing' => false],
-            PayrollRateSource::Amount => ['text' => null === $rate->getAmount() ? '' : FrenchFormat::amountInEuros($rate->getAmount()), 'source' => $source->label(), 'missing' => false],
+            PayrollRateSource::None => ['text' => '', 'source' => '', 'missing' => false, 'figure' => false],
+            PayrollRateSource::Fixed => ['text' => FrenchFormat::percent((string) $rate->getPercent()), 'source' => $source->label(), 'missing' => false, 'figure' => true],
+            PayrollRateSource::Amount => ['text' => null === $rate->getAmount() ? '' : FrenchFormat::amountInEuros($rate->getAmount()), 'source' => $source->label(), 'missing' => false, 'figure' => true],
             PayrollRateSource::WorkAccident => null === $establishment
-                ? ['text' => 'à saisir', 'source' => $source->label(), 'missing' => true]
-                : ['text' => FrenchFormat::percent($establishment->getWorkAccidentRate()), 'source' => $source->label(), 'missing' => false],
+                ? ['text' => 'à saisir', 'source' => $source->label(), 'missing' => true, 'figure' => false]
+                : ['text' => FrenchFormat::percent($establishment->getWorkAccidentRate()), 'source' => $source->label(), 'missing' => false, 'figure' => true],
             PayrollRateSource::Mobility => self::mobility($establishment?->getMobilityRate(), $source),
-            PayrollRateSource::HourlyRate => ['text' => 'taux horaire', 'source' => $source->label(), 'missing' => false],
-            PayrollRateSource::Entered => ['text' => 'saisi', 'source' => $source->label(), 'missing' => false],
-            PayrollRateSource::WithholdingRate => ['text' => 'taux du salarié', 'source' => $source->label(), 'missing' => false],
-            PayrollRateSource::GeneralReduction => ['text' => 'coefficient', 'source' => $source->label(), 'missing' => false],
-            default => ['text' => '', 'source' => $source->label(), 'missing' => false],
+            PayrollRateSource::HourlyRate => ['text' => 'taux horaire', 'source' => $source->label(), 'missing' => false, 'figure' => false],
+            PayrollRateSource::Entered => ['text' => 'saisi', 'source' => $source->label(), 'missing' => false, 'figure' => false],
+            PayrollRateSource::WithholdingRate => ['text' => 'taux du salarié', 'source' => $source->label(), 'missing' => false, 'figure' => false],
+            PayrollRateSource::GeneralReduction => ['text' => 'coefficient', 'source' => $source->label(), 'missing' => false, 'figure' => false],
+            default => ['text' => '', 'source' => $source->label(), 'missing' => false, 'figure' => false],
         };
     }
 
-    /** @return array{text: string, source: string, missing: bool} */
+    /** @return array{text: string, source: string, missing: bool, figure: bool} */
     private static function mobility(?string $rate, PayrollRateSource $source): array
     {
-        return ['text' => null === $rate ? 'non dû' : FrenchFormat::percent($rate), 'source' => $source->label(), 'missing' => false];
+        return ['text' => null === $rate ? 'non dû' : FrenchFormat::percent($rate), 'source' => $source->label(), 'missing' => false, 'figure' => null !== $rate];
     }
 }

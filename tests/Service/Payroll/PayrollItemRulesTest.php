@@ -122,7 +122,7 @@ final class PayrollItemRulesTest extends TestCase
         [$draft->code, $draft->label, $draft->kind, $draft->base] = ['1200', 'Absence non rémunérée', PayrollItemKind::Gross->value, PayrollBase::EnteredHours->value];
         $draft->subtracts = true;
         self::assertNull(PayrollItemRules::check($draft, null));
-        self::assertSame('Une rubrique sur « heures saisies dans le mois » a son taux.', $draft->error('employeeSource'));
+        self::assertSame('Une rubrique sur « heures du mois » a son taux.', $draft->error('employeeSource'));
 
         $draft->employeeSource = PayrollRateSource::HourlyRate->value;
         self::assertTrue(PayrollItemRules::check($draft, null)?->subtracts);
