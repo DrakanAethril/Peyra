@@ -15,11 +15,19 @@ use Brick\Math\RoundingMode;
  * percentage, rounded half up); the VAT is computed **once per rate** on the sum of that rate's
  * bases, rounded half up (the French practice, as the generator of pièces does); the totals add
  * up. Nothing is stored: a document's figures are read from its lines.
+ *
+ * Step 2.3b adds the invoice's two deductions. A **cash discount** (« escompte », a percentage of
+ * the net commercial amount) is taken off each rate's base, half up, before its VAT: the VAT is
+ * due on the net financial amount. The **deposits** already invoiced are deducted from the total
+ * including tax: what is left is the amount due.
  */
 final class SalesComputation
 {
-    /** @param list<SalesLine> $lines */
-    public static function of(array $lines): SalesTotals
+    /**
+     * @param list<SalesLine>    $lines
+     * @param list<SalesDeposit> $deposits
+     */
+    public static function of(array $lines, ?BigDecimal $cashDiscount = null, array $deposits = []): SalesTotals
     {
         $amounts = [];
         $discounts = Money::zero();
@@ -36,12 +44,19 @@ final class SalesComputation
         uasort($bases, static fn (array $a, array $b): int => $b['rate']->compareTo($a['rate']));
 
         $vatLines = [];
+        $escomptes = [];
         foreach ($bases as $key => $row) {
-            $vatLines[] = new VatLine((string) $key, $row['base'], $row['base']->times($row['rate']->dividedBy(100, 5), RoundingMode::HalfUp));
+            $escompte = null === $cashDiscount ? Money::zero() : $row['base']->times($cashDiscount->dividedBy(100, 6), RoundingMode::HalfUp);
+            $escomptes[] = $escompte;
+            $financial = $row['base']->minus($escompte);
+            $vatLines[] = new VatLine((string) $key, $financial, $financial->times($row['rate']->dividedBy(100, 5), RoundingMode::HalfUp));
         }
         $excludingTax = Money::sum($amounts);
+        $escompte = Money::sum($escomptes);
         $vat = Money::sum(array_map(static fn (VatLine $line): Money => $line->vat, $vatLines));
+        $includingTax = $excludingTax->minus($escompte)->plus($vat);
+        $deducted = Money::sum(array_map(static fn (SalesDeposit $deposit): Money => $deposit->includingTax(), $deposits));
 
-        return new SalesTotals($amounts, $vatLines, $discounts, $excludingTax, $vat, $excludingTax->plus($vat));
+        return new SalesTotals($amounts, $vatLines, $discounts, $excludingTax, $vat, $includingTax, $escompte, $deposits, $deducted, $includingTax->minus($deducted));
     }
 }

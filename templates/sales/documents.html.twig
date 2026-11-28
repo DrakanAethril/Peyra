@@ -1,5 +1,5 @@
 {#
- # Ventes › Devis · Commandes · Livraisons and Factures et avoirs (step 2.3, gabarit L): the
+ # Ventes › Devis · Commandes · Livraisons and Factures · Avoirs · Acomptes (step 2.3, gabarit L): the
  # documents of one type, the chips of its tab's family. Drafts first; then by number, newest first.
  #}
 {% extends 'sales/_layout.html.twig' %}
@@ -7,7 +7,7 @@
 {% set sales_tab = doc_type.invoicing ? 'invoices' : 'orders' %}
 {% set dossier_title = doc_type.plural %}
 {% set can_enter = is_granted('SALES_ENTER', dossier) %}
-{% set can_create = can_enter and doc_type.value != 'credit_note' %}
+{% set can_create = can_enter and doc_type.value not in ['credit_note', 'deposit'] %}
 {% set status_keys = can_create ? [{combo: 'N', verb: 'Nouveau'}] : [] %}
 
 {% block page_head %}
@@ -29,7 +29,7 @@
             {% endfor %}
         </twig:Px:Filters>
         {% if document_rows is empty %}
-            <twig:Px:Empty icon="file-text" title="Aucun document" text="{{ doc_type.value == 'credit_note' ? 'Un avoir se crée depuis la facture validée qu’il corrige : « Créer un avoir » sur sa fiche.' : 'Aucun document de ce type pour l’instant. « Nouveau » en ouvre un brouillon ; un document validé se transforme en le suivant.' }}"/>
+            <twig:Px:Empty icon="file-text" title="Aucun document" text="{{ doc_type.value == 'credit_note' ? 'Un avoir se crée depuis la facture validée qu’il corrige : « Créer un avoir » sur sa fiche.' : (doc_type.value == 'deposit' ? 'Une facture d’acompte se crée depuis la commande validée : « Facturer un acompte » sur sa fiche.' : 'Aucun document de ce type pour l’instant. « Nouveau » en ouvre un brouillon ; un document validé se transforme en le suivant.') }}"/>
         {% else %}
             <twig:Px:Table caption="{{ doc_type.plural }} de {{ dossier.name }}" :rows="true">
                 <thead>
