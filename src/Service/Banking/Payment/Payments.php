@@ -438,7 +438,7 @@ final readonly class Payments
         $party = $bill->getThirdParty();
         $label = mb_substr(\sprintf('%s effet %s %s', $party->getName(), $bill->getReference(), BillRemittance::Collection === $remittance ? 'à l’encaissement' : 'à l’escompte'), 0, 200);
         $draft = BillRemittance::Collection === $remittance
-            ? PaymentEntries::billCollection($journal->getCode(), $party->getCode(), $on, $bill->getReference(), $label, $bill->getAmount(), $bill->getDueOn())
+            ? PaymentEntries::billCollection($journal->getCode(), $party->getCode(), $on, $bill->getReference(), $label, $bill->getAmount())
             : PaymentEntries::billDiscount($journal->getCode(), $bank->getNumber(), $party->getCode(), $on, $bill->getReference(), $label, $bill->getAmount(), $interest, $commission, $commissionVat);
         $entry = $this->submit($dossier, $draft, $bill->getReference(), $actor);
         $bill->remit($remittance, $journal, $on, $entry);

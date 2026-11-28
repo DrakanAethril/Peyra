@@ -66,10 +66,10 @@ final class PaymentEntries
         return new EntryDraft($journal, $on, $reference, 'Remise de chèques '.$reference, $lines);
     }
 
-    public static function billCollection(string $journal, string $partyCode, \DateTimeImmutable $on, string $reference, string $label, Money $amount, ?\DateTimeImmutable $due): EntryDraft
+    public static function billCollection(string $journal, string $partyCode, \DateTimeImmutable $on, string $reference, string $label, Money $amount): EntryDraft
     {
         return new EntryDraft($journal, $on, $reference, $label, [
-            EntryLineDraft::debit(self::BILLS_AT_COLLECTION, $amount, '', '', $due),
+            EntryLineDraft::debit(self::BILLS_AT_COLLECTION, $amount),
             EntryLineDraft::credit(self::BILLS_RECEIVABLE, $amount, '', $partyCode),
         ]);
     }

@@ -65,7 +65,7 @@ final class PaymentRulesTest extends TestCase
         // Two cheques remitted: the bank debited of the total, 511200 credited one by one.
         self::assertSame([['512000', '', 215_000, 0], ['511200', '', 0, 143_000], ['511200', '', 0, 72_000]], self::lines(PaymentEntries::chequeDeposit('BQ', '512000', $on, 'REM-0008', [['label' => 'Vial', 'amount' => Money::cents(143_000)], ['label' => 'Comptant', 'amount' => Money::cents(72_000)]])));
         // A bill at collection, then one discounted.
-        self::assertSame([['511300', '', 500_000, 0], ['413000', 'C0019', 0, 500_000]], self::lines(PaymentEntries::billCollection('BQ', 'C0019', $on, 'LCR-0001', 'x', Money::cents(500_000), null)));
+        self::assertSame([['511300', '', 500_000, 0], ['413000', 'C0019', 0, 500_000]], self::lines(PaymentEntries::billCollection('BQ', 'C0019', $on, 'LCR-0001', 'x', Money::cents(500_000))));
         self::assertSame([['512000', '', 494_393, 0], ['661600', '', 4_167, 0], ['627500', '', 1_200, 0], ['445660', '', 240, 0], ['413000', 'C0019', 0, 500_000]], self::lines(PaymentEntries::billDiscount('BQ', '512000', 'C0019', $on, 'LCR-0001', 'x', Money::cents(500_000), Money::cents(4_167), Money::cents(1_200), Money::cents(240))));
     }
 
