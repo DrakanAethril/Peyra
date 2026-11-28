@@ -32,11 +32,11 @@ final class StandardPayrollPlanTest extends TestCase
     {
         $specs = $this->specs();
 
-        self::assertCount(48, $specs);
+        self::assertCount(49, $specs);
         $codes = array_map(static fn (PayrollItemSpec $spec): string => $spec->code, $specs);
         self::assertSame($codes, array_values(array_unique($codes)), 'Each code once.');
         $families = array_count_values(array_map(static fn (PayrollItemSpec $spec): string => $spec->kind->value, $specs));
-        self::assertSame(['gross' => 14, 'contribution' => 29, 'not_subject' => 2, 'deduction' => 3], $families);
+        self::assertSame(['gross' => 14, 'contribution' => 30, 'not_subject' => 2, 'deduction' => 3], $families);
     }
 
     public function testEveryRegulatoryValueReadsInBothMillesimes(): void

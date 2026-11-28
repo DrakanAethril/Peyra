@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service\Payroll\Engine;
 
 use App\Enum\Payroll\ContractType;
+use App\Enum\Payroll\PayrollItemKind;
 use App\Enum\Payroll\PayslipUnit;
 use App\Service\Payroll\Engine\PaidLeave;
 use App\Service\Payroll\Engine\Payslip;
@@ -199,13 +200,13 @@ final class PayslipGrossTest extends TestCase
 
     private function payslip(string $day, PayslipEmployee $employee, PayslipVariables $variables): Payslip
     {
-        return PayslipCalculator::calculate(new PayslipInput($employee, $variables, self::regulatoryOn($day), self::standardPlan()));
+        return PayslipCalculator::calculate(new PayslipInput($employee, $variables, self::regulatoryOn($day), self::standardPlan(), self::establishment()));
     }
 
-    /** @return list<string> */
+    /** @return list<string> the elements of gross pay */
     private function codes(Payslip $payslip): array
     {
-        return array_map(static fn ($row): string => $row->code, $payslip->rows);
+        return array_values(array_map(static fn ($row): string => $row->code, array_filter($payslip->rows, static fn ($row): bool => PayrollItemKind::Gross === $row->kind)));
     }
 
     private function assertRow(Payslip $payslip, string $code, ?string $base, ?PayslipUnit $baseUnit, ?string $rate, ?PayslipUnit $rateUnit, string $amount): void

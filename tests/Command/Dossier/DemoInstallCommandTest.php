@@ -254,7 +254,7 @@ final class DemoInstallCommandTest extends KernelTestCase
             $bodies = self::getContainer()->get(PayrollBodyRepository::class)->findByDossier($vasseur);
             self::assertSame(['Urssaf Rhône-Alpes (simulée)', 'Caisse de retraite Loire-Forez (fictive)', 'Prévoyance Forez Mutuelle (fictive)', 'Mutuelle des Monts du Forez (fictive)'], array_map(static fn ($body): string => $body->getName(), $bodies));
             $items = self::getContainer()->get(PayrollItemRepository::class);
-            self::assertCount(49, $items->findPlan($vasseur));
+            self::assertCount(50, $items->findPlan($vasseur));
             self::assertSame('Urssaf Rhône-Alpes (simulée)', $items->findOneByCode($vasseur, '2200')?->getBody()?->getName());
             $health = $items->findOneByCode($vasseur, '2010');
             self::assertSame([2800, 2800, 'Mutuelle des Monts du Forez (fictive)'], [$health?->getEmployeeRate()->getAmount()?->cents, $health?->getEmployerRate()->getAmount()?->cents, $health?->getBody()?->getName()]);

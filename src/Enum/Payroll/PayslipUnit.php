@@ -10,7 +10,8 @@ use Brick\Math\RoundingMode;
 
 /**
  * What the base or the rate of a payslip line counts (lot 4, step 4.3): hours, a number of
- * something (meals), euros, a percent of the base, euros an hour or a unit. The line's amount is
+ * something (meals), euros, a percent of the base, euros an hour or a unit, or a coefficient (the
+ * general reduction's, applied to the gross pay as it is: 0,1775 × 2 472,00). The line's amount is
  * always the base times the rate as they are shown, rounded to the cent, so that whoever checks a
  * line with the figures printed on it finds its amount.
  */
@@ -22,8 +23,9 @@ enum PayslipUnit: string
     case Percent = 'percent';
     case EurosPerHour = 'euros_per_hour';
     case EurosPerUnit = 'euros_per_unit';
+    case Coefficient = 'coefficient';
 
-    /** « 151,67 h », « 10 », « 2 400,00 € », « 3,00 % », « 15,8238 € » - as the payslip prints it. */
+    /** « 151,67 h », « 10 », « 2 400,00 € », « 3,00 % », « 15,8238 € », « 0,1775 » - as the payslip prints it. */
     public function format(BigDecimal $value): string
     {
         return match ($this) {
@@ -32,6 +34,7 @@ enum PayslipUnit: string
             self::Euros => FrenchFormat::quantity($value)."\u{a0}€",
             self::Percent => FrenchFormat::quantity($value, max(2, $value->strippedOfTrailingZeros()->getScale()))."\u{a0}%",
             self::EurosPerHour, self::EurosPerUnit => FrenchFormat::quantity($value, max(2, $value->strippedOfTrailingZeros()->getScale()))."\u{a0}€",
+            self::Coefficient => FrenchFormat::quantity($value, max(4, $value->strippedOfTrailingZeros()->getScale())),
         };
     }
 

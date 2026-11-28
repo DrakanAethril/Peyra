@@ -37,7 +37,7 @@ final class PayrollSettingsTest extends KernelTestCase
         [$dossier] = $this->setUpDossier();
         $installer = self::getContainer()->get(PayrollPlanInstaller::class);
 
-        self::assertSame(48, $installer->installStandard($dossier, 'test'));
+        self::assertSame(49, $installer->installStandard($dossier, 'test'));
         self::getContainer()->get(EntityManagerInterface::class)->flush();
 
         $bodies = self::getContainer()->get(PayrollBodyRepository::class)->findByDossier($dossier);

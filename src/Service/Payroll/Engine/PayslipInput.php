@@ -9,8 +9,8 @@ use App\Service\Regulatory\RegulatorySnapshot;
 
 /**
  * Everything one payslip is calculated from (lot 4, step 4.3), and nothing else: the employee on
- * the day, the elements of the month, the regulatory values in force on the payslip's day and the
- * dossier's plan de paie. The engine reads neither the database nor the clock.
+ * the day, the elements of the month, the regulatory values in force on the payslip's day, the
+ * dossier's plan de paie and its establishment. The engine reads neither the database nor the clock.
  */
 final readonly class PayslipInput
 {
@@ -20,6 +20,7 @@ final readonly class PayslipInput
         public PayslipVariables $variables,
         public RegulatorySnapshot $regulatory,
         public array $plan,
+        public PayslipEstablishment $establishment,
     ) {
     }
 }
