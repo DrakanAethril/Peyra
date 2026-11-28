@@ -242,6 +242,23 @@ enum AuditAction: string
 
     case StockCountDeleted = 'inventory.stock_count_deleted';
 
+    /** A bank statement imported or deleted before any pointing; lines pointed or unpointed; a reconciliation validated or reopened; an assignment rule kept (step 2.6a). */
+    case BankStatementImported = 'banking.statement_imported';
+
+    case BankStatementDeleted = 'banking.statement_deleted';
+
+    case BankLinesPointed = 'banking.lines_pointed';
+
+    case BankLinesUnpointed = 'banking.lines_unpointed';
+
+    case BankReconciliationValidated = 'banking.reconciliation_validated';
+
+    case BankReconciliationReopened = 'banking.reconciliation_reopened';
+
+    case BankRuleSaved = 'banking.rule_saved';
+
+    case BankRuleDeleted = 'banking.rule_deleted';
+
     /** A commercial document drafted, changed, deleted while a draft, validated, sent, transformed (step 2.3). */
     case SalesDocumentCreated = 'sales.document_created';
 
@@ -343,6 +360,14 @@ enum AuditAction: string
             self::StockCountSaved => 'Comptages d’inventaire enregistrés',
             self::StockCountValidated => 'Inventaire physique validé',
             self::StockCountDeleted => 'Inventaire physique supprimé',
+            self::BankStatementImported => 'Relevé bancaire importé',
+            self::BankStatementDeleted => 'Relevé bancaire supprimé',
+            self::BankLinesPointed => 'Lignes pointées',
+            self::BankLinesUnpointed => 'Lignes dépointées',
+            self::BankReconciliationValidated => 'Rapprochement validé',
+            self::BankReconciliationReopened => 'Rapprochement rouvert',
+            self::BankRuleSaved => 'Règle d’affectation enregistrée',
+            self::BankRuleDeleted => 'Règle d’affectation supprimée',
             self::SalesDocumentCreated => 'Document commercial créé',
             self::SalesDocumentChanged => 'Document commercial modifié',
             self::SalesDocumentDeleted => 'Brouillon de document commercial supprimé',

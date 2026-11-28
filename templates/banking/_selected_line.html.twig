@@ -1,0 +1,46 @@
+{#
+ # The panel « Ligne sélectionnée » of the reconciliation (mock-up 2; design-ux.md § 4.5, point 3):
+ # a statement line no entry answers. At G and B the entry is proposed - its assignment rule's
+ # account and VAT when one matches, the account to type otherwise - and « Générer l'écriture »
+ # writes it in the brouillard of the statement's journal and points the line; at A and 0, « Saisir
+ # moi-même » only, in the journal's grid. « Créer une règle » starts a rule from the wording.
+ #}
+{% set grid_href = path('app_accounting_entry', {dossier: dossier.id, journal: statement.journal.code, period: selected.date|date('Y-m-01')}) %}
+{% set rule_href = path('app_bank_rule_new', {dossier: dossier.id, pattern: selected.label|split(' ')|slice(0, 3)|join(' '), return: here}) %}
+{% if assistance.proposesBankEntry and can_point %}
+    <form method="post" action="{{ path('app_bank_reconciliation_generate', {dossier: dossier.id, id: statement.id}) }}" class="px-stack" novalidate>
+        <input type="hidden" name="_token" value="{{ csrf_token('bank-' ~ dossier.id) }}">
+        <input type="hidden" name="line" value="{{ selected.id }}">
+        <p>
+            {% if selected_rule %}
+                Proposition : <b>{{ selected_rule.account }}</b>{% if selected_rule.vatRate %}, TVA {{ selected_rule.vatRate|replace({'.': ','}) }} %{% endif %}, journal {{ statement.journal.code }}, contrepartie {{ rec.account.number }} - règle « {{ selected_rule.pattern }} ».
+            {% else %}
+                Aucune règle d’affectation ne reconnaît ce libellé : choisissez le compte. Journal {{ statement.journal.code }}, contrepartie {{ rec.account.number }}.
+            {% endif %}
+        </p>
+        <div class="px-fieldgrid">
+            <twig:Px:Field id="generate-account" label="Compte ou tiers" :required="true">
+                <twig:Px:AccountPicker id="generate-account" name="account" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" value="{{ selected_rule ? selected_rule.account : '' }}" accountLabel=""/>
+            </twig:Px:Field>
+            <twig:Px:Field id="generate-vat" label="Taux de TVA" hint="En pour cent ; vide : sans TVA.">
+                <twig:Px:Input id="generate-vat" name="vat_rate" value="{{ selected_rule and selected_rule.vatRate ? selected_rule.vatRate|replace({'.': ','}) : '' }}" hint="1" inputmode="decimal" maxlength="6" autocomplete="off"/>
+            </twig:Px:Field>
+            <twig:Px:Field id="generate-label" label="Libellé">
+                <twig:Px:Input id="generate-label" name="label" value="{{ selected_rule and selected_rule.entryLabel ? selected_rule.entryLabel : selected.label }}" maxlength="60" autocomplete="off"/>
+            </twig:Px:Field>
+        </div>
+        <div class="px-cluster">
+            <twig:Px:Button type="submit" variant="primary">Générer l’écriture</twig:Px:Button>
+            <twig:Px:Button href="{{ grid_href }}">Saisir moi-même</twig:Px:Button>
+            <twig:Px:Button href="{{ rule_href }}" variant="quiet">Créer une règle</twig:Px:Button>
+        </div>
+    </form>
+{% elseif can_point %}
+    <p>Saisissez l’écriture de cette opération dans le journal {{ statement.journal.code }}, puis revenez la pointer avec sa ligne.</p>
+    <div class="px-cluster">
+        <twig:Px:Button href="{{ grid_href }}" variant="primary">Saisir moi-même</twig:Px:Button>
+        <twig:Px:Button href="{{ rule_href }}" variant="quiet">Créer une règle</twig:Px:Button>
+    </div>
+{% else %}
+    <p class="px-u-muted">Cette ligne du relevé n’a pas encore son écriture.</p>
+{% endif %}

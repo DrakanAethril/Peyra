@@ -1,0 +1,25 @@
+{# Banque › Rapprochement › Éditer l'état (step 2.6a; design-ui.md § 3.6, A4 portrait): the état de rapprochement of a statement, then what it justifies, line by line. #}
+{% extends 'doc/_report.html.twig' %}
+
+{% block content %}
+    {{ include('banking/_state_table.html.twig', {pdf: true}) }}
+    {% if rec.report.toPost is not empty or rec.report.outstanding is not empty %}
+        <h2 class="px-doc__subtitle">Opérations en suspens</h2>
+        <table class="px-doc__table">
+            <colgroup><col style="width: 22mm"><col><col style="width: 34mm"><col style="width: 30mm"></colgroup>
+            <thead><tr><th scope="col">Date</th><th scope="col">Libellé</th><th scope="col">Nature</th><th scope="col" class="px-doc__num">Montant</th></tr></thead>
+            <tbody>
+                {% for item in rec.report.toPost %}
+                    {% set line = rec.line(item.id) %}
+                    <tr><td class="px-doc__code">{{ item.date|date('d/m/Y') }}</td><td class="px-doc__cell-cut">{{ line ? line.label : '' }}</td><td>À comptabiliser</td><td class="px-doc__num">{{ item.amount|amount }}</td></tr>
+                {% endfor %}
+                {% for book in rec.books %}
+                    {% if rec.bookLetter(book) is null %}
+                        <tr><td class="px-doc__code">{{ book.entry.entryDate|date('d/m/Y') }}</td><td class="px-doc__cell-cut">{{ book.entry.document }} · {{ book.label }}</td><td>{{ book.amount.negative ? 'Non débité' : 'Non crédité' }}</td><td class="px-doc__num">{{ book.amount|amount }}</td></tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+    <p>{{ statement.reconciled ? 'Rapprochement validé le ' ~ statement.reconciledOn|date_fr ~ '.' : 'Rapprochement en cours, non validé.' }}</p>
+{% endblock %}

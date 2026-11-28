@@ -1,0 +1,16 @@
+{#
+ # Banque (design-ux.md §§ 2.5 and 3.2; lot 2, step 2.6a): the module's tab bar - Relevés,
+ # Rapprochement, Règles d'affectation. A screen sets `bank_tab` (statements, reconciliation, rules)
+ # and `dossier_title` outside any block.
+ #}
+{% extends 'dossier/_layout.html.twig' %}
+
+{% set rail_current = 'bank' %}
+
+{% block module_tabs %}
+    <twig:Px:ModuleTabs label="Banque" :tabs="[
+        {label: 'Relevés', href: path('app_bank_statements', {dossier: dossier.id}), current: (bank_tab ?? 'statements') == 'statements'},
+        {label: 'Rapprochement', href: path('app_bank_reconciliation', {dossier: dossier.id}), current: (bank_tab ?? '') == 'reconciliation'},
+        {label: 'Règles d’affectation', href: path('app_bank_rules', {dossier: dossier.id}), current: (bank_tab ?? '') == 'rules'},
+    ]"/>
+{% endblock %}

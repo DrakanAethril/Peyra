@@ -1,0 +1,35 @@
+{#
+ # The état de rapprochement of a statement (mock-up 2; design-ux.md § 3.2, « État de
+ # rapprochement »), on the screen and in its PDF (`pdf`): the account's balance corrected by the
+ # bank's operations to post, the bank's balance corrected by the movements it has not passed, and
+ # the gap when the two do not meet. `rec` is the ReconciliationView, `statement` its statement.
+ #}
+{% set report = rec.report %}
+{% set in_pdf = pdf ?? false %}
+{% set num = in_pdf ? 'px-doc__num' : 'px-u-num' %}
+{% set not_debited = report.notDebited %}
+{% set not_credited = report.notCredited %}
+<table class="{{ in_pdf ? 'px-doc__table' : 'px-table' }}">
+    <caption class="px-u-sr-only">État de rapprochement au {{ statement.endsOn|date('d/m/Y') }}</caption>
+    <tbody>
+        <tr><td>Solde du compte {{ rec.account.number }}</td><td class="{{ num }}">{{ report.accountBalance|amount }}</td></tr>
+        {% if report.toPost is not empty %}
+            <tr><td>Opérations du relevé à comptabiliser ({{ report.toPost|map(i => i.date|date('d/m') ~ ' ' ~ i.amount.abs|amount)|join(' · ') }})</td><td class="{{ num }}">{{ report.toPostTotal|amount }}</td></tr>
+        {% endif %}
+        {% if not report.earlierToPost.zero %}
+            <tr><td>Opérations des relevés précédents à comptabiliser</td><td class="{{ num }}">{{ report.earlierToPost|amount }}</td></tr>
+        {% endif %}
+        <tr class="{{ in_pdf ? 'px-doc__subtotal' : 'px-table__total' }}"><th scope="row">Solde rectifié en comptabilité</th><td class="{{ num }}">{{ report.rectifiedBooks|amount }}</td></tr>
+        <tr><td>Solde du relevé</td><td class="{{ num }}">{{ report.closingBalance|amount }}</td></tr>
+        {% if not_debited is not empty %}
+            <tr><td>{{ not_debited|length > 1 ? 'Paiements émis non débités' : 'Paiement émis non débité' }} ({{ not_debited|map(i => i.date|date('d/m') ~ ' ' ~ i.amount.abs|amount)|join(' · ') }})</td><td class="{{ num }}">{{ report.total(not_debited)|amount }}</td></tr>
+        {% endif %}
+        {% if not_credited is not empty %}
+            <tr><td>{{ not_credited|length > 1 ? 'Encaissements non crédités' : 'Encaissement non crédité' }} ({{ not_credited|map(i => i.date|date('d/m') ~ ' ' ~ i.amount.abs|amount)|join(' · ') }})</td><td class="{{ num }}">{{ report.total(not_credited)|amount }}</td></tr>
+        {% endif %}
+        <tr class="{{ in_pdf ? 'px-doc__subtotal' : 'px-table__total' }}"><th scope="row">Solde rectifié du relevé</th><td class="{{ num }}">{{ report.rectifiedBank|amount }}</td></tr>
+        {% if not report.gap.zero %}
+            <tr class="is-error"><th scope="row">Écart</th><td class="{{ num }}">{{ report.gap|amount }}</td></tr>
+        {% endif %}
+    </tbody>
+</table>
