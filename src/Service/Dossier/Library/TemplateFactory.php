@@ -14,6 +14,7 @@ use App\Service\Accounting\Chart\ChartInstaller;
 use App\Service\Accounting\Chart\ReferenceCharts;
 use App\Service\Accounting\Journal\JournalDraft;
 use App\Service\Accounting\Journal\JournalSheet;
+use App\Service\Accounting\Template\StandardTemplates;
 use App\Service\Audit\AuditTrail;
 use App\Service\Dossier\CompanySheet;
 use App\Service\Dossier\DossierContext;
@@ -28,7 +29,8 @@ use Doctrine\ORM\EntityManagerInterface;
  * of the reference chart chosen (DECISIONS 1.2a: the choice of the plan comes with the new
  * template), and the five journals every dossier starts with (Achats, Ventes, Banque on 512000,
  * Opérations diverses, À-nouveaux), which the teacher renames or completes in Paramètres
- * comptables. One transaction; every gesture in the template's trail.
+ * comptables, and the standard entry templates (StandardTemplates: constitution, capital,
+ * allocation of the result). One transaction; every gesture in the template's trail.
  */
 final readonly class TemplateFactory
 {
@@ -49,6 +51,7 @@ final readonly class TemplateFactory
         private ChartInstaller $chartInstaller,
         private Exercises $exercises,
         private JournalSheet $journals,
+        private StandardTemplates $standardTemplates,
         private DossierContext $context,
         private SchoolYearRepository $years,
         private AuditTrail $auditTrail,
@@ -75,6 +78,8 @@ final readonly class TemplateFactory
                     $fields = $this->journals->check($journal, $template) ?? throw new \LogicException(\sprintf('The journal %s of a new template: %s', $code, implode(' ', $journal->errors)));
                     $this->journals->create($template, $journal, $fields, $by);
                 }
+                $this->entityManager->flush();
+                $this->standardTemplates->install($template, $by);
             });
             $this->entityManager->flush();
 

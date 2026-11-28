@@ -199,10 +199,11 @@ final class DemoInstallCommandTest extends KernelTestCase
             self::assertSame([2_520_000, 0, -7_860_000], [$at('409100', '2026-02-28'), $at('409100', '2026-03-31'), $at('404000', '2026-03-31')]);
         });
 
-        // Its entry templates (step 1.4b): the rent, the leasing, the fees, a purchase and a sale at 20 %, the bank's.
+        // Its entry templates (step 1.4b): the rent, the leasing, the fees, a purchase and a sale at 20 %, the bank's;
+        // then the standard ones (step 3.3): constitution, capital, allocation of the result.
         $templates = $context->within($vasseur, static fn (): array => self::getContainer()->get(EntryTemplateRepository::class)->findByDossier($vasseur));
-        self::assertSame(['ACHAT20 ACH', 'CBAIL ACH', 'FRAISBQ2 BQ2', 'HONOR ACH', 'LOYER ACH', 'REGLFOUR BQ2', 'VENTE20 VTE'], array_map(static fn ($t): string => $t->getCode().' '.$t->getJournal()->getCode(), $templates));
-        $rent = $templates[4];
+        self::assertSame(['ACHAT20 ACH', 'AFFPERTE OD', 'AFFRES OD', 'CAPAUGN OD', 'CAPFRAIS ACH', 'CAPINCR OD', 'CAPLIBN BQ1', 'CAPNAT OD', 'CAPSOUS OD', 'CAPVERS OD', 'CBAIL ACH', 'FRAISBQ2 BQ2', 'HONOR ACH', 'LOYER ACH', 'REGLFOUR BQ2', 'VENTE20 VTE'], array_map(static fn ($t): string => $t->getCode().' '.$t->getJournal()->getCode(), $templates));
+        $rent = $templates[13];
         $call = $context->within($vasseur, static fn (): array => TemplateCall::lines($rent, new \DateTimeImmutable('2026-02-01'), Money::cents(320_000), '', '', $account));
         self::assertSame(
             [['613200', 320_000, 0], ['445660', 64_000, 0], ['401SCIV', 0, 384_000]],
