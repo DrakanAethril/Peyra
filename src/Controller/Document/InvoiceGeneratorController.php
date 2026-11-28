@@ -28,8 +28,9 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * Pièces › Générateur (design-ux.md § 3.3, gabarit A; lot 2, step 2.1b): the teacher describes a
  * supplier's invoice of a template they may change - supplier, number, dates, lines, rates - ticks
  * the faults it should carry, sees its PDF (Ctrl Entrée), then « Générer » deposits it into the
- * template's inbox with its read data. The form is a GET (the preview's address is the form
- * itself); only « Générer » posts, its token as the button's value.
+ * template's inbox with its read data and opens it in « mode préparation » (step 2.2b). The form
+ * is a GET (the preview's address is the form itself); only « Générer » posts, its token as the
+ * button's value.
  */
 #[Route('/teacher/documents/generator')]
 final class InvoiceGeneratorController extends AbstractController
@@ -66,9 +67,9 @@ final class InvoiceGeneratorController extends AbstractController
             if (null !== $invoice) {
                 $made = $generator->generate($dossier, $invoice, $me);
                 $entityManager->flush();
-                $this->addFlash('status', \sprintf('%s générée : elle attend dans la boîte de réception du modèle%s.', $invoice->fileName(), \count($made) > 1 ? ', deux fois' : ''));
+                $this->addFlash('status', \sprintf('%s générée : elle attend dans la boîte de réception du modèle%s. Glissez-y des erreurs à repérer, ou voyez-la comme l’étudiant.', $invoice->fileName(), \count($made) > 1 ? ', deux fois' : ''));
 
-                return $this->redirectToRoute('app_document', ['dossier' => $dossier->getId(), 'id' => $made[0]->getId()], Response::HTTP_SEE_OTHER);
+                return $this->redirectToRoute('app_document_prepare', ['dossier' => $dossier->getId(), 'id' => $made[0]->getId()], Response::HTTP_SEE_OTHER);
             }
             $status = Response::HTTP_UNPROCESSABLE_ENTITY;
         } elseif ($request->query->has('supplier')) {

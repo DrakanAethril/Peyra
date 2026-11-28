@@ -235,7 +235,7 @@ final readonly class PieceProcessing
     }
 
     /** What the proposal was made from: the read data, as the sheet shows them. */
-    private static function basis(Document $document): string
+    public static function basis(Document $document): string
     {
         $reading = DocumentReading::of($document);
 

@@ -74,7 +74,7 @@ final class InvoiceGeneratorTest extends WebTestCase
         $client->request('POST', $this->url($template), ['_token' => $token] + $this->scierie() + ['faults' => ['vat_miscalculated']]);
         self::assertResponseStatusCodeSame(303);
         [$document] = $this->documents($client, $template);
-        self::assertSame('/d/'.$template->getId().'/documents/'.$document->getId(), $client->getResponse()->headers->get('Location'));
+        self::assertSame('/d/'.$template->getId().'/documents/'.$document->getId().'/prepare', $client->getResponse()->headers->get('Location'));
         self::assertSame(DocumentType::PurchaseInvoice, $document->getType());
         self::assertSame(DocumentState::ToProcess, $document->getState());
         self::assertSame('2026-03-15', $document->getReceivedOn()->format('Y-m-d'));

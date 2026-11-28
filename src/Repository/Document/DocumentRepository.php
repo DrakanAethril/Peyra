@@ -50,6 +50,20 @@ final class DocumentRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
+    /** @return list<Document> the second arrivals of a pièce (its « doublon », step 2.2b) */
+    public function findDuplicatesOf(Document $first): array
+    {
+        /* @var list<Document> */
+        return $this->createQueryBuilder('d')
+            ->andWhere('d.dossier = :dossier')
+            ->andWhere('d.duplicateOf = :first')
+            ->setParameter('dossier', $first->getDossier())
+            ->setParameter('first', $first)
+            ->orderBy('d.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     /** The rail's counter: the pièces still to process (« à traiter » and « en cours »). */
     public function countToProcess(Dossier $dossier): int
     {
