@@ -78,6 +78,7 @@
             document: document,
             post_url: path('app_assets_dotations_post', {dossier: dossier.id}),
             token_id: 'fixed-asset-dotations-' ~ dossier.id,
+            post_label: 'Comptabiliser les dotations',
         }) }}
     {% endif %}
 {% endblock %}

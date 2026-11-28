@@ -37,7 +37,7 @@
             {% if calculates %}
                 <th scope="colgroup" colspan="4" class="{{ num_head }}">Amortissements</th>
                 {% if impaired %}<th scope="colgroup" colspan="4" class="{{ num_head }}">Dépréciations</th>{% endif %}
-                <th scope="col" rowspan="2" class="{{ num_head }}">VNC au {{ statement.at|date('d/m/Y') }}</th>
+                <th scope="col" rowspan="2" class="{{ num_head }}">VNC fin</th>
             {% endif %}
         </tr>
         <tr>
@@ -50,28 +50,35 @@
     </thead>
     {% for group in statement.groups %}
         <tbody>
-            <tr><th scope="rowgroup" colspan="{{ span + 1 }}">{{ group.label }}</th></tr>
+            <tr>{% if pdf %}<td colspan="{{ span + 1 }}"><strong>{{ group.label }}</strong></td>{% else %}<th scope="rowgroup" colspan="{{ span + 1 }}">{{ group.label }}</th>{% endif %}</tr>
             {% for row in group.rows %}
                 <tr>
-                    <th scope="row" class="px-u-nowrap">{% if pdf %}{{ row.code }}{% else %}<a class="px-link px-u-code" href="{{ path('app_assets_fiche', {dossier: dossier.id, code: row.code}) }}">{{ row.code }}</a>{% endif %} {{ row.label|length > 38 ? row.label|slice(0, 37) ~ '…' : row.label }}</th>
+                    {% if pdf %}
+                        <td>{{ row.code }} {{ row.label|length > 34 ? row.label|slice(0, 33) ~ '…' : row.label }}</td>
+                    {% else %}
+                        <th scope="row" class="px-u-nowrap"><a class="px-link px-u-code" href="{{ path('app_assets_fiche', {dossier: dossier.id, code: row.code}) }}">{{ row.code }}</a> {{ row.label|length > 38 ? row.label|slice(0, 37) ~ '…' : row.label }}</th>
+                    {% endif %}
                     {{ _self.cells(row, calculates, impaired, num) }}
                 </tr>
             {% endfor %}
             <tr class="px-u-strong">
-                <th scope="row">{{ group.total.label }}</th>
+                {% if pdf %}<td><strong>{{ group.total.label }}</strong></td>{% else %}<th scope="row">{{ group.total.label }}</th>{% endif %}
                 {{ _self.cells(group.total, calculates, impaired, num) }}
             </tr>
         </tbody>
     {% endfor %}
     <tfoot>
         <tr>
-            <th scope="row">{{ t.label }}</th>
+            {% if pdf %}<td><strong>{{ t.label }}</strong></td>{% else %}<th scope="row">{{ t.label }}</th>{% endif %}
             {{ _self.cells(t, calculates, impaired, num) }}
         </tr>
     </tfoot>
 {% endset %}
 {% if pdf %}
-    <table class="px-doc__table">{{ cells }}</table>
+    <table class="px-doc__table">
+        <colgroup><col style="width: {{ calculates ? (impaired ? 18 : 24) : 40 }}%"></colgroup>
+        {{ cells }}
+    </table>
 {% else %}
     <twig:Px:Table caption="État des immobilisations et des amortissements au {{ statement.at|date_fr }}" density="compact" :rows="false">{{ cells }}</twig:Px:Table>
 {% endif %}

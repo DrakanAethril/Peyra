@@ -1355,6 +1355,13 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   at the day of acquisition. Each annuity rounded half up, the last one is what is left.
   `Assistance::calculatesDepreciationPlan()`: not shown to a student at 0. Demonstration: `fixtures/demo/fixed_assets.yaml`
   (the register equals the opening balance account by account, `DemoInstallCommandTest`).
+  Step 3.4b: **entries only through `FixedAssetPostings`** (gateway, module `Assets`): acquisition (fiche's pièce),
+  dotations up to the dossier's date (`DOT-AAAA-MM-JJ`, screen `/assets/dotations`), way out (`CES-<code>`,
+  `/assets/{code}/disposal`, `FixedAssetDisposals`). What was passed is read from the pièces the fiche keeps
+  (`FixedAsset::$postings`) **that still stand in the books** - never a stored amount: a dotation is the plan up
+  to the day less the plan up to the last day passed (`plan($dossier, $asset, $through)` truncates). Impairment =
+  balance per exercise end on the fiche, prospective in the plan. State: `FixedAssetStatements` (for 3.6's annexe).
+  A fiche with entries of its pièces is not deleted (`FixedAssetSheet::isDeletable()`).
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

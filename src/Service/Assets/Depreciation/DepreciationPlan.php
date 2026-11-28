@@ -158,7 +158,7 @@ final class DepreciationPlan
                 $left = Money::zero();
             }
             $amount = match (true) {
-                $window['end'] >= $end => $left,
+                $window['end'] >= $end && $stop === $end => $left,
                 null !== $impaired => self::share($left, BigRational::of($days)->dividedBy(max(1, DayCount::days($first, $end)))),
                 default => self::share($base, BigRational::of($days)->dividedBy($years * 360)),
             };
@@ -207,7 +207,7 @@ final class DepreciationPlan
                 $seen = $impaired;
                 $switch = null === $switch ? null : [$basis, $remaining];
             }
-            if ($window['end'] >= $end) {
+            if ($window['end'] >= $end && $stop === $end) {
                 $amount = $basis;
             } else {
                 // The linear rate over the months left, against the declining rate: 12 / remaining ≥ rate.

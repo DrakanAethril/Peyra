@@ -154,6 +154,45 @@ final class DepreciationPlanTest extends TestCase
         self::assertSame([], DepreciationPlan::rows($input));
     }
 
+    public function testAnImpairmentSpreadsWhatIsLeftOverTheTimeLeft(): void
+    {
+        // 10 000,00 over 5 years from 01/01/2024: 2 000,00 in 2024 and 2025, net 6 000,00 at 31/12/2025.
+        // Impaired by 1 200,00 then: 4 800,00 left over the 3 years left (1 080 days) - 2026: 4 800 × 360 /
+        // 1 080 = 1 600,00; 2027: (4 800 − 1 600) × 360 / 720 = 1 600,00; 2028, the last: 1 600,00.
+        $input = new PlanInput(DepreciationMethod::Linear, Money::euros('10000.00'), Money::zero(), new \DateTimeImmutable('2024-01-01'), new \DateTimeImmutable('2024-01-01'), $this->years(2024, 2029), 5, impairments: ['2025-12-31' => Money::euros('1200.00')]);
+        $rows = DepreciationPlan::rows($input);
+
+        self::assertSame([2024 => 200_000, 2025 => 200_000, 2026 => 160_000, 2027 => 160_000, 2028 => 160_000], $this->dotations($rows));
+        // Net of it from its exercise on: 10 000 − 4 000 − 1 200 = 4 800 at 31/12/2025; 3 200 at 31/12/2026.
+        self::assertSame([800_000, 480_000, 320_000], [$rows[0]->netValue->cents, $rows[1]->netValue->cents, $rows[2]->netValue->cents]);
+        self::assertNull($rows[0]->impairment);
+        self::assertSame(120_000, $rows[1]->impairment?->cents);
+        self::assertSame(0, end($rows)->netValue->cents);
+    }
+
+    public function testADisposalStopsThePlanOnItsDay(): void
+    {
+        // The van I07: 21 500,00 over 5 years from 01/02/2022, sold on 30/06/2026: 2026 counts 180 days,
+        // 21 500 × 180 / 1 800 = 2 150,00, and nothing after.
+        $input = new PlanInput(DepreciationMethod::Linear, Money::euros('21500.00'), Money::zero(), new \DateTimeImmutable('2022-02-01'), new \DateTimeImmutable('2022-02-01'), $this->years(2022, 2027), 5, disposedOn: new \DateTimeImmutable('2026-06-30'));
+        $rows = DepreciationPlan::rows($input);
+
+        self::assertSame([2022 => 394_167, 2023 => 430_000, 2024 => 430_000, 2025 => 430_000, 2026 => 215_000], $this->dotations($rows));
+        self::assertSame(250_833, end($rows)->netValue->cents);
+    }
+
+    public function testAPlanStoppedInsideItsLastExercise(): void
+    {
+        // The planer I05 up to 31/03/2026 (its plan ends on 14/09/2026): 12 400,00 × 90 / 1 800 = 620,00, not
+        // what is left. Its fiscal plan, switched to linear in 2024 on 12 400 − 1 446,67 − 3 833,67 − 2 491,88
+        // = 4 627,78 over 32 months: 3 months, 4 627,78 × 3 / 32 = 433,854 → 433,85; the dérogatoire is
+        // taken back by 620,00 − 433,85 = 186,15.
+        $input = new PlanInput(DepreciationMethod::Linear, Money::euros('12400.00'), Money::zero(), new \DateTimeImmutable('2021-09-15'), new \DateTimeImmutable('2021-09-15'), $this->years(2021, 2026), 5, BigDecimal::of('1.75'), disposedOn: new \DateTimeImmutable('2026-03-31'), fiscalDeclining: true);
+        $last = DepreciationPlan::rows($input)[5];
+
+        self::assertSame([62_000, 43_385, -18_615], [$last->dotation->cents, $last->fiscal?->cents, $last->derogatory?->cents]);
+    }
+
     private function linear(string $cost, string $from, int $years, int $first, int $last): PlanInput
     {
         return new PlanInput(DepreciationMethod::Linear, Money::euros($cost), Money::zero(), new \DateTimeImmutable($from), new \DateTimeImmutable($from), $this->years($first, $last), $years);
