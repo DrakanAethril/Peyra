@@ -12,6 +12,7 @@
 {% set dossier_title = 'Points de restauration' %}
 {% set points_url = path('app_dossier_restore_points', {dossier: dossier.id}) %}
 {% set status_keys = can_pose and not full ? [{combo: 'Enter', verb: 'Poser le point'}] : [] %}
+{% set counted = points|filter(p => p.origin.countsAgainstLimit)|length %}
 
 {% block module_tabs %}{% set si_current = 'restore' %}{{ include('dossier/_si_tabs.html.twig') }}{% endblock %}
 
@@ -34,7 +35,7 @@
         {% if full and not name_error %}
             <twig:Px:Alert tone="warning">Ce dossier a déjà {{ limit }} points de restauration. Supprimez un point pour en poser un nouveau.</twig:Px:Alert>
         {% else %}
-            <twig:Px:Card title="Poser un point" meta="{{ points|length }} sur {{ limit }}">
+            <twig:Px:Card title="Poser un point" meta="{{ counted }} sur {{ limit }}">
                 <form class="px-restore-pose" method="post" action="{{ path('app_dossier_restore_point_pose', {dossier: dossier.id}) }}" novalidate data-controller="focus-error">
                     <input type="hidden" name="_token" value="{{ csrf_token('restore-points-' ~ dossier.id) }}">
                     <twig:Px:Field id="name" label="Nom du point" :required="true" hint="Une copie du dossier tel qu’il est maintenant. Elle se prépare en arrière-plan : le travail continue." :error="name_error">
@@ -76,7 +77,7 @@
                                 <td class="px-u-right px-u-nowrap"><span class="px-restore-actions">
                                     {% if can_return %}
                                         {% if point.ready %}<twig:Px:Button size="sm" icon="undo-2" href="{{ path('app_dossier_restore_point_return', {dossier: dossier.id, point: point.id}) }}">Revenir à ce point</twig:Px:Button>{% endif %}
-                                        {% if not point.preparing %}
+                                        {% if not point.preparing and is_granted('RESTORE_POINT_DELETE', point) %}
                                             <form method="post" action="{{ path('app_dossier_restore_point_delete', {dossier: dossier.id, point: point.id}) }}">
                                                 <input type="hidden" name="_token" value="{{ csrf_token('restore-point-delete-' ~ point.id) }}">
                                                 <twig:Px:ConfirmButton size="sm" label="Supprimer" confirmLabel="Confirmer la suppression"/>
@@ -93,4 +94,4 @@
     </turbo-frame>
 {% endblock %}
 
-{% block facts %}<span>Points · <b>{{ points|length }}</b> sur {{ limit }}</span>{% if preparing %}<span>Copie en cours</span>{% endif %}{% endblock %}
+{% block facts %}<span>Points · <b>{{ counted }}</b> sur {{ limit }}</span>{% if preparing %}<span>Copie en cours</span>{% endif %}{% endblock %}

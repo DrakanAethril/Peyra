@@ -56,7 +56,7 @@ final readonly class RestorePoints
             throw new RestoreRefused($fault, 'name');
         }
         $this->expectFree($dossier);
-        if (RestorePointRules::limitReached($this->points->countByDossier($dossier))) {
+        if (RestorePointRules::limitReached($this->points->countAgainstLimit($dossier))) {
             throw new RestoreRefused(RestorePointRules::LIMIT_REACHED, 'name');
         }
         $point = $this->create($dossier, $name, RestorePointOrigin::Manual, $by, $now);
@@ -68,16 +68,18 @@ final readonly class RestorePoints
 
     /**
      * A point and its empty copy, in preparation, with its line in the trail; the caller flushes
-     * and has the copy made (Restorations for the point of the state a return leaves).
+     * and has the copy made (Restorations for the point of the state a return leaves, the
+     * distribution for its « État de départ » - posed by a command when it has no author).
      */
-    public function create(Dossier $dossier, string $name, RestorePointOrigin $origin, User $by, \DateTimeImmutable $now): RestorePoint
+    public function create(Dossier $dossier, string $name, RestorePointOrigin $origin, User|string $by, \DateTimeImmutable $now): RestorePoint
     {
         if (DossierKind::Snapshot === $dossier->getKind()) {
             throw new \LogicException('A restore point is never posed on a restore point.');
         }
-        $snapshot = new Dossier(DossierKind::Snapshot, $dossier->getCompany(), $dossier->getDossierDate(), null, null, $now, $by);
+        $person = $by instanceof User ? $by : null;
+        $snapshot = new Dossier(DossierKind::Snapshot, $dossier->getCompany(), $dossier->getDossierDate(), null, null, $now, $person);
         $this->entityManager->persist($snapshot);
-        $point = new RestorePoint($dossier, $snapshot, $name, $origin, $by, $now);
+        $point = new RestorePoint($dossier, $snapshot, $name, $origin, $person, $now);
         $this->entityManager->persist($point);
         $this->auditTrail->inDossier($dossier, AuditAction::RestorePointPosed, $by, \sprintf('Point de restauration « %s » posé', $point->getName()), [
             'name' => $point->getName(),
@@ -120,6 +122,9 @@ final readonly class RestorePoints
      */
     public function delete(RestorePoint $point, User $by): void
     {
+        if (!$point->getOrigin()->countsAgainstLimit() && !$by->isTeacher()) {
+            throw new RestoreRefused('Le point « État de départ » est celui de votre enseignant : il ne se supprime pas.');
+        }
         if ($point->isPreparing()) {
             throw new RestoreRefused('Ce point est en préparation : vous pourrez le supprimer dans un instant.');
         }

@@ -19,6 +19,7 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
  * - DELETE: the author; for the common library, an administrator. A colleague it is shared with
  *   « en modification » changes it, never deletes it.
  * - DUPLICATE: whoever reads it may make their own copy of it.
+ * - DISTRIBUTE: whoever reads it may hand it out to students (step 1.8c, DistributionVoter then).
  *
  * Anything else than a template: refused, read as a 404.
  *
@@ -29,6 +30,7 @@ final class TemplateVoter extends Voter
     public const string SHARE = 'TEMPLATE_SHARE';
     public const string DELETE = 'TEMPLATE_DELETE';
     public const string DUPLICATE = 'TEMPLATE_DUPLICATE';
+    public const string DISTRIBUTE = 'TEMPLATE_DISTRIBUTE';
 
     public function __construct(private readonly DossierVoter $dossiers)
     {
@@ -36,7 +38,7 @@ final class TemplateVoter extends Voter
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        return \in_array($attribute, [self::SHARE, self::DELETE, self::DUPLICATE], true) && $subject instanceof Dossier;
+        return \in_array($attribute, [self::SHARE, self::DELETE, self::DUPLICATE, self::DISTRIBUTE], true) && $subject instanceof Dossier;
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool

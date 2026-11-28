@@ -132,6 +132,18 @@ enum AuditAction: string
     /** A return to a restore point that stopped: the dossier stayed as it was. */
     case DossierRestorationFailed = 'restore.dossier_restoration_failed';
 
+    /** A template handed out to students of a class (step 1.8c); each dossier made is a DossierCreated of its own. */
+    case DistributionLaunched = 'distribution.launched';
+
+    /** A dossier of a distribution whose copy stopped: nothing of it was kept. */
+    case DistributionCopyFailed = 'distribution.copy_failed';
+
+    /** A failed dossier of a distribution put back in the queue. */
+    case DistributionCopyRetried = 'distribution.copy_retried';
+
+    /** A distribution withdrawn by a teacher: its dossiers deleted (their trails stay). */
+    case DistributionWithdrawn = 'distribution.withdrawn';
+
     public function label(): string
     {
         return match ($this) {
@@ -176,6 +188,10 @@ enum AuditAction: string
             self::RestorePointDeleted => 'Point de restauration supprimé',
             self::DossierRestored => 'Retour à un point de restauration',
             self::DossierRestorationFailed => 'Retour à un point en échec',
+            self::DistributionLaunched => 'Modèle distribué',
+            self::DistributionCopyFailed => 'Copie d’une distribution en échec',
+            self::DistributionCopyRetried => 'Copie d’une distribution relancée',
+            self::DistributionWithdrawn => 'Distribution retirée',
         };
     }
 }

@@ -1,0 +1,14 @@
+{#
+ # The choices of a distribution carried as hidden fields from one step to the next (DistributionChoices):
+ # the class and `step`, then the students ticked unless `pick` is false, then how - mode, groups,
+ # profiles, date - unless `how` is false.
+ #}
+<input type="hidden" name="class" value="{{ plan.schoolClass.id }}">
+<input type="hidden" name="step" value="1">
+{% if pick ?? true %}{% for line in plan.ticked %}<input type="hidden" name="pick[]" value="{{ line.student.id }}">{% endfor %}{% endif %}
+{% if how ?? true %}
+    <input type="hidden" name="mode" value="{{ plan.mode.value }}">
+    {% for id, number in plan.choices.groups %}<input type="hidden" name="group[{{ id }}]" value="{{ number }}">{% endfor %}
+    {% for id, profile in plan.choices.profiles %}{% if profile %}<input type="hidden" name="profile[{{ id }}]" value="{{ profile.value }}">{% endif %}{% endfor %}
+    {% if plan.choices.start %}<input type="hidden" name="start" value="{{ plan.choices.start }}">{% endif %}
+{% endif %}

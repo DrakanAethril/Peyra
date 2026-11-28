@@ -6,6 +6,7 @@ namespace App\Repository\Dossier;
 
 use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\RestorePoint;
+use App\Enum\Dossier\RestorePointOrigin;
 use App\Enum\Dossier\RestorePointState;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -33,10 +34,26 @@ final class RestorePointRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /** The points that count against a dossier's limit (design-ux.md § 4.9): every one, whatever its state. */
+    /** Every point of a dossier, whatever its state and origin. */
     public function countByDossier(Dossier $dossier): int
     {
         return $this->count(['dossier' => $dossier]);
+    }
+
+    /**
+     * The points that count against a dossier's limit (design-ux.md § 4.9): every one, whatever its
+     * state, but its « État de départ » (RestorePointOrigin::countsAgainstLimit()).
+     */
+    public function countAgainstLimit(Dossier $dossier): int
+    {
+        return (int) $this->createQueryBuilder('p')
+            ->select('COUNT(p.id)')
+            ->andWhere('p.dossier = :dossier')
+            ->andWhere('p.origin <> :start')
+            ->setParameter('dossier', $dossier)
+            ->setParameter('start', RestorePointOrigin::Start)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     /** @return list<RestorePoint> every point whose copy has not been made yet, the oldest first */

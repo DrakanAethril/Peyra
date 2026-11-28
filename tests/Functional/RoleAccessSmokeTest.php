@@ -6,9 +6,12 @@ namespace App\Tests\Functional;
 
 use App\Entity\Accounting\Entry;
 use App\Entity\Accounting\Journal;
+use App\Entity\Dossier\Distribution;
+use App\Entity\Identity\SchoolClass;
 use App\Entity\Identity\User;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\JournalType;
+use App\Enum\Dossier\DistributionMode;
 use App\Enum\Dossier\DossierKind;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
@@ -85,6 +88,7 @@ final class RoleAccessSmokeTest extends WebTestCase
         yield 'Bibliothèque › Dossiers modèles' => ['/teacher/library', $teachers];
         yield 'Bibliothèque › Dossiers modèles, filtrés' => ['/teacher/library?shelf=mine&q=vasseur', $teachers];
         yield 'Bibliothèque › Partages' => ['/teacher/library/shares', $teachers];
+        yield 'Bibliothèque › Distribution' => ['/teacher/library/distributions', $teachers];
         yield 'Nouveau dossier modèle' => ['/teacher/library/new', $teachers];
         yield 'Nouveau dossier modèle vide' => ['/teacher/library/new/empty', $teachers];
     }
@@ -305,6 +309,56 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/teacher/library/'.$common.'/delete' => ['student' => 404, 'teacher' => 404, 'admin' => 200, 'refused' => 302],
             '/teacher/library/'.$common.'/colleagues?q=ma' => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
             '/teacher/library/'.$student => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
+            '/teacher/library/'.$own.'/distribute' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/teacher/library/'.$common.'/distribute' => ['student' => 404, 'teacher' => 200, 'admin' => 200, 'refused' => 302],
+            '/teacher/library/'.$student.'/distribute' => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
+        ];
+        foreach ($table as $url => $expected) {
+            $actual = [];
+            foreach (self::ACCOUNTS as $role => $login) {
+                self::ensureKernelShutdown();
+                $client = static::createClient();
+                $this->submitLogin($client, $login);
+                $client->request('GET', $url);
+                $actual[$role] = $client->getResponse()->getStatusCode();
+            }
+            self::assertSame($expected, $actual, $url);
+        }
+    }
+
+    /**
+     * A distribution (step 1.8c): prof.durand's, of the common library's template to BTS CG 1 -
+     * its steps and its pages are his alone; prof.martin, an administrator, gets a 404.
+     */
+    public function testTheScreensOfADistribution(): void
+    {
+        $client = static::createClient();
+        $client->disableReboot();
+        $this->submitLogin($client, self::ACCOUNTS['admin']);
+        $martin = $this->account($client, self::ACCOUNTS['admin']);
+        \assert($martin instanceof User);
+        [, $cg1] = $this->buildYear($client, $martin, 2026, true);
+        $this->signOut($client);
+        $this->submitLogin($client, self::ACCOUNTS['teacher']);
+        $durand = $this->account($client, self::ACCOUNTS['teacher']);
+        \assert($durand instanceof User);
+        $common = $this->savedDossier(DossierKind::Template, null);
+        $entityManager = $client->getContainer()->get(EntityManagerInterface::class);
+        $cg1 = $entityManager->find(SchoolClass::class, $cg1->getId()) ?? throw new \LogicException('Built.');
+        $distribution = new Distribution($common, $durand, $cg1, DistributionMode::Individual, new \DateTimeImmutable('2026-03-15'), new \DateTimeImmutable('2026-11-28'));
+        $entityManager->persist($distribution);
+        $entityManager->flush();
+        $id = (int) $distribution->getId();
+        $template = (int) $common->getId();
+
+        $author = ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302];
+        $readers = ['student' => 404, 'teacher' => 200, 'admin' => 200, 'refused' => 302];
+        $table = [
+            '/teacher/library/'.$template.'/distribute?class='.$cg1->getId() => $readers,
+            '/teacher/library/'.$template.'/distribute/how?class='.$cg1->getId().'&step=1' => $readers,
+            '/teacher/library/'.$template.'/distribute/summary?class='.$cg1->getId().'&step=1' => $readers,
+            '/teacher/library/distributions/'.$id => $author,
+            '/teacher/library/distributions/'.$id.'/withdraw' => $author,
         ];
         foreach ($table as $url => $expected) {
             $actual = [];

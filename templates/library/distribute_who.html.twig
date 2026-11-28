@@ -1,0 +1,72 @@
+{#
+ # Distribuer, step 1 « À qui » (design-ux.md § 4.2): a class of the current year - the teacher's
+ # first by default -, then its students, all ticked but those who already hold a dossier made
+ # from this template (said on their line, unticked by default). A GET form: the next step
+ # carries the choices.
+ #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'templates' %}
+{% set library_title = 'Distribuer ' ~ template.libraryTitle %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Distribuer « {{ template.libraryTitle }} »" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Dossiers modèles', href: path('app_library')},
+        {label: template.libraryTitle, href: path('app_library_template', {dossier: template.id})},
+        {label: 'Distribuer', href: path('app_library_distribute', {dossier: template.id})},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    <div class="px-split--side px-split">
+        {{ include('library/_distribute_steps.html.twig', {step: 1}) }}
+        <div class="px-stack">
+            {% if school_class is null %}
+                <twig:Px:Empty icon="users" title="Aucune classe cette année" text="Une distribution donne le modèle aux étudiants d’une classe de l’année en cours. Un administrateur crée les classes dans Paramètres › Administration."/>
+            {% else %}
+                <twig:Px:Card title="Classe">
+                    <form method="get" action="{{ path('app_library_distribute', {dossier: template.id}) }}" class="px-cluster">
+                        <label class="px-u-sr-only" for="class">Classe</label>
+                        <twig:Px:Select id="class" :options="classes|map(c => {value: c.id, label: c.label})" value="{{ school_class.id }}"/>
+                        <twig:Px:Button type="submit" icon="users">Afficher ses étudiants</twig:Px:Button>
+                    </form>
+                </twig:Px:Card>
+
+                <twig:Px:Card :flush="true" title="Étudiants de {{ school_class.label }}" meta="cochés : ils reçoivent le modèle">
+                    {% if plan.lines is empty %}
+                        <twig:Px:Empty icon="users" title="Personne dans cette classe" text="{{ school_class.label }} n’a aucun étudiant : ils y sont placés à leur première connexion, ou à la main dans Classes."/>
+                    {% else %}
+                        <form method="get" action="{{ path('app_library_distribute_how', {dossier: template.id}) }}" id="distribute-who">
+                            {{ include('library/_distribute_carry.html.twig', {pick: false}) }}
+                            <twig:Px:Table caption="Étudiants de {{ school_class.label }} et ce qu’ils ont déjà de ce modèle" :rows="true">
+                                <thead><tr>
+                                    <th scope="col" class="px-table__pick"><span class="px-u-sr-only">Reçoit le modèle</span></th>
+                                    <th scope="col">Nom</th>
+                                    <th scope="col">Ce modèle</th>
+                                </tr></thead>
+                                <tbody>
+                                    {% for line in plan.lines %}
+                                        <tr data-rows-target="row">
+                                            <td class="px-table__pick"><label class="px-check"><input type="checkbox" name="pick[]" value="{{ line.student.id }}"{% if line.ticked %} checked{% endif %}><span class="px-u-sr-only">{{ line.student.sortName }} reçoit le modèle</span></label></td>
+                                            <td class="px-u-fill">{{ line.student.sortName }}</td>
+                                            <td>{% if line.holds %}<twig:Px:Badge tone="warning" label="A déjà un dossier de ce modèle"/>{% else %}<span class="px-u-muted">—</span>{% endif %}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </twig:Px:Table>
+                        </form>
+                    {% endif %}
+                    <twig:block name="foot">
+                        <span class="px-u-muted">Un étudiant qui a déjà un dossier de ce modèle n’est pas coché : le cocher lui en donne un second.</span>
+                        {% if plan.lines is not empty %}
+                            <twig:Px:Button type="submit" form="distribute-who" variant="primary" icon="arrow-right" class="px-u-push">Continuer</twig:Px:Button>
+                        {% endif %}
+                    </twig:block>
+                </twig:Px:Card>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block facts %}<span>Modèle · <b>{{ template.libraryTitle }}</b></span>{% if plan %}<span>Cochés · <b>{{ plan.ticked|length }}</b> sur {{ plan.lines|length }}</span>{% endif %}{% endblock %}

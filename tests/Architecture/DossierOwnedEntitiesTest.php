@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Architecture;
 
 use App\Entity\Audit\AuditEvent;
+use App\Entity\Dossier\Distribution;
+use App\Entity\Dossier\DistributionCopy;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\DossierMember;
 use App\Entity\Dossier\DossierOwned;
@@ -47,6 +49,9 @@ final class DossierOwnedEntitiesTest extends KernelTestCase
         // What a dossier can go back to, and its returns: a point keeps its copy in a dossier of its
         // own; a copy of the dossier never carries them (step 1.8b).
         RestorePoint::class, DossierRestoration::class,
+        // Where dossiers came from: a template handed out to a class, and each dossier it makes
+        // (step 1.8c). Never a dossier's content.
+        Distribution::class, DistributionCopy::class,
     ];
 
     public function testEveryEntityIsDossierOwnedOrNamedGlobal(): void

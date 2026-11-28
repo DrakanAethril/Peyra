@@ -2,7 +2,7 @@
  # A template's fiche in the library (design-ux.md § 3.3, gabarit F): its card (title, level,
  # processes, description; F10 for whoever may change it, read otherwise), what it holds, and its
  # shares for its author. Actions: Supprimer (author; administrators for the common library),
- # Dupliquer, Ouvrir le dossier, Enregistrer.
+ # Dupliquer, Distribuer, Ouvrir le dossier, Enregistrer.
  #}
 {% extends 'library/_layout.html.twig' %}
 
@@ -22,6 +22,7 @@
         <twig:block name="actions">
             {% if is_granted('TEMPLATE_DELETE', dossier) %}<twig:Px:Button variant="quiet" href="{{ path('app_library_delete', {dossier: dossier.id}) }}" icon="trash-2">Supprimer</twig:Px:Button>{% endif %}
             <twig:Px:Button type="submit" icon="copy" form="template-duplicate">Dupliquer</twig:Px:Button>
+            <twig:Px:Button href="{{ path('app_library_distribute', {dossier: dossier.id}) }}" icon="send">Distribuer</twig:Px:Button>
             <twig:Px:Button href="{{ path('app_dossier_dashboard', {dossier: dossier.id}) }}" icon="folder-open" variant="{{ can_edit ? 'secondary' : 'primary' }}">Ouvrir le dossier</twig:Px:Button>
             {% if can_edit %}<twig:Px:Button type="submit" variant="primary" form="template-card" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>{% endif %}
         </twig:block>
