@@ -1,6 +1,6 @@
 {#
- # The PGI inside a dossier (design-ux.md § 2.1): the rail of its modules, the switcher and the date
- # chip in the top bar, and, for a teacher, the ribbon that says whose dossier this is (C4). Only the
+ # The PGI inside a dossier (design-ux.md § 2.1): the rail of its modules, the switcher, the global
+ # search (Ctrl K) and the date chip in the top bar, and, for a teacher, the ribbon that says whose dossier this is (C4). Only the
  # modules that exist are in the rail: Pièces, Ventes, Achats et stocks and the others arrive with
  # their steps. A screen sets `rail_current` (dashboard, accounting, si) and `dossier_title` outside
  # any block, and fills page_head, page, module_tabs and `facts` (the status bar without a message).
@@ -35,6 +35,8 @@
 {% endblock %}
 
 {% block topbar_start %}{{ include('dossier/_switcher.html.twig') }}{% endblock %}
+
+{% block topbar_search %}<twig:Px:CommandPalette src="{{ path('app_dossier_search', {dossier: dossier.id}) }}"/>{% endblock %}
 
 {% block topbar_end %}
     {{ include('dossier/_date_chip.html.twig') }}

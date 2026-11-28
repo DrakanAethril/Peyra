@@ -124,3 +124,138 @@
         font-size: var(--px-fs-12);
     }
 }
+
+/*
+ * The command palette (Px:CommandPalette, Ctrl K; design-ui.md § 4.6): a dialog at the top of the
+ * screen (12vh), 560 px wide, a 44 px field without border, the results as the account picker's
+ * options - the code or the screen's pictogram in the first column, the label and what places it,
+ * a figure or a key on the right.
+ */
+@layer px.components {
+    .px-cmdk {
+        width: min(560px, calc(100vw - 32px));
+        max-height: 76dvh;
+        margin: 12vh auto auto;
+        padding: 0;
+        overflow: hidden;
+        background: var(--px-surface);
+        border: 0;
+        border-radius: var(--px-radius-lg);
+        box-shadow: var(--px-shadow-dialog);
+
+        &[open] {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            animation: px-dialog-in var(--px-dur-slow) var(--px-ease);
+        }
+
+        &::backdrop {
+            background: var(--px-overlay);
+        }
+
+        & .px-picker__foot {
+            margin: 0;
+            padding: var(--px-space-6) var(--px-space-12);
+        }
+    }
+
+    .px-cmdk__field {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-10);
+        min-height: 44px;
+        padding: 0 var(--px-space-12);
+        border-block-end: 1px solid var(--px-border);
+        color: var(--px-text-muted);
+
+        & > svg {
+            width: 18px;
+            height: 18px;
+            flex: none;
+        }
+    }
+
+    .px-cmdk__input {
+        flex: 1;
+        min-width: 0;
+        height: 44px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--px-text-strong);
+        font: inherit;
+        font-size: var(--px-fs-14);
+        outline: none;
+
+        &::placeholder {
+            color: var(--px-text-muted);
+        }
+
+        &:focus,
+        &:focus-visible {
+            outline: none;
+            box-shadow: none;
+        }
+    }
+
+    .px-cmdk__results {
+        display: block;
+        min-height: 0;
+        overflow-y: auto;
+        padding: var(--px-space-4) 0;
+
+        &[aria-busy="true"] {
+            opacity: .7;
+        }
+    }
+
+    .px-cmdk__option {
+        grid-template-columns: 96px minmax(0, 1fr) auto;
+        text-decoration: none;
+    }
+
+    .px-cmdk__code {
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        color: var(--px-text-strong);
+        font-family: var(--px-font-mono);
+        font-size: var(--px-fs-12);
+        white-space: nowrap;
+
+        & > svg {
+            width: var(--px-icon);
+            height: var(--px-icon);
+            color: var(--px-text-muted);
+        }
+
+        & mark {
+            background: transparent;
+            color: var(--px-text-strong);
+            font-weight: var(--px-fw-semibold);
+        }
+    }
+
+    .px-cmdk__text {
+        display: flex;
+        align-items: baseline;
+        min-width: 0;
+        white-space: nowrap;
+
+        & small {
+            flex: none;
+            margin-inline-start: var(--px-space-6);
+            color: var(--px-text-muted);
+            font-family: var(--px-font-ui);
+            font-size: var(--px-fs-12);
+        }
+    }
+
+    .px-cmdk__label {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--px-text);
+        font-size: var(--px-fs-13);
+    }
+}

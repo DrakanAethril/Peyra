@@ -1,0 +1,27 @@
+{#
+ # Px:CommandPalette - the global search (Ctrl K; design-ux.md § 2.1, design-ui.md §§ 4.1 and 4.6):
+ # the top bar's trigger, which looks like a field, and the palette it opens, a modal <dialog> at
+ # the top of the screen - the only full-page overlay of the PGI. `src` answers the Turbo Frame
+ # `px-cmdk-results` for `q` (and `here`, the screen it is opened from), 150 ms after the last key.
+ # ↑ ↓ choose, Entrée opens, Ctrl Entrée opens in a new tab, Échap closes
+ # (command_palette_controller.js).
+ #}
+{% props src, placeholder = 'Compte, pièce, tiers, écran…' %}
+<button type="button" class="px-cmdk-trigger" aria-haspopup="dialog" data-px-open="px-cmdk" data-px-shortcut="Ctrl+K" data-px-shortcut-label="Recherche globale">
+    <twig:ux:icon name="search" aria-hidden="true"/>
+    <span>{{ placeholder }}</span>
+    <twig:Px:Kbd combo="Ctrl+K"/>
+</button>
+<dialog id="px-cmdk"{{ attributes.defaults({class: 'px-cmdk'}) }} aria-label="Recherche globale" data-controller="command-palette" data-command-palette-src-value="{{ src }}" data-action="px:open->command-palette#open click->command-palette#backdrop">
+    <div class="px-cmdk__field">
+        <twig:ux:icon name="search" aria-hidden="true"/>
+        <input type="text" class="px-cmdk__input" role="combobox" aria-expanded="true" aria-controls="px-cmdk-list" aria-autocomplete="list" aria-label="Rechercher dans le dossier" placeholder="{{ placeholder }}" autocomplete="off" spellcheck="false" data-command-palette-target="input" data-action="input->command-palette#type keydown->command-palette#key">
+    </div>
+    <turbo-frame id="px-cmdk-results" class="px-cmdk__results" target="_top" data-command-palette-target="frame" data-action="turbo:frame-load->command-palette#loaded click->command-palette#follow"></turbo-frame>
+    <footer class="px-picker__foot">
+        <twig:Px:Kbd combo="ArrowUp"/><twig:Px:Kbd combo="ArrowDown"/> choisir
+        <twig:Px:Kbd combo="Enter"/> ouvrir
+        <twig:Px:Kbd combo="Ctrl+Enter"/> dans un nouvel onglet
+        <twig:Px:Kbd combo="Escape"/> fermer
+    </footer>
+</dialog>

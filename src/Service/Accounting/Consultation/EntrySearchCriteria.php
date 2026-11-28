@@ -24,6 +24,10 @@ final class EntrySearchCriteria
     public ?Money $amount = null;
     /** A text the document or a label (the entry's or a line's) holds. */
     public string $text = '';
+    /** The start of the document (« FA-2601 »), without case: the global search's (Ctrl K). */
+    public string $document = '';
+    /** A validated entry's number, « ACH-2026-00012 »: the global search's (Ctrl K). */
+    public ?EntryNumber $number = null;
     public ?EntryState $state = null;
     public bool $newestFirst = true;
 

@@ -784,6 +784,36 @@ Lot 1, step 1.5b (design-ux.md § 3.1, gabarit R; design-ui.md §§ 3.6 and 4.18
   cell stays on one line. Each PDF of the demonstration takes under a second (design-ux § 6.4's
   two seconds hold without a background job).
 
+## Global search (built at step 1.5c)
+
+Lot 1, step 1.5c (design-ux.md §§ 2.1 and 4.4, design-ui.md § 4.6), held by code in
+`src/Service/Dossier/Search/`, `App\Controller\Dossier\SearchController`,
+`App\EventListener\RecentScreensListener`, `Px:CommandPalette` and `command_palette_controller.js`:
+
+- **`Ctrl K` inside a dossier** (the student's and a teacher's in it): the top bar's trigger
+  (`data-px-open="px-cmdk"`, `data-px-shortcut="Ctrl+K"`) opens a modal `<dialog>` at 12vh, 560 px; each
+  key asks `GET /d/{dossier}/search?q=…&here=…` 150 ms after the last one, answered as the Turbo Frame
+  `px-cmdk-results` (`target="_top"`). ↑ ↓ choose, Entrée opens (typed before the results came, it
+  waits for them: « Ctrl K, ach, Entrée » opens the purchases' grid), Ctrl Entrée opens in a new tab,
+  Échap closes and gives the focus back - a screen that redrew the element left is sent
+  `px:focus-return` on the element's controller (the entry grid refocuses its cell). A line that is
+  also a rail entry shows its Alt key, read from the rail. The teacher space has no palette yet (2.9).
+- **`GlobalSearch::search()`** never leaves the dossier: empty field → the recent screens
+  (`RecentScreens`, session, per dossier, five, completed by `SearchScreens::FIRST_SCREENS`); else, in
+  this order, Écrans (`SearchScreens::screens()`, one line per journal's grid, the guided entry when
+  `GuidedEntry::isOpen()`), Comptes and Tiers (F4's rules, `AccountSearch`/`ThirdPartySearch`, then
+  ordered by `SearchRanking`, with their balance), Écritures (`EntrySearch::first()` by `EntryNumber`
+  « ACH-2026-00012 », by document start, by a line's exact amount, over every exercise), Actions
+  (`SearchScreens::actions()`, for EDIT only). An account or third party opens its consultation, an
+  entry its fiche, both with `return` = `here` (`ReturnPath::of()`).
+- **`SearchRanking::rank()`** (pure): a code typed whole, a code's start, the label's first word, a
+  word's start (label or `terms`), a word merely held; null when it does not answer.
+- **`SearchScreens` is the catalogue**: every screen a dossier gains is added there (route in
+  `SCREEN_ROUTES`, label, path as `detail`, pictogram, `terms`); its key is the route
+  (`app_accounting_entry:ACH` for a journal's grid), what `RecentScreensListener` records on a whole
+  page (GET, 200, HTML, not a Turbo Frame) of a catalogue route. Pictograms named in PHP are checked by
+  `GlobalSearchTest`, not `IconNamesTest`.
+
 ## Cross-cutting building blocks (built at step 0.6a)
 
 Reach for these rather than re-implement them; each has its test.

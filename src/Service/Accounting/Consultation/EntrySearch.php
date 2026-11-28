@@ -6,6 +6,8 @@ namespace App\Service\Accounting\Consultation;
 
 use App\Entity\Accounting\Entry;
 use App\Entity\Accounting\EntryLine;
+use App\Entity\Accounting\Journal;
+use App\Entity\Dossier\Exercise;
 use App\Enum\Accounting\EntryState;
 use App\Service\Shared\ListPage;
 use App\Service\Shared\Money;
@@ -64,6 +66,23 @@ final readonly class EntrySearch
         }
 
         return $counts;
+    }
+
+    /**
+     * The first entries of the filter, in its order: the global search's (Ctrl K).
+     *
+     * @return list<Entry>
+     */
+    public function first(EntrySearchCriteria $criteria, int $limit): array
+    {
+        $ids = [];
+        foreach ($this->ordered($criteria)->select('e.id')->setMaxResults(max(1, $limit))->getQuery()->getScalarResult() as $row) {
+            if (\is_array($row) && \is_numeric($row['id'] ?? null)) {
+                $ids[] = (int) $row['id'];
+            }
+        }
+
+        return $this->load($ids, $criteria);
     }
 
     /**
@@ -160,6 +179,18 @@ final readonly class EntrySearch
         if ('' !== $criteria->text) {
             $query->andWhere(\sprintf('(LOWER(e.document) LIKE :text OR LOWER(e.label) LIKE :text OR EXISTS (SELECT ql.id FROM %s ql WHERE ql.entry = e AND LOWER(ql.label) LIKE :text))', EntryLine::class))
                 ->setParameter('text', self::like($criteria->text));
+        }
+        if ('' !== $criteria->document) {
+            $query->andWhere('LOWER(e.document) LIKE :document')
+                ->setParameter('document', addcslashes(mb_strtolower($criteria->document), '%_\\').'%');
+        }
+        if (null !== $criteria->number) {
+            $query->andWhere('e.number = :number')
+                ->andWhere(\sprintf('e.journal IN (SELECT nj.id FROM %s nj WHERE nj.code = :numberJournal)', Journal::class))
+                ->andWhere(\sprintf('e.exercise IN (SELECT nx.id FROM %s nx WHERE nx.code = :numberExercise)', Exercise::class))
+                ->setParameter('number', $criteria->number->number)
+                ->setParameter('numberJournal', $criteria->number->journal)
+                ->setParameter('numberExercise', $criteria->number->exercise);
         }
         $subject = $criteria->subject;
         if (null !== $subject?->account) {
