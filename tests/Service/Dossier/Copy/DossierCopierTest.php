@@ -28,6 +28,7 @@ use App\Service\Accounting\Entry\PendingEntries;
 use App\Service\Accounting\Ledger\Ledger;
 use App\Service\Banking\Payment\PaymentRequest;
 use App\Service\Banking\Payment\Payments;
+use App\Service\Banking\Proposal\PaymentProposals;
 use App\Service\Document\Documents;
 use App\Service\Dossier\Copy\CopyPlan;
 use App\Service\Dossier\Copy\DossierCopier;
@@ -118,6 +119,9 @@ final class DossierCopierTest extends KernelTestCase
             $payments->deposit($bank, [(int) $cheque->getId()], new \DateTimeImmutable('2026-03-18'), $this->teacher);
             $bill = $payments->record($this->source, new PaymentRequest(PaymentDirection::Receipt, PaymentMethod::Bill, 'C0003', 'OD', new \DateTimeImmutable('2026-03-19'), 'LCR-0001', Money::cents(50_000), new \DateTimeImmutable('2026-04-30'), [(int) $invoice->getId()]), $this->teacher);
             $payments->remit($bill, BillRemittance::Collection, $bank, new \DateTimeImmutable('2026-03-20'), Money::zero(), Money::zero(), Money::zero(), $this->teacher);
+            // The bon à payer of a supplier's invoice (step 2.7).
+            $proposals = self::getContainer()->get(PaymentProposals::class);
+            $proposals->approve($this->source, [($proposals->rows($this->source, null)[0] ?? throw new \LogicException('The demonstration owes its suppliers.'))->id()], true, $this->teacher);
         });
         self::getContainer()->get(DossierDates::class)->move($this->source, new \DateTimeImmutable('2026-02-28'), $this->teacher, $at);
         $entityManager->flush();

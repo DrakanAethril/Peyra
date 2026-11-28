@@ -1,0 +1,82 @@
+{#
+ # The transfer order of a payment proposal (step 2.7; design-ux.md § 3.2 « ordre de virement en
+ # aperçu », gabarit E): one transfer per supplier, its invoices and amount, the total; the bank
+ # journal and the date; what refuses it (an invoice no longer to pay or not approved; a double
+ # payment at G and B) or warns (at A). Nothing is written before « Générer les règlements ».
+ #}
+{% extends 'inventory/_layout.html.twig' %}
+
+{% set inventory_tab = 'payments' %}
+{% set disbursement_view = 'proposal' %}
+{% set dossier_title = 'Ordre de virement' %}
+{% set status_keys = can_enter and order.faults is empty and not order.empty ? [{combo: 'Ctrl+Enter', verb: 'Générer les règlements'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Ordre de virement" :trail="[
+        {label: 'Achats et stocks', href: path('app_payments', {dossier: dossier.id, direction: 'disbursements'})},
+        {label: 'Règlements', href: path('app_payments', {dossier: dossier.id, direction: 'disbursements'})},
+        {label: 'Proposition de paiement', href: path('app_payment_proposal', {dossier: dossier.id, until: until ?: null})},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    {{ include('banking/_disbursement_tabs.html.twig') }}
+    {% for key, fault in order.faults %}<twig:Px:Alert tone="danger">{{ fault }}</twig:Px:Alert>{% endfor %}
+    {% if errors.order is defined and errors.order not in order.faults %}<twig:Px:Alert tone="danger">{{ errors.order }}</twig:Px:Alert>{% endif %}
+    {% for key, warning in order.warnings %}<twig:Px:Alert tone="warning">{{ warning }}</twig:Px:Alert>{% endfor %}
+
+    <form method="get" action="{{ path('app_payment_proposal_order', {dossier: dossier.id}) }}" novalidate>
+        {% for id in order.invoiceIds %}<input type="hidden" name="invoices[]" value="{{ id }}">{% endfor %}
+        {% if until %}<input type="hidden" name="until" value="{{ until }}">{% endif %}
+        <div class="px-stack">
+            <twig:Px:Card title="Virements">
+                {% if order.empty %}
+                    <twig:Px:Empty icon="send" title="Aucun virement" text="Cochez des factures qui ont leur bon à payer dans la proposition de paiement."/>
+                {% else %}
+                    <twig:Px:Table caption="Ordre de virement">
+                        <thead><tr>
+                            <th scope="col">Fournisseur</th>
+                            <th scope="col">Factures</th>
+                            <th scope="col">Référence du virement</th>
+                            <th scope="col" class="px-u-right">Montant</th>
+                        </tr></thead>
+                        <tbody>
+                            {% for transfer in order.transfers %}
+                                <tr>
+                                    <td>{{ transfer.supplier.name }} <span class="px-u-code px-u-muted">{{ transfer.supplier.auxiliaryCode }}</span></td>
+                                    <td class="px-u-code">{{ transfer.rows|map(row => row.invoice.entry.document)|join(', ') }}</td>
+                                    <td class="px-u-code">{{ date ? 'VIR-' ~ date|date('Ymd') ~ '-' ~ transfer.supplier.code : '' }}</td>
+                                    <td class="px-u-num">{{ transfer.amount|amount }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot><tr class="px-table__total">
+                            <th scope="row" colspan="3">{{ order.transfers|length }} virement{{ order.transfers|length > 1 ? 's' : '' }}</th>
+                            <td class="px-u-num">{{ order.total|amount }}</td>
+                        </tr></tfoot>
+                    </twig:Px:Table>
+                {% endif %}
+            </twig:Px:Card>
+            {% if can_enter and not order.empty %}
+                <twig:Px:Card title="Exécution">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="journal" label="Journal de banque" :required="true" :error="errors.journal ?? null">
+                            <twig:Px:Select id="journal" placeholder="Choisir un journal…" :options="journal_options" value="{{ journal }}" :required="true" :error="errors.journal ?? null"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="date" label="Date des virements" :required="true" :error="errors.date ?? null">
+                            <twig:Px:DateInput id="date" :value="date" :reference="dossier.dossierDate" :required="true" :error="errors.date ?? null"/>
+                        </twig:Px:Field>
+                    </div>
+                    <div class="px-cluster">
+                        <twig:Px:Button type="submit" variant="quiet">Actualiser</twig:Px:Button>
+                        {% if order.faults is empty %}
+                            <twig:Px:Button type="submit" variant="primary" icon="send" shortcut="Ctrl+Enter" formaction="{{ path('app_payment_proposal_generate', {dossier: dossier.id}) }}" formmethod="post" name="_token" value="{{ csrf_token('payment-proposal-' ~ dossier.id) }}">Générer les règlements</twig:Px:Button>
+                        {% endif %}
+                    </div>
+                </twig:Px:Card>
+            {% endif %}
+        </div>
+    </form>
+{% endblock %}
+
+{% block facts %}<span>Virements · <b>{{ order.transfers|length }}</b></span><span>Total · <b>{{ order.total|amount }}</b></span>{% endblock %}

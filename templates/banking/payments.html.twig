@@ -24,6 +24,7 @@
 {% endblock %}
 
 {% block page %}
+    {% if direction.value != 'receipt' %}{% set disbursement_view = 'payments' %}{{ include('banking/_disbursement_tabs.html.twig') }}{% endif %}
     {% for message in app.flashes('payment_fault') %}<twig:Px:Alert tone="danger">{{ message }}</twig:Px:Alert>{% endfor %}
     <twig:Px:Card :flush="true">
         <twig:Px:Filters action="{{ path('app_payments', {dossier: dossier.id, direction: slug}) }}">

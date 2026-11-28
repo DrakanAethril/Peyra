@@ -13,6 +13,7 @@ use App\Service\Accounting\Ledger\EntryScope;
 use App\Service\Accounting\Ledger\LedgerReader;
 use App\Service\Shared\ListPage;
 use App\Service\Shared\QueryValue;
+use App\Service\ThirdParty\Schedule\DueSchedule;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,7 +29,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class SuppliersController extends AbstractController
 {
     #[Route('', name: 'app_purchase_suppliers', methods: ['GET'])]
-    public function index(Dossier $dossier, Request $request, ThirdPartyRepository $thirdParties, LedgerReader $ledger): Response
+    public function index(Dossier $dossier, Request $request, ThirdPartyRepository $thirdParties, LedgerReader $ledger, DueSchedule $schedule): Response
     {
         if (!$this->isGranted(DossierRightVoter::PURCHASES_READ, $dossier)) {
             throw new NotFoundHttpException('The purchases are closed to this profile.');
@@ -47,6 +48,7 @@ final class SuppliersController extends AbstractController
             'list_page' => $page,
             'search' => $search,
             'outstanding' => $ledger->thirdPartyTotals($dossier, $ledger->exerciseStart($dossier, $dossier->getDossierDate()), $dossier->getDossierDate(), EntryScope::WithDrafts),
+            'overdue' => $schedule->read($dossier, ThirdPartyKind::Supplier, $dossier->getDossierDate())->overdueByThirdParty(),
         ]);
     }
 }

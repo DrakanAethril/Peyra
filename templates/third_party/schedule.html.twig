@@ -1,0 +1,81 @@
+{#
+ # The échéancier (step 2.7; design-ux.md § 3.2, gabarit R): Ventes › Suivi for the customers, Achats ›
+ # Règlements › Échéancier for the suppliers. Every open line at the dossier's date - due date, third
+ # party (a doubtful customer flagged), pièce, its amount, what is left of it, days overdue -, read as
+ # the aged balance reads it (DueSchedule); « Échues » narrows it, the aged balance is a link away.
+ #}
+{% extends side == 'sales' ? 'sales/_layout.html.twig' : 'inventory/_layout.html.twig' %}
+
+{% set sales_tab = 'follow_up' %}
+{% set inventory_tab = 'payments' %}
+{% set disbursement_view = 'schedule' %}
+{% set customers = side == 'sales' %}
+{% set dossier_title = customers ? 'Échéancier clients' : 'Échéancier fournisseurs' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ dossier_title }}" :trail="customers ? [
+        {label: 'Ventes', href: path('app_sales_customers', {dossier: dossier.id})},
+        {label: 'Suivi', href: path('app_due_schedule', {dossier: dossier.id, side: side})},
+    ] : [
+        {label: 'Achats et stocks', href: path('app_payments', {dossier: dossier.id, direction: 'disbursements'})},
+        {label: 'Règlements', href: path('app_payments', {dossier: dossier.id, direction: 'disbursements'})},
+        {label: 'Échéancier', href: path('app_due_schedule', {dossier: dossier.id, side: side})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ path('app_accounting_edition_aged_balance', {dossier: dossier.id, kind: customers ? null : 'supplier'}) }}" icon="clock">Balance âgée</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if not customers %}{{ include('banking/_disbursement_tabs.html.twig') }}{% endif %}
+
+    <div class="px-kpis">
+        <twig:Px:Kpi label="{{ customers ? 'Encours clients' : 'Encours fournisseurs' }}" value="{{ report.total|amount_eur }}" note="au {{ report.at|date_fr }}, brouillard compris"/>
+        <twig:Px:Kpi label="Échu" value="{{ report.overdue|amount_eur }}" note="{{ report.overdueItems|length }} échéance{{ report.overdueItems|length > 1 ? 's' : '' }} dépassée{{ report.overdueItems|length > 1 ? 's' : '' }}"/>
+        <twig:Px:Kpi label="À échoir" value="{{ report.notDue|amount_eur }}" note="{{ (report.items|length - report.overdueItems|length) }} échéance{{ (report.items|length - report.overdueItems|length) > 1 ? 's' : '' }} à venir"/>
+    </div>
+
+    <twig:Px:Card :flush="true">
+        <twig:Px:Filters action="{{ path('app_due_schedule', {dossier: dossier.id, side: side}) }}">
+            <twig:Px:FilterChip label="Toutes" href="{{ path('app_due_schedule', {dossier: dossier.id, side: side}) }}" :count="report.items|length" :current="not overdue_only"/>
+            <twig:Px:FilterChip label="Échues" href="{{ path('app_due_schedule', {dossier: dossier.id, side: side, overdue: 1}) }}" :count="report.overdueItems|length" :current="overdue_only"/>
+        </twig:Px:Filters>
+        {% if schedule_items is empty %}
+            <twig:Px:Empty icon="calendar" title="{{ overdue_only ? 'Aucune échéance dépassée' : 'Aucune échéance' }}" text="{{ customers ? 'Aucun client ne doit rien' : 'Aucun fournisseur n’attend de règlement' }}{{ overdue_only ? ' d’échu' : '' }} au {{ report.at|date_fr }}."/>
+        {% else %}
+            <twig:Px:Table caption="{{ dossier_title }} au {{ report.at|date_fr }}" :rows="true">
+                <thead>
+                    <tr>
+                        <th scope="col" class="px-u-num">Échéance</th>
+                        <th scope="col">{{ customers ? 'Client' : 'Fournisseur' }}</th>
+                        <th scope="col">Pièce</th>
+                        <th scope="col" class="px-u-num">Date</th>
+                        <th scope="col" class="px-u-right">Montant</th>
+                        <th scope="col" class="px-u-right">Reste dû</th>
+                        <th scope="col" class="px-u-right">Retard</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in schedule_items %}
+                        {% set entry = item.line.entry %}
+                        <tr data-rows-target="row"{% if item.overdue %} class="is-error"{% endif %}>
+                            <td class="px-u-num">{{ item.dueOn|date('d/m/Y') }}</td>
+                            <td class="px-u-fill px-u-truncate" title="{{ item.thirdParty.name }}">
+                                <a class="px-link" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: item.thirdParty.auxiliaryCode ?? item.thirdParty.code, return: here}) }}">{{ item.thirdParty.name }}</a>
+                                {% if item.thirdParty.doubtful %} <twig:Px:Badge tone="warning">Douteuse</twig:Px:Badge>{% endif %}
+                            </td>
+                            <td class="px-u-code"><a class="px-link" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id, return: here}) }}">{{ entry.document }}</a></td>
+                            <td class="px-u-num">{{ entry.entryDate|date('d/m/Y') }}</td>
+                            <td class="px-u-num">{{ item.lineAmount|amount }}</td>
+                            <td class="px-u-num">{{ item.open|amount }}</td>
+                            <td class="px-u-num">{% if item.daysLate > 0 %}{{ item.daysLate }} j{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>Échéances · <b>{{ report.items|length }}</b></span><span>Échu · <b>{{ report.overdue|amount }}</b></span>{% endblock %}

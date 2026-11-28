@@ -1,6 +1,6 @@
 {#
- # Ventes › Clients (step 2.3, gabarit L): the customers of the dossier with their terms and their
- # outstanding amount at the dossier's date; a customer opens its third party's fiche.
+ # Ventes › Clients (step 2.3, gabarit L): the customers of the dossier with their terms, their
+ # outstanding amount at the dossier's date and what of it is overdue (step 2.7, a doubtful one flagged); a customer opens its third party's fiche.
  #}
 {% extends 'sales/_layout.html.twig' %}
 
@@ -40,6 +40,7 @@
                             <th scope="col">Ville</th>
                             <th scope="col">Règlement</th>
                             <th scope="col" class="px-u-num">Encours</th>
+                            <th scope="col" class="px-u-num">Échu</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -47,11 +48,13 @@
                             <tr data-rows-target="row">
                                 <td class="px-u-code"><a class="px-link" href="{{ path('app_third_party', {dossier: dossier.id, code: customer.code}) }}">{{ customer.code }}</a></td>
                                 <td class="px-u-code">{{ customer.auxiliaryCode }}</td>
-                                <td class="px-u-truncate px-u-truncate-short" title="{{ customer.name }}">{{ customer.name }}</td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ customer.name }}">{{ customer.name }}{% if customer.doubtful %} <twig:Px:Badge tone="warning">Douteuse</twig:Px:Badge>{% endif %}</td>
                                 <td class="px-u-truncate px-u-truncate-short" title="{{ customer.city }}">{{ customer.city }}</td>
                                 <td class="px-u-truncate px-u-truncate-short" title="{{ customer.paymentTerms.label }} · {{ customer.paymentMethod.label }}">{{ customer.paymentTerms.label }} · {{ customer.paymentMethod.label|lower }}</td>
                                 {% set owed = outstanding[customer.id] ?? null %}
                                 <td class="px-u-num">{% if owed is not null and not owed.balance.isZero %}<a class="px-link" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: customer.auxiliaryCode ?? customer.code}) }}">{{ owed.balance|balance }}</a>{% endif %}</td>
+                                {% set late = overdue[customer.id] ?? null %}
+                                <td class="px-u-num">{% if late is not null %}<a class="px-link" href="{{ path('app_due_schedule', {dossier: dossier.id, side: 'sales', overdue: 1}) }}">{{ late|amount }}</a>{% endif %}</td>
                             </tr>
                         {% endfor %}
                     </tbody>

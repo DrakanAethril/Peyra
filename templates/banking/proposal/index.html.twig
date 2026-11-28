@@ -1,0 +1,109 @@
+{#
+ # Achats › Règlements › Proposition de paiement (step 2.7; design-ux.md § 3.2, gabarit L): the
+ # suppliers' invoices still to pay due by a day, each with its « bon à payer »; ticked, they are
+ # approved or taken back (PURCHASES_VALIDATE), or the approved ones go to the transfer order, shown
+ # before any payment is made. G ticks the approved invoices; a supplier carrying a payment that
+ # settles no invoice is flagged on its rows (refused in the order at G and B).
+ #}
+{% extends 'inventory/_layout.html.twig' %}
+
+{% set inventory_tab = 'payments' %}
+{% set disbursement_view = 'proposal' %}
+{% set dossier_title = 'Proposition de paiement' %}
+{% set token = csrf_token('payment-proposal-' ~ dossier.id) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Proposition de paiement" :trail="[
+        {label: 'Achats et stocks', href: path('app_payments', {dossier: dossier.id, direction: 'disbursements'})},
+        {label: 'Règlements', href: path('app_payments', {dossier: dossier.id, direction: 'disbursements'})},
+        {label: 'Proposition de paiement', href: path('app_payment_proposal', {dossier: dossier.id})},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    {{ include('banking/_disbursement_tabs.html.twig') }}
+    {% for message in app.flashes('payment_fault') %}<twig:Px:Alert tone="danger">{{ message }}</twig:Px:Alert>{% endfor %}
+    {% if unmatched is not empty %}
+        <twig:Px:Alert tone="warning">{{ unmatched|length }} fournisseur{{ unmatched|length > 1 ? 's portent' : ' porte' }} au débit des règlements ou des avoirs qui ne règlent aucune facture : <a class="px-link" href="{{ path('app_accounting_lettering', {dossier: dossier.id}) }}">lettrez-les</a> avec les factures qu’ils soldent, qui sortiront alors de la proposition.</twig:Px:Alert>
+    {% endif %}
+
+    <twig:Px:Card :flush="true">
+        <twig:Px:Filters action="{{ path('app_payment_proposal', {dossier: dossier.id}) }}">
+            <span class="px-filters__field">
+                <label for="proposal-until">Échéance jusqu’au</label>
+                <twig:Px:DateInput id="proposal-until" name="until" :value="until" :reference="dossier.dossierDate"/>
+            </span>
+            {% if state %}<input type="hidden" name="state" value="{{ state }}">{% endif %}
+            <twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button>
+            <span class="px-filters__sep" aria-hidden="true"></span>
+            <twig:Px:FilterChip label="Toutes" href="{{ path('app_payment_proposal', {dossier: dossier.id, until: until|date('Y-m-d')}) }}" :count="counts.all" :current="state == ''"/>
+            <twig:Px:FilterChip label="À approuver" href="{{ path('app_payment_proposal', {dossier: dossier.id, until: until|date('Y-m-d'), state: 'to_approve'}) }}" :count="counts.to_approve" :current="state == 'to_approve'"/>
+            <twig:Px:FilterChip label="Bon à payer" href="{{ path('app_payment_proposal', {dossier: dossier.id, until: until|date('Y-m-d'), state: 'approved'}) }}" :count="counts.approved" :current="state == 'approved'"/>
+        </twig:Px:Filters>
+        {% if proposal_rows is empty %}
+            <twig:Px:Empty icon="circle-check" title="Aucune facture à payer" text="Aucune facture fournisseur {{ state == 'approved' ? 'approuvée ' : (state == 'to_approve' ? 'à approuver ' : '') }}n’arrive à échéance au {{ until|date_fr }}."/>
+        {% else %}
+            <form method="get" action="{{ path('app_payment_proposal_order', {dossier: dossier.id}) }}"
+                  data-controller="selection" data-selection-one-value="%d facture cochée" data-selection-many-value="%d factures cochées"
+                  data-action="change->selection#refresh">
+                <input type="hidden" name="until" value="{{ until|date('Y-m-d') }}">
+                {% if state %}<input type="hidden" name="state" value="{{ state }}">{% endif %}
+                {% if can_approve or can_enter %}
+                    <div class="px-lotbar" data-selection-target="bar" hidden>
+                        <span class="px-lotbar__count" data-selection-target="count" aria-live="polite"></span>
+                        {% if can_approve %}
+                            <twig:Px:Button size="sm" type="submit" icon="check" formaction="{{ path('app_payment_proposal_approve', {dossier: dossier.id}) }}" formmethod="post" name="_token" value="{{ token }}">Donner le bon à payer</twig:Px:Button>
+                            <twig:Px:Button size="sm" type="submit" variant="quiet" icon="undo-2" formaction="{{ path('app_payment_proposal_withdraw', {dossier: dossier.id}) }}" formmethod="post" name="_token" value="{{ token }}">Retirer le bon à payer</twig:Px:Button>
+                        {% endif %}
+                        {% if can_enter %}
+                            <twig:Px:Button size="sm" type="submit" variant="primary" icon="send" shortcut="Ctrl+Enter">Préparer le virement</twig:Px:Button>
+                        {% endif %}
+                    </div>
+                {% endif %}
+                <twig:Px:Table caption="Factures fournisseurs à payer au {{ until|date_fr }}" :rows="true">
+                    <thead><tr>
+                        {% if can_approve or can_enter %}
+                            <th scope="col" class="px-table__pick">
+                                <label class="px-check"><input type="checkbox" data-selection-target="all" data-action="selection#toggleAll"><span class="px-u-sr-only">Tout cocher</span></label>
+                            </th>
+                        {% endif %}
+                        <th scope="col" class="px-u-num">Échéance</th>
+                        <th scope="col">Fournisseur</th>
+                        <th scope="col">Pièce</th>
+                        <th scope="col" class="px-u-num">Date</th>
+                        <th scope="col" class="px-u-right">Montant</th>
+                        <th scope="col" class="px-u-right">Reste à payer</th>
+                        <th scope="col">Bon à payer</th>
+                    </tr></thead>
+                    <tbody>
+                        {% set flagged = [] %}
+                        {% for row in proposal_rows %}
+                            {% set entry = row.invoice.entry %}
+                            {% set pending = row.supplier.id not in flagged ? (unmatched[row.supplier.id] ?? null) : null %}
+                            {% set flagged = flagged|merge([row.supplier.id]) %}
+                            <tr data-rows-target="row">
+                                {% if can_approve or can_enter %}
+                                    <td class="px-table__pick">
+                                        <label class="px-check"><input type="checkbox" name="invoices[]" value="{{ row.id }}" data-selection-target="box"{% if propose and row.approved and row.invoice.dueOn <= dossier.dossierDate %} checked{% endif %}><span class="px-u-sr-only">Cocher la facture {{ entry.document }}</span></label>
+                                    </td>
+                                {% endif %}
+                                <td class="px-u-num">{{ row.invoice.dueOn|date('d/m/Y') }}</td>
+                                <td class="px-u-fill px-u-truncate" title="{{ row.supplier.name }}">
+                                    {{ row.supplier.name }}
+                                    {% if pending %} <span title="{{ pending|amount }} au débit ne règlent aucune facture"><twig:Px:Badge tone="warning">Règlement non affecté</twig:Px:Badge></span>{% endif %}
+                                </td>
+                                <td class="px-u-code"><a class="px-link" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id, return: here}) }}">{{ entry.document }}</a></td>
+                                <td class="px-u-num">{{ entry.entryDate|date('d/m/Y') }}</td>
+                                <td class="px-u-num">{{ row.invoice.total|amount }}</td>
+                                <td class="px-u-num">{{ row.invoice.remaining|amount }}</td>
+                                <td>{% if row.approved %}<twig:Px:Badge tone="success">Le {{ row.approval.approvedOn|date('d/m/Y') }}</twig:Px:Badge>{% else %}<span class="px-u-muted">à approuver</span>{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            </form>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>À payer · <b>{{ counts.all }}</b></span><span>Bon à payer · <b>{{ counts.approved }}</b></span>{% endblock %}

@@ -376,6 +376,8 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/bank/rules', '/bank/rules/new?pattern=FRAIS', '/bank/rules/'.$ruleId,
             '/payments/receipts', '/payments/receipts?method=cheque', '/payments/receipts/new', '/payments/receipts/new?party=C0019',
             '/payments/receipts/deposit', '/payments/receipts/'.$paymentId, '/payments/disbursements', '/payments/disbursements/new?party=F0001',
+            '/sales/schedule', '/sales/schedule?overdue=1', '/purchases/schedule', '/payments/disbursements/proposal', '/payments/disbursements/proposal?state=approved&until=2026-04-30',
+            '/payments/disbursements/proposal/order', '/accounting/third-parties/C0019',
             '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
