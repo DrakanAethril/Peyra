@@ -1,0 +1,5 @@
+{#- An amount of a state that leads to its detail (design-ux.md § 3.1, gabarit R): the consultation of `subject` (an account number, a third party's code) over `from` - `to`, brouillard or not as the state reads, and back here. Empty for a zero amount, unless `zero` is set. -#}
+{%- if amount.isZero and not (zero ?? false) -%}
+{%- else -%}
+<a class="px-table__drill" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: subject, from: from|date('Y-m-d'), to: to|date('Y-m-d'), scope: scope.value == 'validated' ? 'validated' : null, return: here}|filter(v => v is not null)) }}">{{ (signed ?? false) ? amount|balance : amount|amount }}</a>
+{%- endif -%}

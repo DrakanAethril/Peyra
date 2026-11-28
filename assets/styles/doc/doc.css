@@ -124,6 +124,57 @@
     letter-spacing: 0;
 }
 
+/* A state's groups (a journal's month, an account, a class): an intertitle row, then a subtotal row. */
+.px-doc__table .px-doc__group {
+    break-after: avoid;
+}
+
+.px-doc__table .px-doc__group > th {
+    padding-top: 2.5mm;
+    background: none;
+    border-bottom: 0.5pt solid var(--doc-rule);
+    color: var(--doc-ink);
+    font-size: 8pt;
+    letter-spacing: 0;
+    text-transform: none;
+    break-after: avoid;
+}
+
+.px-doc__table .px-doc__subtotal > * {
+    border-bottom: 0.5pt solid var(--doc-rule);
+    font-weight: 600;
+    text-align: left;
+}
+
+.px-doc__table .px-doc__subtotal > th {
+    padding: 0.8mm 1.5mm;
+    background: none;
+    color: var(--doc-ink);
+    font-size: 8.5pt;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.px-doc__table .px-doc__subtotal > .px-doc__num {
+    text-align: right;
+}
+
+/* Muted lines of a state: what an account carried the eve of the window. */
+.px-doc__table .px-doc__dim > * {
+    color: var(--doc-muted);
+}
+
+/* The continuation lines of an entry in a journal: no rule between them, one above the entry. */
+.px-doc__table .px-doc__entryhead > * {
+    border-top: 0.5pt solid var(--doc-rule);
+}
+
+.px-doc__table .px-doc__cell-cut {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
 /* Figures: mono, right-aligned, tabular. */
 .px-doc__num,
 .px-doc__table th.px-doc__num {
@@ -139,6 +190,13 @@
 
 .px-doc__code {
     font-family: var(--doc-mono);
+}
+
+/* A code in a table cell stays on one line, cut rather than wrapped (a date, a document, a number). */
+.px-doc__table td.px-doc__code {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .px-doc__totals {

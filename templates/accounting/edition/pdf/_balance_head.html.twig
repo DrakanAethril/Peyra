@@ -1,0 +1,15 @@
+{# The head of a balance in a PDF: the subject's columns (`lead`, their labels), then the figures, grouped under « Mouvements de la période » and « Soldes au … ». #}
+<thead>
+    <tr>
+        {% for label in lead %}<th scope="col" rowspan="2">{{ label }}</th>{% endfor %}
+        {% if report.hasOpening %}<th scope="col" rowspan="2" class="px-doc__num">Solde au {{ window.eve|date('d/m/Y') }}</th>{% endif %}
+        <th scope="colgroup" colspan="2" class="px-doc__num">Mouvements de la période</th>
+        <th scope="colgroup" colspan="2" class="px-doc__num">Soldes au {{ window.to|date('d/m/Y') }}</th>
+    </tr>
+    <tr>
+        <th scope="col" class="px-doc__num">Débit</th>
+        <th scope="col" class="px-doc__num">Crédit</th>
+        <th scope="col" class="px-doc__num">Débiteur</th>
+        <th scope="col" class="px-doc__num">Créditeur</th>
+    </tr>
+</thead>

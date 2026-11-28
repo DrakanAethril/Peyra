@@ -1,0 +1,8 @@
+{# The views of Comptabilité › Éditions (design-ux.md § 2.5): journaux, grand livre, balance, balance auxiliaire, and the aged balance prepared for lot 2. #}
+<twig:Px:Tabs label="Éditions" :tabs="[
+    {label: 'Journaux', href: path('app_accounting_edition_journals', {dossier: dossier.id}), current: edition_current == 'journals'},
+    {label: 'Grand livre', href: path('app_accounting_edition_general_ledger', {dossier: dossier.id}), current: edition_current == 'general_ledger'},
+    {label: 'Balance', href: path('app_accounting_edition_trial_balance', {dossier: dossier.id}), current: edition_current == 'trial_balance'},
+    {label: 'Balance auxiliaire', href: path('app_accounting_edition_third_party_balance', {dossier: dossier.id}), current: edition_current == 'third_party_balance'},
+    {label: 'Balance âgée', href: path('app_accounting_edition_aged_balance', {dossier: dossier.id}), current: edition_current == 'aged_balance'},
+]"/>

@@ -195,6 +195,31 @@
         font-weight: inherit;
     }
 
+    /*
+     * An amount of a state that leads to its detail (design-ux.md § 3.1, gabarit R): the figure keeps
+     * its ink, so a column of figures still reads as one; the link shows on hover and on focus.
+     */
+    .px-table__drill {
+        color: inherit;
+        text-decoration: none;
+
+        &:hover {
+            color: var(--px-action);
+            text-decoration: underline;
+        }
+
+        &:focus-visible {
+            border-radius: var(--px-radius-xs);
+            box-shadow: var(--px-ring);
+            outline: none;
+        }
+    }
+
+    /* A state's entry, line by line (the journals): its first line opens on a stronger rule. */
+    .px-table__entryhead > * {
+        border-block-start: 1px solid var(--px-border);
+    }
+
     /* Raw result of a query: column names as they are, in mono, no capitals. */
     .px-table--raw thead th {
         font-family: var(--px-font-mono);
@@ -297,6 +322,9 @@
             width: 96px;
         }
 
+        & .px-filters__account {
+            width: 80px;
+        }
 
         /* The chosen account's name is the page's title: read by a screen reader, not drawn in the bar. */
         & .px-picker__chosen {

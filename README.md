@@ -73,7 +73,9 @@ tapé), la saisie guidée part d'un modèle et de quelques champs, et un abonnem
 chaque mois (« Générer jusqu'au » la date du dossier, au brouillard ou en saisie en attente). Le
 Brouillard liste les écritures à valider et valide une sélection ; la Consultation lit un compte ou
 un tiers (mouvements, solde progressif, de l'écriture à la ligne et retour, F5 depuis la grille) et
-recherche les écritures ; chaque liste s'exporte en tableur (XLSX) ou en CSV. Les plans comptables de référence (PCG 2026, PCG 2025, PCG antérieur), lus dans
+recherche les écritures ; les Éditions donnent les journaux, le grand livre, la balance générale, la
+balance auxiliaire et la balance âgée à l'écran (chaque montant mène à la consultation du compte),
+en PDF et en tableur ; chaque liste s'exporte en tableur (XLSX) ou en CSV. Les plans comptables de référence (PCG 2026, PCG 2025, PCG antérieur), lus dans
 les textes de l'ANC, sont dans `fixtures/pcg/`.
 
 La pile de développement : `php` (FrankenPHP et Caddy), `database` (MariaDB, comme en

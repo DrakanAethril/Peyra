@@ -75,7 +75,7 @@ final class DesignGalleryController extends AbstractController
      * The opening balance of the demonstration dossier's general accounts (Menuiserie Vasseur,
      * 01/01/2026): an extract, so its totals do not balance.
      *
-     * @return array{orientation: string, report: array<string, mixed>, rows: list<array{account: string, label: string, debit: Money, credit: Money}>, total_debit: Money, total_credit: Money}
+     * @return array{orientation: string, report_header: array<string, mixed>, rows: list<array{account: string, label: string, debit: Money, credit: Money}>, total_debit: Money, total_credit: Money}
      */
     private static function sampleReport(): array
     {
@@ -114,7 +114,7 @@ final class DesignGalleryController extends AbstractController
 
         return [
             'orientation' => 'landscape',
-            'report' => [
+            'report_header' => [
                 'company' => 'Menuiserie Vasseur SARL',
                 'title' => 'Balance d’ouverture (extrait)',
                 'fiscalYear' => 'Exercice 2026',

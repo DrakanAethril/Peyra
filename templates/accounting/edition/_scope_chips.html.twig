@@ -1,0 +1,5 @@
+{# Brouillard included or not (design-ux.md § 3.2), two chips that keep every other parameter; the hidden field keeps the choice when the bar is submitted. #}
+{% if scope.value == 'validated' %}<input type="hidden" name="scope" value="validated">{% endif %}
+<span class="px-filters__sep" aria-hidden="true"></span>
+<twig:Px:FilterChip label="Brouillard inclus" href="{{ path(edition_route, {dossier: dossier.id}|merge(keep)|merge({scope: null})|filter(v => v is not null)) }}" :current="scope.value != 'validated'"/>
+<twig:Px:FilterChip label="Écritures validées" href="{{ path(edition_route, {dossier: dossier.id}|merge(keep)|merge({scope: 'validated'})|filter(v => v is not null)) }}" :current="scope.value == 'validated'"/>

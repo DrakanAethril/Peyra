@@ -1,0 +1,43 @@
+{# Comptabilité › Éditions › Journaux as a PDF (lot 1, step 1.5b; design-ui.md § 3.6, A4 landscape): the screen's state without its links. #}
+{% extends 'doc/_report.html.twig' %}
+
+{% block content %}
+    {% if report.isEmpty %}
+        <p>Aucune écriture du {{ window.from|date_fr }} au {{ window.to|date_fr }}.</p>
+    {% else %}
+        <table class="px-doc__table">
+            <colgroup><col style="width: 22mm"><col style="width: 28mm"><col style="width: 31mm"><col style="width: 17mm"><col style="width: 20mm"><col><col style="width: 28mm"><col style="width: 28mm"></colgroup>
+            <thead>
+                <tr><th scope="col">Date</th><th scope="col">Pièce</th><th scope="col">Numéro</th><th scope="col">Compte</th><th scope="col">Tiers</th><th scope="col">Libellé</th><th scope="col" class="px-doc__num">Débit</th><th scope="col" class="px-doc__num">Crédit</th></tr>
+            </thead>
+            {% for section in report.journals %}
+                <tbody>
+                    {% for month in section.months %}
+                        <tr class="px-doc__group"><th colspan="8" scope="rowgroup">{{ section.journal.code }} · {{ section.journal.label }} · {{ month.month|period }}</th></tr>
+                        {% for entry in month.entries %}
+                            {% for line in entry.lines %}
+                                <tr{% if loop.first %} class="px-doc__entryhead"{% endif %}>
+                                    <td class="px-doc__code">{{ loop.first ? entry.entryDate|date('d/m/Y') : '' }}</td>
+                                    <td class="px-doc__code px-doc__cell-cut">{{ loop.first ? entry.document : '' }}</td>
+                                    <td class="px-doc__code">{{ loop.first ? (entry.numberLabel ?? 'Brouillard') : '' }}</td>
+                                    <td class="px-doc__code">{{ line.account.number }}</td>
+                                    <td class="px-doc__code">{{ line.thirdParty ? (line.thirdParty.auxiliaryCode ?? line.thirdParty.code) : '' }}</td>
+                                    <td class="px-doc__cell-cut">{{ line.label ?: entry.label }}</td>
+                                    <td class="px-doc__num">{{ line.debit|amount_cell }}</td>
+                                    <td class="px-doc__num">{{ line.credit|amount_cell }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
+                        <tr class="px-doc__subtotal"><th scope="row" colspan="6">Total {{ section.journal.code }} · {{ month.month|period }}</th><td class="px-doc__num">{{ month.total.debit|amount }}</td><td class="px-doc__num">{{ month.total.credit|amount }}</td></tr>
+                    {% endfor %}
+                    {% if section.months|length > 1 %}
+                        <tr class="px-doc__subtotal"><th scope="row" colspan="6">Total du journal {{ section.journal.code }}</th><td class="px-doc__num">{{ section.total.debit|amount }}</td><td class="px-doc__num">{{ section.total.credit|amount }}</td></tr>
+                    {% endif %}
+                </tbody>
+            {% endfor %}
+            <tfoot>
+                <tr><td colspan="6">{{ journal ? 'Total du journal ' ~ journal.code : 'Total général' }} · {{ report.entryCount }} écriture{{ report.entryCount > 1 ? 's' : '' }}</td><td class="px-doc__num">{{ report.total.debit|amount }}</td><td class="px-doc__num">{{ report.total.credit|amount }}</td></tr>
+            </tfoot>
+        </table>
+    {% endif %}
+{% endblock %}

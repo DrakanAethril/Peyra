@@ -217,6 +217,13 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/accounting/consultation?account=512100&scope=validated', '/accounting/consultation/export.xlsx?account=512100',
             '/accounting/consultation/peek?account=401SCIE', '/accounting/entries', '/accounting/entries?journal=BQ1&period=2026-01-01',
             '/accounting/entries/export.csv?journal=BQ1', '/accounting/entries/'.$entry->getId().'?return=/d/'.$saved->getId().'/accounting/brouillard',
+            '/accounting/editions/journals', '/accounting/editions/journals?journal=BQ1&scope=validated', '/accounting/editions/journals.pdf',
+            '/accounting/editions/journals/export.xlsx', '/accounting/editions/general-ledger', '/accounting/editions/general-ledger?account_from=4&account_to=5',
+            '/accounting/editions/general-ledger.pdf', '/accounting/editions/general-ledger/export.csv', '/accounting/editions/trial-balance',
+            '/accounting/editions/trial-balance?from=2026-02-01', '/accounting/editions/trial-balance.pdf', '/accounting/editions/trial-balance/export.xlsx',
+            '/accounting/editions/third-party-balance', '/accounting/editions/third-party-balance?kind=supplier', '/accounting/editions/third-party-balance.pdf',
+            '/accounting/editions/third-party-balance/export.csv', '/accounting/editions/aged-balance', '/accounting/editions/aged-balance?kind=supplier',
+            '/accounting/editions/aged-balance.pdf?kind=supplier', '/accounting/editions/aged-balance/export.xlsx',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
             $actual = [];

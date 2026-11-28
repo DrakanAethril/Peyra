@@ -1,0 +1,7 @@
+{#- The figures of a balance line in a PDF (BalanceLine): the eve's balance when the state has one, the movements, the closing balance split debit / credit. Zero is empty on a line, written in a total. -#}
+{%- set filter_total = total ?? false -%}
+{% if report.hasOpening %}<td class="px-doc__num">{{ line.opening.isZero and not filter_total ? '' : line.opening|balance }}</td>{% endif %}
+<td class="px-doc__num">{{ filter_total ? line.movements.debit|amount : line.movements.debit|amount_cell }}</td>
+<td class="px-doc__num">{{ filter_total ? line.movements.credit|amount : line.movements.credit|amount_cell }}</td>
+<td class="px-doc__num">{{ filter_total ? line.closingDebit|amount : line.closingDebit|amount_cell }}</td>
+<td class="px-doc__num">{{ filter_total ? line.closingCredit|amount : line.closingCredit|amount_cell }}</td>

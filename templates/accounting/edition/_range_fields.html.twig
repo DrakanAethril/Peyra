@@ -1,0 +1,9 @@
+{# The accounts of an edition, in its parameter bar: « Du compte » « au compte », a number or its start (« 4 », « 401 »), empty for the whole plan. #}
+<span class="px-filters__field">
+    <label for="edition-account-from">Du compte</label>
+    <twig:Px:Input id="edition-account-from" name="account_from" value="{{ range.error ? app.request.query.get('account_from') : range.from }}" :error="range.error is not null" class="px-u-code px-filters__account" inputmode="numeric" autocomplete="off" maxlength="8"/>
+</span>
+<span class="px-filters__field">
+    <label for="edition-account-to">au</label>
+    <twig:Px:Input id="edition-account-to" name="account_to" value="{{ range.error ? app.request.query.get('account_to') : range.to }}" :error="range.error is not null" class="px-u-code px-filters__account" inputmode="numeric" autocomplete="off" maxlength="8"/>
+</span>

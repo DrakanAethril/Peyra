@@ -1,0 +1,9 @@
+{# The period of an edition, in its parameter bar: « Du » and « au », the dossier's date as the calendars' reference. #}
+<span class="px-filters__field">
+    <label for="edition-from">Du</label>
+    <twig:Px:DateInput id="edition-from" name="from" :value="window.from" :reference="dossier.dossierDate"/>
+</span>
+<span class="px-filters__field">
+    <label for="edition-to">au</label>
+    <twig:Px:DateInput id="edition-to" name="to" :value="window.to" :reference="dossier.dossierDate"/>
+</span>

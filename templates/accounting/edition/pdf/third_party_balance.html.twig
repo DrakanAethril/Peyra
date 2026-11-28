@@ -1,0 +1,32 @@
+{# Comptabilité › Éditions › Balance auxiliaire as a PDF (lot 1, step 1.5b; design-ui.md § 3.6, A4 landscape): the screen's state without its links. #}
+{% extends 'doc/_report.html.twig' %}
+
+{% block content %}
+    {% if report.isEmpty %}
+        <p>Aucun tiers n’est nommé sur une écriture du {{ window.exerciseStart|date_fr }} au {{ window.to|date_fr }}.</p>
+    {% else %}
+        <table class="px-doc__table">
+            <colgroup><col style="width: 22mm"><col><col style="width: 18mm">{% if report.hasOpening %}<col style="width: 30mm">{% endif %}<col style="width: 28mm"><col style="width: 28mm"><col style="width: 28mm"><col style="width: 28mm"></colgroup>
+            {{ include('accounting/edition/pdf/_balance_head.html.twig', {lead: ['Tiers', 'Nom', 'Compte']}) }}
+            {% set columns = report.hasOpening ? 8 : 7 %}
+            {% for group in report.groups %}
+                <tbody>
+                    <tr class="px-doc__group"><th colspan="{{ columns }}" scope="rowgroup">{{ group.title }}</th></tr>
+                    {% for line in group.lines %}
+                        {% set party = line.thirdParty %}
+                        <tr>
+                            <td class="px-doc__code">{{ party.auxiliaryCode ?? party.code }}</td>
+                            <td class="px-doc__cell-cut">{{ party.name }}</td>
+                            <td class="px-doc__code">{{ party.account ? party.account.number : '' }}</td>
+                            {{ include('accounting/edition/pdf/_balance_cells.html.twig') }}
+                        </tr>
+                    {% endfor %}
+                    <tr class="px-doc__subtotal"><th scope="row" colspan="3">Total {{ group.title|lower }}</th>{{ include('accounting/edition/pdf/_balance_cells.html.twig', {line: group.subtotal, total: true}) }}</tr>
+                </tbody>
+            {% endfor %}
+            <tfoot>
+                <tr><td colspan="3">Total · {{ report.lineCount }} tiers</td>{{ include('accounting/edition/pdf/_balance_cells.html.twig', {line: report.total, total: true}) }}</tr>
+            </tfoot>
+        </table>
+    {% endif %}
+{% endblock %}

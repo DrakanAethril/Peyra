@@ -1,0 +1,84 @@
+{#
+ # Comptabilité › Éditions › Grand livre (lot 1, step 1.5b; gabarit R): the accounts of the
+ # selection in number order - what each carried the eve when the window starts after the
+ # exercise, its movements with the running balance, its total -, then the general total. An
+ # account and its amounts open its consultation, a number its entry.
+ #}
+{% extends 'accounting/edition/_edition.html.twig' %}
+
+{% set edition_current = 'general_ledger' %}
+{% set edition_route = 'app_accounting_edition_general_ledger' %}
+{% set edition_title = 'Grand livre' %}
+{% set status_keys = [{combo: 'Enter', verb: 'Ouvrir l’écriture'}] %}
+
+{% block edition_filters %}
+    <twig:Px:Filters action="{{ path(edition_route, {dossier: dossier.id}) }}" resetHref="{{ not window.isDefault(dossier.dossierDate) or not range.isAll or scope.value == 'validated' ? path(edition_route, {dossier: dossier.id}) : null }}">
+        {{ include('accounting/edition/_window_fields.html.twig') }}
+        {{ include('accounting/edition/_range_fields.html.twig') }}
+        <twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button>
+        {{ include('accounting/edition/_scope_chips.html.twig') }}
+    </twig:Px:Filters>
+{% endblock %}
+
+{% block edition_body %}
+    {% if report.isEmpty %}
+        <twig:Px:Empty icon="book-text" title="Aucun mouvement" text="Aucun compte{{ range.describe ? ' (' ~ range.describe ~ ')' : '' }} n’a de mouvement du {{ window.exerciseStart|date_fr }} au {{ window.to|date_fr }}{{ scope.value == 'validated' ? ' parmi les écritures validées' : '' }}."/>
+    {% else %}
+        <twig:Px:Table caption="Grand livre du {{ window.from|date_fr }} au {{ window.to|date_fr }}" :rows="true">
+            <thead><tr>
+                <th scope="col">Date</th>
+                <th scope="col">Journal</th>
+                <th scope="col">Pièce</th>
+                <th scope="col">Numéro</th>
+                <th scope="col">Tiers</th>
+                <th scope="col">Libellé</th>
+                <th scope="col" class="px-u-right">Débit</th>
+                <th scope="col" class="px-u-right">Crédit</th>
+                <th scope="col" class="px-u-right">Solde</th>
+            </tr></thead>
+            {% for item in report.accounts %}
+                {% set number = item.account.number %}
+                <tbody>
+                    <tr class="px-table__section"><th colspan="9" scope="rowgroup"><a class="px-table__drill" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: number, from: window.from|date('Y-m-d'), to: window.to|date('Y-m-d'), scope: scope.value == 'validated' ? 'validated' : null, return: here}|filter(v => v is not null)) }}"><span class="px-u-code">{{ number }}</span> · {{ item.account.label }}</a></th></tr>
+                    {% if report.hasOpening %}
+                        <tr class="is-dim"><td colspan="6">Solde au {{ window.eve|date_fr }}</td><td class="px-u-num">{{ item.before.debit|amount_cell }}</td><td class="px-u-num">{{ item.before.credit|amount_cell }}</td><td class="px-u-num">{{ item.before.balance|balance }}</td></tr>
+                    {% endif %}
+                    {% for movement in item.movements %}
+                        {% set line = movement.line %}
+                        {% set entry = line.entry %}
+                        <tr data-rows-target="row"{% if not entry.validated %} class="is-todo"{% endif %}>
+                            <td class="px-u-code">{{ entry.entryDate|date('d/m/Y') }}</td>
+                            <td class="px-u-code">{{ entry.journal.code }}</td>
+                            <td class="px-u-code">{{ entry.document }}</td>
+                            <td><a class="px-link{{ entry.numberLabel ? ' px-u-code' : '' }}" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id, return: here}) }}">{{ entry.numberLabel ?? 'Brouillard' }}</a></td>
+                            <td class="px-u-code" title="{{ line.thirdParty ? line.thirdParty.name : '' }}">{{ line.thirdParty ? (line.thirdParty.auxiliaryCode ?? line.thirdParty.code) : '' }}</td>
+                            <td class="px-u-truncate px-u-fill" title="{{ line.label ?: entry.label }}">{{ line.label ?: entry.label }}</td>
+                            <td class="px-u-num">{{ include('accounting/edition/_drill.html.twig', {amount: line.debit, subject: number, from: window.from, to: window.to}) }}</td>
+                            <td class="px-u-num">{{ include('accounting/edition/_drill.html.twig', {amount: line.credit, subject: number, from: window.from, to: window.to}) }}</td>
+                            <td class="px-u-num">{{ movement.balanceAfter|balance }}</td>
+                        </tr>
+                    {% endfor %}
+                    <tr class="px-table__subtotal">
+                        <th scope="row" colspan="6">Total {{ number }}</th>
+                        <td class="px-u-num">{{ include('accounting/edition/_drill.html.twig', {amount: item.total.debit, subject: number, from: window.exerciseStart, to: window.to, zero: true}) }}</td>
+                        <td class="px-u-num">{{ include('accounting/edition/_drill.html.twig', {amount: item.total.credit, subject: number, from: window.exerciseStart, to: window.to, zero: true}) }}</td>
+                        <td class="px-u-num">{{ include('accounting/edition/_drill.html.twig', {amount: item.total.balance, subject: number, from: window.exerciseStart, to: window.to, zero: true, signed: true}) }}</td>
+                    </tr>
+                </tbody>
+            {% endfor %}
+            <tfoot>
+                <tr class="px-table__total">
+                    <th scope="row" colspan="6">Total général · {{ report.accounts|length }} compte{{ report.accounts|length > 1 ? 's' : '' }}</th>
+                    <td class="px-u-num">{{ report.total.debit|amount }}</td>
+                    <td class="px-u-num">{{ report.total.credit|amount }}</td>
+                    <td class="px-u-num">{{ report.total.balance|balance }}</td>
+                </tr>
+            </tfoot>
+        </twig:Px:Table>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}
+    <span>{{ report.accounts|length }} compte{{ report.accounts|length > 1 ? 's' : '' }} · {{ report.movementCount }} mouvement{{ report.movementCount > 1 ? 's' : '' }}</span>
+    <span>{{ scope.value == 'validated' ? 'Écritures validées' : 'Brouillard inclus' }}</span>
+{% endblock %}

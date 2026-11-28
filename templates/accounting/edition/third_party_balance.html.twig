@@ -1,0 +1,66 @@
+{#
+ # Comptabilité › Éditions › Balance auxiliaire (lot 1, step 1.5b; gabarit R): the third parties
+ # named on lines of the exercise, by kind - or one kind -, with a subtotal per kind and the
+ # total; the eve's balance when the window starts after the exercise, the movements, the balance
+ # at the end. A third party and its amounts open its consultation (every line naming it).
+ #}
+{% extends 'accounting/edition/_edition.html.twig' %}
+
+{% set edition_current = 'third_party_balance' %}
+{% set edition_route = 'app_accounting_edition_third_party_balance' %}
+{% set edition_title = 'Balance auxiliaire' %}
+{% set status_keys = [{combo: 'Enter', verb: 'Consulter le tiers'}] %}
+
+{% block edition_filters %}
+    <twig:Px:Filters action="{{ path(edition_route, {dossier: dossier.id}) }}" resetHref="{{ not window.isDefault(dossier.dossierDate) or kind or scope.value == 'validated' ? path(edition_route, {dossier: dossier.id}) : null }}">
+        <twig:Px:FilterChip label="Tous" href="{{ path(edition_route, {dossier: dossier.id}|merge(keep)|merge({kind: null})|filter(v => v is not null)) }}" :current="kind is null"/>
+        {% for case in kinds %}
+            <twig:Px:FilterChip label="{{ case.plural }}" href="{{ path(edition_route, {dossier: dossier.id}|merge(keep)|merge({kind: case.value})|filter(v => v is not null)) }}" :current="kind == case"/>
+        {% endfor %}
+        {% if kind %}<input type="hidden" name="kind" value="{{ kind.value }}">{% endif %}
+        <span class="px-filters__sep" aria-hidden="true"></span>
+        {{ include('accounting/edition/_window_fields.html.twig') }}
+        <twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button>
+        {{ include('accounting/edition/_scope_chips.html.twig') }}
+    </twig:Px:Filters>
+{% endblock %}
+
+{% block edition_body %}
+    {% if report.isEmpty %}
+        <twig:Px:Empty icon="users" title="Aucun tiers mouvementé" text="Aucun {{ kind ? kind.label|lower : 'tiers' }} n’est nommé sur une écriture du {{ window.exerciseStart|date_fr }} au {{ window.to|date_fr }}{{ scope.value == 'validated' ? ' parmi les écritures validées' : '' }}."/>
+    {% else %}
+        <twig:Px:Table caption="Balance auxiliaire du {{ window.from|date_fr }} au {{ window.to|date_fr }}" :rows="true">
+            <thead><tr>
+                <th scope="col">Tiers</th>
+                <th scope="col">Nom</th>
+                <th scope="col">Compte</th>
+                {{ include('accounting/edition/_balance_head.html.twig') }}
+            </tr></thead>
+            {% set columns = report.hasOpening ? 8 : 7 %}
+            {% for group in report.groups %}
+                <tbody>
+                    <tr class="px-table__section"><th colspan="{{ columns }}" scope="rowgroup">{{ group.title }}</th></tr>
+                    {% for line in group.lines %}
+                        {% set party = line.thirdParty %}
+                        {% set code = party.auxiliaryCode ?? party.code %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-code"><a class="px-link" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: code, from: window.from|date('Y-m-d'), to: window.to|date('Y-m-d'), scope: scope.value == 'validated' ? 'validated' : null, return: here}|filter(v => v is not null)) }}">{{ code }}</a></td>
+                            <td class="px-u-truncate px-u-fill" title="{{ party.name }}">{{ party.name }}</td>
+                            <td class="px-u-code">{{ party.account ? party.account.number : '' }}</td>
+                            {{ include('accounting/edition/_balance_cells.html.twig', {subject: code}) }}
+                        </tr>
+                    {% endfor %}
+                    <tr class="px-table__subtotal"><th scope="row" colspan="3">Total {{ group.title|lower }}</th>{{ include('accounting/edition/_balance_cells.html.twig', {line: group.subtotal, subject: null}) }}</tr>
+                </tbody>
+            {% endfor %}
+            <tfoot>
+                <tr class="px-table__total"><th scope="row" colspan="3">Total · {{ report.lineCount }} tiers</th>{{ include('accounting/edition/_balance_cells.html.twig', {line: report.total, subject: null}) }}</tr>
+            </tfoot>
+        </twig:Px:Table>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}
+    <span>{{ report.lineCount }} tiers{{ kind ? ' · ' ~ kind.plural|lower : '' }}</span>
+    <span>{{ scope.value == 'validated' ? 'Écritures validées' : 'Brouillard inclus' }}</span>
+{% endblock %}

@@ -55,7 +55,7 @@ final class PdfRendererTest extends KernelTestCase
 
         $pdf = $this->renderer()->renderTemplate('design/document.html.twig', [
             'orientation' => 'landscape',
-            'report' => ['company' => 'Menuiserie Vasseur SARL', 'title' => 'Balance « fournisseurs »', 'fiscalYear' => 'Exercice 2026', 'dossierDate' => new \DateTimeImmutable('2026-11-30')],
+            'report_header' => ['company' => 'Menuiserie Vasseur SARL', 'title' => 'Balance « fournisseurs »', 'fiscalYear' => 'Exercice 2026', 'dossierDate' => new \DateTimeImmutable('2026-11-30')],
             'rows' => $rows,
             'total_debit' => Money::zero(),
             'total_credit' => Money::sum(array_column($rows, 'credit')),

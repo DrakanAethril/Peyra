@@ -1,0 +1,77 @@
+{#
+ # Comptabilité › Éditions › Journaux (lot 1, step 1.5b; gabarit R): every entry of the window,
+ # journal by journal, month by month, every line; a subtotal per month, a total per journal, the
+ # general total. An amount opens its account's consultation, a number its entry.
+ #}
+{% extends 'accounting/edition/_edition.html.twig' %}
+
+{% set edition_current = 'journals' %}
+{% set edition_route = 'app_accounting_edition_journals' %}
+{% set edition_title = journal ? 'Journal ' ~ journal.code : 'Journaux' %}
+{% set status_keys = [{combo: 'Enter', verb: 'Ouvrir l’écriture'}] %}
+
+{% block edition_filters %}
+    <twig:Px:Filters action="{{ path(edition_route, {dossier: dossier.id}) }}" resetHref="{{ not window.isDefault(dossier.dossierDate) or journal or scope.value == 'validated' ? path(edition_route, {dossier: dossier.id}) : null }}">
+        <label class="px-u-sr-only" for="edition-journal">Journal</label>
+        <twig:Px:Select id="edition-journal" name="journal" size="sm" :value="journal ? journal.code : ''" :options="[{value: '', label: 'Tous les journaux'}]|merge(journals|map(j => {value: j.code, label: j.code ~ ' · ' ~ j.label}))"/>
+        {{ include('accounting/edition/_window_fields.html.twig') }}
+        <twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button>
+        {{ include('accounting/edition/_scope_chips.html.twig') }}
+    </twig:Px:Filters>
+{% endblock %}
+
+{% block edition_body %}
+    {% if report.isEmpty %}
+        <twig:Px:Empty icon="book-text" title="Aucune écriture" text="{{ journal ? 'Le journal ' ~ journal.code : 'Aucun journal' }} n’a d’écriture du {{ window.from|date_fr }} au {{ window.to|date_fr }}{{ scope.value == 'validated' ? ' parmi les écritures validées' : '' }}."/>
+    {% else %}
+        <twig:Px:Table caption="{{ report_header.title }} du {{ window.from|date_fr }} au {{ window.to|date_fr }}" :rows="true">
+            <thead><tr>
+                <th scope="col">Date</th>
+                <th scope="col">Pièce</th>
+                <th scope="col">Numéro</th>
+                <th scope="col">Compte</th>
+                <th scope="col">Tiers</th>
+                <th scope="col">Libellé</th>
+                <th scope="col" class="px-u-right">Débit</th>
+                <th scope="col" class="px-u-right">Crédit</th>
+            </tr></thead>
+            {% for section in report.journals %}
+                <tbody>
+                    {% for month in section.months %}
+                        <tr class="px-table__section"><th colspan="8" scope="rowgroup">{{ section.journal.code }} · {{ section.journal.label }} · {{ month.month|period }}</th></tr>
+                        {% for entry in month.entries %}
+                            {% for line in entry.lines %}
+                                <tr data-rows-target="row" class="{{ loop.first ? 'px-table__entryhead' : '' }}{{ entry.validated ? '' : ' is-todo' }}">
+                                    <td class="px-u-code">{{ loop.first ? entry.entryDate|date('d/m/Y') : '' }}</td>
+                                    <td class="px-u-code">{{ loop.first ? entry.document : '' }}</td>
+                                    <td>{% if loop.first %}<a class="px-link{{ entry.numberLabel ? ' px-u-code' : '' }}" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id, return: here}) }}">{{ entry.numberLabel ?? 'Brouillard' }}</a>{% endif %}</td>
+                                    <td class="px-u-code">{{ line.account.number }}</td>
+                                    <td class="px-u-code" title="{{ line.thirdParty ? line.thirdParty.name : '' }}">{{ line.thirdParty ? (line.thirdParty.auxiliaryCode ?? line.thirdParty.code) : '' }}</td>
+                                    <td class="px-u-truncate px-u-fill" title="{{ line.label ?: entry.label }}">{{ line.label ?: entry.label }}</td>
+                                    <td class="px-u-num">{{ include('accounting/edition/_drill.html.twig', {amount: line.debit, subject: line.account.number, from: window.from, to: window.to}) }}</td>
+                                    <td class="px-u-num">{{ include('accounting/edition/_drill.html.twig', {amount: line.credit, subject: line.account.number, from: window.from, to: window.to}) }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
+                        <tr class="px-table__subtotal"><th scope="row" colspan="6">Total {{ section.journal.code }} · {{ month.month|period }}</th><td class="px-u-num">{{ month.total.debit|amount }}</td><td class="px-u-num">{{ month.total.credit|amount }}</td></tr>
+                    {% endfor %}
+                    {% if section.months|length > 1 %}
+                        <tr class="px-table__subtotal"><th scope="row" colspan="6">Total du journal {{ section.journal.code }}</th><td class="px-u-num">{{ section.total.debit|amount }}</td><td class="px-u-num">{{ section.total.credit|amount }}</td></tr>
+                    {% endif %}
+                </tbody>
+            {% endfor %}
+            <tfoot>
+                <tr class="px-table__total">
+                    <th scope="row" colspan="6">{{ journal ? 'Total du journal ' ~ journal.code : 'Total général' }} du {{ window.from|date_fr }} au {{ window.to|date_fr }}</th>
+                    <td class="px-u-num">{{ report.total.debit|amount }}</td>
+                    <td class="px-u-num">{{ report.total.credit|amount }}</td>
+                </tr>
+            </tfoot>
+        </twig:Px:Table>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}
+    <span>{{ report.entryCount }} écriture{{ report.entryCount > 1 ? 's' : '' }} · {{ report.journals|length }} journa{{ report.journals|length > 1 ? 'ux' : 'l' }}</span>
+    <span>{{ scope.value == 'validated' ? 'Écritures validées' : 'Brouillard inclus' }}</span>
+{% endblock %}

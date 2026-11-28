@@ -1,0 +1,6 @@
+{# The figure columns of a balance: the eve's balance when the window starts after the exercise, the period's movements, the balances at its end. #}
+{% if report.hasOpening %}<th scope="col" class="px-u-right">Solde au {{ window.eve|date('d/m') }}</th>{% endif %}
+<th scope="col" class="px-u-right">Mvts débit</th>
+<th scope="col" class="px-u-right">Mvts crédit</th>
+<th scope="col" class="px-u-right">Solde débiteur</th>
+<th scope="col" class="px-u-right">Solde créditeur</th>

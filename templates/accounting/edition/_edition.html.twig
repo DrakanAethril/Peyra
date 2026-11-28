@@ -1,0 +1,49 @@
+{#
+ # An edition of Comptabilité › Éditions (lot 1, step 1.5b; design-ux.md § 3.1, gabarit R): the
+ # parameter bar (a GET form), the state on screen, never paginated (§ 6.6: a state is a
+ # document), « Aperçu PDF » (the same state through Gotenberg, landscape) and « Exporter ». A
+ # child sets `edition_current`, `edition_title`, `edition_route` (the screen's route; its PDF
+ # and export are `<route>_pdf` and `<route>_export`) and `keep` comes from the controller; it
+ # fills `edition_filters` and `edition_body`.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set module_current = 'editions' %}
+{% set dossier_title = edition_title %}
+{% set kept = keep|filter(v => v is not null) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ edition_title }}" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_entry', {dossier: dossier.id})},
+        {label: 'Éditions', href: path('app_accounting_edition_journals', {dossier: dossier.id})},
+        {label: edition_title, href: path(edition_route, {dossier: dossier.id}|merge(kept))},
+    ]">
+        <twig:block name="actions">
+            {% if not report.isEmpty %}
+                <twig:Px:ExportMenu xlsx="{{ path(edition_route ~ '_export', {dossier: dossier.id, format: 'xlsx'}|merge(kept)) }}" csv="{{ path(edition_route ~ '_export', {dossier: dossier.id, format: 'csv'}|merge(kept)) }}"/>
+                <twig:Px:Button variant="primary" icon="printer" href="{{ path(edition_route ~ '_pdf', {dossier: dossier.id}|merge(kept)) }}" target="_blank" rel="noopener" data-turbo="false">Aperçu PDF</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {# Captured here: a block called inside a component's content would be looked up in the component. #}
+    {% set edition_filters %}{{ block('edition_filters') }}{% endset %}
+    {% set edition_body %}{{ block('edition_body') }}{% endset %}
+    {{ include('accounting/_edition_tabs.html.twig') }}
+
+    {% if error %}<twig:Px:Alert tone="danger">{{ error }}</twig:Px:Alert>{% endif %}
+
+    <twig:Px:Card :flush="true">
+        {{ edition_filters }}
+        {% if window.exercise is null %}
+            <twig:Px:Empty icon="calendar" title="Aucun exercice" text="Le dossier n’a pas d’exercice à la date du {{ dossier.dossierDate|date_fr }} : rien n’est à éditer."/>
+        {% else %}
+            {{ edition_body }}
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block edition_filters %}{% endblock %}
+{% block edition_body %}{% endblock %}

@@ -740,6 +740,50 @@ Lot 1, step 1.5a (design-ux.md §§ 3.2 and 6.6), held by code in `src/Service/A
   (Ctrl Entrée is the screen's engaging gesture). `px-u-fill` is the label cell that takes the room
   left and is cut there.
 
+## Editions (built at step 1.5b)
+
+Lot 1, step 1.5b (design-ux.md § 3.1, gabarit R; design-ui.md §§ 3.6 and 4.18), held by code in
+`src/Service/Accounting/Edition/`, `src/Controller/Accounting/Edition/` and `templates/accounting/edition/`:
+
+- **Comptabilité › Éditions**, a module tab with five views (`accounting/_edition_tabs.html.twig`):
+  Journaux, Grand livre, Balance (générale), Balance auxiliaire, Balance âgée. Each is a screen
+  (`/d/{dossier}/accounting/editions/<view>`), its PDF (`<view>.pdf`, « Aperçu PDF », inline, A4
+  landscape) and its spreadsheet (`<view>/export.{csv|xlsx}`, `EditionExports`: one row per line,
+  no subtotal). One controller per view, `EditionControllerTrait` for the scope, the kept
+  parameters and the PDF answer. A state is never paginated (design-ux § 6.6).
+- **`EditionWindow`**: an edition **holds in one exercise** (an exercise opens on its own
+  à-nouveaux): the exercise of the dossier's date up to that date by default; a window across two
+  exercises, a day no exercise holds, a bound that is not a day is said and the defaults are read.
+  A window starting after the exercise opens on what each account carried the eve (`hasOpening()`,
+  `eve()`). `upTo()` is the aged balance's (its exercise's first day up to a day).
+- **`AccountRange`**: « Du compte » « au compte » are numbers or their start, both included (« 4 »
+  to « 4 » is class 4); letters or a backwards range are said and the whole plan is read.
+- **Readings**: `JournalEdition` (entries by journal in code order, by month, subtotals);
+  `GeneralLedgerEdition` (LedgerReader's general ledger in the range); `TrialBalanceEdition` and
+  `ThirdPartyBalanceEdition` return a `BalanceReport` - groups (a class, a kind of third party)
+  of `BalanceLine`s: the eve's balance, the movements, the closing balance split into a debit and
+  a credit column. **A total adds the debit balances and the credit balances apart**
+  (`BalanceLine::of()`/`plus()`), never the net: the general total's two columns are equal when the
+  books balance (the status bar says « Balance équilibrée »).
+- **The aged balance** (`AgedBalanceEdition`, prepared for lot 2's follow-up): customers (debit owed
+  to the company) or suppliers (credit owed by it), at a day. `AgedBalance::age()` is a pure
+  function over a third party's lines: the balance is made of its **newest** lines on its side
+  (payments settle the oldest first), the last one taken in part, each part in the `AgeBand` of its
+  due date - the entry's date without one -: not due, 1-30, 31-60, 61-90, more than 90 days. No
+  lettering needed; `LedgerReader::linesByThirdParty()` reads the lines.
+- **Every amount leads to the consultation** of its account or third party over the state's window
+  (`_drill.html.twig`, `.px-table__drill`: the figure keeps its ink, the link shows on hover and
+  focus), `return` back to the state; the first link of a row is what Entrée opens.
+- **PDF**: `templates/accounting/edition/pdf/*` extend `doc/_report.html.twig`, whose head is now
+  `report_header` (a `ReportHeader` from `Editions::header()`, or an array for the gallery): the
+  company left, the title centre on one line, on the right the exercise and the dossier's date then
+  the period, the scope (« brouillard inclus » / « écritures validées ») and the selection; the
+  student at the foot (`Editions::student()`, a student's dossier only). The margin boxes carry
+  explicit widths (30 / 34 / 36 %): without them Chromium squeezed the title onto two lines.
+  `doc.css` adds `px-doc__group`, `px-doc__subtotal`, `px-doc__dim`, `px-doc__entryhead`; a code
+  cell stays on one line. Each PDF of the demonstration takes under a second (design-ux § 6.4's
+  two seconds hold without a background job).
+
 ## Cross-cutting building blocks (built at step 0.6a)
 
 Reach for these rather than re-implement them; each has its test.

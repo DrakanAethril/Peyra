@@ -1,0 +1,66 @@
+{#
+ # Comptabilité › Éditions › Balance (« balance générale », lot 1, step 1.5b; gabarit R): the
+ # accounts of the selection by class, with a subtotal per class and the general total; the eve's
+ # balance when the window starts after the exercise, the movements of the window, the balance at
+ # its end. An account and its amounts open its consultation.
+ #}
+{% extends 'accounting/edition/_edition.html.twig' %}
+
+{% set edition_current = 'trial_balance' %}
+{% set edition_route = 'app_accounting_edition_trial_balance' %}
+{% set edition_title = 'Balance générale' %}
+{% set status_keys = [{combo: 'Enter', verb: 'Consulter le compte'}] %}
+
+{% block edition_filters %}
+    <twig:Px:Filters action="{{ path(edition_route, {dossier: dossier.id}) }}" resetHref="{{ not window.isDefault(dossier.dossierDate) or not range.isAll or scope.value == 'validated' ? path(edition_route, {dossier: dossier.id}) : null }}">
+        {{ include('accounting/edition/_window_fields.html.twig') }}
+        {{ include('accounting/edition/_range_fields.html.twig') }}
+        <twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button>
+        {{ include('accounting/edition/_scope_chips.html.twig') }}
+    </twig:Px:Filters>
+{% endblock %}
+
+{% block edition_body %}
+    {% if report.isEmpty %}
+        <twig:Px:Empty icon="scale" title="Aucun compte mouvementé" text="Aucun compte{{ range.describe ? ' (' ~ range.describe ~ ')' : '' }} n’a de mouvement du {{ window.exerciseStart|date_fr }} au {{ window.to|date_fr }}{{ scope.value == 'validated' ? ' parmi les écritures validées' : '' }}."/>
+    {% else %}
+        <twig:Px:Table caption="Balance générale du {{ window.from|date_fr }} au {{ window.to|date_fr }}" :rows="true">
+            <thead><tr>
+                <th scope="col">Compte</th>
+                <th scope="col">Intitulé</th>
+                {{ include('accounting/edition/_balance_head.html.twig') }}
+            </tr></thead>
+            {% set columns = report.hasOpening ? 7 : 6 %}
+            {% for group in report.groups %}
+                <tbody>
+                    <tr class="px-table__section"><th colspan="{{ columns }}" scope="rowgroup">{{ group.title }}</th></tr>
+                    {% for line in group.lines %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-code"><a class="px-link" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: line.account.number, from: window.from|date('Y-m-d'), to: window.to|date('Y-m-d'), scope: scope.value == 'validated' ? 'validated' : null, return: here}|filter(v => v is not null)) }}">{{ line.account.number }}</a></td>
+                            <td class="px-u-truncate px-u-fill" title="{{ line.account.label }}">{{ line.account.label }}</td>
+                            {{ include('accounting/edition/_balance_cells.html.twig', {subject: line.account.number}) }}
+                        </tr>
+                    {% endfor %}
+                    <tr class="px-table__subtotal"><th scope="row" colspan="2">Total {{ group.title|split(' · ')|first|lower }}</th>{{ include('accounting/edition/_balance_cells.html.twig', {line: group.subtotal, subject: null}) }}</tr>
+                </tbody>
+            {% endfor %}
+            <tfoot>
+                <tr class="px-table__total"><th scope="row" colspan="2">Total général · {{ report.lineCount }} compte{{ report.lineCount > 1 ? 's' : '' }}</th>{{ include('accounting/edition/_balance_cells.html.twig', {line: report.total, subject: null}) }}</tr>
+            </tfoot>
+        </twig:Px:Table>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}
+    {% set gap = report.total.closingDebit.minus(report.total.closingCredit) %}
+    {% if report.isEmpty %}
+        {{ parent() }}
+    {% elseif not range.isAll %}
+        <span>{{ report.lineCount }} compte{{ report.lineCount > 1 ? 's' : '' }} · {{ range.describe }}</span>
+    {% elseif gap.isZero %}
+        <span>Balance équilibrée · soldes débiteurs = soldes créditeurs = <b>{{ report.total.closingDebit|amount }}</b></span>
+    {% else %}
+        <span>Balance déséquilibrée · écart <b>{{ gap|balance }}</b></span>
+    {% endif %}
+    <span>{{ scope.value == 'validated' ? 'Écritures validées' : 'Brouillard inclus' }}</span>
+{% endblock %}
