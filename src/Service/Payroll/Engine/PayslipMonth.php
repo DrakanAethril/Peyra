@@ -47,7 +47,7 @@ final readonly class PayslipMonth
         }
         $this->presentDays = (int) $this->from->diff($this->to)->days + 1;
         if ($unpaidDays < 0 || $unpaidDays > $this->presentDays) {
-            throw new \InvalidArgumentException('The whole days of unpaid absence are counted within the days of the contract.');
+            throw new \InvalidArgumentException('Les jours entiers d’absence sans aucun versement se comptent parmi les jours du contrat dans le mois.');
         }
         $this->unpaidDays = $unpaidDays;
     }

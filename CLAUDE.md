@@ -1247,6 +1247,11 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   net taxable within the annual SMIC (`PayslipYearToDate::$apprenticeExempt`). The fixed-term indemnity (1500)
   and the compensatory leave (1320) are computed after the month's gross; `PayslipSeverance` is the one reading
   of a dismissal or conventional termination indemnity and **refuses** one partly subject to contributions.
+- **The payslip of the month** (step 4.4a, `src/Service/Payroll/Payslip/`): `MonthlyPayslip` keeps the elements
+  entered (JSON, `PayslipElements`) and the state, **never the lines**: the screen asks the engine at every
+  reading. `PayslipBook` is the one door (month paid, employees of the month, engine input on the month's last
+  day, `record()`); the card's fields come from the plan (`PayslipElementFields`, by base, never by code). In a
+  payroll template never name a variable `view`: the shell's `DossierShellView` already is.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 
