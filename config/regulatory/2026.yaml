@@ -289,7 +289,7 @@ entries:
     note: Non déductible du revenu imposable.
   - key: social.csg_abatement
     label: Abattement pour frais professionnels sur l'assiette CSG/CRDS
-    value: {rate: 1.75, limit: 4 PASS}
+    value: {rate: 1.75, limit_pss: 4}
     unit: percent
     effective_from: 2026-01-01
     source_url: https://www.urssaf.fr/accueil/employeur/cotisations/liste-cotisations/csg-crds.html
@@ -327,6 +327,21 @@ entries:
     consulted_on: 2026-11-27
     verified: true
     note: Taux général du forfait social 20 % ; 8 % sur les contributions patronales de prévoyance complémentaire (santé et prévoyance collectives exonérées de cotisations) pour les entreprises de 11 salariés et plus ; non dû en dessous de 11 salariés.
+
+  # --- Tranches de rémunération -------------------------------------------------------------------
+  - key: social.ceiling_brackets
+    label: Tranches de rémunération, en plafonds de la sécurité sociale
+    value:
+      tranche_1: {from: 0, to: 1}
+      tranche_2: {from: 1, to: 8}
+      tranches_1_2: {from: 0, to: 8}
+      four_ceilings: {from: 0, to: 4}
+    unit: PSS
+    effective_from: 2019-01-01
+    source_url: https://reglementation.agirc-arrco.fr/home/baremes/listes-area/baremes-1/cotisations-au-regime-agirc-arrco-en-2026.html
+    consulted_on: 2026-11-28
+    verified: true
+    note: Tranche 1 de 0 à 1 PSS et tranche 2 de 1 à 8 PSS (Agirc-Arrco, depuis le régime unifié de 2019) ; 4 PSS pour l'assurance chômage, l'AGS et l'Apec (urssaf.fr, assurance chômage et AGS). Bornes en plafonds mensuels sur un bulletin mensuel ; la borne basse incluse, la haute exclue.
 
   # --- Retraite complémentaire Agirc-Arrco ------------------------------------------------------
   - key: social.agirc_arrco.tranches
@@ -405,6 +420,18 @@ entries:
     note: ANI du 17 novembre 2017, article 1er (en vigueur étendu) - « à leur charge exclusive, égale à 1,50 % de la tranche de rémunération inférieure au plafond », affectée par priorité au décès.
 
   # --- Réduction générale (RGDU) -----------------------------------------------------------------
+  - key: social.general_reduction.regime
+    label: Réduction générale - formule du millésime
+    value: rgdu
+    unit: text
+    effective_from: 2026-01-01
+    source_url: https://entreprendre.service-public.gouv.fr/vosdroits/F24542
+    consulted_on: 2026-11-28
+    verified: true
+    note: >-
+      « rgdu » - la réduction générale dégressive unique (art. 18 LFSS 2025, décrets n° 2025-887 et 2025-1446),
+      pour les périodes d'emploi à compter du 1er janvier 2026, lue sous social.rgdu.parameters. Le moteur de
+      bulletin choisit la formule par cette valeur (étape 4.3b).
   - key: social.rgdu.parameters
     label: Réduction générale dégressive unique (RGDU) - paramètres
     value:
@@ -412,9 +439,12 @@ entries:
       t_delta: {lt_50: 0.3781, ge_50: 0.3821}
       coefficient_max: {lt_50: 0.3981, ge_50: 0.4021}
       exponent_p: 1.75
-      exit_threshold: 3 SMIC
+      exit_threshold_smic: 3
+      smic_reference: "SMIC en vigueur au 1er janvier 2026 (12,02 €), même après la revalorisation du 1er juin 2026"
+      smic_monthly_reference: 1823.03
+      smic_hourly_reference: 12.02
       formula: "C = Tmin + Tdelta × [ ½ × (3 × SMIC annuel ÷ rémunération annuelle brute − 1) ]^P"
-      rounding: 4 décimales
+      coefficient_decimals: 4
     unit: coefficient
     effective_from: 2026-01-01
     source_url: https://www.urssaf.fr/accueil/employeur/beneficier-exonerations/reduction-generale-cotisation.html
@@ -424,6 +454,10 @@ entries:
       Lu sur urssaf.fr (mis à jour 13/07/2026) et dans la table des paramètres du BOSS (COT_RGDU_Tmin = 2,
       Tdelta 37,81 / 38,21). Arrondi à 4 décimales : règle lue pour 2025 (D241-7) et appliquée par les exemples
       Urssaf 2026, non relue dans le texte 2026. Voir LISEZ-MOI.md pour la formule détaillée et l'exemple.
+      Relu le 28/11/2026 sur entreprendre.service-public.gouv.fr (F24542) - Tmin 0,0200, Tdelta 0,3781 / 0,3821,
+      P 1,75, SMIC calculé pour un an 21 876,40 € (valeur du 1er janvier 2026 conservée), coefficient
+      « arrondi à quatre décimales, au dix millième le plus proche », au plus Tmin + Tdelta. La FAQ Agirc-Arrco
+      d'avril 2026 donne 0,3773 / 0,3813 (A-VERIFIER).
   - key: social.rgdu.smic_reference
     label: RGDU - SMIC de référence et seuil après la revalorisation de juin 2026
     value:

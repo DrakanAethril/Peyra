@@ -10,6 +10,8 @@ namespace App\Enum\Payroll;
  * insurance of a company contract) has no base: its rate is an amount. The paid leave of the month
  * stands on two: its hours, taken off the salary, and its pay - the better of the salary kept
  * (« maintien ») and the tenth of the reference period's gross pay, the item's rate being the tenth.
+ * The forfait social on the provident schemes stands on the employer's share of the contributions of
+ * the payslip's « complémentaire santé » and « prévoyance » lines.
  */
 enum PayrollBase: string
 {
@@ -26,6 +28,7 @@ enum PayrollBase: string
     case Flat = 'flat';
     case OvertimePay = 'overtime_pay';
     case OvertimeHours = 'overtime_hours';
+    case ProvidentEmployer = 'provident_employer';
     case BenefitsInKind = 'benefits_in_kind';
     case NetTaxable = 'net_taxable';
 
@@ -45,6 +48,7 @@ enum PayrollBase: string
             self::Flat => 'Forfait (sans base)',
             self::OvertimePay => 'Rémunération des heures sup.',
             self::OvertimeHours => 'Heures supplémentaires',
+            self::ProvidentEmployer => 'Part patronale prévoyance et santé',
             self::BenefitsInKind => 'Avantages en nature',
             self::NetTaxable => 'Net imposable',
         };

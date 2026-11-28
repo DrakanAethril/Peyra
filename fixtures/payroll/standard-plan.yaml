@@ -9,7 +9,8 @@
 # au-delà du minimum, taux d'accident du travail et de versement mobilité) est au dossier.
 # Le moteur de bulletin (étape 4.3) applique ce que les rubriques ne disent pas : la régularisation
 # des plafonds, les taux réduits de 2025, l'exonération des apprentis, la réduction générale du
-# millésime et son imputation, l'assiette de la CSG.
+# millésime et son imputation, l'assiette de la CSG, le taux effectif de la réduction salariale sur
+# les heures supplémentaires.
 #
 # Aucune convention collective (périmètre accepté par les référents).
 
@@ -72,6 +73,7 @@ items:
   - {code: '2650', label: Formation professionnelle (11 salariés et plus), kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.vocational_training, path: 1.employer_rate}, headcount: from_11, body: urssaf, line: other_employer_contributions}
   - {code: '2660', label: Taxe d’apprentissage, kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.apprenticeship_tax, path: total}, body: urssaf, line: other_employer_contributions}
   - {code: '2670', label: Versement mobilité, kind: contribution, base: gross, employer: {source: mobility}, headcount: from_11, body: urssaf, line: other_employer_contributions}
+  - {code: '2700', label: Forfait social sur la prévoyance, kind: contribution, base: provident_employer, employer: {source: regulatory, key: social.contrib.forfait_social_prevoyance, path: 1.rate}, headcount: from_11, body: urssaf, line: other_employer_contributions}
 
   # --- CSG et CRDS ---------------------------------------------------------------------------------
   - {code: '2800', label: CSG déductible, kind: contribution, base: csg_base, employee: {source: regulatory, key: social.contrib.csg_deductible, path: employee_rate}, body: urssaf, line: csg_deductible}

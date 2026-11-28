@@ -19,7 +19,7 @@ use Brick\Math\RoundingMode;
  * database, no clock, no rate written here. Each rubrique of the plan de paie is read for what it
  * says (its base, the source of its rate, its conditions) and becomes a line that explains itself.
  *
- * Step 4.3a calculates the gross pay:
+ * Step 4.3a calculates the gross pay, step 4.3b the contributions (PayslipContributions):
  * - the salary of the contract, mensualised: its monthly hours at the hourly rate, the amount being
  *   the salary itself (an hourly rate rounded to four decimals would miss it by a few cents);
  * - hours entered (overtime, complementary hours, an absence) at the hourly rate, raised by the
@@ -35,8 +35,9 @@ final class PayslipCalculator
 {
     public static function calculate(PayslipInput $input): Payslip
     {
+        $ordered = self::ordered($input->plan);
         $rows = [];
-        foreach (self::ordered($input->plan) as $spec) {
+        foreach ($ordered as $spec) {
             if (PayrollItemKind::Gross !== $spec->kind || !$spec->status->holds($input->employee->executive)) {
                 continue;
             }
@@ -45,8 +46,10 @@ final class PayslipCalculator
                 $rows[] = $row;
             }
         }
+        $gross = Money::sum(array_map(static fn (PayslipRow $row): Money => $row->employeeAmount, $rows));
+        $contributions = PayslipContributions::calculate($input, $ordered, $rows, $gross);
 
-        return new Payslip($rows, Money::sum(array_map(static fn (PayslipRow $row): Money => $row->employeeAmount, $rows)));
+        return new Payslip([...$rows, ...$contributions['rows']], $gross, $contributions['reduction']);
     }
 
     /**
