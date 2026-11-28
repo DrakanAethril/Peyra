@@ -1,0 +1,78 @@
+{#
+ # The mission banner and its panel (step 2.9b; design-ui.md § 4.3, design-ux.md § 2.3), the first line
+ # of every page of a dossier that plays a mission: « Mission 2 · tâche 2 sur 5 — intitulé », a segment
+ # per task (done, current, to do). The task's text opens the panel (Alt+M): the statement, the tasks
+ # - « Tâche terminée » on a task the student ticks, the screen of one the dossier ticks -, the due
+ # date, the level in force, « Rendre la mission ». A teacher reads it without the buttons.
+ #}
+{% set play = mission_play(dossier) %}
+{% if play %}
+    {% set total = play.tasks|length %}
+    {% set current = play.currentTask %}
+    {% set back = app.request.pathInfo ~ (app.request.queryString ? '?' ~ app.request.queryString : '') %}
+    <div class="px-mission" role="region" aria-label="Mission en cours">
+        <twig:ux:icon name="graduation-cap" aria-hidden="true"/>
+        <p>
+            {%- if play.submitted -%}
+                <b>Mission {{ play.rank }} · rendue le {{ play.progress.submittedAt|date('d/m/Y') }}</b> — <button type="button" class="px-mission__open" data-px-open="mission-panel" data-px-shortcut="Alt+M">{{ play.mission.title }}</button>
+            {%- elseif total == 0 -%}
+                <b>Mission {{ play.rank }}</b> — <button type="button" class="px-mission__open" data-px-open="mission-panel" data-px-shortcut="Alt+M">{{ play.mission.title }}</button>
+            {%- elseif current -%}
+                <b>Mission {{ play.rank }} · tâche {{ play.currentRank }} sur {{ total }}</b> — <button type="button" class="px-mission__open" data-px-open="mission-panel" data-px-shortcut="Alt+M">{{ current.title }}</button>
+            {%- else -%}
+                <b>Mission {{ play.rank }} · {{ total }} tâche{{ total > 1 ? 's' : '' }} sur {{ total }} faite{{ total > 1 ? 's' : '' }}</b> — <button type="button" class="px-mission__open" data-px-open="mission-panel" data-px-shortcut="Alt+M">Rendre la mission</button>
+            {%- endif -%}
+        </p>
+        {% if total > 0 %}
+            <ol class="px-mission__steps" aria-label="Avancement : {{ play.doneCount }} tâche{{ play.doneCount > 1 ? 's' : '' }} faite{{ play.doneCount > 1 ? 's' : '' }} sur {{ total }}">
+                {% for task in play.tasks %}<li class="{{ task.done ? 'is-done' : (task.current ? 'is-current' : '') }}" title="{{ task.title }} : {{ task.status.label|lower }}"></li>{% endfor %}
+            </ol>
+        {% endif %}
+    </div>
+    <twig:Px:Drawer id="mission-panel" title="{{ play.mission.title }}">
+        <div class="px-stack">
+            {% if play.mission.statement %}<p>{{ play.mission.statement|nl2br }}</p>{% endif %}
+            <p class="px-u-muted">
+                À rendre le {{ play.assignment.dueAt|date('d/m/Y à H:i') }}{% if play.late %} <twig:Px:Badge tone="danger">en retard</twig:Px:Badge>{% endif %}<br>
+                Assistance : {{ play.level.label|lower }} · écritures : {{ play.mission.behaviour.label|lower }}
+            </p>
+            {% if total > 0 %}
+                <ol class="px-mission-tasks">
+                    {% for task in play.tasks %}
+                        <li>
+                            <span class="px-mission-tasks__head"><twig:Px:Badge :of="task.status"/> {{ task.title }}</span>
+                            {% if task.instruction %}<span>{{ task.instruction|nl2br }}</span>{% endif %}
+                            {% if task.check.value == 'declared' %}
+                                {% if play.canPlay and not play.submitted %}
+                                    <form method="post" action="{{ path('app_mission_play_task', {dossier: dossier.id, key: task.key}) }}" class="px-cluster">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('mission-play-' ~ dossier.id) }}">
+                                        <input type="hidden" name="return" value="{{ back }}">
+                                        {% if task.done %}
+                                            <twig:Px:Button type="submit" size="sm" variant="quiet" icon="undo-2" name="done" value="0">Rouvrir la tâche</twig:Px:Button>
+                                        {% else %}
+                                            <twig:Px:Button type="submit" size="sm" variant="{{ task.current ? 'primary' : 'secondary' }}" icon="check" name="done" value="1">Tâche terminée</twig:Px:Button>
+                                        {% endif %}
+                                    </form>
+                                {% endif %}
+                            {% else %}
+                                <span class="px-u-muted">{{ task.check.hint }}{% if task.check.route and mission_opens(dossier, task.check.module.value) %} <a class="px-link" href="{{ path(task.check.route, {dossier: dossier.id}) }}">Aller à l’écran</a>{% endif %}</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ol>
+            {% endif %}
+        </div>
+        <twig:block name="foot">
+            {% if play.submitted %}
+                <p>Rendue le {{ play.progress.submittedAt|date('d/m/Y à H:i') }} : le point de restauration « Rendu » fige le dossier tel qu’il était, c’est lui que votre enseignant corrige.</p>
+            {% elseif play.canPlay %}
+                <form method="post" action="{{ path('app_mission_play_submit', {dossier: dossier.id}) }}" class="px-stack">
+                    <input type="hidden" name="_token" value="{{ csrf_token('mission-play-' ~ dossier.id) }}">
+                    <input type="hidden" name="return" value="{{ back }}">
+                    <p class="px-u-muted">Rendre fige votre dossier dans un point de restauration « Rendu » : c’est lui que votre enseignant corrige. Vous pourrez continuer à travailler, mais plus cocher de tâche.</p>
+                    <div class="px-cluster"><twig:Px:ConfirmButton label="Rendre la mission" confirmLabel="Confirmer le rendu" variant="secondary" icon="send"/></div>
+                </form>
+            {% endif %}
+        </twig:block>
+    </twig:Px:Drawer>
+{% endif %}

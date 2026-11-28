@@ -505,6 +505,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/teacher/library/missions/'.$mission.'/referential' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
             '/teacher/library/missions/'.$mission.'/settings' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
             '/teacher/library/missions/'.$mission.'/assignments' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/teacher/library/missions/'.$mission.'/answer-key' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
         ];
         foreach ($table as $url => $expected) {
             $actual = [];

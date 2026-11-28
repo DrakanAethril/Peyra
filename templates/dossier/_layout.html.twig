@@ -41,10 +41,15 @@
     </twig:Px:RailGroup>
 {% endblock %}
 
+{% block page_banner %}{{ include('dossier/_mission.html.twig') }}{% endblock %}
+
 {% block context_bar %}
     {% if view.teacher %}
         {% if dossier.template %}
             <twig:Px:ContextBar tone="template" backLabel="Revenir à la bibliothèque" backHref="{{ path('app_library_template', {dossier: dossier.id}) }}">Dossier modèle · {{ dossier.libraryTitle }}{% if dossier.owner is null %} · bibliothèque commune{% endif %}{% if view.canEdit %} · vos modifications valent pour les prochaines distributions{% endif %}</twig:Px:ContextBar>
+        {% elseif dossier.kind.value == 'answer_key' %}
+            {% set key_mission = answer_key_mission(dossier) %}
+            <twig:Px:ContextBar tone="template" backLabel="Revenir au corrigé de la mission" backHref="{{ key_mission ? path('app_mission_answer_key', {id: key_mission.id}) : path('app_library_missions') }}">Corrigé{% if key_mission %} de la mission « {{ key_mission.title }} »{% endif %} · ce que vous faites ici devient le corrigé quand vous l’enregistrez</twig:Px:ContextBar>
         {% elseif view.holders|length == 1 %}
             <twig:Px:ContextBar backLabel="Revenir à la fiche de l’étudiant" backHref="{{ path('app_teacher_student', {id: view.holders[0].id}) }}">Dossier de {{ view.holderNames }} · {{ view.canEdit ? 'vos actions sont signées de votre nom' : 'en lecture' }}</twig:Px:ContextBar>
         {% else %}

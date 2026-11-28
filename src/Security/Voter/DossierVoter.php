@@ -23,7 +23,8 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
  * - a template: its author (everything) and the colleagues it is shared with (VIEW, plus EDIT and
  *   SET_DATE when shared for change); a template of the common library (no author) is read by
  *   every teacher and changed by the administrators;
- * - a restore point is never opened as a dossier: one goes back to it from its dossier.
+ * - a restore point is never opened as a dossier: one goes back to it from its dossier;
+ * - a mission's answer key copy (step 2.9b): its teacher alone, the mission's author.
  *
  * VIEW opens it, EDIT works in it, SET_DATE moves its date - a teacher's gesture, never a
  * student's. A refusal reads as a 404 (App\Security\DossierRouteListener).
@@ -56,6 +57,7 @@ final class DossierVoter extends Voter
             DossierKind::Template => $this->template($attribute, $subject, $user),
             DossierKind::Student, DossierKind::Group => $this->held($attribute, $subject, $user),
             DossierKind::Snapshot => false,
+            DossierKind::AnswerKey => $user->isTeacher() && $subject->getOwner() === $user,
         };
     }
 

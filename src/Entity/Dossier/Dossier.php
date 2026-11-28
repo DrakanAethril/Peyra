@@ -123,10 +123,11 @@ class Dossier
         $fits = match ($kind) {
             DossierKind::Student => null !== $owner && $owner->isStudent(),
             DossierKind::Template => null === $owner || $owner->isTeacher(),
+            DossierKind::AnswerKey => null !== $owner && $owner->isTeacher(),
             DossierKind::Group, DossierKind::Snapshot => null === $owner,
         };
         if (!$fits) {
-            throw new \LogicException('A student’s dossier belongs to a student, a template to a teacher or to nobody, a group’s dossier and a restore point to nobody.');
+            throw new \LogicException('A student’s dossier belongs to a student, a template to a teacher or to nobody, an answer key to a teacher, a group’s dossier and a restore point to nobody.');
         }
         $this->kind = $kind;
         $this->company = $company;
