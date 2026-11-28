@@ -74,8 +74,10 @@ final class FecImportTest extends KernelTestCase
             $journals = self::getContainer()->get(JournalRepository::class);
             self::assertSame(JournalType::Opening, $journals->findOneByCode($template, 'AN')?->getType());
             self::assertSame(JournalType::Purchases, $journals->findOneByCode($template, 'ACH')?->getType());
-            self::assertSame('512200', $journals->findOneByCode($template, 'BQ2')?->getCounterpartAccount()?->getNumber());
-            self::assertSame(JournalType::Bank, $journals->findOneByCode($template, 'BQ2')?->getType());
+            $bank = $journals->findOneByCode($template, 'BQ2');
+            self::assertNotNull($bank);
+            self::assertSame(JournalType::Bank, $bank->getType());
+            self::assertSame('512200', $bank->getCounterpartAccount()?->getNumber());
             $supplier = self::getContainer()->get(ThirdPartyRepository::class)->findOneBy(['auxiliaryCode' => '401SCIE']);
             self::assertSame('401000', $supplier?->getAccount()?->getNumber());
             self::assertTrue(self::getContainer()->get(AccountRepository::class)->findOneByNumber($template, '401000')?->isCollective());
@@ -101,7 +103,7 @@ final class FecImportTest extends KernelTestCase
         self::assertCount(1, $draft->findings);
         self::assertSame(5, $draft->findings[0]->line);
         self::assertSame('CompAuxNum', $draft->findings[0]->zone);
-        self::assertSame($before, \count($dossiers->findAll()));
+        self::assertCount($before, $dossiers->findAll());
     }
 
     public function testAFileIsAskedForAndAFileOutsideTheExerciseIsRefused(): void

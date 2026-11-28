@@ -55,7 +55,7 @@ final class NewFromFecTest extends WebTestCase
         self::assertSelectorTextContains('main', 'Rien n’est importé');
         self::assertSelectorTextContains('main tr.is-error', 'Les lignes du compte 401000 nomment leur compte auxiliaire');
         self::assertSame('5', trim($client->getCrawler()->filter('main tr.is-error td')->first()->text()));
-        self::assertSame($before, \count($dossiers->findAll()));
+        self::assertCount($before, $dossiers->findAll());
 
         // A good file.
         $client->request('POST', '/teacher/library/new/fec', ['_token' => $token, ...$this->fields()], ['file' => $this->upload([
