@@ -898,3 +898,18 @@ entries:
       30 % depuis le 1er septembre 2023 (CSS L137-12), sur la part de l'indemnité exonérée de cotisations sociales ;
       porté à 40 % au 1er janvier 2026 par la LFSS 2026 (article 15). Lu sur des sources secondaires (France Travail,
       open.lefebvre-dalloz.fr), urssaf.fr injoignable. Le salarié en droit à une retraite à taux plein n'est pas couvert.
+
+  # --- Amortissements (lot 3, étape 3.4 : le dégressif des immobilisations) -----------------------
+  - key: fiscal.depreciation.declining_balance_coefficients
+    label: Amortissement dégressif - coefficients fiscaux selon la durée d'utilisation
+    value: {three_or_four_years: 1.25, five_or_six_years: 1.75, over_six_years: 2.25}
+    unit: coefficient
+    effective_from: 2001-01-01
+    source_url: https://bofip.impots.gouv.fr/bofip/4699-PGP.html
+    consulted_on: 2026-11-27
+    verified: true
+    note: >-
+      BOI-BIC-AMT-20-20-30 (version en vigueur depuis le 12/09/2012), art. 39 A CGI : 1,25 pour une durée de 3 ou
+      4 ans, 1,75 pour 5 ou 6 ans, 2,25 au-delà de 6 ans ; aucun dégressif en dessous de 3 ans. Taux dégressif =
+      taux linéaire × coefficient, à compter du premier jour du mois d'acquisition ; passage au linéaire quand le
+      taux linéaire sur la durée restante devient supérieur. Règle stable, reprise telle quelle pour 2025 et 2026.

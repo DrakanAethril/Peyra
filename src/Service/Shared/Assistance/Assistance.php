@@ -193,4 +193,13 @@ final readonly class Assistance
     {
         return $this->runsControls();
     }
+
+    /**
+     * The fixed asset's fiche shows its depreciation plan calculated (design-ux.md § 3.2,
+     * « Immobilisations » - G : plan calculé); at « Aucun filet » the student draws it up alone.
+     */
+    public function calculatesDepreciationPlan(bool $teacher): bool
+    {
+        return $teacher || AssistanceLevel::None !== $this->level;
+    }
 }

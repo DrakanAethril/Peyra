@@ -291,6 +291,15 @@ enum AuditAction: string
     /** An invoicing document's entry written in the brouillard through the gateway (step 2.3b). */
     case SalesDocumentPosted = 'sales.document_posted';
 
+    /** A fixed asset's fiche created (step 3.4). */
+    case FixedAssetCreated = 'assets.fixed_asset_created';
+
+    /** A fixed asset's fiche changed. */
+    case FixedAssetChanged = 'assets.fixed_asset_changed';
+
+    /** A fixed asset's fiche deleted. */
+    case FixedAssetDeleted = 'assets.fixed_asset_deleted';
+
     public function label(): string
     {
         return match ($this) {
@@ -401,6 +410,9 @@ enum AuditAction: string
             self::SalesDocumentValidated => 'Document commercial validé',
             self::SalesDocumentSent => 'Document commercial envoyé',
             self::SalesDocumentPosted => 'Document commercial comptabilisé',
+            self::FixedAssetCreated => 'Immobilisation créée',
+            self::FixedAssetChanged => 'Immobilisation modifiée',
+            self::FixedAssetDeleted => 'Immobilisation supprimée',
         };
     }
 }

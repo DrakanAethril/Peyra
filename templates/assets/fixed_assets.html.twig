@@ -1,0 +1,85 @@
+{#
+ # Immobilisations et clôture › Immobilisations (step 3.4, gabarit L): the dossier's fixed assets by
+ # account, each with its cost, its method and, when the plan is calculated for this person, what
+ # its plan says for the exercise of the dossier's date - depreciation before it, its dotation, the
+ # net book value at its end. A line opens the fiche.
+ #}
+{% extends 'closing/_layout.html.twig' %}
+
+{% set closing_tab = 'assets' %}
+{% set dossier_title = 'Immobilisations' %}
+{% set can_edit = is_granted('ASSETS_ENTER', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouvelle immobilisation'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Immobilisations" :trail="[
+        {label: 'Immobilisations et clôture', href: path('app_assets', {dossier: dossier.id})},
+        {label: 'Immobilisations', href: path('app_assets', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button href="{{ path('app_assets_new', {dossier: dossier.id}) }}" variant="primary" icon="plus" shortcut="N">Nouvelle immobilisation</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if asset_rows is empty %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="building-2" title="Aucune immobilisation dans ce dossier." text="Chaque immobilisation a sa fiche : compte, coût d’entrée, date de mise en service, mode et durée d’amortissement, et son plan d’amortissement."/>
+        </twig:Px:Card>
+    {% else %}
+        <twig:Px:Card :flush="true">
+            <twig:Px:Table caption="Immobilisations de {{ dossier.name }}" :rows="true">
+                <thead>
+                    <tr>
+                        <th scope="col">Code</th>
+                        <th scope="col">Intitulé</th>
+                        <th scope="col">Compte</th>
+                        <th scope="col" class="px-u-right">Mise en service</th>
+                        <th scope="col">Mode</th>
+                        <th scope="col" class="px-u-right">Valeur brute</th>
+                        {% if calculates %}
+                            <th scope="col" class="px-u-right" title="Amortissements des exercices antérieurs">Antérieurs</th>
+                            <th scope="col" class="px-u-right">Dotation {{ exercise.code }}</th>
+                            <th scope="col" class="px-u-right" title="Valeur nette comptable au {{ exercise.endsOn|date_fr }}">VNC fin {{ exercise.code }}</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in asset_rows %}
+                        {% set asset = line.asset %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-code"><a class="px-link" href="{{ path('app_assets_fiche', {dossier: dossier.id, code: asset.code}) }}">{{ asset.code }}</a></td>
+                            <td class="px-u-truncate px-u-truncate-short" title="{{ asset.label }}">{{ asset.label }}</td>
+                            <td class="px-u-code">{{ asset.account.number }}</td>
+                            <td class="px-u-num">{{ asset.inServiceOn|date_fr }}</td>
+                            <td class="px-u-nowrap">{{ asset.method.label }}{% if asset.years %} <span class="px-u-muted">{{ asset.years }} ans</span>{% elseif asset.components is not empty %} <span class="px-u-muted">composants</span>{% endif %}</td>
+                            <td class="px-u-num">{{ asset.cost|amount }}</td>
+                            {% if calculates %}
+                                <td class="px-u-num">{{ line.opening|amount_cell }}</td>
+                                <td class="px-u-num">{{ line.dotation|amount_cell }}</td>
+                                <td class="px-u-num">{{ line.net|amount }}</td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th scope="row" colspan="5">Total</th>
+                        <td class="px-u-num">{{ totals.cost|amount }}</td>
+                        {% if calculates %}
+                            <td class="px-u-num">{{ totals.opening|amount }}</td>
+                            <td class="px-u-num">{{ totals.dotation|amount }}</td>
+                            <td class="px-u-num">{{ totals.net|amount }}</td>
+                        {% endif %}
+                    </tr>
+                </tfoot>
+            </twig:Px:Table>
+        </twig:Px:Card>
+        {% if not calculates and exercise %}
+            <p class="px-u-muted">Au niveau « Aucun filet », le plan d’amortissement de chaque immobilisation est à établir vous-même.</p>
+        {% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>Immobilisations · <b>{{ asset_rows|length }}</b></span>{% endblock %}
