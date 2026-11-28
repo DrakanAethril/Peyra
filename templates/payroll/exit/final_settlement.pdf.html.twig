@@ -1,0 +1,58 @@
+{#
+ # The reçu pour solde de tout compte (article L1234-20 du code du travail; lot 4, step 4.4c): the
+ # inventory of the sums paid to the employee at the end of the contract, read on the last payslip
+ # as validated (FinalSettlement) - the gross salary of the last month, each end-of-contract
+ # indemnity, the net paid -, the six months to contest it once signed, two copies, the signatures.
+ #}
+{% extends 'doc/_document.html.twig' %}
+
+{% set feminine = employee.sex.value == 'F' %}
+{% block title %}Reçu pour solde de tout compte · {{ employee.fullName }}{% endblock %}
+
+{% block body %}
+    <article class="px-doc">
+        <h1 class="px-doc__title">Reçu pour solde de tout compte</h1>
+        <p class="px-doc__subtitle">Article L1234-20 du code du travail</p>
+
+        <p class="px-doc__clause">Je soussigné{{ feminine ? 'e' : '' }}, <strong>{{ feminine ? 'Madame' : 'Monsieur' }} {{ employee.firstName }} {{ employee.lastName }}</strong>{% if employee.street %}, demeurant {{ employee.street }}, {{ employee.postalCode }} {{ employee.city }}{% endif %}, employé{{ feminine ? 'e' : '' }} du {{ employee.hiredOn|date_fr }} au {{ employee.exitOn|date_fr }} par <strong>{{ company.name }}</strong>, SIRET {{ company.siret }}, {{ company.street }}{% if company.street2 %}, {{ company.street2 }}{% endif %}, {{ company.postalCode }} {{ company.city }},</p>
+        <p class="px-doc__clause">reconnais avoir reçu de mon employeur, pour solde de tout compte, la somme de <strong>{{ settlement.netPaid|amount_eur }}</strong>, versée avec le bulletin de paie {{ month|of_period }}, en paiement des sommes suivantes :</p>
+
+        <table class="px-doc__table">
+            <colgroup><col style="width: 75%"><col style="width: 25%"></colgroup>
+            <thead>
+                <tr>
+                    <th scope="col">Nature des sommes</th>
+                    <th scope="col" class="px-doc__num">Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Salaire brut {{ month|of_period }}</td>
+                    <td class="px-doc__num">{{ settlement.lastMonthSalary|amount }}</td>
+                </tr>
+                {% for indemnity in settlement.indemnities %}
+                    <tr>
+                        <td>{{ indemnity.label }}{{ indemnity.gross ? ' (montant brut)' : ' (exonérée)' }}</td>
+                        <td class="px-doc__num">{{ indemnity.amount|amount }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th scope="row">Net payé, après cotisations, contributions et prélèvement à la source</th>
+                    <td class="px-doc__num">{{ settlement.netPaid|amount }}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <p class="px-doc__clause">Ce reçu peut être dénoncé dans les six mois qui suivent sa signature, par lettre recommandée adressée à l’employeur ; passé ce délai, il devient libératoire pour l’employeur pour les sommes qui y sont mentionnées.</p>
+        <p class="px-doc__clause">Fait en deux exemplaires, dont un remis au salarié, à {{ company.city }}, le {{ employee.exitOn|date_fr }}.</p>
+        <table class="px-doc__signatures">
+            <tr>
+                <td>{{ feminine ? 'La salariée' : 'Le salarié' }}<br><span class="px-doc__dim-text">« Pour solde de tout compte », date et signature</span></td>
+                <td>Pour l’employeur<br><span class="px-doc__dim-text">Nom, qualité et signature</span></td>
+            </tr>
+        </table>
+        <p class="px-doc__legal">Document fictif établi par Peyra, PGI pédagogique, pour un dossier d’entraînement : la société et le salarié sont inventés.</p>
+    </article>
+{% endblock %}

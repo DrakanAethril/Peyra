@@ -1,7 +1,8 @@
 {#
  # An employee's end of contract (lot 4, step 4.2c; design-ux.md § 3.2 « Fin de contrat »): the
  # exit - reason, notification, last day -, saved with F10 or cancelled in two steps, then the
- # documents it gives: the work certificate. Whoever only reads the payroll sees the facts.
+ # documents it gives: the work certificate, and the reçu pour solde de tout compte once the last
+ # payslip is validated (step 4.4c). Whoever only reads the payroll sees the facts.
  #}
 {% extends 'payroll/_layout.html.twig' %}
 
@@ -74,6 +75,12 @@
                 {% if employee.exitOn %}
                     <p>Le certificat de travail indique les dates d’entrée et de sortie, les emplois occupés et leurs périodes, et le maintien des garanties santé et prévoyance. Il est tenu à la disposition du salarié le dernier jour du contrat, le {{ employee.exitOn|date_fr }}.</p>
                     <p><twig:Px:Button href="{{ path('app_payroll_employee_work_certificate', {dossier: dossier.id, number: employee.registrationNumber}) }}" icon="printer" target="_blank" data-turbo="false">Générer le certificat de travail (PDF)</twig:Px:Button></p>
+                    {% if last_payslip and last_payslip.validated %}
+                        <p>Le reçu pour solde de tout compte fait l’inventaire des sommes versées au salarié à la fin du contrat, lues sur le bulletin validé {{ last_payslip.month|of_period }} : salaire du dernier mois et indemnités de fin de contrat.</p>
+                        <p><twig:Px:Button href="{{ path('app_payroll_employee_final_settlement', {dossier: dossier.id, number: employee.registrationNumber}) }}" icon="printer" target="_blank" data-turbo="false">Générer le reçu pour solde de tout compte (PDF)</twig:Px:Button></p>
+                    {% else %}
+                        <p class="px-u-muted">Le reçu pour solde de tout compte s’établit sur le dernier bulletin du contrat, {{ employee.exitOn|of_period }}, une fois celui-ci validé.</p>
+                    {% endif %}
                 {% else %}
                     <twig:Px:Empty icon="file-text" title="Aucun document pour l’instant." text="Les documents de fin de contrat s’établissent une fois la sortie enregistrée."/>
                 {% endif %}

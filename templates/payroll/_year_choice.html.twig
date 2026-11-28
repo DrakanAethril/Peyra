@@ -1,0 +1,7 @@
+{# The calendar year of the Absences and Cumuls tabs (step 4.4c): a GET form, the years the employee has payslips in. Takes `year_route`. #}
+<form method="get" action="{{ path(year_route, {dossier: dossier.id, number: employee.registrationNumber}) }}" class="px-cluster">
+    <twig:Px:Field id="year" label="Année civile">
+        <twig:Px:Select id="year" name="year" value="{{ year }}" :options="years|map(y => {value: y, label: y ~ ''})"/>
+    </twig:Px:Field>
+    <twig:Px:Button type="submit">Afficher</twig:Px:Button>
+</form>

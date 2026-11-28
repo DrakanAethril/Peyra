@@ -1,0 +1,64 @@
+{#
+ # An employee's « Cumuls » tab (lot 4, step 4.4c): the validated payslips of a calendar year, month by
+ # month and in total, then the year to date after the last of them - what the next payslip regularises
+ # its brackets and its general reduction on. Read on the frozen payslips only.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'employees' %}
+{% set dossier_title = employee.fullName ~ ' · Cumuls' %}
+
+{% block page_head %}{{ include('payroll/_employee_head.html.twig', {tab_label: 'Cumuls', tab_route: 'app_payroll_employee_year_to_date'}) }}{% endblock %}
+
+{% block page %}
+    {{ include('payroll/hiring/_employee_tabs.html.twig', {employee_current: 'year_to_date'}) }}
+    {{ include('payroll/_year_choice.html.twig', {year_route: 'app_payroll_employee_year_to_date'}) }}
+    {% if month_rows is empty %}
+        <twig:Px:Empty icon="chart-column" title="Aucun bulletin validé en {{ year }}." text="Les cumuls de l’année sont la somme des bulletins validés."/>
+    {% else %}
+        <twig:Px:Card title="Bulletins validés {{ year }}" :flush="true">
+            <twig:Px:Table caption="Bulletins validés de {{ employee.fullName }} en {{ year }}" density="compact">
+                <thead>
+                    <tr>
+                        <th scope="col">Mois</th>
+                        <th scope="col" class="px-u-num">Salaire brut</th>
+                        <th scope="col" class="px-u-num">Cotisations salariales</th>
+                        <th scope="col" class="px-u-num">Net social</th>
+                        <th scope="col" class="px-u-num">Net imposable</th>
+                        <th scope="col" class="px-u-num">Impôt prélevé</th>
+                        <th scope="col" class="px-u-num">Net à payer</th>
+                        <th scope="col" class="px-u-num">Coût employeur</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in month_rows %}
+                        {% set t = row.result.totals %}
+                        <tr>
+                            <td>{{ row.month|period|capitalize }}</td>
+                            <td class="px-u-num">{{ row.result.gross|amount }}</td>
+                            <td class="px-u-num">{{ t.employeeContributions|amount }}</td>
+                            <td class="px-u-num">{{ t.netSocial|amount }}</td>
+                            <td class="px-u-num">{{ t.netTaxable|amount }}</td>
+                            <td class="px-u-num">{{ t.withholdingTax|amount }}</td>
+                            <td class="px-u-num">{{ t.netPay|amount }}</td>
+                            <td class="px-u-num">{{ t.employerCost|amount }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+        <twig:Px:Card title="Cumuls de l’année après {{ (month_rows|last).month|period }}">
+            <twig:block name="content">
+                <dl class="px-facts">
+                    <dt>Salaire brut</dt><dd class="px-u-num">{{ year_to_date.gross|amount_eur }}</dd>
+                    <dt>Plafond de la sécurité sociale</dt><dd class="px-u-num">{{ year_to_date.ceiling|amount_eur }}</dd>
+                    <dt>SMIC de référence (réduction générale)</dt><dd class="px-u-num">{{ year_to_date.smic|amount_eur }}</dd>
+                    <dt>Réduction générale</dt><dd class="px-u-num">{{ year_to_date.generalReduction|amount_eur }}</dd>
+                    <dt>Heures supplémentaires exonérées</dt><dd class="px-u-num">{{ year_to_date.exemptOvertime|amount_eur }}</dd>
+                    <dt>Net imposable</dt><dd class="px-u-num">{{ year_to_date.netTaxable|amount_eur }}</dd>
+                    {% if not year_to_date.apprenticeExempt.isZero %}<dt>Rémunération d’apprenti exonérée d’impôt</dt><dd class="px-u-num">{{ year_to_date.apprenticeExempt|amount_eur }}</dd>{% endif %}
+                </dl>
+            </twig:block>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}

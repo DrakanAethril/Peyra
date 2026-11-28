@@ -56,10 +56,10 @@ final class PayslipLineCells
         return $cells;
     }
 
-    /** What a cell shows in its field: a French decimal, an amount without its sign. */
-    public static function text(PayslipRow $row, string $field): string
+    /** The value of a cell: a decimal, an amount without its sign; null when the line has none. */
+    public static function value(PayslipRow $row, string $field): ?BigDecimal
     {
-        $value = match ($field) {
+        return match ($field) {
             'base' => $row->base,
             'employeeRate' => $row->employeeRate,
             'employerRate' => $row->employerRate,
@@ -67,6 +67,12 @@ final class PayslipLineCells
             'employerAmount' => $row->employerAmount?->abs()->toDecimal(),
             default => throw new \InvalidArgumentException('No such cell: '.$field),
         };
+    }
+
+    /** What a cell shows in its field: a French decimal, an amount without its sign. */
+    public static function text(PayslipRow $row, string $field): string
+    {
+        $value = self::value($row, $field);
 
         return null === $value ? '' : FrenchFormat::quantity($value, max(2, $value->strippedOfTrailingZeros()->getScale()));
     }

@@ -1,6 +1,9 @@
-{# The views of an employee (steps 4.2a to 4.2c): the fiche, the hiring formalities, the end of contract. #}
+{# The views of an employee (steps 4.2a to 4.2c, 4.4c): the fiche, the hiring formalities, the payslips, the absences, the year to date, the end of contract. #}
 <twig:Px:Tabs label="{{ employee.fullName }}" :tabs="[
     {label: 'Fiche', href: path('app_payroll_employee', {dossier: dossier.id, number: employee.registrationNumber}), current: employee_current == 'fiche'},
     {label: 'Formalités', href: path('app_payroll_employee_formalities', {dossier: dossier.id, number: employee.registrationNumber}), current: employee_current == 'formalities'},
+    {label: 'Bulletins', href: path('app_payroll_employee_payslips', {dossier: dossier.id, number: employee.registrationNumber}), current: employee_current == 'payslips'},
+    {label: 'Absences', href: path('app_payroll_employee_absences', {dossier: dossier.id, number: employee.registrationNumber}), current: employee_current == 'absences'},
+    {label: 'Cumuls', href: path('app_payroll_employee_year_to_date', {dossier: dossier.id, number: employee.registrationNumber}), current: employee_current == 'year_to_date'},
     {label: 'Fin de contrat', href: path('app_payroll_employee_exit', {dossier: dossier.id, number: employee.registrationNumber}), current: employee_current == 'exit'},
 ]"/>

@@ -252,6 +252,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             self::assertNull($book->validate($payslip, $ines));
             $entityManager->flush();
         });
+        $monthPaid = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): string => $client->getContainer()->get(PayslipBook::class)->lastClosed($saved)?->getMonth()->format('Y-m') ?? $saved->getDossierDate()->format('Y-m'));
         $entry = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): Entry => $client->getContainer()->get(Ledger::class)->draft($saved, new EntryDraft('BQ1', new \DateTimeImmutable('2026-01-20'), 'VIR-SCIE', 'Virement Scierie', [
             EntryLineDraft::debit('401000', Money::cents(1_000), '', 'F0001'),
             EntryLineDraft::credit('512100', Money::cents(1_000)),
@@ -337,6 +338,8 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/payroll/employees/register', '/payroll/employees/register.pdf', '/payroll/employees/S001/formalities',
             '/payroll/employees/S001/contract.pdf', '/payroll/social-portal/dpae/S001', '/payroll/employees/S001/exit',
             '/payroll/payslips', '/payroll/payslips/S001', '/payroll/payslips/S001/payslip.pdf',
+            '/payroll/employees/S001/payslips', '/payroll/employees/S001/payslips/'.$monthPaid.'.pdf',
+            '/payroll/employees/S001/absences', '/payroll/employees/S001/year-to-date?year=2026',
             '/documents', '/documents?state=to_process&q=fa', '/documents/new', '/documents/'.$documentId, '/documents/'.$documentId.'/file',
             '/inventory/articles', '/inventory/articles?q=fen', '/inventory/articles/new', '/inventory/articles/PF001',
             '/sales/customers', '/sales/customers?q=gir', '/sales/quote', '/sales/order', '/sales/invoice', '/sales/credit_note', '/sales/deposit',

@@ -10,10 +10,12 @@ use App\Entity\Payroll\Employee;
 use App\Entity\Payroll\EmploymentTerms;
 use App\Enum\Audit\AuditAction;
 use App\Repository\Payroll\EmployeeRepository;
+use App\Repository\Payroll\MonthlyPayslipRepository;
 use App\Repository\Payroll\PayrollEstablishmentRepository;
 use App\Service\Audit\AuditTrail;
 use App\Service\Payroll\Exit\ExitDraft;
 use App\Service\Payroll\Exit\ExitRules;
+use App\Service\Payroll\Payslip\ValidatedPayslipLocks;
 use App\Service\Shared\FrenchFormat;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -32,6 +34,7 @@ final readonly class EmployeeSheet
         private EmployeeRepository $employees,
         private PayrollEstablishmentRepository $establishments,
         private AuditTrail $auditTrail,
+        private MonthlyPayslipRepository $payslips,
     ) {
     }
 
@@ -162,16 +165,26 @@ final readonly class EmployeeSheet
         return true;
     }
 
-    /** Why these terms may not be deleted, or null when they may: the first ones start the contract. */
-    public static function termsDeletionRefusal(EmploymentTerms $terms): ?string
+    /** Why these terms may not be deleted, or null when they may: the first ones start the contract, and a validated payslip keeps those it read (step 4.4c). */
+    public function termsDeletionRefusal(EmploymentTerms $terms): ?string
     {
-        return $terms === $terms->getEmployee()->getTerms()[0] ? 'Les conditions de l’embauche ne se suppriment pas : corrigez-les.' : null;
+        if ($terms === $terms->getEmployee()->getTerms()[0]) {
+            return 'Les conditions de l’embauche ne se suppriment pas : corrigez-les.';
+        }
+
+        return ValidatedPayslipLocks::termsDeletion($terms, $this->payslips->findValidatedMonths($terms->getEmployee()));
+    }
+
+    /** Why the employee may not be deleted, or null when they may: once a payslip of theirs is validated (step 4.4c). */
+    public function deletionRefusal(Employee $employee): ?string
+    {
+        return ValidatedPayslipLocks::employeeDeletion($this->payslips->findValidatedMonths($employee));
     }
 
     public function deleteTerms(EmploymentTerms $terms, User|string $by): void
     {
-        if (null !== self::termsDeletionRefusal($terms)) {
-            throw new \LogicException('The terms of the hire stay.');
+        if (null !== $this->termsDeletionRefusal($terms)) {
+            throw new \LogicException('These terms stay.');
         }
         $employee = $terms->getEmployee();
         $employee->removeTerms($terms);
@@ -187,6 +200,9 @@ final readonly class EmployeeSheet
 
     public function delete(Employee $employee, User|string $by): void
     {
+        if (null !== $this->deletionRefusal($employee)) {
+            throw new \LogicException('An employee with validated payslips stays.');
+        }
         $this->auditTrail->inDossier(
             $employee->getDossier(),
             AuditAction::EmployeeDeleted,

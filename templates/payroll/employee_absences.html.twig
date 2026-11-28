@@ -1,0 +1,44 @@
+{#
+ # An employee's « Absences » tab (lot 4, step 4.4c): month by month in a calendar year, what their
+ # payslips were given - paid leave taken, hours of absence by rubrique, hours of sick pay, whole days
+ # without any pay (EmployeeAbsences). Read only: an absence is entered on the month's payslip.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'employees' %}
+{% set dossier_title = employee.fullName ~ ' · Absences' %}
+
+{% block page_head %}{{ include('payroll/_employee_head.html.twig', {tab_label: 'Absences', tab_route: 'app_payroll_employee_absences'}) }}{% endblock %}
+
+{% block page %}
+    {{ include('payroll/hiring/_employee_tabs.html.twig', {employee_current: 'absences'}) }}
+    {{ include('payroll/_year_choice.html.twig', {year_route: 'app_payroll_employee_absences'}) }}
+    <twig:Px:Card title="Absences {{ year }}" :flush="true">
+        {% if absence_rows is empty %}
+            <twig:Px:Empty icon="calendar" title="Aucune absence en {{ year }}." text="Les absences et les congés se saisissent sur le bulletin du mois, dans la carte « Éléments du mois »."/>
+        {% else %}
+            <twig:Px:Table caption="Absences de {{ employee.fullName }} en {{ year }}" density="compact">
+                <thead>
+                    <tr>
+                        <th scope="col">Mois</th>
+                        <th scope="col">Congés payés pris</th>
+                        <th scope="col">Absences</th>
+                        <th scope="col" class="px-u-num">Maladie : heures maintenues</th>
+                        <th scope="col" class="px-u-num">Jours sans aucun versement</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in absence_rows %}
+                        <tr>
+                            <td>{{ row.month|period|capitalize }}</td>
+                            <td>{{ row.paidLeave ?? '—' }}</td>
+                            <td>{{ row.absences is empty ? '—' : row.absences|join(' · ') }}</td>
+                            <td class="px-u-num">{{ row.sickHours is null ? '—' : row.sickHours|hours }}</td>
+                            <td class="px-u-num">{{ row.unpaidDays ?: '—' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}

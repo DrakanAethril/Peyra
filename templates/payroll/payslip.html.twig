@@ -16,6 +16,7 @@
 {% set validated = status.value == 'validated' %}
 {% set can_enter = is_granted('PAYROLL_ENTER', dossier) %}
 {% set can_edit = can_enter and not validated %}
+{% set totals_hidden = entry_check is not null and not entry_check.complete %}
 {% set status_keys = [{combo: 'F5', verb: 'détail du calcul'}]|merge(can_edit ? [{combo: 'F9', verb: 'calculer'}, {combo: 'Insert', verb: 'ajouter une rubrique'}, {combo: 'Ctrl+Delete', verb: 'retirer la rubrique'}] : [])|merge(can_edit and status.toValidate ? [{combo: 'Ctrl+Enter', verb: 'valider'}] : [])|merge([{combo: 'Ctrl+ArrowUp', verb: 'salarié précédent'}, {combo: 'Ctrl+ArrowDown', verb: 'salarié suivant'}]) %}
 
 {% block page_head %}
@@ -88,6 +89,18 @@
         {% if not has_establishment %}
             <twig:Px:Alert tone="warning" actionLabel="Renseigner l’établissement" actionHref="{{ path('app_payroll_establishment', {dossier: dossier.id}) }}">L’établissement n’est pas renseigné : son effectif et ses taux décident des cotisations.</twig:Px:Alert>
         {% endif %}
+        {% if entry_check is not null %}
+            {% set missing = entry_check.missing %}
+            {% set gaps = entry_check.gaps %}
+            <twig:Px:Alert tone="{{ gaps > 0 and assistance.blocksPayslipGaps ? 'warning' : 'info' }}" title="Bulletin à établir">
+                {{- assistance.startsPayslipEmpty ? 'Ajoutez chaque rubrique (Inser) et saisissez sa base, son taux ou son montant ; ' : 'Saisissez la base, le taux ou le montant de chaque rubrique ; ' -}}
+                F9 recalcule. {{ missing > 0 ? (missing > 1 ? missing ~ ' cellules restent à saisir' : 'Une cellule reste à saisir') ~ ' : les montants d’une ligne et les totaux s’affichent une fois ses cellules saisies.' : 'Toutes les cellules sont saisies.' }}
+                {%- if assistance.signalsPayslipGaps %} {{ gaps > 0 ? (gaps > 1 ? gaps ~ ' cellules diffèrent' : 'Une cellule diffère') ~ ' du calcul de l’outil' ~ (assistance.blocksPayslipGaps ? ' : le bulletin ne se valide pas tant qu’elles restent.' : ' : elles sont signalées, le bulletin se valide.') : 'Aucun écart avec le calcul de l’outil.' }}{% endif %}
+            </twig:Px:Alert>
+        {% endif %}
+        {% if last_entries.any %}
+            <twig:Px:Alert tone="info">Dernier bulletin du contrat : {{ employee.exitReason.label|lower }}, dernier jour le {{ employee.exitOn|date_fr }}. Les éléments de la fin de contrat se saisissent dans la carte.</twig:Px:Alert>
+        {% endif %}
         {% if employee.withholdingRate is null %}
             <twig:Px:Alert tone="info">Le taux de prélèvement à la source de {{ employee.fullName }} n’est pas renseigné. Le taux neutre s’applique.</twig:Px:Alert>
         {% endif %}
@@ -131,6 +144,26 @@
                                         </tr>
                                     {% endfor %}
                                 {% endif %}
+                                {% if last_entries.compensatoryLeave %}
+                                    {% for part, part_label in {hours: 'Congés acquis non pris : heures', daysTaken: 'Congés acquis non pris : jours restants', daysAcquired: 'Congés : jours acquis', referenceGross: 'Congés : brut de la période de référence avant ce mois'} %}
+                                        {% set field_error = errors['compensatoryLeave.' ~ part] ?? (loop.first ? errors['compensatoryLeave'] ?? null : null) %}
+                                        <tr>
+                                            <th scope="row"><label for="el-comp-{{ part }}">{{ part_label }}</label>{% if field_error %}<p class="px-field__error">{{ field_error }}</p>{% endif %}</th>
+                                            <td class="px-u-num"><twig:Px:Input id="el-comp-{{ part }}" name="compensatoryLeave[{{ part }}]" value="{{ typed['compensatoryLeave.' ~ part] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" :disabled="not can_edit" placeholder="{{ part == 'referenceGross' ? '€' : (part == 'hours' ? 'h' : 'j') }}"/></td>
+                                        </tr>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if last_entries.severance %}
+                                    {% for part, part_label in {referenceSalary: 'Indemnité de rupture : salaire de référence', agreed: 'Indemnité convenue (rupture conventionnelle)', previousYearGross: 'Brut de l’année précédant la rupture'} %}
+                                        {% if part != 'agreed' or last_entries.agreed %}
+                                            {% set field_error = errors['severance.' ~ part] ?? null %}
+                                            <tr>
+                                                <th scope="row"><label for="el-sev-{{ part }}">{{ part_label }}</label>{% if field_error %}<p class="px-field__error">{{ field_error }}</p>{% endif %}</th>
+                                                <td class="px-u-num"><twig:Px:Input id="el-sev-{{ part }}" name="severance[{{ part }}]" value="{{ typed['severance.' ~ part] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" :disabled="not can_edit" placeholder="€"/></td>
+                                            </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
                                 {% set field_error = errors['unpaidDays'] ?? null %}
                                 <tr>
                                     <th scope="row"><label for="el-unpaid">Jours entiers d’absence sans aucun versement</label>{% if field_error %}<p class="px-field__error">{{ field_error }}</p>{% endif %}</th>
@@ -163,12 +196,12 @@
                             </thead>
                             <tbody>
                                 {% for row in payslip_view.gross %}{{ include('payroll/_payslip_row.html.twig') }}{% endfor %}
-                                <tr class="px-table__subtotal"><th scope="row">Salaire brut</th><td></td><td></td><td class="px-u-num">{{ result.gross|amount }}</td><td></td><td></td></tr>
+                                <tr class="px-table__subtotal"><th scope="row">Salaire brut</th><td></td><td></td><td class="px-u-num">{{ totals_hidden ? '' : result.gross|amount }}</td><td></td><td></td></tr>
                                 {% for block in payslip_view.contributions %}
                                     <tr class="px-table__section"><th scope="rowgroup" colspan="6">{{ block.heading }}</th></tr>
                                     {% for row in block.rows %}{{ include('payroll/_payslip_row.html.twig') }}{% endfor %}
                                 {% endfor %}
-                                <tr class="px-table__subtotal"><th scope="row">Total des cotisations et contributions</th><td></td><td></td><td class="px-u-num">{{ result.totals.employeeContributions|amount }}</td><td></td><td class="px-u-num">{{ result.totals.employerContributions|amount }}</td></tr>
+                                <tr class="px-table__subtotal"><th scope="row">Total des cotisations et contributions</th><td></td><td></td><td class="px-u-num">{{ totals_hidden ? '' : result.totals.employeeContributions|amount }}</td><td></td><td class="px-u-num">{{ totals_hidden ? '' : result.totals.employerContributions|amount }}</td></tr>
                                 {% for block in payslip_view.after %}
                                     <tr class="px-table__section"><th scope="rowgroup" colspan="6">{{ block.heading }}</th></tr>
                                     {% for row in block.rows %}{{ include('payroll/_payslip_row.html.twig') }}{% endfor %}
@@ -177,7 +210,7 @@
                         </twig:Px:Table>
                     {% endif %}
                 </twig:Px:Card>
-                {% if payslip_view %}
+                {% if payslip_view and not totals_hidden %}
                     {% set totals = result.totals %}
                     <div class="px-kpis">
                         <twig:Px:Kpi label="Montant net social" value="{{ totals.netSocial|amount }}" note="à déclarer pour les prestations"/>
@@ -210,4 +243,4 @@
     </div>
 {% endblock %}
 
-{% block facts %}<span>Mois de paie · <b>{{ month|period }}</b></span><span>Jour de paie · <b>{{ pay_day|date_fr }}</b></span>{% if result %}<span>Brut · <b>{{ result.gross|amount }}</b></span><span>Cumul brut de l’année · <b>{{ result.yearToDate.gross|amount }}</b></span>{% endif %}{% endblock %}
+{% block facts %}<span>Mois de paie · <b>{{ month|period }}</b></span><span>Jour de paie · <b>{{ pay_day|date_fr }}</b></span>{% if result and not totals_hidden %}<span>Brut · <b>{{ result.gross|amount }}</b></span><span>Cumul brut de l’année · <b>{{ result.yearToDate.gross|amount }}</b></span>{% endif %}{% endblock %}

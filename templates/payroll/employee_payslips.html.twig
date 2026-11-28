@@ -1,0 +1,59 @@
+{#
+ # An employee's « Bulletins » tab (lot 4, step 4.4c; design-ux.md § 3.2 « Salariés »): every payslip
+ # of theirs, the latest first, with where it stands; a validated one shows its figures and prints,
+ # whatever its month; the payslip of the month paid opens on Bulletins.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'employees' %}
+{% set dossier_title = employee.fullName ~ ' · Bulletins' %}
+
+{% block page_head %}{{ include('payroll/_employee_head.html.twig', {tab_label: 'Bulletins', tab_route: 'app_payroll_employee_payslips'}) }}{% endblock %}
+
+{% block page %}
+    {{ include('payroll/hiring/_employee_tabs.html.twig', {employee_current: 'payslips'}) }}
+    <twig:Px:Card title="Bulletins de paie" meta="{{ payslip_rows|length }} bulletin{{ payslip_rows|length > 1 ? 's' : '' }}" :flush="true">
+        {% if payslip_rows is empty %}
+            <twig:Px:Empty icon="file-text" title="Aucun bulletin pour l’instant." text="Les bulletins de {{ employee.fullName }} s’établissent dans Paie et social › Bulletins, mois par mois."/>
+        {% else %}
+            <twig:Px:Table caption="Bulletins de {{ employee.fullName }}" density="compact">
+                <thead>
+                    <tr>
+                        <th scope="col">Mois</th>
+                        <th scope="col">État</th>
+                        <th scope="col" class="px-u-num">Salaire brut</th>
+                        <th scope="col" class="px-u-num">Net à payer</th>
+                        <th scope="col" class="px-u-num">Coût employeur</th>
+                        <th scope="col" class="px-u-num">Validé le</th>
+                        <th scope="col" class="px-u-num">Envoyé le</th>
+                        <th scope="col"><span class="px-u-sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in payslip_rows %}
+                        {% set p = row.payslip %}
+                        <tr>
+                            <td>{{ p.month|period|capitalize }}</td>
+                            <td><twig:Px:Badge :of="p.status"/></td>
+                            <td class="px-u-num">{{ row.result ? row.result.gross|amount : '—' }}</td>
+                            <td class="px-u-num">{{ row.result ? row.result.totals.netPay|amount : '—' }}</td>
+                            <td class="px-u-num">{{ row.result ? row.result.totals.employerCost|amount : '—' }}</td>
+                            <td class="px-u-num">{{ p.validatedOn ? p.validatedOn|date_fr : '—' }}</td>
+                            <td class="px-u-num">{{ p.sentOn ? p.sentOn|date_fr : '—' }}</td>
+                            <td>
+                                <div class="px-cluster">
+                                {% if p.validated %}
+                                    <twig:Px:Button size="sm" href="{{ path('app_payroll_employee_payslip_pdf', {dossier: dossier.id, number: employee.registrationNumber, month: p.month|date('Y-m')}) }}" icon="file-text" target="_blank" data-turbo="false">{{ p.sentOn ? 'Duplicata PDF' : 'Aperçu PDF' }}</twig:Px:Button>
+                                {% endif %}
+                                {% if p.month == month_paid %}
+                                    <twig:Px:Button size="sm" href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: employee.registrationNumber}) }}">Ouvrir</twig:Px:Button>
+                                {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
