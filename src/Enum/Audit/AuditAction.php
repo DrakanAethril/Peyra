@@ -61,6 +61,14 @@ enum AuditAction: string
     /** A third party deleted. */
     case ThirdPartyDeleted = 'third_party.deleted';
 
+    /** A customer marked as a doubtful debt, or the marker taken off (step 2.7). */
+    case ThirdPartyDoubtful = 'third_party.doubtful';
+
+    /** Supplier invoices approved for payment, or the approval taken back (« bon à payer », step 2.7). */
+    case PaymentApproved = 'banking.payment_approved';
+
+    case PaymentApprovalWithdrawn = 'banking.payment_approval_withdrawn';
+
     /** Third parties imported from a CSV file. */
     case ThirdPartiesImported = 'third_party.imported';
 
@@ -312,6 +320,9 @@ enum AuditAction: string
             self::ThirdPartyCreated => 'Tiers créé',
             self::ThirdPartyChanged => 'Tiers modifié',
             self::ThirdPartyDeleted => 'Tiers supprimé',
+            self::ThirdPartyDoubtful => 'Créance douteuse',
+            self::PaymentApproved => 'Bon à payer donné',
+            self::PaymentApprovalWithdrawn => 'Bon à payer retiré',
             self::ThirdPartiesImported => 'Tiers importés',
             self::EntryDrafted => 'Écriture enregistrée au brouillard',
             self::EntryChanged => 'Écriture du brouillard modifiée',

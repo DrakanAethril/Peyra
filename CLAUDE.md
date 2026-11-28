@@ -1183,6 +1183,11 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   pure) and asks the gateway for its entry (module Banking, accounts in `PaymentEntries`: cheque received on 511200 until a
   `ChequeDeposit`, bill on 413000). Lettering goes through `Lettering`, once the entries are validated. The teacher's
   `StatementGenerator` writes a CSV from the books and hands it to `BankStatements::import()`, never a statement of its own.
+- **Due dates (step 2.7)**: the échéancier (`DueSchedule`, `/d/{dossier}/{sales|purchases}/schedule`) reads a balance as the aged
+  balance does (`AgedBalance::openParts()`), so both agree; the payment proposal (`PaymentProposals`, Achats › Règlements) reads
+  `Payments::openInvoicesOf()` (unlettered, less allocations, keyed by third party **then** entry: an opening entry names many)
+  and only approved invoices (`PaymentApproval`, « bon à payer ») reach its transfer order. `ThirdParty::$doubtful` is a marker only
+  (`DoubtfulReceivables`).
 
 ## Référentiel and assistance levels (built at step 2.8)
 

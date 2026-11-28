@@ -34,11 +34,31 @@ final class AgedBalance
         foreach (AgeBand::cases() as $band) {
             $bands[$band->value] = Money::zero();
         }
-        $balance = Money::sum(array_map(static fn (array $line): Money => $line['amount'], $lines));
-        if ($balance->isZero()) {
-            return $bands;
+        foreach (self::openParts($lines) as $index => $part) {
+            $band = AgeBand::of($lines[$index]['due'] ?? $lines[$index]['day'], $at)->value;
+            $bands[$band] = $bands[$band]->plus($part);
         }
 
+        return $bands;
+    }
+
+    /**
+     * The lines the balance is made of - the newest on its side, the last one taken in part - with
+     * the part of each that is still open, signed like the balance: what the échéancier lists line by
+     * line and the aged balance adds up by band (step 2.7).
+     *
+     * @param list<array{amount: Money, day: \DateTimeImmutable, due: ?\DateTimeImmutable}> $lines in the order they were written (date, then entry)
+     *
+     * @return array<int, Money> by index of `$lines`, newest first
+     */
+    public static function openParts(array $lines): array
+    {
+        $balance = Money::sum(array_map(static fn (array $line): Money => $line['amount'], $lines));
+        if ($balance->isZero()) {
+            return [];
+        }
+
+        $parts = [];
         $left = $balance->abs();
         $positive = $balance->isPositive();
         $newestFirst = array_keys($lines);
@@ -49,14 +69,13 @@ final class AgedBalance
                 continue;
             }
             $part = $amount->abs()->compareTo($left) < 0 ? $amount->abs() : $left;
-            $band = AgeBand::of($lines[$index]['due'] ?? $lines[$index]['day'], $at)->value;
-            $bands[$band] = $bands[$band]->plus($positive ? $part : $part->negated());
+            $parts[$index] = $positive ? $part : $part->negated();
             $left = $left->minus($part);
             if ($left->isZero()) {
                 break;
             }
         }
 
-        return $bands;
+        return $parts;
     }
 }

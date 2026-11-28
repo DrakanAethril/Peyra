@@ -1,7 +1,7 @@
 {#
  # Ventes (design-ux.md §§ 2.5 and 3.2; lot 2): the module's tab bar - Clients, Devis · Commandes ·
- # Livraisons, Factures · Avoirs · Acomptes (step 2.3), Règlements (step 2.6b); Suivi joins it with step 2.7.
- # A screen sets `sales_tab` (customers, orders, invoices, payments) and `dossier_title` outside any block.
+ # Livraisons, Factures · Avoirs · Acomptes (step 2.3), Règlements (step 2.6b), Suivi (the échéancier, step 2.7).
+ # A screen sets `sales_tab` (customers, orders, invoices, payments, follow_up) and `dossier_title` outside any block.
  # Closed to a profile that does not read the sales (SALES_READ).
  #}
 {% extends 'dossier/_layout.html.twig' %}
@@ -14,5 +14,6 @@
         {label: 'Devis · Commandes · Livraisons', href: path('app_sales_documents', {dossier: dossier.id, side: 'sales', type: 'quote'}), current: (sales_tab ?? '') == 'orders'},
         {label: 'Factures · Avoirs · Acomptes', href: path('app_sales_documents', {dossier: dossier.id, side: 'sales', type: 'invoice'}), current: (sales_tab ?? '') == 'invoices'},
         {label: 'Règlements', href: path('app_payments', {dossier: dossier.id, direction: 'receipts'}), current: (sales_tab ?? '') == 'payments'},
+        {label: 'Suivi', href: path('app_due_schedule', {dossier: dossier.id, side: 'sales'}), current: (sales_tab ?? '') == 'follow_up'},
     ]"/>
 {% endblock %}

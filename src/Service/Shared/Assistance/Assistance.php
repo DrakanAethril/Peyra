@@ -174,6 +174,26 @@ final readonly class Assistance
         return AssistanceLevel::Guided === $this->level;
     }
 
+    /** The payment proposal ticks the approved invoices due by its day (G: « sélection proposée »). */
+    public function proposesPaymentSelection(): bool
+    {
+        return AssistanceLevel::Guided === $this->level;
+    }
+
+    /**
+     * A supplier whose account carries a payment or a credit note settling no invoice is not paid again
+     * by the proposal (G and B: « refus d'un double paiement »); at A it is signalled, at 0 nothing is said.
+     */
+    public function refusesDoublePayment(): bool
+    {
+        return $this->blocks();
+    }
+
+    public function signalsDoublePayment(): bool
+    {
+        return $this->runsControls();
+    }
+
     /**
      * The fixed asset's fiche shows its depreciation plan calculated (design-ux.md § 3.2,
      * « Immobilisations » - G : plan calculé); at « Aucun filet » the student draws it up alone.

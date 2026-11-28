@@ -105,6 +105,27 @@ final class AgedBalanceTest extends TestCase
         self::assertSame(0, $bands[AgeBand::UpTo30->value]->cents);
     }
 
+    public function testTheOpenPartsAreTheLinesTheBalanceIsMadeOf(): void
+    {
+        // The échéancier's reading (step 2.7), same case: 2 700,00 paid of 3 500,00. Open: the
+        // 500,00 whole (index 2), 300,00 of the 2 000,00 (index 1), newest first; nothing else.
+        $parts = AgedBalance::openParts([
+            self::line(100_000, '2025-09-15', '2025-10-15'),
+            self::line(200_000, '2025-11-15', '2025-12-15'),
+            self::line(50_000, '2025-12-20', '2026-01-20'),
+            self::line(-270_000, '2026-01-25', null),
+        ]);
+        self::assertSame([2 => 50_000, 1 => 30_000], array_map(static fn (Money $part): int => $part->cents, $parts));
+
+        // A supplier's credit balance: its parts are credits, signed like the balance; settled, none.
+        self::assertSame([1 => -40_000, 0 => -20_000], array_map(static fn (Money $part): int => $part->cents, AgedBalance::openParts([
+            self::line(-80_000, '2026-01-10', '2026-02-10'),
+            self::line(-40_000, '2026-02-12', '2026-03-12'),
+            self::line(60_000, '2026-02-20', null),
+        ])));
+        self::assertSame([], AgedBalance::openParts([self::line(10_000, '2026-01-02', null), self::line(-10_000, '2026-01-05', null)]));
+    }
+
     /** @return array{amount: Money, day: \DateTimeImmutable, due: ?\DateTimeImmutable} */
     private static function line(int $cents, string $day, ?string $due): array
     {

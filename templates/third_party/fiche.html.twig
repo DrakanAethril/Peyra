@@ -159,4 +159,10 @@
             </twig:Px:Card>
         </div>
     {% endif %}
+    {% if third_party and third_party.kind.value == 'customer' and is_granted('SALES_ENTER', dossier) %}
+        <form method="post" action="{{ path('app_third_party_doubtful', {dossier: dossier.id, code: third_party.code}) }}" id="third-party-doubtful" hidden>
+            <input type="hidden" name="_token" value="{{ csrf_token('third-party-doubtful-' ~ third_party.id) }}">
+            <input type="hidden" name="doubtful" value="{{ third_party.doubtful ? '0' : '1' }}">
+        </form>
+    {% endif %}
 {% endblock %}

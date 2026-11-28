@@ -17,6 +17,7 @@ use App\Service\Accounting\Ledger\EntryScope;
 use App\Service\Accounting\Ledger\LedgerReader;
 use App\Service\Shared\PostValue;
 use App\Service\Shared\QueryValue;
+use App\Service\ThirdParty\DoubtfulReceivables;
 use App\Service\ThirdParty\ThirdPartyDraft;
 use App\Service\ThirdParty\ThirdPartySheet;
 use Doctrine\ORM\EntityManagerInterface;
@@ -90,6 +91,22 @@ final class ThirdPartyController extends AbstractController
         $view['deletion_refusal'] = $sheet->deletionRefusal($thirdParty);
 
         return $this->render('third_party/fiche.html.twig', $view, new Response(status: $status));
+    }
+
+    /** A customer's « créance douteuse » marker set or taken off (step 2.7), by whoever enters the sales. */
+    #[Route('/{code}/doubtful', name: 'app_third_party_doubtful', requirements: ['code' => self::CODE], methods: ['POST'])]
+    public function doubtful(Dossier $dossier, string $code, Request $request, ThirdPartyRepository $thirdParties, DoubtfulReceivables $receivables, #[CurrentUser] User $me): Response
+    {
+        $thirdParty = $thirdParties->findOneByCode($dossier, $code) ?? throw new NotFoundHttpException('No such third party.');
+        if (ThirdPartyKind::Customer !== $thirdParty->getKind() || !$this->isGranted(DossierRightVoter::SALES_ENTER, $dossier) || !$this->isCsrfTokenValid('third-party-doubtful-'.$thirdParty->getId(), $request->request->getString('_token'))) {
+            throw new NotFoundHttpException('Not yours to change.');
+        }
+        $doubtful = $request->request->getBoolean('doubtful');
+        if ($receivables->mark($thirdParty, $doubtful, $me)) {
+            $this->addFlash('status', $doubtful ? \sprintf('Créance de %s signalée douteuse.', $thirdParty->getName()) : \sprintf('%s n’est plus signalé en créance douteuse.', $thirdParty->getName()));
+        }
+
+        return $this->redirectToRoute('app_third_party', ['dossier' => $dossier->getId(), 'code' => $code], Response::HTTP_SEE_OTHER);
     }
 
     #[Route('/{code}/delete', name: 'app_third_party_delete', requirements: ['code' => self::CODE], methods: ['POST'])]

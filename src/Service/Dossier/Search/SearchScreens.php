@@ -36,7 +36,7 @@ final readonly class SearchScreens
         'app_accounting_edition_third_party_balance', 'app_accounting_edition_aged_balance',
         'app_accounting_accounts', 'app_accounting_journals', 'app_third_parties', 'app_accounting_templates',
         'app_accounting_subscriptions', 'app_bank_statements', 'app_bank_reconciliation', 'app_bank_rules', 'app_closing_fec', 'app_dossier_company', 'app_dossier_users', 'app_dossier_audit',
-        'app_dossier_restore_points', 'app_payroll_employees', 'app_payroll_register', 'app_payroll_items', 'app_payroll_bodies', 'app_payroll_establishment',
+        'app_dossier_restore_points', 'app_due_schedule', 'app_payment_proposal', 'app_payroll_employees', 'app_payroll_register', 'app_payroll_items', 'app_payroll_bodies', 'app_payroll_establishment',
     ];
 
     /** What an empty search shows when nothing was opened yet. */
@@ -95,11 +95,14 @@ final readonly class SearchScreens
             $items[] = $screen('app_sales_customers', 'Clients', 'Ventes', 'tag', 'clients encours');
             $items[] = $screen('app_sales_documents', 'Devis, commandes, livraisons', 'Ventes', 'tag', 'devis commande bon de livraison', ['side' => 'sales', 'type' => 'quote']);
             $items[] = new SearchItem(SearchGroup::Screens, 'Factures, avoirs, acomptes', $this->urls->generate('app_sales_documents', $id + ['side' => 'sales', 'type' => 'invoice']), 'Ventes', icon: 'tag', key: 'app_sales_documents:invoice', terms: 'factures de vente avoirs acomptes facturation');
+            $items[] = new SearchItem(SearchGroup::Screens, 'Échéancier clients', $this->urls->generate('app_due_schedule', $id + ['side' => 'sales']), 'Ventes', icon: 'tag', key: 'app_due_schedule:sales', terms: 'echeancier suivi creances echues encours clients retard');
         }
         if ($this->authorization->isGranted(DossierRightVoter::PURCHASES_READ, $dossier)) {
             $items[] = $screen('app_purchase_suppliers', 'Fournisseurs', 'Achats et stocks', 'package', 'fournisseurs dettes');
             $items[] = new SearchItem(SearchGroup::Screens, 'Commandes, réceptions', $this->urls->generate('app_sales_documents', $id + ['side' => 'purchases', 'type' => 'purchase_order']), 'Achats et stocks', icon: 'package', key: 'app_sales_documents:purchases', terms: 'commandes fournisseurs bons de reception demandes de prix achats');
             $items[] = $screen('app_purchase_invoices', 'Factures et avoirs reçus', 'Achats et stocks', 'package', 'factures fournisseurs rapprochement receptions non facturees factures non parvenues');
+            $items[] = new SearchItem(SearchGroup::Screens, 'Échéancier fournisseurs', $this->urls->generate('app_due_schedule', $id + ['side' => 'purchases']), 'Achats et stocks', icon: 'package', key: 'app_due_schedule:purchases', terms: 'echeancier dettes fournisseurs echues encours');
+            $items[] = $screen('app_payment_proposal', 'Proposition de paiement', 'Achats et stocks', 'package', 'bon a payer virements fournisseurs reglements campagne de paiement');
             $items[] = $screen('app_inventory_stock_movements', 'Mouvements de stock', 'Achats et stocks', 'package', 'stocks entrees sorties transferts ajustements fiche de stock');
             $items[] = $screen('app_inventory_stock_state', 'État du stock', 'Achats et stocks', 'package', 'stocks valorisation cmup peps rupture minimum inventaire');
             $items[] = $screen('app_inventory_stock_counts', 'Inventaire physique', 'Achats et stocks', 'package', 'stocks inventaire comptage ecarts ajustements');

@@ -2,7 +2,8 @@
  # A third party's outstanding amount at the dossier's date: the balance of the lines that name it
  # since the exercise opened, brouillard included (LedgerReader). A customer's is a debit, what it
  # owes; a supplier's a credit, what the company owes it - a link to its consultation. Then why it
- # may not be deleted.
+ # may not be deleted. A customer carries its « créance douteuse » marker (step 2.7), changed by whoever
+ # enters the sales through the form `third-party-doubtful`, drawn outside the fiche's form.
  #}
 <dl class="px-facts">
     <dt>Encours</dt>
@@ -14,5 +15,14 @@
             <span class="px-u-muted">au {{ dossier.dossierDate|date_fr }}, depuis l’ouverture de l’exercice, brouillard compris</span>
         {% endif %}
     </dd>
+    {% if third_party.kind.value == 'customer' %}
+        <dt>Créance douteuse</dt>
+        <dd>
+            {% if third_party.doubtful %}<twig:Px:Badge tone="warning">Douteuse</twig:Px:Badge>{% else %}<span class="px-u-muted">non</span>{% endif %}
+            {% if is_granted('SALES_ENTER', dossier) %}
+                <twig:Px:Button type="submit" form="third-party-doubtful" variant="quiet" size="sm">{{ third_party.doubtful ? 'Retirer le marqueur' : 'Signaler douteuse' }}</twig:Px:Button>
+            {% endif %}
+        </dd>
+    {% endif %}
 </dl>
 {% if deletion_refusal %}<p class="px-u-muted">{{ deletion_refusal }}</p>{% endif %}
