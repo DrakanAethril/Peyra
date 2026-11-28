@@ -17,14 +17,14 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Ventes › Devis · Commandes · Livraisons and Ventes › Factures et avoirs (step 2.3, gabarit L):
+ * Ventes › Devis · Commandes · Livraisons and Ventes › Factures · Avoirs · Acomptes (step 2.3, gabarit L):
  * one list per type, the chips of its tab's family; drafts first, then the validated ones by
  * number, newest first. A document opens its fiche (SalesDocumentController).
  */
 #[Route('/d/{dossier}/sales', requirements: ['dossier' => '\d+'])]
 final class SalesDocumentsController extends AbstractController
 {
-    public const string TYPES = 'quote|order|delivery|invoice|credit_note';
+    public const string TYPES = 'quote|order|delivery|invoice|credit_note|deposit';
 
     #[Route('/{type}', name: 'app_sales_documents', requirements: ['type' => self::TYPES], methods: ['GET'])]
     public function index(Dossier $dossier, string $type, Request $request, SalesDocumentRepository $documents): Response

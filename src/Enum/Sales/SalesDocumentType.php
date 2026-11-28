@@ -7,8 +7,9 @@ namespace App\Enum\Sales;
 /**
  * The commercial documents of the sales chain (lot 2, step 2.3): a quote becomes an order, an
  * order a delivery note, a delivery note an invoice - each one transformed into a later one -, and
- * a validated invoice is corrected by a credit note, never changed. One entity carries them all
- * (SalesDocument); each type numbers on its own (« FV-2026-0001 »).
+ * a validated invoice is corrected by a credit note, never changed. An order may first be invoiced
+ * in part by deposit invoices (step 2.3b), which its final invoice deducts. One entity carries them
+ * all (SalesDocument); each type numbers on its own (« FV-2026-0001 »).
  */
 enum SalesDocumentType: string
 {
@@ -17,6 +18,7 @@ enum SalesDocumentType: string
     case Delivery = 'delivery';
     case Invoice = 'invoice';
     case CreditNote = 'credit_note';
+    case Deposit = 'deposit';
 
     public function label(): string
     {
@@ -26,6 +28,7 @@ enum SalesDocumentType: string
             self::Delivery => 'Bon de livraison',
             self::Invoice => 'Facture',
             self::CreditNote => 'Avoir',
+            self::Deposit => 'Facture d’acompte',
         };
     }
 
@@ -38,6 +41,7 @@ enum SalesDocumentType: string
             self::Delivery => 'Livraisons',
             self::Invoice => 'Factures',
             self::CreditNote => 'Avoirs',
+            self::Deposit => 'Acomptes',
         };
     }
 
@@ -50,10 +54,11 @@ enum SalesDocumentType: string
             self::Delivery => 'un bon de livraison',
             self::Invoice => 'une facture',
             self::CreditNote => 'un avoir',
+            self::Deposit => 'une facture d’acompte',
         };
     }
 
-    /** The number's prefix: DE-2026-0001, BC-, BL-, FV-, AV-. */
+    /** The number's prefix: DE-2026-0001, BC-, BL-, FV-, AV-, AC-. */
     public function prefix(): string
     {
         return match ($this) {
@@ -62,6 +67,7 @@ enum SalesDocumentType: string
             self::Delivery => 'BL',
             self::Invoice => 'FV',
             self::CreditNote => 'AV',
+            self::Deposit => 'AC',
         };
     }
 
@@ -74,12 +80,14 @@ enum SalesDocumentType: string
             self::Delivery => 'BON DE LIVRAISON',
             self::Invoice => 'FACTURE',
             self::CreditNote => 'AVOIR',
+            self::Deposit => 'FACTURE D’ACOMPTE',
         };
     }
 
     /**
      * What a validated document of this type may be turned into: any later step of the chain for
-     * a quote, an order or a delivery note, a credit note for an invoice, nothing for a credit note.
+     * a quote, an order or a delivery note - and a deposit invoice for an order -, a credit note for
+     * an invoice, nothing for a credit note or a deposit invoice.
      *
      * @return list<self>
      */
@@ -87,15 +95,21 @@ enum SalesDocumentType: string
     {
         return match ($this) {
             self::Quote => [self::Order, self::Delivery, self::Invoice],
-            self::Order => [self::Delivery, self::Invoice],
+            self::Order => [self::Delivery, self::Invoice, self::Deposit],
             self::Delivery => [self::Invoice],
             self::Invoice => [self::CreditNote],
-            self::CreditNote => [],
+            self::CreditNote, self::Deposit => [],
         };
     }
 
-    /** The chain drawn at the head of a fiche: the steps before the invoice, then the invoice. */
+    /** An invoicing document - an invoice, a credit note, a deposit invoice: it goes to the books (step 2.3b). */
     public function isInvoicing(): bool
+    {
+        return self::Invoice === $this || self::CreditNote === $this || self::Deposit === $this;
+    }
+
+    /** It may carry a cash discount (« escompte »): an invoice, and the credit note that reverses it. */
+    public function takesCashDiscount(): bool
     {
         return self::Invoice === $this || self::CreditNote === $this;
     }
@@ -109,6 +123,6 @@ enum SalesDocumentType: string
     /** @return list<self> the types of a list's tab: the chain before the invoice, or the invoicing */
     public function family(): array
     {
-        return $this->isInvoicing() ? [self::Invoice, self::CreditNote] : [self::Quote, self::Order, self::Delivery];
+        return $this->isInvoicing() ? [self::Invoice, self::CreditNote, self::Deposit] : [self::Quote, self::Order, self::Delivery];
     }
 }

@@ -14,6 +14,8 @@ final readonly class SalesDocumentFields
         public ?\DateTimeImmutable $dueDate,
         public ?string $reference,
         public array $lines,
+        public ?string $cashDiscount = null,
+        public bool $vatOnReceipts = false,
     ) {
     }
 }

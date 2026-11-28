@@ -9,6 +9,7 @@ use App\Entity\Identity\User;
 use App\Entity\Inventory\Article;
 use App\Entity\Sales\SalesDocument;
 use App\Entity\ThirdParty\ThirdParty;
+use App\Enum\Accounting\AccountingBehaviour;
 use App\Enum\Sales\SalesDocumentType;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Inventory\ArticleRepository;
@@ -17,10 +18,13 @@ use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Security\Voter\DossierRightVoter;
 use App\Service\Sales\SalesDocumentDraft;
 use App\Service\Sales\SalesDocuments;
+use App\Service\Sales\SalesPosting;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\Pdf\PdfRenderer;
 use App\Service\Shared\PostValue;
 use App\Service\Shared\QueryValue;
+use Brick\Math\BigDecimal;
+use Brick\Math\Exception\MathException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -37,17 +41,19 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * foot, the history. A draft is saved with F10 (SALES_ENTER), validated with Ctrl Entrée after the
  * confirmation bar (SALES_VALIDATE) and then never changes: « Transformer en… », « Créer un avoir »,
  * « Envoyer » (simulated) and the PDF are what is left. Every gesture goes through SalesDocuments.
+ * An invoice, a credit note or a deposit invoice then shows its entry (step 2.3b, SalesPosting): the
+ * one written, the one proposed (« Passer l'écriture au brouillard »), or the journal to enter it in.
  */
 #[Route('/d/{dossier}/sales', requirements: ['dossier' => '\d+'])]
 final class SalesDocumentController extends AbstractController
 {
     #[Route('/{type}/new', name: 'app_sales_document_new', requirements: ['type' => SalesDocumentsController::TYPES], methods: ['GET', 'POST'])]
-    public function create(Dossier $dossier, string $type, Request $request, SalesDocuments $documents, ThirdPartyRepository $thirdParties, ArticleRepository $articles, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
+    public function create(Dossier $dossier, string $type, Request $request, SalesDocuments $documents, SalesPosting $posting, ThirdPartyRepository $thirdParties, ArticleRepository $articles, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $this->allow($dossier, DossierRightVoter::SALES_ENTER);
         $kind = SalesDocumentType::from($type);
-        if (SalesDocumentType::CreditNote === $kind) {
-            throw new NotFoundHttpException('A credit note is made from its invoice.');
+        if (SalesDocumentType::CreditNote === $kind || SalesDocumentType::Deposit === $kind) {
+            throw new NotFoundHttpException('A credit note is made from its invoice, a deposit invoice from its order.');
         }
         $draft = $documents->blank($dossier);
         $draft->customer = strtoupper(QueryValue::trimmed($request, 'customer'));
@@ -65,11 +71,11 @@ final class SalesDocumentController extends AbstractController
             $status = Response::HTTP_UNPROCESSABLE_ENTITY;
         }
 
-        return $this->render('sales/document.html.twig', $this->view($dossier, $kind, null, $draft, $documents, $thirdParties, $articles), new Response(status: $status));
+        return $this->render('sales/document.html.twig', $this->view($dossier, $kind, null, $draft, $documents, $posting, $thirdParties, $articles), new Response(status: $status));
     }
 
     #[Route('/documents/{id}', name: 'app_sales_document', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
-    public function show(Dossier $dossier, int $id, Request $request, SalesDocuments $documents, SalesDocumentRepository $repository, ThirdPartyRepository $thirdParties, ArticleRepository $articles, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
+    public function show(Dossier $dossier, int $id, Request $request, SalesDocuments $documents, SalesPosting $posting, SalesDocumentRepository $repository, ThirdPartyRepository $thirdParties, ArticleRepository $articles, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $document = $this->document($dossier, $id, $repository);
         $draft = SalesDocumentDraft::of($document);
@@ -91,7 +97,7 @@ final class SalesDocumentController extends AbstractController
             $status = Response::HTTP_UNPROCESSABLE_ENTITY;
         }
 
-        return $this->render('sales/document.html.twig', $this->view($dossier, $document->getType(), $document, $draft, $documents, $thirdParties, $articles), new Response(status: $status));
+        return $this->render('sales/document.html.twig', $this->view($dossier, $document->getType(), $document, $draft, $documents, $posting, $thirdParties, $articles), new Response(status: $status));
     }
 
     #[Route('/documents/{id}/validate', name: 'app_sales_document_validate', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -135,11 +141,36 @@ final class SalesDocumentController extends AbstractController
 
             return $this->redirectToRoute('app_sales_document', ['dossier' => $dossier->getId(), 'id' => $id], Response::HTTP_SEE_OTHER);
         }
-        $next = $documents->transform($document, $into, $me);
+        $percent = null;
+        if (SalesDocumentType::Deposit === $into) {
+            $percent = self::percent(PostValue::trimmed($request, 'percent'));
+            if (null === $percent) {
+                $this->addFlash('status', 'Un acompte se donne en pourcentage de la commande : de 0,01 à 100 %.');
+
+                return $this->redirectToRoute('app_sales_document', ['dossier' => $dossier->getId(), 'id' => $id], Response::HTTP_SEE_OTHER);
+            }
+        }
+        $next = $documents->transform($document, $into, $me, $percent);
         $entityManager->flush();
         $this->addFlash('status', \sprintf('Brouillon de %s ouvert depuis %s.', mb_strtolower($into->label()), $document->getNumber() ?? ''));
 
         return $this->redirectToRoute('app_sales_document', ['dossier' => $dossier->getId(), 'id' => $next->getId()], Response::HTTP_SEE_OTHER);
+    }
+
+    /** « Passer l'écriture au brouillard » (step 2.3b): the proposal written through the gateway. */
+    #[Route('/documents/{id}/post', name: 'app_sales_document_post', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function post(Dossier $dossier, int $id, Request $request, SalesPosting $posting, SalesDocumentRepository $repository, #[CurrentUser] User $me): Response
+    {
+        $document = $this->gesture($dossier, $id, $request, $repository, DossierRightVoter::SALES_VALIDATE, 'sales-post-');
+        if (null !== $document->getEntry() || null === $posting->proposal($document) || AccountingBehaviour::LetEnter === $posting->behaviour($document)) {
+            throw new NotFoundHttpException('This document’s entry is not posted from here.');
+        }
+        $check = $posting->post($document, $me);
+        $this->addFlash('status', $check->posted
+            ? 'L’écriture est au brouillard : vérifiez-la, corrigez-la au besoin, puis validez-la.'
+            : 'L’écriture n’est pas passée : '.implode(' ', array_unique(array_values($check->errors))));
+
+        return $this->redirectToRoute('app_sales_document', ['dossier' => $dossier->getId(), 'id' => $id], Response::HTTP_SEE_OTHER);
     }
 
     #[Route('/documents/{id}/send', name: 'app_sales_document_send', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -157,12 +188,12 @@ final class SalesDocumentController extends AbstractController
     }
 
     #[Route('/documents/{id}.pdf', name: 'app_sales_document_pdf', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function pdf(Dossier $dossier, int $id, SalesDocumentRepository $repository, PdfRenderer $renderer): Response
+    public function pdf(Dossier $dossier, int $id, SalesDocumentRepository $repository, SalesDocuments $documents, PdfRenderer $renderer): Response
     {
         $document = $this->document($dossier, $id, $repository);
         $name = (null === $document->getNumber() ? $document->getType()->label().'-brouillon' : $document->getNumber()).'.pdf';
 
-        return new Response($renderer->renderTemplate('sales/pdf/document.pdf.html.twig', self::paper($dossier, $document)), Response::HTTP_OK, [
+        return new Response($renderer->renderTemplate('sales/pdf/document.pdf.html.twig', self::paper($dossier, $document, $documents)), Response::HTTP_OK, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_INLINE, $name, 'document.pdf'),
         ]);
@@ -174,18 +205,18 @@ final class SalesDocumentController extends AbstractController
      *
      * @return array<string, mixed>
      */
-    public static function paper(Dossier $dossier, SalesDocument $document): array
+    public static function paper(Dossier $dossier, SalesDocument $document, SalesDocuments $documents): array
     {
         return [
             'company' => $dossier->getCompany(),
             'document' => $document,
             'customer' => $document->getCustomerPrint() ?? SalesDocuments::print($document->getCustomer()),
-            'totals' => $document->getTotals(),
+            'totals' => $documents->totals($document),
         ];
     }
 
     /** @return array<string, mixed> */
-    private function view(Dossier $dossier, SalesDocumentType $type, ?SalesDocument $document, SalesDocumentDraft $draft, SalesDocuments $documents, ThirdPartyRepository $thirdParties, ArticleRepository $articles): array
+    private function view(Dossier $dossier, SalesDocumentType $type, ?SalesDocument $document, SalesDocumentDraft $draft, SalesDocuments $documents, SalesPosting $posting, ThirdPartyRepository $thirdParties, ArticleRepository $articles): array
     {
         $customers = array_values(array_filter($thirdParties->findByDossier($dossier), static fn (ThirdParty $t): bool => ThirdPartyKind::Customer === $t->getKind()));
         $catalogue = [];
@@ -209,7 +240,49 @@ final class SalesDocumentController extends AbstractController
             'refusals' => null !== $document && $document->isDraft() ? $documents->validationRefusals($document) : [],
             'transforms' => null === $document || $document->isDraft() ? [] : array_values(array_filter($type->transformsInto(), static fn (SalesDocumentType $into): bool => null === $documents->transformRefusal($document, $into))),
             'blank_line' => SalesDocumentDraft::blankLine(),
+            'totals' => null === $document ? null : $documents->totals($document),
+            'posting' => null === $document ? null : $this->posting($document, $posting),
         ];
+    }
+
+    /**
+     * The card « Écriture » of a validated invoicing document (step 2.3b): the behaviour, the entries
+     * it led to and, until one exists, the proposal with its check - never under « Laisser saisir »,
+     * whose proposal is the correction's.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function posting(SalesDocument $document, SalesPosting $posting): ?array
+    {
+        if ($document->isDraft() || !$document->getType()->isInvoicing()) {
+            return null;
+        }
+        $behaviour = $posting->behaviour($document);
+        $entries = $posting->entries($document);
+        $proposal = null;
+        $check = null;
+        if ([] === $entries && AccountingBehaviour::LetEnter !== $behaviour) {
+            $proposal = $posting->proposal($document);
+            $check = null === $proposal ? null : $posting->check($document, $proposal);
+        }
+
+        return ['behaviour' => $behaviour, 'entries' => $entries, 'proposal' => $proposal, 'check' => $check, 'journal' => $posting->salesJournal($document)?->getCode()];
+    }
+
+    /** A deposit's percentage of the order, typed « 30 » or « 12,5 »: above 0, 100 at most, two decimals. */
+    private static function percent(string $typed): ?BigDecimal
+    {
+        $text = str_replace([',', ' ', '%'], ['.', '', ''], $typed);
+        if (1 !== preg_match('/^\d{1,3}(\.\d{1,2})?$/', $text)) {
+            return null;
+        }
+        try {
+            $percent = BigDecimal::of($text);
+        } catch (MathException) {
+            return null;
+        }
+
+        return $percent->isPositive() && !$percent->isGreaterThan(100) ? $percent : null;
     }
 
     /**
@@ -230,7 +303,12 @@ final class SalesDocumentController extends AbstractController
                 'state' => $link === $document ? 'current' : 'done',
             ];
         }
-        $last = $chain[\count($chain) - 1]->getType();
+        $last = SalesDocumentType::Quote;
+        foreach ($chain as $link) {
+            if (SalesDocumentType::Deposit !== $link->getType()) {
+                $last = $link->getType();
+            }
+        }
         if (!$last->isInvoicing()) {
             $order = [SalesDocumentType::Quote, SalesDocumentType::Order, SalesDocumentType::Delivery, SalesDocumentType::Invoice];
             foreach (\array_slice($order, (int) array_search($last, $order, true) + 1) as $toCome) {
@@ -261,6 +339,8 @@ final class SalesDocumentController extends AbstractController
         $draft->date = PostValue::trimmed($request, 'date');
         $draft->dueDate = PostValue::trimmed($request, 'dueDate');
         $draft->reference = PostValue::trimmed($request, 'reference');
+        $draft->cashDiscount = PostValue::trimmed($request, 'cashDiscount');
+        $draft->vatOnReceipts = '1' === PostValue::trimmed($request, 'vatOnReceipts');
         $draft->readLines(PostValue::rows($request, 'lines'));
     }
 

@@ -317,7 +317,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/payroll/payslips', '/payroll/payslips/S001',
             '/documents', '/documents?state=to_process&q=fa', '/documents/new', '/documents/'.$documentId, '/documents/'.$documentId.'/file',
             '/inventory/articles', '/inventory/articles?q=fen', '/inventory/articles/new', '/inventory/articles/PF001',
-            '/sales/customers', '/sales/customers?q=gir', '/sales/quote', '/sales/order', '/sales/invoice', '/sales/credit_note',
+            '/sales/customers', '/sales/customers?q=gir', '/sales/quote', '/sales/order', '/sales/invoice', '/sales/credit_note', '/sales/deposit',
             '/sales/quote/new', '/sales/invoice/new', '/sales/documents/'.$salesId, '/sales/documents/'.$salesId.'.pdf',
             '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];

@@ -1124,6 +1124,12 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
 - `Article` (Achats et stocks › Articles) is written by `ArticleSheet` under `DOSSIER_SETTINGS`; Ventes asks
   `SALES_READ` / `SALES_ENTER` / `SALES_VALIDATE` (area Ventes of `ProfileMatrix`).
 - `type` is a prop of `Px:Button`: a page variable of that name is hidden inside one (the sales templates say `doc_type`).
+- **Step 2.3b**: an order is invoiced in part by **deposit invoices** (type `deposit`, AC-, `transform()` with a
+  percentage), which the final invoice deducts - read from its chain while a draft (`SalesDocuments::totals()`, never
+  `$document->getTotals()` on a screen), **frozen** on it at validation (`SalesDocument::$deposits`). The cash discount
+  (`cashDiscount`, invoice and credit note) is taken off each rate's base before its VAT. A validated invoicing
+  document goes to the books through `SalesPosting` alone (entry built by the pure `SalesEntries`: 665000, 419100,
+  445800 when `vatOnReceipts`); `linkEntry()` is the one write a validated document takes.
 
 ## Référentiel and assistance levels (built at step 2.8)
 

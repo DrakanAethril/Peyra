@@ -21,6 +21,8 @@ use App\Service\Audit\AuditTrail;
 use App\Service\Regulatory\MissingRegulatoryValue;
 use App\Service\Regulatory\RegulatoryReader;
 use App\Service\Shared\FrenchFormat;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -30,6 +32,11 @@ use Doctrine\ORM\EntityManagerInterface;
  * credit note), sent (simulated: nothing leaves, the history says it went). Every gesture is in
  * the dossier's trail and in the document's history, at the dossier's date. create(), update() and
  * delete() leave the flush to the caller; validate() flushes in its own transaction.
+ *
+ * Step 2.3b: an order is invoiced in part by deposit invoices (`transform()` into a deposit, a
+ * percentage of its bases), which its final invoice deducts - read from its chain while it is a
+ * draft, frozen on it at its validation; once validated, an invoicing document goes to the books
+ * (SalesPosting::validated()).
  *
  * @phpstan-import-type CustomerPrint from SalesDocument
  */
@@ -46,6 +53,7 @@ final readonly class SalesDocuments
         private ArticleRepository $articles,
         private AuditTrail $auditTrail,
         private RegulatoryReader $regulatory,
+        private SalesPosting $posting,
     ) {
     }
 
@@ -70,7 +78,7 @@ final readonly class SalesDocuments
 
     /**
      * The chain a document belongs to, from its first document to its last: the documents it was
-     * made from, itself, then those made from it (a credit note ends a branch).
+     * made from, itself, then those made from it (a credit note or a deposit invoice ends a branch).
      *
      * @return list<SalesDocument>
      */
@@ -86,7 +94,7 @@ final readonly class SalesDocuments
             $next = null;
             foreach ($this->documents->findMadeFrom($current) as $made) {
                 $after[] = $made;
-                if (SalesDocumentType::CreditNote !== $made->getType()) {
+                if (SalesDocumentType::CreditNote !== $made->getType() && SalesDocumentType::Deposit !== $made->getType()) {
                     $next = $made;
                 }
             }
@@ -97,6 +105,37 @@ final readonly class SalesDocuments
         }
 
         return [...$before, $document, ...$after];
+    }
+
+    /**
+     * The deposit invoices a final invoice deducts: those frozen on it once validated; for a draft,
+     * the validated deposit invoices made from the documents of its chain before it.
+     *
+     * @return list<SalesDeposit>
+     */
+    public function deposits(SalesDocument $document): array
+    {
+        if (SalesDocumentType::Invoice !== $document->getType()) {
+            return [];
+        }
+        $frozen = $document->getDeposits();
+        if (null !== $frozen) {
+            return $frozen;
+        }
+        $deposits = [];
+        foreach ($this->depositsBefore($document) as $deposit) {
+            if (!$deposit->isDraft()) {
+                $deposits[] = new SalesDeposit($deposit->getNumber() ?? '', $deposit->getDate(), $deposit->getTotals()->vatLines, $deposit->isVatOnReceipts());
+            }
+        }
+
+        return $deposits;
+    }
+
+    /** Its figures, a draft final invoice deducting its chain's deposits. */
+    public function totals(SalesDocument $document): SalesTotals
+    {
+        return $document->getTotals($this->deposits($document));
     }
 
     /** A new document's draft: dated the dossier's date. */
@@ -125,7 +164,7 @@ final readonly class SalesDocuments
     public function create(Dossier $dossier, SalesDocumentType $type, SalesDocumentFields $fields, User|string $by): SalesDocument
     {
         $document = new SalesDocument($dossier, $type, $this->customer($dossier, $fields->customer), $fields->date);
-        $document->rewrite($document->getCustomer(), $fields->date, $fields->dueDate, $fields->reference, $fields->lines);
+        $document->rewrite($document->getCustomer(), $fields->date, $fields->dueDate, $fields->reference, $fields->lines, ...self::flags($type, $fields));
         $document->recordHistory('created', $dossier->getDossierDate(), self::name($by), 'Brouillon ouvert');
         $this->entityManager->persist($document);
         $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentCreated, $by, \sprintf('Brouillon de %s ouvert pour %s', mb_strtolower($type->label()), $document->getCustomer()->getName()), ['type' => $type->value]);
@@ -136,7 +175,7 @@ final readonly class SalesDocuments
     public function update(SalesDocument $document, SalesDocumentFields $fields, User|string $by): void
     {
         $dossier = $document->getDossier();
-        $document->rewrite($this->customer($dossier, $fields->customer), $fields->date, $fields->dueDate, $fields->reference, $fields->lines);
+        $document->rewrite($this->customer($dossier, $fields->customer), $fields->date, $fields->dueDate, $fields->reference, $fields->lines, ...self::flags($document->getType(), $fields));
         $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentChanged, $by, \sprintf('Brouillon de %s modifié', mb_strtolower($document->getType()->label())), ['document' => $document->getId()]);
     }
 
@@ -170,6 +209,17 @@ final readonly class SalesDocuments
                 $refusals[] = \sprintf('Les avoirs de la facture %s dépasseraient son montant (%s TTC).', $source->getNumber() ?? '', FrenchFormat::amount($source->getTotals()->includingTax));
             }
         }
+        if (SalesDocumentType::Invoice === $document->getType()) {
+            foreach ($this->depositsBefore($document) as $deposit) {
+                if ($deposit->isDraft()) {
+                    $refusals[] = 'Une facture d’acompte de la commande est encore en brouillon : validez-la ou supprimez-la avant la facture finale.';
+                    break;
+                }
+            }
+            if ($this->totals($document)->amountDue->isNegative()) {
+                $refusals[] = 'Les acomptes déduits dépassent le montant de la facture.';
+            }
+        }
 
         return $refusals;
     }
@@ -177,7 +227,9 @@ final readonly class SalesDocuments
     /**
      * Numbered and frozen: the next number of its type and year, read under a lock on the
      * sequence's row; its customer printed as they are now; an invoice's due date by the
-     * customer's terms when none was typed. Flushed here, in one transaction.
+     * customer's terms when none was typed; a final invoice's deposits. Flushed here, in one
+     * transaction; then an invoicing document goes to the books as the dossier's behaviour says
+     * (SalesPosting), which writes - or not - in its own.
      */
     public function validate(SalesDocument $document, User|string $by): void
     {
@@ -199,11 +251,12 @@ final readonly class SalesDocuments
             if (null === $dueDate && SalesDocumentType::Invoice === $type) {
                 $dueDate = $customer->getPaymentTerms()->dueDate($document->getDate());
             }
-            $document->markValidated($number, self::print($customer), $dueDate);
+            $document->markValidated($number, self::print($customer), $dueDate, $this->deposits($document));
             $document->recordHistory('validated', $dossier->getDossierDate(), self::name($by), \sprintf('Validation sous le numéro %s', $number));
             $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentValidated, $by, \sprintf('Validation de %s %s', mb_strtolower($type->label()), $number), ['document' => $document->getId(), 'number' => $number]);
             $this->entityManager->flush();
         });
+        $this->posting->validated($document, $by);
     }
 
     /** Why it may not be turned into that type; null when it may. */
@@ -215,24 +268,42 @@ final readonly class SalesDocuments
         if (!\in_array($into, $document->getType()->transformsInto(), true)) {
             return \sprintf('%s ne se transforme pas en %s.', $document->getType()->label(), mb_strtolower($into->label()));
         }
+        if (SalesDocumentType::Deposit === $into) {
+            foreach ($this->chain($document) as $link) {
+                if (SalesDocumentType::Invoice === $link->getType()) {
+                    return \sprintf('La commande %s a sa facture : %s. Un acompte se facture avant elle.', $document->getNumber() ?? '', $link->getTitle());
+                }
+            }
+
+            return null;
+        }
         if (SalesDocumentType::CreditNote !== $into) {
             foreach ($this->documents->findMadeFrom($document) as $made) {
-                return \sprintf('%s a déjà sa suite : %s.', $document->getNumber() ?? '', $made->getTitle());
+                if (SalesDocumentType::Deposit !== $made->getType()) {
+                    return \sprintf('%s a déjà sa suite : %s.', $document->getNumber() ?? '', $made->getTitle());
+                }
             }
         }
 
         return null;
     }
 
-    /** The next document of the chain, a draft carrying the same customer and lines, dated the dossier's date. */
-    public function transform(SalesDocument $document, SalesDocumentType $into, User|string $by): SalesDocument
+    /**
+     * The next document of the chain, a draft carrying the same customer and lines, dated the
+     * dossier's date - its cash discount and VAT on receipt with it. A deposit invoice takes
+     * `percent` of each VAT rate's base of the order instead, one line per rate.
+     */
+    public function transform(SalesDocument $document, SalesDocumentType $into, User|string $by, ?BigDecimal $percent = null): SalesDocument
     {
         if (null !== $this->transformRefusal($document, $into)) {
             throw new \LogicException('This document may not be turned into that type.');
         }
         $dossier = $document->getDossier();
         $next = new SalesDocument($dossier, $into, $document->getCustomer(), $dossier->getDossierDate(), $document);
-        $next->rewrite($document->getCustomer(), $dossier->getDossierDate(), null, $document->getReference(), $document->getLines());
+        $lines = SalesDocumentType::Deposit === $into
+            ? self::depositLines($document, $percent ?? throw new \LogicException('A deposit takes a percentage of the order.'))
+            : $document->getLines();
+        $next->rewrite($document->getCustomer(), $dossier->getDossierDate(), null, $document->getReference(), $lines, $into->takesCashDiscount() ? $document->getCashDiscount() : null, $document->isVatOnReceipts());
         $next->recordHistory('created', $dossier->getDossierDate(), self::name($by), \sprintf('Brouillon ouvert depuis %s', $document->getNumber() ?? ''));
         $document->recordHistory('transformed', $dossier->getDossierDate(), self::name($by), \sprintf('Transformation en %s', mb_strtolower($into->label())));
         $this->entityManager->persist($next);
@@ -263,6 +334,57 @@ final readonly class SalesDocuments
         ], static fn (?string $line): bool => null !== $line && '' !== $line));
 
         return ['name' => $customer->getName(), 'lines' => $lines, 'siren' => $customer->getSiren(), 'vatNumber' => $customer->getVatNumber()];
+    }
+
+    /**
+     * The deposit invoices made from the documents of its chain before it (the quote, the order,
+     * the delivery note), oldest first.
+     *
+     * @return list<SalesDocument>
+     */
+    private function depositsBefore(SalesDocument $document): array
+    {
+        $deposits = [];
+        for ($source = $document->getSource(); null !== $source; $source = $source->getSource()) {
+            foreach ($this->documents->findMadeFrom($source) as $made) {
+                if (SalesDocumentType::Deposit === $made->getType()) {
+                    $deposits[] = $made;
+                }
+            }
+        }
+        usort($deposits, static fn (SalesDocument $a, SalesDocument $b): int => $a->getId() <=> $b->getId());
+
+        return $deposits;
+    }
+
+    /**
+     * A deposit invoice's lines: `percent` of each VAT rate's base of the order, half up.
+     *
+     * @return list<SalesLine>
+     */
+    public static function depositLines(SalesDocument $order, BigDecimal $percent): array
+    {
+        $lines = [];
+        foreach ($order->getTotals()->vatLines as $vat) {
+            $amount = $vat->base->times($percent->dividedBy(100, 6), RoundingMode::HalfUp);
+            $lines[] = new SalesLine(
+                null,
+                \sprintf('Acompte de %s %% sur %s %s', str_replace('.', ',', (string) $percent->strippedOfTrailingZeros()), mb_strtolower($order->getType()->label()), $order->getNumber() ?? ''),
+                '',
+                BigDecimal::one(),
+                $amount,
+                null,
+                $vat->rate,
+            );
+        }
+
+        return $lines;
+    }
+
+    /** @return array{0: ?string, 1: bool} the cash discount and the VAT on receipt a type keeps */
+    private static function flags(SalesDocumentType $type, SalesDocumentFields $fields): array
+    {
+        return [$type->takesCashDiscount() ? $fields->cashDiscount : null, $type->isInvoicing() && $fields->vatOnReceipts];
     }
 
     private function customer(Dossier $dossier, string $code): ThirdParty

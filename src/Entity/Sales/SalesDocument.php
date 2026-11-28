@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity\Sales;
 
+use App\Entity\Accounting\Entry;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\DossierOwned;
 use App\Entity\Dossier\DossierOwnedTrait;
@@ -12,8 +13,10 @@ use App\Enum\Sales\SalesDocumentState;
 use App\Enum\Sales\SalesDocumentType;
 use App\Repository\Sales\SalesDocumentRepository;
 use App\Service\Sales\SalesComputation;
+use App\Service\Sales\SalesDeposit;
 use App\Service\Sales\SalesLine;
 use App\Service\Sales\SalesTotals;
+use Brick\Math\BigDecimal;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -25,6 +28,12 @@ use Doctrine\ORM\Mapping as ORM;
  * that is the chain drawn at the head of its fiche. Its figures are read from its lines
  * (SalesComputation), never stored. The history says what happened to it, at the dossier's date -
  * « envoyé » included: nothing leaves the application. SalesDocuments is the only writer.
+ *
+ * Step 2.3b: an invoice may grant a cash discount (« escompte », a percentage), an invoicing
+ * document's VAT may be due on receipt rather than on the debit, and a final invoice deducts the
+ * deposit invoices of its chain - frozen on it at its validation. Once validated, an invoicing
+ * document goes to the books through AccountingGateway; the entry it led to is linked here, the
+ * one thing that is still written on a validated document (SalesPosting).
  *
  * @phpstan-type HistoryRow array{event: string, on: string, by: string, detail: string}
  * @phpstan-type CustomerPrint array{name: string, lines: list<string>, siren: ?string, vatNumber: ?string}
@@ -79,6 +88,28 @@ class SalesDocument implements DossierOwned
     /** @var list<array<mixed>> SalesLine::toArray() (`lines` is a MariaDB keyword) */
     #[ORM\Column(name: 'document_lines', type: Types::JSON)]
     private array $lines = [];
+
+    /** The cash discount granted, in percent (« 2 », « 1.5 »): an invoice or its credit note. */
+    #[ORM\Column(length: 8, nullable: true)]
+    private ?string $cashDiscount = null;
+
+    /** The VAT is due on receipt (services), not on the debit: its entry credits 445800, not 445710. */
+    #[ORM\Column]
+    private bool $vatOnReceipts = false;
+
+    /**
+     * The deposit invoices a final invoice deducts, frozen at its validation (SalesDeposit::toArray());
+     * null until then - a draft reads its chain's.
+     *
+     * @var list<array<mixed>>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $deposits = null;
+
+    /** The entry its posting wrote in the brouillard; null until then, or once that draft was deleted. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?Entry $entry = null;
 
     /** The document it was made from: a quote for an order, an invoice for a credit note. */
     #[ORM\ManyToOne(targetEntity: self::class)]
@@ -164,9 +195,50 @@ class SalesDocument implements DossierOwned
         return array_map(SalesLine::fromArray(...), $this->lines);
     }
 
-    public function getTotals(): SalesTotals
+    /**
+     * Its figures; a draft final invoice is given the deposits of its chain to deduct
+     * (SalesDocuments::totals()), a validated one deducts those frozen on it.
+     *
+     * @param list<SalesDeposit>|null $deposits
+     */
+    public function getTotals(?array $deposits = null): SalesTotals
     {
-        return SalesComputation::of($this->getLines());
+        return SalesComputation::of($this->getLines(), $this->getCashDiscountRate(), $deposits ?? $this->getDeposits() ?? []);
+    }
+
+    public function getCashDiscount(): ?string
+    {
+        return $this->cashDiscount;
+    }
+
+    public function getCashDiscountRate(): ?BigDecimal
+    {
+        return null === $this->cashDiscount ? null : BigDecimal::of($this->cashDiscount);
+    }
+
+    public function isVatOnReceipts(): bool
+    {
+        return $this->vatOnReceipts;
+    }
+
+    /** @return list<SalesDeposit>|null the deposits frozen at the validation; null for a draft */
+    public function getDeposits(): ?array
+    {
+        return null === $this->deposits ? null : array_map(SalesDeposit::fromArray(...), $this->deposits);
+    }
+
+    public function getEntry(): ?Entry
+    {
+        return $this->entry;
+    }
+
+    /** Its entry is written (SalesPosting): the one change a validated document takes. */
+    public function linkEntry(Entry $entry): void
+    {
+        if ($this->isDraft()) {
+            throw new \LogicException('A draft goes to the books once validated.');
+        }
+        $this->entry = $entry;
     }
 
     public function getSource(): ?self
@@ -190,7 +262,7 @@ class SalesDocument implements DossierOwned
      *
      * @param list<SalesLine> $lines
      */
-    public function rewrite(ThirdParty $customer, \DateTimeImmutable $date, ?\DateTimeImmutable $dueDate, ?string $reference, array $lines): void
+    public function rewrite(ThirdParty $customer, \DateTimeImmutable $date, ?\DateTimeImmutable $dueDate, ?string $reference, array $lines, ?string $cashDiscount = null, bool $vatOnReceipts = false): void
     {
         $this->refuseUnlessDraft();
         $this->customer = $customer;
@@ -198,20 +270,25 @@ class SalesDocument implements DossierOwned
         $this->dueDate = $dueDate;
         $this->reference = $reference;
         $this->lines = array_map(static fn (SalesLine $line): array => $line->toArray(), $lines);
+        $this->cashDiscount = $cashDiscount;
+        $this->vatOnReceipts = $vatOnReceipts;
     }
 
     /**
-     * Validated: numbered, its customer frozen as printed, its due date settled.
+     * Validated: numbered, its customer frozen as printed, its due date settled, the deposits it
+     * deducts frozen.
      *
-     * @param CustomerPrint $customerPrint
+     * @param CustomerPrint      $customerPrint
+     * @param list<SalesDeposit> $deposits
      */
-    public function markValidated(string $number, array $customerPrint, ?\DateTimeImmutable $dueDate): void
+    public function markValidated(string $number, array $customerPrint, ?\DateTimeImmutable $dueDate, array $deposits = []): void
     {
         $this->refuseUnlessDraft();
         $this->state = SalesDocumentState::Validated;
         $this->number = $number;
         $this->customerPrint = $customerPrint;
         $this->dueDate = $dueDate;
+        $this->deposits = array_map(static fn (SalesDeposit $deposit): array => $deposit->toArray(), $deposits);
     }
 
     public function markSent(\DateTimeImmutable $on): void

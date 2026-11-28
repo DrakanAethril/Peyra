@@ -68,6 +68,57 @@ final class SalesDocumentScreensTest extends WebTestCase
         self::assertSelectorTextContains('main', 'Brouillon ouvert depuis DE-2026-0001');
     }
 
+    /**
+     * Step 2.3b, under « Proposer » (no mission yet): an invoice with a cash discount of 2 % and its
+     * VAT on receipt - 10 × 100,00, escompte 20,00, VAT 196,00, TTC 1 176,00 - is validated, its
+     * fiche proposes the entry, « Passer l'écriture au brouillard » writes it; an order's deposit of
+     * 25 % is drafted from its fiche.
+     */
+    public function testAnInvoiceIsProposedThenPassedToTheBrouillard(): void
+    {
+        [$client, $dossier] = $this->school();
+
+        $crawler = $client->request('GET', $this->url($dossier, '/sales/invoice/new'));
+        $form = $crawler->filter('#sales-form')->form();
+        $values = $form->getPhpValues();
+        $values['customer'] = 'C0019';
+        $values['cashDiscount'] = '2';
+        $values['vatOnReceipts'] = '1';
+        $values['lines'] = [['article' => '', 'designation' => 'Pose', 'unit' => 'heure', 'quantity' => '10', 'unitPrice' => '100,00', 'discount' => '', 'rate' => '20']];
+        $client->request('POST', $form->getUri(), $values);
+        $crawler = $client->followRedirect();
+        self::assertSelectorTextContains('main', 'Net financier');
+        self::assertSelectorTextContains('main', "1\u{202F}176,00");
+
+        $client->submit($crawler->filter('form.px-confirmbar')->form());
+        $crawler = $client->followRedirect();
+        self::assertSelectorTextContains('h1', 'Facture FV-2026-0001');
+        self::assertSelectorTextContains('#sales-proposal-title', 'Écriture proposée');
+        self::assertSelectorTextContains('main', '665000');
+        self::assertSelectorTextContains('main', '445800');
+
+        $client->submit($crawler->selectButton('Passer l’écriture au brouillard')->form());
+        $client->followRedirect();
+        self::assertSelectorNotExists('#sales-proposal-title');
+        self::assertSelectorTextContains('#piece-written-title', 'Écriture');
+
+        $crawler = $client->request('GET', $this->url($dossier, '/sales/order/new'));
+        $form = $crawler->filter('#sales-form')->form();
+        $values = $form->getPhpValues();
+        $values['customer'] = 'C0019';
+        $values['lines'] = [['article' => '', 'designation' => 'Fenêtres', 'unit' => 'pièce', 'quantity' => '4', 'unitPrice' => '500,00', 'discount' => '', 'rate' => '20']];
+        $client->request('POST', $form->getUri(), $values);
+        $crawler = $client->followRedirect();
+        $client->submit($crawler->filter('form.px-confirmbar')->form());
+        $crawler = $client->followRedirect();
+        $form = $crawler->selectButton('% : facturer un acompte')->form();
+        $form['percent'] = '25';
+        $client->submit($form);
+        $client->followRedirect();
+        self::assertSelectorTextContains('h1', 'Facture d’acompte (brouillon)');
+        self::assertSelectorExists('input[value="Acompte de 25 % sur commande BC-2026-0001"]');
+    }
+
     /** @return array{KernelBrowser, Dossier} */
     private function school(): array
     {

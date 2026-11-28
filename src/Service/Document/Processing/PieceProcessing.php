@@ -12,9 +12,7 @@ use App\Enum\Accounting\JournalType;
 use App\Enum\Audit\AuditAction;
 use App\Repository\Accounting\EntryLineRepository;
 use App\Repository\Accounting\JournalRepository;
-use App\Repository\Dossier\PeriodRepository;
 use App\Service\Accounting\Entry\AssistanceLevels;
-use App\Service\Accounting\Entry\JournalGrid;
 use App\Service\Accounting\Gateway\AccountingGateway;
 use App\Service\Accounting\Gateway\EntryProposal;
 use App\Service\Accounting\Ledger\EntryRefused;
@@ -37,9 +35,8 @@ final readonly class PieceProcessing
     public function __construct(
         private AccountingGateway $gateway,
         private JournalRepository $journals,
-        private PeriodRepository $periods,
         private EntryLineRepository $lines,
-        private JournalGrid $grid,
+        private ProposedEntryCheck $entryCheck,
         private AssistanceLevels $levels,
         private AuditTrail $trail,
     ) {
@@ -141,23 +138,7 @@ final readonly class PieceProcessing
     /** The entry as the screen holds it, checked as F10 would: in its journal, in the month of its date. */
     public function check(Document $document, PieceProposal $entry): PieceCheck
     {
-        $dossier = $document->getDossier();
-        $journal = '' === $entry->journal ? null : $this->journals->findOneByCode($dossier, $entry->journal);
-        if (null === $journal) {
-            return new PieceCheck(null, ['journal' => 'Choisissez le journal de l’écriture.']);
-        }
-        $day = null === $entry->date ? null : (\DateTimeImmutable::createFromFormat('!Y-m-d', $entry->date) ?: null);
-        $period = (null === $day ? null : $this->periods->findAt($dossier, $day)) ?? $this->periods->findAt($dossier, $dossier->getDossierDate());
-        if (null === $period) {
-            return new PieceCheck(null, ['date' => 'Aucun mois ouvert du dossier ne reçoit cette écriture.']);
-        }
-        $grid = $this->grid->check($this->grid->context($dossier, $journal, $period), $entry->group());
-        $errors = $grid->errors;
-        if (null === $day) {
-            $errors['date'] = 'Saisissez la date de l’écriture.';
-        }
-
-        return new PieceCheck($grid, $errors);
+        return $this->entryCheck->check($document->getDossier(), $entry);
     }
 
     /**
