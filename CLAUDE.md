@@ -1150,6 +1150,19 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   (`JobPeriods`: same job merged). The reçu pour solde de tout compte and the France Travail
   attestation read payslips: steps 4.4 and 4.6.
 
+## Payslip engine (built from step 4.3a)
+
+- **`PayslipCalculator::calculate(PayslipInput): Payslip` is a pure function** (`src/Service/Payroll/Engine/`):
+  the employee on the day (`PayslipEmployee::at()`), the month's elements by rubrique code
+  (`PayslipVariables`, `PaidLeave`), the `RegulatorySnapshot` of the payslip's day and the plan's
+  `PayrollItemSpec`s. No database, no clock, no rate in the code: a rubrique says its base and the
+  source of its rate. Every `PayslipRow` carries its `PayslipExplanation` (formula, origin of the
+  base and of the rate, regulatory `PayslipSource`).
+- **A line's amount is its printed base × its printed rate, half up to the cent**; the hourly rate
+  is the contract's at four decimals, a premium applied to it then rounded to four. The mensualised
+  salary is the exception: its amount is the contract's salary. Tests: `tests/Service/Payroll/Engine/`,
+  reference payslips worked out by hand (`StandardPlanFixture` reads the plan and the millésimes).
+
 ## Cross-cutting building blocks (built at step 0.6a)
 
 Reach for these rather than re-implement them; each has its test.

@@ -616,6 +616,22 @@ entries:
     verified: true
     note: De 21 ans à 25 ans et 26 ans et plus - le plus élevé du % du SMIC et du % du minimum conventionnel. Moins de 16 ans = 16-17 ans.
 
+  # --- Congés payés -----------------------------------------------------------------------------
+  - key: social.paid_leave.pay
+    label: Indemnité de congés payés - règle du dixième (le maintien de salaire s'il est plus favorable)
+    value: {tenth_of_reference_pay: 10}
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.service-public.gouv.fr/particuliers/vosdroits/F33359
+    consulted_on: 2026-11-28
+    verified: true
+    note: >-
+      « l'indemnité de congés payés est égale à 1/10e de la rémunération brute totale perçue au cours de la
+      période de référence » ; maintien : « la rémunération perçue si le salarié avait continué de travailler » ;
+      « C'est le montant le plus avantageux qui est versé. » (page vérifiée le 06/02/2026 ; code du travail
+      L3141-24 à L3141-31). Règle stable, reprise telle quelle pour 2025 et 2026. Le dixième d'un congé est la
+      part des jours pris sur les jours acquis.
+
   # --- Indemnités journalières maladie ----------------------------------------------------------
   - key: social.sick_pay.ijss
     label: Indemnités journalières maladie (IJSS) - règle de calcul
