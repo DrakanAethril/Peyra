@@ -138,7 +138,7 @@ final class LedgerTest extends KernelTestCase
         } catch (EntryRefused $refused) {
             self::assertSame('L’écriture ACH-2026-00001 est déjà validée.', $refused->getMessage());
         }
-        self::assertSame(1, (int) self::getContainer()->get(EntityManagerInterface::class)->getConnection()->fetchOne('SELECT number FROM entry WHERE id = ?', [$id]));
+        self::assertEquals(1, self::getContainer()->get(EntityManagerInterface::class)->getConnection()->fetchOne('SELECT number FROM entry WHERE id = ?', [$id]), 'Its number is kept.');
         self::assertSame(1, self::getContainer()->get(EntryRepository::class)->lastNumber($entry->getJournal(), $entry->getExercise()));
     }
 
