@@ -23,7 +23,7 @@ use Doctrine\ORM\Mapping as ORM;
  * entry carries its value - what came in cost; an exit's value is never stored: it is read by
  * replaying the article's movements with its method (StockValuation), so that a movement dated
  * earlier values what follows it again. A movement made by a validated delivery note or receipt
- * names it. StockMovements is the only writer; a movement is never changed.
+ * names it, an adjustment made by a validated physical inventory names that (step 2.5b). StockMovements is the only writer; a movement is never changed.
  */
 #[ORM\Entity(repositoryClass: StockMovementRepository::class)]
 #[ORM\Table(name: 'stock_movement')]
@@ -71,7 +71,11 @@ class StockMovement implements DossierOwned
     #[ORM\JoinColumn(nullable: true)]
     private ?SalesDocument $salesDocument;
 
-    public function __construct(Dossier $dossier, Article $article, \DateTimeImmutable $date, StockMovementKind $kind, BigDecimal $quantity, ?Money $value, string $location, ?string $toLocation, string $label, ?SalesDocument $salesDocument = null)
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?StockCount $stockCount;
+
+    public function __construct(Dossier $dossier, Article $article, \DateTimeImmutable $date, StockMovementKind $kind, BigDecimal $quantity, ?Money $value, string $location, ?string $toLocation, string $label, ?SalesDocument $salesDocument = null, ?StockCount $stockCount = null)
     {
         $this->dossier = $dossier;
         $this->article = $article;
@@ -83,6 +87,7 @@ class StockMovement implements DossierOwned
         $this->toLocation = $toLocation;
         $this->label = $label;
         $this->salesDocument = $salesDocument;
+        $this->stockCount = $stockCount;
     }
 
     public function getId(): ?int
@@ -133,6 +138,11 @@ class StockMovement implements DossierOwned
     public function getSalesDocument(): ?SalesDocument
     {
         return $this->salesDocument;
+    }
+
+    public function getStockCount(): ?StockCount
+    {
+        return $this->stockCount;
     }
 
     /** What the valuation reads of it. */

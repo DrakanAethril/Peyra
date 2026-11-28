@@ -7,6 +7,7 @@ namespace App\Service\Inventory\Stock;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
 use App\Entity\Inventory\Article;
+use App\Entity\Inventory\StockCount;
 use App\Entity\Inventory\StockMovement;
 use App\Entity\Sales\SalesDocument;
 use App\Enum\Audit\AuditAction;
@@ -16,6 +17,7 @@ use App\Repository\Inventory\ArticleRepository;
 use App\Repository\Inventory\StockMovementRepository;
 use App\Service\Audit\AuditTrail;
 use App\Service\Shared\FrenchFormat;
+use Brick\Math\BigDecimal;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -25,7 +27,8 @@ use Doctrine\ORM\EntityManagerInterface;
  * day nor on a later one), recorded under a lock on its article's row and in the dossier's trail;
  * and the movements a validated document makes - an exit per line of a delivery note, an entry
  * per line of a receipt (valued at the line's net, the order's price and discount), for the
- * articles whose stock is followed, in the main storage place.
+ * articles whose stock is followed, in the main storage place; and the adjustment of each gap a
+ * validated physical inventory found (step 2.5b).
  *
  * The stock is managed in the « inventaire intermittent » way of the French chart: a movement
  * writes no entry; the variation of stocks is recorded at the closing (lot 3).
@@ -120,6 +123,24 @@ final readonly class StockMovements
             }
         }
         $this->auditTrail->inDossier($dossier, AuditAction::StockMovementRecorded, $by, \sprintf('Mouvements de stock de %s', $label), ['document' => $document->getId()]);
+    }
+
+    /**
+     * Why the adjustment of a gap a physical inventory found may not be recorded - it would leave the
+     * stock short on a later day (an exit recorded after the count) -, or null.
+     */
+    public function countShortfall(StockCount $count, Article $article, BigDecimal $gap): ?string
+    {
+        return $this->shortfall($article, [new StockMove(\PHP_INT_MAX, $count->getDate(), StockMovementKind::Adjustment, $gap, null, $count->getLocation())]);
+    }
+
+    /**
+     * The adjustment of a gap a physical inventory found, at its day and in its storage place - inside
+     * the inventory's validation, which locked the article, asked countShortfall() and flushes.
+     */
+    public function adjustForCount(StockCount $count, Article $article, BigDecimal $gap): void
+    {
+        $this->entityManager->persist(new StockMovement($count->getDossier(), $article, $count->getDate(), StockMovementKind::Adjustment, $gap, null, $count->getLocation(), null, $count->getTitle(), null, $count));
     }
 
     /**

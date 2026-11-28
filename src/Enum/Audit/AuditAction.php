@@ -233,6 +233,15 @@ enum AuditAction: string
     /** A stock movement recorded by hand, or those a delivery note or a receipt made (step 2.5). */
     case StockMovementRecorded = 'inventory.stock_movement_recorded';
 
+    /** A physical inventory opened, its counts saved, validated, deleted while in progress (step 2.5b). */
+    case StockCountOpened = 'inventory.stock_count_opened';
+
+    case StockCountSaved = 'inventory.stock_count_saved';
+
+    case StockCountValidated = 'inventory.stock_count_validated';
+
+    case StockCountDeleted = 'inventory.stock_count_deleted';
+
     /** A commercial document drafted, changed, deleted while a draft, validated, sent, transformed (step 2.3). */
     case SalesDocumentCreated = 'sales.document_created';
 
@@ -330,6 +339,10 @@ enum AuditAction: string
             self::ArticleChanged => 'Article modifié',
             self::ArticleDeleted => 'Article supprimé',
             self::StockMovementRecorded => 'Mouvement de stock enregistré',
+            self::StockCountOpened => 'Inventaire physique ouvert',
+            self::StockCountSaved => 'Comptages d’inventaire enregistrés',
+            self::StockCountValidated => 'Inventaire physique validé',
+            self::StockCountDeleted => 'Inventaire physique supprimé',
             self::SalesDocumentCreated => 'Document commercial créé',
             self::SalesDocumentChanged => 'Document commercial modifié',
             self::SalesDocumentDeleted => 'Brouillon de document commercial supprimé',

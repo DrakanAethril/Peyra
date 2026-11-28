@@ -29,7 +29,7 @@ final readonly class SearchScreens
 {
     /** The routes of the catalogue's screens: those a visit records among the recent ones. */
     public const array SCREEN_ROUTES = [
-        'app_dossier_dashboard', 'app_documents', 'app_sales_customers', 'app_sales_documents', 'app_purchase_suppliers', 'app_purchase_invoices', 'app_inventory_stock_movements', 'app_inventory_stock_state', 'app_inventory_articles', 'app_accounting_entry', 'app_accounting_guided', 'app_accounting_opening', 'app_accounting_brouillard',
+        'app_dossier_dashboard', 'app_documents', 'app_sales_customers', 'app_sales_documents', 'app_purchase_suppliers', 'app_purchase_invoices', 'app_inventory_stock_movements', 'app_inventory_stock_state', 'app_inventory_stock_counts', 'app_inventory_articles', 'app_accounting_entry', 'app_accounting_guided', 'app_accounting_opening', 'app_accounting_brouillard',
         'app_accounting_consultation', 'app_accounting_lettering', 'app_accounting_entries', 'app_accounting_edition_journals',
         'app_accounting_edition_general_ledger', 'app_accounting_edition_trial_balance',
         'app_accounting_edition_third_party_balance', 'app_accounting_edition_aged_balance',
@@ -101,6 +101,7 @@ final readonly class SearchScreens
             $items[] = $screen('app_purchase_invoices', 'Factures et avoirs reçus', 'Achats et stocks', 'package', 'factures fournisseurs rapprochement receptions non facturees factures non parvenues');
             $items[] = $screen('app_inventory_stock_movements', 'Mouvements de stock', 'Achats et stocks', 'package', 'stocks entrees sorties transferts ajustements fiche de stock');
             $items[] = $screen('app_inventory_stock_state', 'État du stock', 'Achats et stocks', 'package', 'stocks valorisation cmup peps rupture minimum inventaire');
+            $items[] = $screen('app_inventory_stock_counts', 'Inventaire physique', 'Achats et stocks', 'package', 'stocks inventaire comptage ecarts ajustements');
         }
         $items = [
             ...$items,
