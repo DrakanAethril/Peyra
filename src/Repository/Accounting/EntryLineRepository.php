@@ -219,4 +219,31 @@ final class EntryLineRepository extends ServiceEntityRepository
             .') ORDER BY a.number',
         )->setParameter('thirdParty', $thirdParty)->setParameter('validated', EntryState::Validated)->getResult();
     }
+
+    /**
+     * The account of a class (6: an expense, 7: a revenue) that the latest entry naming this third
+     * party carried - what a pièce of theirs proposes (step 2.2a, the way Pennylane learns a
+     * supplier's category); null when none of their entries has one.
+     */
+    public function usualAccountOf(ThirdParty $thirdParty, int $classDigit): ?string
+    {
+        $number = $this->getEntityManager()->createQueryBuilder()
+            ->select('a.number')
+            ->from(EntryLine::class, 'l')
+            ->join('l.entry', 'e')
+            ->join('e.lines', 'o')
+            ->join('o.account', 'a')
+            ->andWhere('l.thirdParty = :thirdParty')
+            ->andWhere('a.number LIKE :class')
+            ->setParameter('thirdParty', $thirdParty)
+            ->setParameter('class', $classDigit.'%')
+            ->orderBy('e.entryDate', 'DESC')
+            ->addOrderBy('e.id', 'DESC')
+            ->addOrderBy('o.position')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult(Query::HYDRATE_SINGLE_SCALAR);
+
+        return \is_string($number) ? $number : null;
+    }
 }

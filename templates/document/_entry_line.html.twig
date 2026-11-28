@@ -1,0 +1,24 @@
+{#
+ # One line of a pièce's entry (design-ux.md § 5.2, « Saisie par pièce »), in its own tbody: the
+ # Compte cell - an account number or a third party's auxiliary code, F4 to search - whose label
+ # the picker writes in the Intitulé column, then the debit and the credit; its faults in a row
+ # below. `proposed` marks a line of the proposal not yet gone through (amber, design-ux.md § 3.5);
+ # the Tiers cell and the due date travel unseen. `index` is « __N__ » in the prototype.
+ #}
+{% set at = 'line.' ~ index ~ '.' %}
+{% set line_errors = [errors[at ~ 'account'] ?? null, errors[at ~ 'thirdParty'] ?? null, errors[at ~ 'amount'] ?? null, errors[at ~ 'dueDate'] ?? null]|filter(e => e is not null) %}
+<tbody class="px-tlines__line{{ proposed ? ' is-proposed' : '' }}" data-piece-entry-target="line">
+    <tr>
+        <td colspan="2">
+            <twig:Px:AccountPicker id="line-{{ index }}-account" name="lines[{{ index }}][account]" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" value="{{ line ? line.account : '' }}" accountLabel="{{ line ? (account_labels[line.account|upper] ?? '') : '' }}" :error="errors[at ~ 'account'] ?? null" listLabel="Comptes et tiers" aria-label="Compte"/>
+            <input type="hidden" name="lines[{{ index }}][thirdParty]" value="{{ line ? line.thirdParty : '' }}">
+            <input type="hidden" name="lines[{{ index }}][due]" value="{{ line ? line.due : '' }}">
+        </td>
+        <td class="px-u-right"><twig:Px:AmountInput id="line-{{ index }}-debit" name="lines[{{ index }}][debit]" :value="line and line.debit ? line.debit : null" :grid="true" aria-label="Débit" data-side="debit"/></td>
+        <td class="px-u-right"><twig:Px:AmountInput id="line-{{ index }}-credit" name="lines[{{ index }}][credit]" :value="line and line.credit ? line.credit : null" :grid="true" aria-label="Crédit" data-side="credit"/></td>
+        <td><twig:Px:IconButton icon="trash-2" label="Retirer la ligne" size="sm" data-action="piece-entry#remove"/></td>
+    </tr>
+    {% if line_errors is not empty %}
+        <tr class="px-tlines__errors"><td colspan="5"><twig:ux:icon name="circle-alert" aria-hidden="true"/>{{ line_errors|join(' ') }}</td></tr>
+    {% endif %}
+</tbody>

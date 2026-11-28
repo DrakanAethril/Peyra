@@ -25,7 +25,8 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 /**
  * AccountingGateway, the one door of the modules (README of the plan, § 8): without a mission it
  * proposes in the brouillard; the two other behaviours a mission will choose (step 2.9) post the
- * entry validated or write nothing; a proposal the Ledger refuses is refused whatever the behaviour.
+ * entry to the brouillard on their own or write nothing; a proposal the Ledger refuses is refused
+ * whatever the behaviour. record() writes what a person made of a proposal on a module's screen.
  */
 final class AccountingGatewayTest extends KernelTestCase
 {
@@ -41,12 +42,13 @@ final class AccountingGatewayTest extends KernelTestCase
         self::assertSame([EntryState::Draft, EntryOrigin::Proposal, 'sales'], [$outcome->entry->getState(), $outcome->entry->getOrigin(), $outcome->entry->getSource()]);
     }
 
-    public function testPostingValidatesAndLettingEnterWritesNothing(): void
+    public function testPostingDraftsAndLettingEnterWritesNothing(): void
     {
         $dossier = $this->ledgerDossier();
 
         $posted = $this->gateway(AccountingBehaviour::Post)->submit($dossier, $this->proposal(), 'test');
-        self::assertSame('VTE-2026-00001', $posted->entry?->getNumberLabel());
+        self::assertNotNull($posted->entry);
+        self::assertSame([EntryState::Draft, null], [$posted->entry->getState(), $posted->entry->getNumberLabel()], 'Comptabiliser passe l’écriture au brouillard, sans la valider.');
 
         $left = $this->gateway(AccountingBehaviour::LetEnter)->submit($dossier, $this->proposal(), 'test');
         self::assertNull($left->entry);
@@ -67,6 +69,17 @@ final class AccountingGatewayTest extends KernelTestCase
             }
         }
         self::assertSame(0, self::getContainer()->get(EntryRepository::class)->count([]));
+    }
+
+    public function testRecordWritesWhatThePersonMadeOfTheProposal(): void
+    {
+        $dossier = $this->ledgerDossier();
+
+        $proposed = $this->gateway(AccountingBehaviour::Propose)->record($dossier, $this->proposal(), 'test');
+        self::assertSame([EntryState::Draft, EntryOrigin::Proposal, 'sales'], [$proposed->getState(), $proposed->getOrigin(), $proposed->getSource()]);
+
+        $typed = $this->gateway(AccountingBehaviour::LetEnter)->record($dossier, $this->proposal(), 'test');
+        self::assertSame([EntryState::Draft, EntryOrigin::Manual], [$typed->getState(), $typed->getOrigin()], 'Rien n’était proposé : l’écriture est une saisie.');
     }
 
     private function proposal(): EntryProposal

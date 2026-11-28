@@ -12,6 +12,7 @@ use App\Enum\Document\InvoiceFault;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Document\Documents;
+use App\Service\Document\Processing\PieceProcessing;
 use App\Service\Shared\Pdf\PdfRenderer;
 
 /**
@@ -35,6 +36,7 @@ final readonly class InvoiceGenerator
         private ThirdPartyRepository $thirdParties,
         private PdfRenderer $renderer,
         private Documents $documents,
+        private PieceProcessing $processing,
     ) {
     }
 
@@ -86,7 +88,9 @@ final readonly class InvoiceGenerator
         $copies = $invoice->operation->has(InvoiceFault::Duplicate) ? 2 : 1;
         $made = [];
         for ($copy = 1; $copy <= $copies; ++$copy) {
-            $made[] = $this->documents->generated($dossier, $pdf, $invoice->fileName(), $invoice->supplier, $invoice->printed, $invoice->operation->toArray() + ['copy' => $copy], $actor);
+            $document = $this->documents->generated($dossier, $pdf, $invoice->fileName(), $invoice->supplier, $invoice->printed, $invoice->operation->toArray() + ['copy' => $copy], $actor);
+            $this->processing->arrived($document, $actor);
+            $made[] = $document;
         }
 
         return $made;

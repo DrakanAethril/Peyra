@@ -6,11 +6,13 @@ namespace App\Enum\Accounting;
 
 /**
  * A module that asks the accounting engine for an entry instead of writing one (conception § 5,
- * README of the plan § 8): sales, purchases, inventory, bank, fixed assets, payroll, VAT and the
+ * README of the plan § 8): the pièces, sales, purchases, inventory, bank, fixed assets, payroll, VAT and the
  * year-end work. Each reaches the books through AccountingGateway alone.
  */
 enum AccountingModule: string
 {
+    /** The pièces' processing screen (step 2.2a): the entry of a pièce read. */
+    case Documents = 'documents';
     case Sales = 'sales';
     case Purchasing = 'purchasing';
     case Inventory = 'inventory';
@@ -23,6 +25,7 @@ enum AccountingModule: string
     public function label(): string
     {
         return match ($this) {
+            self::Documents => 'Pièces',
             self::Sales => 'Ventes',
             self::Purchasing => 'Achats',
             self::Inventory => 'Stocks',
