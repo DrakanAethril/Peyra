@@ -38,6 +38,8 @@ use App\Service\Accounting\Subscription\SubscriptionSheet;
 use App\Service\Accounting\Template\TemplateDraft;
 use App\Service\Accounting\Template\TemplateLineDraft;
 use App\Service\Accounting\Template\TemplateSheet;
+use App\Service\Assets\FixedAssetDraft;
+use App\Service\Assets\FixedAssetSheet;
 use App\Service\Banking\Payment\PaymentRequest;
 use App\Service\Banking\Payment\Payments;
 use App\Service\Banking\Rule\BankRules;
@@ -238,6 +240,11 @@ final class RoleAccessSmokeTest extends WebTestCase
             $subscriptions = $client->getContainer()->get(SubscriptionSheet::class);
             $subscriptions->create($saved, $subscriptions->check($subscription, $saved) ?? throw new \LogicException(implode(' ', $subscription->errors)), 'test');
             $client->getContainer()->get(EntityManagerInterface::class)->flush();
+            $asset = new FixedAssetDraft();
+            [$asset->code, $asset->label, $asset->account, $asset->depreciationAccount, $asset->acquiredOn, $asset->inServiceOn, $asset->price, $asset->method, $asset->years] = ['M01', 'Scie à panneaux', '215400', '281500', '2026-01-10', '2026-01-10', 1_850_000, 'linear', '8'];
+            $assets = $client->getContainer()->get(FixedAssetSheet::class);
+            $assets->create($saved, $assets->check($asset, $saved) ?? throw new \LogicException(implode(' ', $asset->errors)), 'test');
+            $client->getContainer()->get(EntityManagerInterface::class)->flush();
         });
         $subscriptionId = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): ?int => $client->getContainer()->get(EntrySubscriptionRepository::class)->findByDossier($saved)[0]->getId());
         $bodyId = $client->getContainer()->get(DossierContext::class)->within($saved, static function () use ($client, $saved): ?int {
@@ -348,7 +355,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/accounting/lettering', '/accounting/lettering?account=401SCIE', '/accounting/lettering?account=401SCIE&all=1&auto=amount',
             '/accounting/lettering?account=401000', '/accounting/opening', '/accounting/opening?exercise=2026',
             '/users', '/audit', '/audit?role=teacher&action=accounting.entry_validated&q=ACH', '/audit/export.csv', '/audit/export.xlsx',
-            '/closing/fec', '/closing/fec?exercise=2026', '/closing/fec/download',
+            '/closing/fec', '/closing/fec?exercise=2026', '/closing/fec/download', '/assets', '/assets/new', '/assets/M01',
             '/payroll/items', '/payroll/items/new', '/payroll/items/2200', '/payroll/bodies', '/payroll/bodies/new',
             '/payroll/bodies/'.$bodyId, '/payroll/establishment',
             '/payroll/employees', '/payroll/employees?state=present&q=vas', '/payroll/employees/new', '/payroll/employees/S001',

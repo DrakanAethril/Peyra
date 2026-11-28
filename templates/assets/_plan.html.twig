@@ -21,12 +21,8 @@
     </twig:Px:Card>
 {% else %}
     {% set fiscal = asset.fiscalDeclining %}
-    <twig:Px:Card title="Plan d’amortissement" :flush="true">
-        <p class="px-u-muted px-card__note">
-            {{ asset.method.label }}{% if asset.years %} sur {{ asset.years }} ans{% endif %}{% if plan.coefficient %}, coefficient {{ plan.coefficient|number_format(2, ',') }}{% endif %} ;
-            base {{ asset.cost.minus(asset.residualValue)|amount_eur }}{% if asset.residualValue.positive %} (valeur résiduelle {{ asset.residualValue|amount_eur }} déduite){% endif %} ;
-            {{ asset.method.value == 'declining' ? 'depuis le premier jour du mois d’acquisition' : (asset.method.value == 'units' ? 'selon les unités consommées' : 'au prorata en jours sur 360 depuis la mise en service') }}.
-        </p>
+    {% set plan_note %}{{ asset.method.label }}{% if asset.years %} sur {{ asset.years }} ans{% endif %}{% if plan.coefficient %}, coefficient {{ (plan.coefficient ~ '')|replace({'.': ','}) }}{% endif %} ; base {{ asset.cost.minus(asset.residualValue)|amount_eur }}{% if asset.residualValue.positive %} (valeur résiduelle {{ asset.residualValue|amount_eur }} déduite){% endif %} ; {{ asset.method.value == 'declining' ? 'depuis le premier jour du mois d’acquisition' : (asset.method.value == 'units' ? 'selon les unités consommées' : 'au prorata en jours sur 360 depuis la mise en service') }}.{% endset %}
+    <twig:Px:Card title="Plan d’amortissement" meta="{{ plan_note|trim }}" :flush="true">
         <twig:Px:Table caption="Plan d’amortissement de {{ asset.code }}" :rows="false">
             <thead>
                 <tr>
@@ -63,8 +59,7 @@
         </twig:Px:Table>
     </twig:Px:Card>
     {% for component in plan.components %}
-        <twig:Px:Card title="Composant : {{ component.label }}" :flush="true">
-            <p class="px-u-muted px-card__note">Linéaire sur {{ component.years }} ans, valeur {{ component.cost|amount_eur }}.</p>
+        <twig:Px:Card title="Composant : {{ component.label }}" meta="Linéaire sur {{ component.years }} ans, valeur {{ component.cost|amount_eur }}" :flush="true">
             <twig:Px:Table caption="Plan du composant {{ component.label }}" :rows="false">
                 <thead>
                     <tr>

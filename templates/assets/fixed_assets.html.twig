@@ -8,7 +8,7 @@
 
 {% set closing_tab = 'assets' %}
 {% set dossier_title = 'Immobilisations' %}
-{% set can_edit = is_granted('JOURNAL_ENTER', dossier) %}
+{% set can_edit = is_granted('ASSETS_ENTER', dossier) %}
 {% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouvelle immobilisation'}] : [] %}
 
 {% block page_head %}
@@ -39,9 +39,9 @@
                         <th scope="col">Mode</th>
                         <th scope="col" class="px-u-right">Valeur brute</th>
                         {% if calculates %}
-                            <th scope="col" class="px-u-right">Amortissements antérieurs</th>
+                            <th scope="col" class="px-u-right" title="Amortissements des exercices antérieurs">Antérieurs</th>
                             <th scope="col" class="px-u-right">Dotation {{ exercise.code }}</th>
-                            <th scope="col" class="px-u-right">VNC au {{ exercise.endsOn|date_fr }}</th>
+                            <th scope="col" class="px-u-right" title="Valeur nette comptable au {{ exercise.endsOn|date_fr }}">VNC fin {{ exercise.code }}</th>
                         {% endif %}
                     </tr>
                 </thead>
@@ -50,10 +50,10 @@
                         {% set asset = line.asset %}
                         <tr data-rows-target="row">
                             <td class="px-u-code"><a class="px-link" href="{{ path('app_assets_fiche', {dossier: dossier.id, code: asset.code}) }}">{{ asset.code }}</a></td>
-                            <td class="px-u-truncate" title="{{ asset.label }}">{{ asset.label }}</td>
+                            <td class="px-u-truncate px-u-truncate-short" title="{{ asset.label }}">{{ asset.label }}</td>
                             <td class="px-u-code">{{ asset.account.number }}</td>
                             <td class="px-u-num">{{ asset.inServiceOn|date_fr }}</td>
-                            <td class="px-u-nowrap">{{ asset.method.label }}{% if asset.years %} <span class="px-u-muted">{{ asset.years }} ans</span>{% elseif asset.components is not empty %} <span class="px-u-muted">{{ asset.components|length }} composants</span>{% endif %}</td>
+                            <td class="px-u-nowrap">{{ asset.method.label }}{% if asset.years %} <span class="px-u-muted">{{ asset.years }} ans</span>{% elseif asset.components is not empty %} <span class="px-u-muted">composants</span>{% endif %}</td>
                             <td class="px-u-num">{{ asset.cost|amount }}</td>
                             {% if calculates %}
                                 <td class="px-u-num">{{ line.opening|amount_cell }}</td>

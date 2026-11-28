@@ -34,7 +34,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * Immobilisations et clôture › Immobilisations (lot 3, step 3.4; design-ux.md § 3.2, gabarits L
  * then F): the dossier's fixed assets with what they are depreciated by at the dossier's date, and
  * the fiche of one - account, origin, cost, putting into service, method, length, components - with
- * its depreciation plan as a card. Read with JOURNAL_READ, changed with JOURNAL_ENTER. The plan is
+ * its depreciation plan as a card. Read with ASSETS_READ, changed with ASSETS_ENTER (the general accounting's area). The plan is
  * calculated at levels G, B and A, and always for a teacher (Assistance::calculatesDepreciationPlan);
  * at 0 the student draws it up alone. The address of a fixed asset is its code.
  */
@@ -44,7 +44,7 @@ final class FixedAssetsController extends AbstractController
     #[Route('', name: 'app_assets', methods: ['GET'])]
     public function index(Dossier $dossier, FixedAssetRepository $assets, FixedAssetPlans $plans, ExerciseRepository $exercises, AssistanceLevels $levels): Response
     {
-        if (!$this->isGranted(DossierRightVoter::JOURNAL_READ, $dossier)) {
+        if (!$this->isGranted(DossierRightVoter::ASSETS_READ, $dossier)) {
             throw new NotFoundHttpException('Not for this profile.');
         }
         $exercise = $exercises->findAt($dossier, $dossier->getDossierDate());
@@ -81,7 +81,7 @@ final class FixedAssetsController extends AbstractController
     #[Route('/new', name: 'app_assets_new', methods: ['GET', 'POST'])]
     public function create(Dossier $dossier, Request $request, FixedAssetSheet $sheet, FixedAssetPlans $plans, AccountRepository $accounts, AssistanceLevels $levels, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
-        if (!$this->isGranted(DossierRightVoter::JOURNAL_ENTER, $dossier)) {
+        if (!$this->isGranted(DossierRightVoter::ASSETS_ENTER, $dossier)) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $draft = new FixedAssetDraft();
@@ -107,14 +107,14 @@ final class FixedAssetsController extends AbstractController
     #[Route('/{code}', name: 'app_assets_fiche', requirements: ['code' => '[A-Z0-9]{1,12}'], methods: ['GET', 'POST'])]
     public function edit(Dossier $dossier, string $code, Request $request, FixedAssetRepository $assets, FixedAssetSheet $sheet, FixedAssetPlans $plans, AccountRepository $accounts, AssistanceLevels $levels, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
-        if (!$this->isGranted(DossierRightVoter::JOURNAL_READ, $dossier)) {
+        if (!$this->isGranted(DossierRightVoter::ASSETS_READ, $dossier)) {
             throw new NotFoundHttpException('Not for this profile.');
         }
         $asset = $assets->findOneByCode($dossier, $code) ?? throw new NotFoundHttpException('No such fixed asset.');
         $draft = FixedAssetDraft::of($asset);
         $status = Response::HTTP_OK;
         if ($request->isMethod('POST')) {
-            if (!$this->isGranted(DossierRightVoter::JOURNAL_ENTER, $dossier)) {
+            if (!$this->isGranted(DossierRightVoter::ASSETS_ENTER, $dossier)) {
                 throw new NotFoundHttpException('Not yours to change.');
             }
             $this->read($request, $draft, 'fixed-asset-'.$asset->getId());
@@ -136,7 +136,7 @@ final class FixedAssetsController extends AbstractController
     public function delete(Dossier $dossier, string $code, Request $request, FixedAssetRepository $assets, FixedAssetSheet $sheet, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $asset = $assets->findOneByCode($dossier, $code) ?? throw new NotFoundHttpException('No such fixed asset.');
-        if (!$this->isGranted(DossierRightVoter::JOURNAL_ENTER, $dossier) || !$this->isCsrfTokenValid('fixed-asset-delete-'.$asset->getId(), $request->request->getString('_token'))) {
+        if (!$this->isGranted(DossierRightVoter::ASSETS_ENTER, $dossier) || !$this->isCsrfTokenValid('fixed-asset-delete-'.$asset->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $sheet->delete($asset, $me);

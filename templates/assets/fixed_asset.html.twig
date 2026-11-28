@@ -8,7 +8,7 @@
 {% extends 'closing/_layout.html.twig' %}
 
 {% set closing_tab = 'assets' %}
-{% set can_edit = is_granted('JOURNAL_ENTER', dossier) %}
+{% set can_edit = is_granted('ASSETS_ENTER', dossier) %}
 {% set dossier_title = asset ? 'Immobilisation ' ~ asset.code : 'Nouvelle immobilisation' %}
 {% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}, {combo: 'F4', verb: 'Liste des comptes'}] : [] %}
 {% set origin_options = origins|map(o => {value: o.value, label: o.label}) %}

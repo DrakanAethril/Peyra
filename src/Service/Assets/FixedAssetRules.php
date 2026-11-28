@@ -85,7 +85,8 @@ final class FixedAssetRules
         if (!$depreciated) {
             $draft->depreciationAccount = '';
         } elseif ('' === $draft->depreciationAccount) {
-            $draft->errors['depreciationAccount'] = \sprintf('Indiquez le compte d’amortissement%s.', '' === $draft->account ? '' : ' ('.self::depreciationAccountFor($draft->account).' pour le compte '.$draft->account.')');
+            $proposed = AccountNature::FixedAsset === AccountNature::of($draft->account) ? self::proposedDepreciationAccount($draft->account, $accountOf) : null;
+            $draft->errors['depreciationAccount'] = null === $proposed ? 'Indiquez le compte d’amortissement.' : \sprintf('Indiquez le compte d’amortissement (%s pour le compte %s).', $proposed, $draft->account);
         } elseif (null === ($depreciationAccount = $accountOf($draft->depreciationAccount))) {
             $draft->errors['depreciationAccount'] = \sprintf('Le compte %s n’est pas dans le plan du dossier : créez-le dans le plan de comptes.', $draft->depreciationAccount);
         } elseif (!str_starts_with($draft->depreciationAccount, '28')) {
@@ -242,10 +243,29 @@ final class FixedAssetRules
         );
     }
 
-    /** The depreciation account proposed for an asset account: « 2 » becomes « 28 » (215400 → 281540). */
+    /** The depreciation account of an asset account: « 2 » becomes « 28 » (215400 → 281540). */
     public static function depreciationAccountFor(string $number): string
     {
         return substr('28'.substr($number, 1), 0, \strlen($number));
+    }
+
+    /**
+     * The depreciation account of the plan nearest to an asset account's: 281540 for 215400 when the
+     * plan has it, else 281500 (the PCG stops at 2815), and so on up to 280000; null when none is.
+     *
+     * @param callable(string): ?Account $accountOf
+     */
+    public static function proposedDepreciationAccount(string $number, callable $accountOf): ?string
+    {
+        $full = self::depreciationAccountFor($number);
+        for ($length = \strlen($full); $length >= 2; --$length) {
+            $candidate = str_pad(substr($full, 0, $length), \strlen($full), '0');
+            if (null !== $accountOf($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     private static function wholeNumber(string $typed): ?int

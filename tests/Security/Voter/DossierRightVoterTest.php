@@ -84,6 +84,20 @@ final class DossierRightVoterTest extends KernelTestCase
         self::assertSame([true, true, true], $this->purchases($people['durand'], $dossier));
     }
 
+    /** Immobilisations (step 3.4): the general accounting's area - read by the two accountants, kept by the chief accountant; every right without a profile. */
+    public function testTheFixedAssetsFollowTheGeneralArea(): void
+    {
+        self::bootKernel();
+        [$dossier, $people] = $this->groupDossier();
+        $voter = self::getContainer()->get(DossierRightVoter::class);
+        $rights = static fn (User $user): array => array_map(static fn (string $attribute): bool => VoterInterface::ACCESS_GRANTED === $voter->vote(new UsernamePasswordToken($user, 'main', $user->getRoles()), $dossier, [$attribute]), [DossierRightVoter::ASSETS_READ, DossierRightVoter::ASSETS_ENTER]);
+
+        self::assertSame([true, false], $rights($people['ines']));
+        self::assertSame([true, false], $rights($people['theo']));
+        self::assertSame([true, true], $rights($people['chloe']));
+        self::assertSame([true, true], $rights($people['durand']));
+    }
+
     public function testNobodyOutsideTheDossier(): void
     {
         self::bootKernel();

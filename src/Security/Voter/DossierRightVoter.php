@@ -54,6 +54,9 @@ final class DossierRightVoter extends Voter
     public const string PURCHASES_READ = 'PURCHASES_READ';
     public const string PURCHASES_ENTER = 'PURCHASES_ENTER';
     public const string PURCHASES_VALIDATE = 'PURCHASES_VALIDATE';
+    /** The fixed assets (step 3.4): general accounting's area. */
+    public const string ASSETS_READ = 'ASSETS_READ';
+    public const string ASSETS_ENTER = 'ASSETS_ENTER';
 
     public function __construct(private readonly DossierVoter $dossiers, private readonly DossierRights $rights)
     {
@@ -61,7 +64,7 @@ final class DossierRightVoter extends Voter
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        return (\in_array($attribute, [self::SETTINGS, self::PAYROLL_READ, self::PAYROLL_SETTINGS, self::PAYROLL_ENTER, self::SALES_READ, self::SALES_ENTER, self::SALES_VALIDATE, self::PURCHASES_READ, self::PURCHASES_ENTER, self::PURCHASES_VALIDATE], true) && $subject instanceof Dossier)
+        return (\in_array($attribute, [self::SETTINGS, self::PAYROLL_READ, self::PAYROLL_SETTINGS, self::PAYROLL_ENTER, self::SALES_READ, self::SALES_ENTER, self::SALES_VALIDATE, self::PURCHASES_READ, self::PURCHASES_ENTER, self::PURCHASES_VALIDATE, self::ASSETS_READ, self::ASSETS_ENTER], true) && $subject instanceof Dossier)
             || (\in_array($attribute, [self::JOURNAL_READ, self::JOURNAL_ENTER, self::JOURNAL_VALIDATE], true) && $subject instanceof Journal);
     }
 
@@ -82,6 +85,8 @@ final class DossierRightVoter extends Voter
             self::PURCHASES_READ => [DossierArea::Purchases, AccessLevel::Read],
             self::PURCHASES_ENTER => [DossierArea::Purchases, AccessLevel::Enter],
             self::PURCHASES_VALIDATE => [DossierArea::Purchases, AccessLevel::Validate],
+            self::ASSETS_READ => [DossierArea::General, AccessLevel::Read],
+            self::ASSETS_ENTER => [DossierArea::General, AccessLevel::Enter],
             self::JOURNAL_READ => [null, AccessLevel::Read],
             self::JOURNAL_ENTER => [null, AccessLevel::Enter],
             default => [null, AccessLevel::Validate],

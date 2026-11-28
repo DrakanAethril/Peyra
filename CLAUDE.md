@@ -1338,6 +1338,19 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   tax is paid back like a body's contributions (`PAS-2026-03`, from the account the plan's tax rubrique credits); every payment
   falls due at `social.dsn.due_day` (`SocialDueDate`, by headcount); the échéancier social reads their pièces (`SocialSchedule`).
 
+## Fixed assets (built at step 3.4a)
+
+- **Immobilisations et clôture › Immobilisations** (`/d/{dossier}/assets[/{code}]`, `FixedAssetsController`,
+  `ASSETS_READ`/`ASSETS_ENTER` = the general area): `FixedAsset` (components and units of work in JSON),
+  `FixedAssetRules` pure, `FixedAssetSheet` the one door. **The plan is never stored**:
+  `DepreciationPlan::rows()` (pure: linear on 30/360 days from the putting into service, declining from the
+  month of acquisition with its switch to linear, units of work, the dérogatoire beside a fiscal declining
+  plan, `combine()` for components), laid on the dossier's exercises extended by twelve months
+  (`ExerciseWindows`) by `FixedAssetPlans`; the coefficient is `fiscal.depreciation.declining_balance_coefficients`
+  at the day of acquisition. Each annuity rounded half up, the last one is what is left.
+  `Assistance::calculatesDepreciationPlan()`: not shown to a student at 0. Demonstration: `fixtures/demo/fixed_assets.yaml`
+  (the register equals the opening balance account by account, `DemoInstallCommandTest`).
+
 ## Cross-cutting building blocks (built at step 0.6a)
 
 Reach for these rather than re-implement them; each has its test.
