@@ -5,15 +5,18 @@
 #   closing balance of 2025 before the allocation of its result (120000 carries the profit of
 #   2025), 459 260,31 on each side.
 # - January, the 80 entries of operations-2026.md § 2.2 (OD, ACH, VTE, BQ1, BQ2: extournes,
-#   invoices, bank, payroll, VAT liquidation); 512100 = 31 090,29 D and 512200 = 15 116,78 D at
-#   31/01, as § 2.5 says.
+#   invoices, bank, VAT liquidation); 512100 = 31 090,29 D at 31/01, as § 2.5 says.
 # - February and March, generated towards the targets of § 3 and § 4 (sales, purchases, the
 #   Hartmann intra-community purchase, the deposit and the invoice of the machining centre, the
-#   loan of March, the first instalment of corporate tax, the payroll by the preparation's
-#   calculator, February's VAT liquidated; 512100 = 13 883,89 D at 28/02 and 27 600,29 D at
+#   loan of March, the first instalment of corporate tax, February's VAT liquidated;
+#   512100 = 13 883,89 D at 28/02 and 27 600,29 D at
 #   31/03). March's VAT is left to liquidate; the rent and the lease of March come from the
 #   subscriptions (subscriptions.yaml), into the brouillard.
 # - Validated, but for the last entries of March, left in the brouillard (`validated: false`).
+# - No payroll of 2026 here (review 4.7a): the payslips of fixtures/demo/payslips.yaml write the
+#   month's entries (PAIE-2026-01…), the salaries (VIRSAL-…) and the contributions (COT-…, PAS-…)
+#   through the gateway at install. December 2025's contributions, owed in the opening balance, are
+#   paid on 15/01 under the pièces the payroll gives them (COT-URSSAF-2025-12…).
 #
 # A line on a collective account names its third party by code; an invoice's line on 401000,
 # 404000 or 411000 carries its due date (lettering and the aged balance read it).
@@ -393,40 +396,40 @@ entries:
       - { account: '512100', credit: '2215.80' }
   - journal: BQ2
     date: '2026-01-15'
-    document: PRLV-URSSAF-12
-    label: "Sécurité sociale (Urssaf) PRLV-URSSAF-12"
+    document: COT-URSSAF-2025-12
+    label: "Sécurité sociale (Urssaf) COT-URSSAF-2025-12"
     validated: true
     lines:
       - { account: '431000', debit: '8756.92' }
       - { account: '512200', credit: '8756.92' }
   - journal: BQ2
     date: '2026-01-15'
-    document: PRLV-RETR-12
-    label: "Retraite complémentaire PRLV-RETR-12"
+    document: COT-RETRAITE-2025-12
+    label: "Retraite complémentaire COT-RETRAITE-2025-12"
     validated: true
     lines:
       - { account: '437100', debit: '2014.58' }
       - { account: '512200', credit: '2014.58' }
   - journal: BQ2
     date: '2026-01-15'
-    document: PRLV-MUT-12
-    label: "Complémentaire santé PRLV-MUT-12"
+    document: COT-MUTUELLE-2025-12
+    label: "Complémentaire santé COT-MUTUELLE-2025-12"
     validated: true
     lines:
       - { account: '437200', debit: '504.00' }
       - { account: '512200', credit: '504.00' }
   - journal: BQ2
     date: '2026-01-15'
-    document: PRLV-PREV-12
-    label: "Prévoyance PRLV-PREV-12"
+    document: COT-PREVOYANCE-2025-12
+    label: "Prévoyance COT-PREVOYANCE-2025-12"
     validated: true
     lines:
       - { account: '437300', debit: '58.88' }
       - { account: '512200', credit: '58.88' }
   - journal: BQ2
     date: '2026-01-15'
-    document: PRLV-PAS-12
-    label: "Prélèvement à la source PRLV-PAS-12"
+    document: PAS-2025-12
+    label: "Prélèvement à la source PAS-2025-12"
     validated: true
     lines:
       - { account: '442100', debit: '883.59' }
@@ -725,41 +728,12 @@ entries:
       - { account: '512200', credit: '1176.00' }
   - journal: BQ2
     date: '2026-01-30'
-    document: VIR-SAL-01
-    label: "Personnel - rémunérations dues VIR-SAL-01"
-    validated: true
-    lines:
-      - { account: '421000', debit: '17387.92' }
-      - { account: '512200', credit: '17387.92' }
-  - journal: BQ2
-    date: '2026-01-30'
     document: VIR-GER-01
     label: "Rémunération du gérant VIR-GER-01"
     validated: true
     lines:
       - { account: '644000', debit: '3200.00' }
       - { account: '512200', credit: '3200.00' }
-  - journal: OD
-    date: '2026-01-31'
-    document: PAIE-2026-01
-    label: "Paie de janvier 2026"
-    validated: true
-    lines:
-      - { account: '641100', label: "salaires et primes", debit: '22982.38' }
-      - { account: '641400', label: "avantage en nature véhicule", debit: '322.50' }
-      - { account: '625100', label: "indemnités de repas", debit: '322.40' }
-      - { account: '645100', label: "Urssaf patronal après réduction", debit: '4658.94' }
-      - { account: '633300', label: "formation 0,55 % et apprentissage 0,68 %", debit: '286.65' }
-      - { account: '645300', label: "retraite patronale après réduction", debit: '860.59' }
-      - { account: '645200', debit: '252.00' }
-      - { account: '645800', debit: '60.08' }
-      - { account: '431000', credit: '8748.56' }
-      - { account: '437100', credit: '1838.78' }
-      - { account: '437200', credit: '504.00' }
-      - { account: '437300', credit: '60.08' }
-      - { account: '442100', credit: '883.70' }
-      - { account: '649000', label: "neutralisation de l'avantage en nature", credit: '322.50' }
-      - { account: '421000', credit: '17387.92' }
   - journal: BQ2
     date: '2026-01-31'
     document: ECH-EMP1-31
@@ -1099,46 +1073,6 @@ entries:
     lines:
       - { account: '512200', debit: '13656.00' }
       - { account: '411000', third_party: C0064, credit: '13656.00' }
-  - journal: BQ2
-    date: '2026-02-16'
-    document: PRLV-URSSAF-01
-    label: "Prélèvement Urssaf, DSN de janvier"
-    validated: true
-    lines:
-      - { account: '431000', debit: '8748.56' }
-      - { account: '512200', credit: '8748.56' }
-  - journal: BQ2
-    date: '2026-02-16'
-    document: PRLV-RETR-01
-    label: "Prélèvement retraite complémentaire, DSN de janvier"
-    validated: true
-    lines:
-      - { account: '437100', debit: '1838.78' }
-      - { account: '512200', credit: '1838.78' }
-  - journal: BQ2
-    date: '2026-02-16'
-    document: PRLV-MUT-01
-    label: "Prélèvement complémentaire santé, DSN de janvier"
-    validated: true
-    lines:
-      - { account: '437200', debit: '504.00' }
-      - { account: '512200', credit: '504.00' }
-  - journal: BQ2
-    date: '2026-02-16'
-    document: PRLV-PREV-01
-    label: "Prélèvement prévoyance, DSN de janvier"
-    validated: true
-    lines:
-      - { account: '437300', debit: '60.08' }
-      - { account: '512200', credit: '60.08' }
-  - journal: BQ2
-    date: '2026-02-16'
-    document: PRLV-PAS-01
-    label: "Prélèvement prélèvement à la source, DSN de janvier"
-    validated: true
-    lines:
-      - { account: '442100', debit: '883.70' }
-      - { account: '512200', credit: '883.70' }
   - journal: VTE
     date: '2026-02-16'
     document: FV-2026-0023
@@ -1445,41 +1379,12 @@ entries:
       - { account: '580000', credit: '20000.00' }
   - journal: BQ2
     date: '2026-02-27'
-    document: VIR-SAL-02
-    label: "Virement des salaires de février 2026"
-    validated: true
-    lines:
-      - { account: '421000', debit: '17387.92' }
-      - { account: '512200', credit: '17387.92' }
-  - journal: BQ2
-    date: '2026-02-27'
     document: VIR-GER-02
     label: "Rémunération du gérant, février 2026"
     validated: true
     lines:
       - { account: '644000', debit: '3200.00' }
       - { account: '512200', credit: '3200.00' }
-  - journal: OD
-    date: '2026-02-28'
-    document: PAIE-2026-02
-    label: "Paie de février 2026"
-    validated: true
-    lines:
-      - { account: '641100', label: "salaires et primes", debit: '22982.38' }
-      - { account: '641400', label: "avantage en nature véhicule", debit: '322.50' }
-      - { account: '625100', label: "indemnités de repas", debit: '322.40' }
-      - { account: '645100', label: "Urssaf patronal après réduction", debit: '4658.94' }
-      - { account: '633300', label: "formation 0,55 % et apprentissage 0,68 %", debit: '286.65' }
-      - { account: '645300', label: "retraite patronale après réduction", debit: '860.59' }
-      - { account: '645200', debit: '252.00' }
-      - { account: '645800', debit: '60.08' }
-      - { account: '431000', credit: '8748.56' }
-      - { account: '437100', credit: '1838.78' }
-      - { account: '437200', credit: '504.00' }
-      - { account: '437300', credit: '60.08' }
-      - { account: '442100', credit: '883.70' }
-      - { account: '649000', label: "neutralisation de l’avantage en nature", credit: '322.50' }
-      - { account: '421000', credit: '17387.92' }
   - journal: BQ2
     date: '2026-02-28'
     document: ECH-EMP1-32
@@ -1747,46 +1652,6 @@ entries:
     lines:
       - { account: '444000', debit: '1631.25' }
       - { account: '512200', credit: '1631.25' }
-  - journal: BQ2
-    date: '2026-03-16'
-    document: PRLV-URSSAF-02
-    label: "Prélèvement Urssaf, DSN de février"
-    validated: true
-    lines:
-      - { account: '431000', debit: '8748.56' }
-      - { account: '512200', credit: '8748.56' }
-  - journal: BQ2
-    date: '2026-03-16'
-    document: PRLV-RETR-02
-    label: "Prélèvement retraite complémentaire, DSN de février"
-    validated: true
-    lines:
-      - { account: '437100', debit: '1838.78' }
-      - { account: '512200', credit: '1838.78' }
-  - journal: BQ2
-    date: '2026-03-16'
-    document: PRLV-MUT-02
-    label: "Prélèvement complémentaire santé, DSN de février"
-    validated: true
-    lines:
-      - { account: '437200', debit: '504.00' }
-      - { account: '512200', credit: '504.00' }
-  - journal: BQ2
-    date: '2026-03-16'
-    document: PRLV-PREV-02
-    label: "Prélèvement prévoyance, DSN de février"
-    validated: true
-    lines:
-      - { account: '437300', debit: '60.08' }
-      - { account: '512200', credit: '60.08' }
-  - journal: BQ2
-    date: '2026-03-16'
-    document: PRLV-PAS-02
-    label: "Prélèvement prélèvement à la source, DSN de février"
-    validated: true
-    lines:
-      - { account: '442100', debit: '883.70' }
-      - { account: '512200', credit: '883.70' }
   - journal: ACH
     date: '2026-03-16'
     document: MBI-2026-0311
@@ -2088,35 +1953,6 @@ entries:
       - { account: '601000', debit: '2997.60' }
       - { account: '445660', debit: '599.52' }
       - { account: '401000', third_party: F0003, credit: '3597.12', due: '2026-05-15' }
-  - journal: OD
-    date: '2026-03-31'
-    document: PAIE-2026-03
-    label: "Paie de mars 2026"
-    validated: true
-    lines:
-      - { account: '641100', label: "salaires et primes", debit: '23124.14' }
-      - { account: '641400', label: "avantage en nature véhicule", debit: '322.50' }
-      - { account: '625100', label: "indemnités de repas", debit: '322.40' }
-      - { account: '645100', label: "Urssaf patronal après réduction", debit: '4753.03' }
-      - { account: '633300', label: "formation 0,55 % et apprentissage 0,68 %", debit: '288.40' }
-      - { account: '645300', label: "retraite patronale après réduction", debit: '876.84' }
-      - { account: '645200', debit: '252.00' }
-      - { account: '645800', debit: '60.08' }
-      - { account: '431000', credit: '8868.26' }
-      - { account: '437100', credit: '1860.71' }
-      - { account: '437200', credit: '504.00' }
-      - { account: '437300', credit: '60.08' }
-      - { account: '442100', credit: '889.86' }
-      - { account: '649000', label: "neutralisation de l’avantage en nature", credit: '322.50' }
-      - { account: '421000', credit: '17493.98' }
-  - journal: BQ2
-    date: '2026-03-31'
-    document: VIR-SAL-03
-    label: "Virement des salaires de mars 2026"
-    validated: true
-    lines:
-      - { account: '421000', debit: '17493.98' }
-      - { account: '512200', credit: '17493.98' }
   - journal: BQ2
     date: '2026-03-31'
     document: VIR-GER-03

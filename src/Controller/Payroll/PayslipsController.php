@@ -171,7 +171,9 @@ final class PayslipsController extends AbstractController
         // The cells stay those of the payslip as it stood when the post is refused: what was typed is shown in them.
         $grid = null === $current['payslip'] || true === $payslip?->isValidated() || !$this->isGranted(DossierRightVoter::PAYROLL_ENTER, $dossier) ? [] : $current['payslip']->rows;
         [$open, $texts] = $this->openCells($grid, $specs, false === $assistance?->calculatesPayslip());
-        $check = null === $current['payslip'] || null === $assistance || true === $payslip?->isValidated() ? null : $book->entryCheck($employee, $month, $elements, PayslipAdjustments::fromArray($payslip?->getAdjustments() ?? []), $current['payslip'], $plan, $assistance);
+        $check = null === $current['payslip'] || true === $payslip?->isValidated() ? null : $book->entryCheck($employee, $month, $elements, PayslipAdjustments::fromArray($payslip?->getAdjustments() ?? []), $current['payslip'], $plan, $assistance);
+        // The « Contrôles » card of a calculated payslip (G, B, A, and a template, which the teacher checks too).
+        $controls = null === $check || $check->typedByStudent || false === $assistance?->controlsPayslip() ? null : $book->controls($employee, $month, $elements, $current['payslip'], $check);
 
         return $this->render('payroll/payslip.html.twig', [
             'dossier' => $dossier,
@@ -197,6 +199,7 @@ final class PayslipsController extends AbstractController
             'payslip_view' => null === $current['payslip'] ? null : PayslipView::of($current['payslip']),
             'open_cells' => $open,
             'entry_check' => $check,
+            'controls' => $controls,
             'assistance' => $assistance,
             'cell_texts' => $texts,
             'addable' => null === $current['payslip'] ? [] : array_values(array_filter($plan, static fn (PayrollItemSpec $spec): bool => !\in_array($spec->code, $shown, true))),
@@ -273,8 +276,8 @@ final class PayslipsController extends AbstractController
     }
 
     /**
-     * The level the payslip is established at (step 4.4c); none in a template, which the teacher
-     * prepares: its payslips are calculated by the tool.
+     * The level the payslip is worked at (step 4.4c, review 4.7); none in a template, which the teacher
+     * prepares: its payslips are calculated by the tool, their controls never stop it.
      */
     private static function assistance(Dossier $dossier, AssistanceLevels $levels): ?Assistance
     {
@@ -362,7 +365,7 @@ final class PayslipsController extends AbstractController
         foreach ($rows as $row) {
             $open[$row->code] = PayslipLineCells::open($row, $specs[$row->code] ?? null);
             foreach ($open[$row->code] as $field) {
-                // Where the student establishes the payslip (B, A, 0) a cell shows what they typed, never the calculation.
+                // Where the student establishes the payslip (level 0) a cell shows what they typed, never the calculation.
                 $texts[$row->code.'.'.$field] = $typedOnly && !$row->isForced($field) ? '' : PayslipLineCells::text($row, $field);
             }
         }

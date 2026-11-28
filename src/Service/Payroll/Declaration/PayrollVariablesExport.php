@@ -20,15 +20,18 @@ use Brick\Math\BigDecimal;
  * d'autres outils », Silae: « Salariés et variables du mois en tableur »): one row per employee the month
  * pays - their fiche and contract on the pay day, then each field of the « Éléments du mois » card as it
  * was entered on their payslip, whatever its state (the variables are what is typed; an employee with no
- * payslip yet has empty ones). The same fields as the card (PayslipElementFields), in the plan's order.
+ * payslip yet has empty ones). The same fields as the card (PayslipElementFields), in the plan's order;
+ * when the month is the last of a contract for somebody (LastPayslipEntries, review 4.7), the end-of-contract
+ * elements follow: the fixed-term contract's gross of the months before, the leave not taken, the severance.
  */
 final class PayrollVariablesExport
 {
     /**
-     * @param list<PayslipElementField>                                    $fields    the card's fields for the dossier's plan
-     * @param list<array{employee: Employee, payslip: ?MonthlyPayslip}> $employees the employees the month pays, by name
+     * @param list<PayslipElementField>                                    $fields        the card's fields for the dossier's plan
+     * @param list<array{employee: Employee, payslip: ?MonthlyPayslip}> $employees     the employees the month pays, by name
+     * @param list<string>                                                 $fixedTermCodes the plan's rubriques of the fixed-term indemnity, whose amount is the contract's gross before
      */
-    public static function table(\DateTimeImmutable $month, \DateTimeImmutable $payDay, array $fields, bool $paidLeave, array $employees): ExportTable
+    public static function table(\DateTimeImmutable $month, \DateTimeImmutable $payDay, array $fields, bool $paidLeave, array $employees, bool $endOfContract = false, array $fixedTermCodes = []): ExportTable
     {
         $columns = [
             new Column('Matricule', ColumnKind::Code),
@@ -58,6 +61,16 @@ final class PayrollVariablesExport
             $columns[] = new Column('Congés payés pris (heures)', ColumnKind::Code);
         }
         $columns[] = new Column('Jours entiers sans aucun versement', ColumnKind::Code);
+        if ($endOfContract) {
+            $columns[] = new Column('Fin de CDD : brut du contrat des mois précédents', ColumnKind::Amount);
+            $columns[] = new Column('Congés non pris : jours restants', ColumnKind::Code);
+            $columns[] = new Column('Congés non pris : heures', ColumnKind::Code);
+            $columns[] = new Column('Congés : jours acquis', ColumnKind::Code);
+            $columns[] = new Column('Congés : brut de référence avant ce mois', ColumnKind::Amount);
+            $columns[] = new Column('Indemnité de rupture : salaire de référence', ColumnKind::Amount);
+            $columns[] = new Column('Indemnité convenue', ColumnKind::Amount);
+            $columns[] = new Column('Brut de l’année précédant la rupture', ColumnKind::Amount);
+        }
 
         $table = new ExportTable('Variables '.$month->format('Y-m'), $columns);
         foreach ($employees as ['employee' => $employee, 'payslip' => $payslip]) {
@@ -92,6 +105,25 @@ final class PayrollVariablesExport
                 $cells[] = null === $elements->paidLeave ? null : PayslipElements::french($elements->paidLeave->hours);
             }
             $cells[] = 0 === $elements->unpaidDays ? null : (string) $elements->unpaidDays;
+            if ($endOfContract) {
+                $fixedTerm = null;
+                foreach ($fixedTermCodes as $code) {
+                    $fixedTerm ??= $elements->amounts[$code] ?? null;
+                }
+                $leave = $elements->compensatoryLeave;
+                $severance = $elements->severance;
+                array_push(
+                    $cells,
+                    $fixedTerm,
+                    null === $leave ? null : PayslipElements::french($leave->daysTaken),
+                    null === $leave ? null : PayslipElements::french($leave->hours),
+                    null === $leave ? null : PayslipElements::french($leave->daysAcquired),
+                    $leave?->referenceGross,
+                    $severance?->referenceSalary,
+                    $severance?->agreed,
+                    $severance?->previousYearGross,
+                );
+            }
             $table->add($cells);
         }
 
