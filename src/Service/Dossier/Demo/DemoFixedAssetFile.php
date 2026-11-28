@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Dossier\Demo;
 
+use App\Service\Assets\Disposal\DisposalDraft;
 use App\Service\Assets\FixedAssetDraft;
 use App\Service\Shared\Money;
 use Symfony\Component\Yaml\Yaml;
@@ -11,12 +12,17 @@ use Symfony\Component\Yaml\Yaml;
 /**
  * `fixtures/demo/fixed_assets.yaml` read and checked for its shape (step 3.4): the
  * demonstration's fixed assets, each a FixedAssetDraft that FixedAssetRules checks like the fiche (a
- * fault there names the asset and installs nothing). Amounts are euros as text, read exactly.
+ * fault there names the asset and installs nothing), and the way out of those that leave (`disposal`:
+ * kind, day, price, VAT, buyer - a DisposalDraft, checked like the screen). Amounts are euros as text,
+ * read exactly.
  */
 final readonly class DemoFixedAssetFile
 {
-    /** @param list<FixedAssetDraft> $drafts */
-    private function __construct(public array $drafts)
+    /**
+     * @param list<FixedAssetDraft>        $drafts
+     * @param array<string, DisposalDraft> $disposals by the asset's code
+     */
+    private function __construct(public array $drafts, public array $disposals)
     {
     }
 
@@ -28,6 +34,7 @@ final readonly class DemoFixedAssetFile
             throw new \InvalidArgumentException($path.' : une liste « fixed_assets » est attendue.');
         }
         $drafts = [];
+        $disposals = [];
         foreach ($list as $index => $entry) {
             $where = 'fixed_assets['.$index.']';
             if (!\is_array($entry)) {
@@ -64,10 +71,24 @@ final readonly class DemoFixedAssetFile
                 }
                 $draft->components[] = ['label' => self::text($component, 'label', $at), 'cost' => self::cents($component, 'cost', $at), 'years' => (string) $component['years']];
             }
+            $disposal = $entry['disposal'] ?? null;
+            if (null !== $disposal) {
+                $at = $where.'.disposal';
+                if (!\is_array($disposal)) {
+                    throw new \InvalidArgumentException($at.' : un dictionnaire est attendu.');
+                }
+                $out = new DisposalDraft();
+                $out->kind = self::text($disposal, 'kind', $at);
+                $out->disposedOn = self::text($disposal, 'on', $at);
+                $out->price = self::cents($disposal, 'price', $at);
+                $out->vat = self::cents($disposal, 'vat', $at);
+                $out->buyer = self::optional($disposal, 'buyer', $at) ?? '';
+                $disposals[$draft->code] = $out;
+            }
             $drafts[] = $draft;
         }
 
-        return new self($drafts);
+        return new self($drafts, $disposals);
     }
 
     /** @param array<mixed> $entry */

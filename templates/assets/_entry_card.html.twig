@@ -1,0 +1,37 @@
+{#
+ # An entry the fixed assets ask for (step 3.4b), as a card: the entries of its pièce once written, else
+ # the proposal and « Passer l'écriture au brouillard » (« Proposer », « Comptabiliser »), else - « Laisser
+ # saisir » - the journal and the pièce to enter it under. Takes `card_id`, `title`, `document`, `entry`
+ # ({entries, standing, proposal, check}), `post_url`, `token_id`, `post_label` (optional), `behaviour`, `dossier`.
+ #}
+{% set let_enter = behaviour.value == 'let_enter' %}
+{% set can_post = is_granted('ASSETS_ENTER', dossier) %}
+<section class="px-card" aria-labelledby="{{ card_id }}-title">
+    <header class="px-card__head">
+        <h2 id="{{ card_id }}-title">{{ title }}</h2>
+        <small>{% if entry.proposal %}Journal <span class="px-u-code">{{ entry.proposal.journal }}</span> · {{ entry.proposal.date|date('d/m/Y') }} · {% endif %}pièce <span class="px-u-code">{{ document }}</span></small>
+        {% if entry.standing is empty and entry.proposal and not let_enter and can_post and entry.check and entry.check.writable %}
+            <div class="px-card__actions">
+                <form method="post" action="{{ post_url }}">
+                    <twig:Px:Button type="submit" size="sm" variant="primary" icon="check" shortcut="Ctrl+Enter" name="_token" value="{{ csrf_token(token_id) }}">{{ post_label|default('Passer l’écriture au brouillard') }}</twig:Px:Button>
+                </form>
+            </div>
+        {% endif %}
+    </header>
+    <div class="px-card__body px-stack">
+        {% if entry.entries is not empty %}
+            {{ include('payroll/_entry_links.html.twig', {entries: entry.entries}) }}
+        {% endif %}
+        {% if entry.standing is empty and entry.proposal %}
+            {% if let_enter %}
+                <p>À vous de la saisir dans le journal <span class="px-u-code">{{ entry.proposal.journal }}</span>, pièce <span class="px-u-code">{{ document }}</span>, au {{ entry.proposal.date|date('d/m/Y') }}.</p>
+            {% else %}
+                {% if entry.check and entry.check.errors is not empty %}
+                    <twig:Px:Alert tone="danger">L’écriture ne peut pas être passée : {{ entry.check.errors|join(' ') }}</twig:Px:Alert>
+                {% endif %}
+                {% if entry.check %}{% for control in entry.check.controls %}<twig:Px:Alert tone="{{ control.blocking ? 'danger' : 'warning' }}">{{ control.message }}</twig:Px:Alert>{% endfor %}{% endif %}
+                {{ include('payroll/_proposal_lines.html.twig', {proposal: entry.proposal, caption: 'Lignes de l’écriture proposée'}) }}
+            {% endif %}
+        {% endif %}
+    </div>
+</section>

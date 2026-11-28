@@ -28,7 +28,9 @@ use App\Service\Shared\Money;
  *   below the cost, and none for the declining method, which goes to zero;
  * - a fiscal declining plan beside a linear one of 3 years at least (the dérogatoire);
  * - components (the simple approach): two at least, on a linear plan, their costs adding up to the
- *   cost, each over 1 to 50 years - the asset's own length is then theirs.
+ *   cost, each over 1 to 50 years - the asset's own length is then theirs;
+ * - an impairment's balance at the end of an exercise never negative, never on components (whether it
+ *   stays under the net book value is the plan's to say: FixedAssetSheet).
  */
 final class FixedAssetRules
 {
@@ -216,6 +218,22 @@ final class FixedAssetRules
             $draft->errors['fiscalDeclining'] = 'Le plan fiscal dégressif accompagne un amortissement linéaire de 3 ans au moins.';
         }
 
+        $impairments = [];
+        foreach ($draft->impairments as $day => $cents) {
+            if (null === $cents) {
+                continue;
+            }
+            if ($cents < 0 || null === DateValue::parse((string) $day)) {
+                $draft->errors['impairments'] = 'Une dépréciation n’est jamais négative.';
+                continue;
+            }
+            $impairments[(string) $day] = $cents;
+        }
+        ksort($impairments, \SORT_STRING);
+        if ([] !== $components && [] !== array_filter($impairments)) {
+            $draft->errors['impairments'] = 'Une immobilisation par composants ne se déprécie pas ici : dépréciez-la sans composants.';
+        }
+
         if ([] !== $draft->errors || null === $origin || null === $account || null === $method || null === $acquiredOn || null === $inServiceOn) {
             return null;
         }
@@ -240,6 +258,7 @@ final class FixedAssetRules
             $unitsUsed,
             $draft->fiscalDeclining && [] === $components,
             $components,
+            $impairments,
         );
     }
 

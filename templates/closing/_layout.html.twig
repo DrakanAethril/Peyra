@@ -1,6 +1,7 @@
 {#
  # Immobilisations et clôture (design-ux.md §§ 2.5 and A2): the module's tab bar. Lot 1 brings its
- # « Clôture » tab and its FEC view (step 1.9a), step 3.4 its « Immobilisations » tab; the inventory,
+ # « Clôture » tab and its FEC view (step 1.9a), step 3.4 its « Immobilisations », « Dotations » and
+ # « État des immobilisations » tabs; the inventory,
  # the statements and the closing of periods and exercises join it at lot 3. A screen sets
  # `closing_tab` ('assets', else the closing) and `dossier_title` outside any block.
  #}
@@ -11,6 +12,8 @@
 {% block module_tabs %}
     <twig:Px:ModuleTabs label="Immobilisations et clôture" :tabs="[
         {label: 'Immobilisations', href: path('app_assets', {dossier: dossier.id}), current: (closing_tab ?? '') == 'assets'},
-        {label: 'Clôture', href: path('app_closing_fec', {dossier: dossier.id}), current: (closing_tab ?? '') != 'assets'},
+        {label: 'Dotations', href: path('app_assets_dotations', {dossier: dossier.id}), current: (closing_tab ?? '') == 'dotations'},
+        {label: 'État des immobilisations', href: path('app_assets_statement', {dossier: dossier.id}), current: (closing_tab ?? '') == 'statement'},
+        {label: 'Clôture', href: path('app_closing_fec', {dossier: dossier.id}), current: (closing_tab ?? '') not in ['assets', 'dotations', 'statement']},
     ]"/>
 {% endblock %}

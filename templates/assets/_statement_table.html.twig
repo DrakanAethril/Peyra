@@ -1,0 +1,84 @@
+{#
+ # The state of fixed assets and depreciation as a table (step 3.4b), on screen and on paper: per group
+ # (intangible, tangible, in progress, financial), each asset then the group's total, then the total of
+ # all. Depreciation columns only when the plan is calculated for this person (`calculates`); impairment
+ # columns only when there is one. Takes `statement`, `calculates`, `pdf`.
+ #}
+{% set pdf = pdf|default(false) %}
+{% set num = pdf ? 'px-doc__num' : 'px-u-num' %}
+{% set num_head = pdf ? 'px-doc__num' : 'px-u-right' %}
+{% set t = statement.total %}
+{% set impaired = not t.impairmentOpening.zero or not t.impairmentIncrease.zero or not t.impairmentDecrease.zero %}
+{% macro cells(row, calculates, impaired, num) %}
+    <td class="{{ num }}">{{ row.grossOpening|amount_cell }}</td>
+    <td class="{{ num }}">{{ row.grossIncrease|amount_cell }}</td>
+    <td class="{{ num }}">{{ row.grossDecrease|amount_cell }}</td>
+    <td class="{{ num }}">{{ row.grossClosing|amount_cell }}</td>
+    {% if calculates %}
+        <td class="{{ num }}">{{ row.depreciationOpening|amount_cell }}</td>
+        <td class="{{ num }}">{{ row.dotations|amount_cell }}</td>
+        <td class="{{ num }}">{{ row.depreciationDecrease|amount_cell }}</td>
+        <td class="{{ num }}">{{ row.depreciationClosing|amount_cell }}</td>
+        {% if impaired %}
+            <td class="{{ num }}">{{ row.impairmentOpening|amount_cell }}</td>
+            <td class="{{ num }}">{{ row.impairmentIncrease|amount_cell }}</td>
+            <td class="{{ num }}">{{ row.impairmentDecrease|amount_cell }}</td>
+            <td class="{{ num }}">{{ row.impairmentClosing|amount_cell }}</td>
+        {% endif %}
+        <td class="{{ num }}">{{ row.netClosing|amount }}</td>
+    {% endif %}
+{% endmacro %}
+{% set span = 4 + (calculates ? 5 + (impaired ? 4 : 0) : 0) %}
+{% set cells %}
+    <thead>
+        <tr>
+            <th scope="col" rowspan="2">Immobilisation</th>
+            <th scope="colgroup" colspan="4" class="{{ num_head }}">Valeurs brutes</th>
+            {% if calculates %}
+                <th scope="colgroup" colspan="4" class="{{ num_head }}">Amortissements</th>
+                {% if impaired %}<th scope="colgroup" colspan="4" class="{{ num_head }}">Dépréciations</th>{% endif %}
+                <th scope="col" rowspan="2" class="{{ num_head }}">VNC fin</th>
+            {% endif %}
+        </tr>
+        <tr>
+            <th scope="col" class="{{ num_head }}">Début</th><th scope="col" class="{{ num_head }}">Augm.</th><th scope="col" class="{{ num_head }}">Dimin.</th><th scope="col" class="{{ num_head }}">Fin</th>
+            {% if calculates %}
+                <th scope="col" class="{{ num_head }}">Début</th><th scope="col" class="{{ num_head }}">Dotations</th><th scope="col" class="{{ num_head }}">Dimin.</th><th scope="col" class="{{ num_head }}">Fin</th>
+                {% if impaired %}<th scope="col" class="{{ num_head }}">Début</th><th scope="col" class="{{ num_head }}">Dotations</th><th scope="col" class="{{ num_head }}">Reprises</th><th scope="col" class="{{ num_head }}">Fin</th>{% endif %}
+            {% endif %}
+        </tr>
+    </thead>
+    {% for group in statement.groups %}
+        <tbody>
+            <tr>{% if pdf %}<td colspan="{{ span + 1 }}"><strong>{{ group.label }}</strong></td>{% else %}<th scope="rowgroup" colspan="{{ span + 1 }}">{{ group.label }}</th>{% endif %}</tr>
+            {% for row in group.rows %}
+                <tr>
+                    {% if pdf %}
+                        <td>{{ row.code }} {{ row.label|length > 34 ? row.label|slice(0, 33) ~ '…' : row.label }}</td>
+                    {% else %}
+                        <th scope="row" class="px-u-nowrap"><a class="px-link px-u-code" href="{{ path('app_assets_fiche', {dossier: dossier.id, code: row.code}) }}">{{ row.code }}</a> {{ row.label|length > 38 ? row.label|slice(0, 37) ~ '…' : row.label }}</th>
+                    {% endif %}
+                    {{ _self.cells(row, calculates, impaired, num) }}
+                </tr>
+            {% endfor %}
+            <tr class="px-u-strong">
+                {% if pdf %}<td><strong>{{ group.total.label }}</strong></td>{% else %}<th scope="row">{{ group.total.label }}</th>{% endif %}
+                {{ _self.cells(group.total, calculates, impaired, num) }}
+            </tr>
+        </tbody>
+    {% endfor %}
+    <tfoot>
+        <tr>
+            {% if pdf %}<td><strong>{{ t.label }}</strong></td>{% else %}<th scope="row">{{ t.label }}</th>{% endif %}
+            {{ _self.cells(t, calculates, impaired, num) }}
+        </tr>
+    </tfoot>
+{% endset %}
+{% if pdf %}
+    <table class="px-doc__table">
+        <colgroup><col style="width: {{ calculates ? (impaired ? 18 : 24) : 40 }}%"></colgroup>
+        {{ cells }}
+    </table>
+{% else %}
+    <twig:Px:Table caption="État des immobilisations et des amortissements au {{ statement.at|date_fr }}" density="compact" :rows="false">{{ cells }}</twig:Px:Table>
+{% endif %}

@@ -16,6 +16,7 @@ final readonly class FixedAssetValues
     /**
      * @param array<string, int>                                      $unitsUsed
      * @param list<array{label: string, cost: int, years: int}> $components
+     * @param array<string, int>                                      $impairments by the last day of an exercise, in cents
      */
     public function __construct(
         public string $code,
@@ -37,6 +38,7 @@ final readonly class FixedAssetValues
         public array $unitsUsed,
         public bool $fiscalDeclining,
         public array $components,
+        public array $impairments = [],
     ) {
     }
 }

@@ -50,7 +50,7 @@
                         {% set asset = line.asset %}
                         <tr data-rows-target="row">
                             <td class="px-u-code"><a class="px-link" href="{{ path('app_assets_fiche', {dossier: dossier.id, code: asset.code}) }}">{{ asset.code }}</a></td>
-                            <td class="px-u-truncate px-u-truncate-short" title="{{ asset.label }}">{{ asset.label }}</td>
+                            <td class="px-u-truncate px-u-truncate-short" title="{{ asset.label }}">{{ asset.label }}{% if asset.disposedOn %} <span class="px-u-muted">· {{ asset.disposalKind.done }} le {{ asset.disposedOn|date_fr }}</span>{% endif %}</td>
                             <td class="px-u-code">{{ asset.account.number }}</td>
                             <td class="px-u-num">{{ asset.inServiceOn|date_fr }}</td>
                             <td class="px-u-nowrap">{{ asset.method.label }}{% if asset.years %} <span class="px-u-muted">{{ asset.years }} ans</span>{% elseif asset.components is not empty %} <span class="px-u-muted">composants</span>{% endif %}</td>

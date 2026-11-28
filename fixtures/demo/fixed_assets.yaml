@@ -2,8 +2,11 @@
 # the twelve at 31/12/2025, whose gross values (225 200,00) and depreciation (117 034,42) are those of
 # the opening balance, and the machining centre bought in March 2026 (invoice MBI-2026-0311, entered in
 # entries.yaml), depreciated by components from its putting into service on 01/04/2026. Checked by
-# FixedAssetRules, as the fiche. The van I07 is sold on 30/06/2026 and the dust extractor I14 bought in
-# November 2026: both after the dossier's date, neither is written here yet.
+# FixedAssetRules, as the fiche. The van I07 is sold on 30/06/2026 to D0001 (7 500,00 + VAT 1 500,00;
+# its fiche records the sale, DisposalRules checks it) and the dust extractor I14 bought in November 2026
+# (invoice ATR-26-1187): both after the dossier's date, so their entries are proposed only once the date
+# reaches them (step 3.4b) - with the dossier at 31/12/2026, the dotations of 2026 come to 29 002,88 and the
+# reprise of I05's dérogatoire to 592,84 (dotations_2026 of the prepared data).
 #
 # Amounts are euros as text, read exactly; `method`: none, linear, declining, units; `fiscal_declining`
 # a fiscal declining plan beside the linear one (the dérogatoire of I05).
@@ -15,7 +18,16 @@ fixed_assets:
   - { code: I04, label: "Scie à panneaux (scie à format)", account: '215400', depreciation_account: '281540', acquired_on: '2018-04-01', in_service_on: '2018-04-01', price: '18500.00', method: linear, years: 8 }
   - { code: I05, label: "Raboteuse-dégauchisseuse", account: '215400', depreciation_account: '281540', acquired_on: '2021-09-15', in_service_on: '2021-09-15', price: '12400.00', method: linear, years: 5, fiscal_declining: true }
   - { code: I06, label: "Plaqueuse de chants", account: '215400', depreciation_account: '281540', acquired_on: '2024-10-01', in_service_on: '2024-10-01', price: '26000.00', method: linear, years: 7 }
-  - { code: I07, label: "Fourgonnette Peugeot Partner", account: '218200', depreciation_account: '281820', acquired_on: '2022-02-01', in_service_on: '2022-02-01', price: '21500.00', method: linear, years: 5 }
+  - code: I07
+    label: "Fourgonnette Peugeot Partner"
+    account: '218200'
+    depreciation_account: '281820'
+    acquired_on: '2022-02-01'
+    in_service_on: '2022-02-01'
+    price: '21500.00'
+    method: linear
+    years: 5
+    disposal: { kind: sale, on: '2026-06-30', price: '7500.00', vat: '1500.00', buyer: D0001 }
   - { code: I08, label: "Fourgon Renault Master", account: '218200', depreciation_account: '281820', acquired_on: '2023-07-01', in_service_on: '2023-07-01', price: '34000.00', method: linear, years: 5 }
   - { code: I09, label: "Matériel informatique (postes et traceur)", account: '218300', depreciation_account: '281830', acquired_on: '2024-01-15', in_service_on: '2024-01-15', price: '4200.00', method: linear, years: 3 }
   - { code: I10, label: "Mobilier de bureau", account: '218400', depreciation_account: '281840', acquired_on: '2020-01-01', in_service_on: '2020-01-01', price: '5600.00', method: linear, years: 10 }
@@ -36,3 +48,15 @@ fixed_assets:
     components:
       - { label: "Structure et commande numérique (installation et formation comprises)", cost: '74500.00', years: 10 }
       - { label: "Broche d'usinage (renouvelée tous les 5 ans)", cost: '12000.00', years: 5 }
+  - code: I14
+    label: "Dépoussiéreur de l'atelier"
+    account: '215400'
+    depreciation_account: '281540'
+    supplier: F0020
+    document: ATR-26-1187
+    acquired_on: '2026-11-18'
+    in_service_on: '2026-11-20'
+    price: '6000.00'
+    vat: '1200.00'
+    method: linear
+    years: 8

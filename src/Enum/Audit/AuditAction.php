@@ -318,6 +318,12 @@ enum AuditAction: string
     /** A fixed asset's fiche deleted. */
     case FixedAssetDeleted = 'assets.fixed_asset_deleted';
 
+    /** A fixed asset sold or scrapped (its day, price, VAT, buyer). */
+    case FixedAssetDisposed = 'assets.fixed_asset_disposed';
+
+    /** A fixed asset's sale or scrapping taken back, before its entry. */
+    case FixedAssetDisposalCancelled = 'assets.fixed_asset_disposal_cancelled';
+
     public function label(): string
     {
         return match ($this) {
@@ -438,6 +444,8 @@ enum AuditAction: string
             self::FixedAssetCreated => 'Immobilisation créée',
             self::FixedAssetChanged => 'Immobilisation modifiée',
             self::FixedAssetDeleted => 'Immobilisation supprimée',
+            self::FixedAssetDisposed => 'Immobilisation cédée ou mise au rebut',
+            self::FixedAssetDisposalCancelled => 'Cession annulée',
         };
     }
 }

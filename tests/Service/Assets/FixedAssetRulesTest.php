@@ -137,6 +137,22 @@ final class FixedAssetRulesTest extends TestCase
         self::assertNull(FixedAssetRules::proposedDepreciationAccount('207000', static fn (): null => null));
     }
 
+    public function testAnImpairmentIsNeverNegativeNorOnComponents(): void
+    {
+        $draft = $this->machine('linear', '5');
+        $draft->impairments = ['2026-12-31' => 120_000, '2025-12-31' => null];
+        self::assertSame(['2026-12-31' => 120_000], $this->check($draft)?->impairments);
+
+        $draft->impairments = ['2026-12-31' => -1];
+        self::assertNull($this->check($draft));
+        self::assertSame('Une dépréciation n’est jamais négative.', $draft->errors['impairments']);
+
+        $centre = $this->machiningCentre();
+        $centre->impairments = ['2026-12-31' => 50_000];
+        self::assertNull($this->check($centre));
+        self::assertArrayHasKey('impairments', $centre->errors);
+    }
+
     private function machiningCentre(): FixedAssetDraft
     {
         $draft = $this->machine('linear', '');

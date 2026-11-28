@@ -11,7 +11,6 @@ use App\Entity\Dossier\RestorePoint;
 use App\Entity\Identity\SchoolClass;
 use App\Entity\Identity\SchoolYear;
 use App\Entity\Identity\User;
-use App\Entity\Mission\MissionProgress;
 use App\Enum\Dossier\DistributionMode;
 use App\Enum\Dossier\DossierKind;
 use App\Enum\Dossier\RestorePointOrigin;
@@ -87,7 +86,6 @@ final class MissionPlayTest extends WebTestCase
         $entityManager->clear();
         $progress = $client->getContainer()->get(MissionProgressRepository::class)->findBy(['dossier' => $id]);
         self::assertCount(1, $progress);
-        self::assertInstanceOf(MissionProgress::class, $progress[0]);
         self::assertTrue($progress[0]->isSubmitted());
         self::assertSame([$key], $progress[0]->getDeclaredTasks(), 'Une mission rendue ne se décoche plus.');
         $point = $progress[0]->getRestorePoint();

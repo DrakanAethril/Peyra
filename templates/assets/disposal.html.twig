@@ -1,0 +1,112 @@
+{#
+ # A fixed asset's way out (step 3.4b, gabarit E; design-ux.md § 3.2 « Cessions »): the sale or the
+ # scrapping as typed (F10 saves), the detailed calculation (levels G, B, A and a teacher), and its entry
+ # once the dossier's date reaches its day. Taken back while its entry is not in the books.
+ #}
+{% extends 'closing/_layout.html.twig' %}
+
+{% set closing_tab = 'assets' %}
+{% set dossier_title = 'Sortie de ' ~ asset.code %}
+{% set can_edit = is_granted('ASSETS_ENTER', dossier) and not posted %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer la cession'}] : [] %}
+{% set kind_options = kinds|map(k => {value: k.value, label: k.label}) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ asset.code }} · {{ asset.disposedOn ? asset.disposalKind.label : 'Cession ou mise au rebut' }}" :trail="[
+        {label: 'Immobilisations et clôture', href: path('app_assets', {dossier: dossier.id})},
+        {label: 'Immobilisations', href: path('app_assets', {dossier: dossier.id})},
+        {label: asset.code, href: path('app_assets_fiche', {dossier: dossier.id, code: asset.code})},
+        {label: 'Sortie', href: path('app_assets_disposal', {dossier: dossier.id, code: asset.code})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit and asset.disposedOn %}<twig:Px:ConfirmButton label="Annuler la sortie" confirmLabel="Confirmer l’annulation" icon="x" type="submit" form="disposal-cancel"/>{% endif %}
+            {% if can_edit %}<twig:Px:Button type="submit" variant="primary" form="disposal-form" shortcut="F10 Ctrl+S">Enregistrer la cession</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">La sortie n’est pas enregistrée : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+
+    {% if can_edit %}
+        <form method="post" action="{{ path('app_assets_disposal', {dossier: dossier.id, code: asset.code}) }}" id="disposal-form" novalidate data-controller="focus-error">
+            <input type="hidden" name="_token" value="{{ csrf_token('fixed-asset-disposal-' ~ asset.id) }}">
+            {% set asset_note = asset.label ~ ' · coût d’entrée ' ~ asset.cost|amount_eur ~ (asset.vat.positive ? ', TVA déduite ' ~ asset.vat|amount_eur : '') %}
+            <twig:Px:Card title="Sortie de l’actif" meta="{{ asset_note }}">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="kind" label="Nature" :required="true" :error="draft.error('kind')">
+                        <twig:Px:Select id="kind" :options="kind_options" value="{{ draft.kind }}" :required="true" :error="draft.error('kind')" autofocus/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="disposedOn" label="Date de sortie" :required="true" :error="draft.error('disposedOn')">
+                        <twig:Px:DateInput id="disposedOn" :reference="dossier.dossierDate" :value="draft.date" :required="true" :error="draft.error('disposedOn')"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="price" label="Prix de cession HT" hint="Aucun pour une mise au rebut." :error="draft.error('price')">
+                        <twig:Px:AmountInput id="price" :value="draft.price" hint="1" :error="draft.error('price')"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="vat" label="TVA sur le prix" hint="Vide : le taux normal quand la TVA de l’acquisition a été déduite ; 0 : cession sans TVA, la TVA déduite se régularise." :error="draft.error('vat')">
+                        <twig:Px:AmountInput id="vat" :value="draft.vat" hint="1" :error="draft.error('vat')"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="buyer" label="Acquéreur" hint="Code du tiers (D0001) ; sinon 462000." :error="draft.error('buyer')">
+                        <twig:Px:Input id="buyer" value="{{ draft.buyer }}" hint="1" :error="draft.error('buyer')" class="px-u-code" maxlength="17" autocomplete="off" spellcheck="false"/>
+                    </twig:Px:Field>
+                </div>
+            </twig:Px:Card>
+        </form>
+        {% if asset.disposedOn %}
+            <form method="post" action="{{ path('app_assets_disposal_cancel', {dossier: dossier.id, code: asset.code}) }}" id="disposal-cancel" hidden>
+                <input type="hidden" name="_token" value="{{ csrf_token('fixed-asset-disposal-cancel-' ~ asset.id) }}">
+            </form>
+        {% endif %}
+    {% elseif asset.disposedOn %}
+        <twig:Px:Card title="Sortie de l’actif">
+            <dl class="px-facts">
+                <dt>Nature</dt><dd>{{ asset.disposalKind.label }}</dd>
+                <dt>Date</dt><dd>{{ asset.disposedOn|date_fr }}</dd>
+                {% if asset.disposalKind.value == 'sale' %}
+                    <dt>Prix HT</dt><dd class="px-u-num">{{ asset.disposalPrice|amount_eur }}</dd>
+                    <dt>TVA</dt><dd class="px-u-num">{{ asset.disposalVat|amount_eur }}</dd>
+                    {% if asset.buyer %}<dt>Acquéreur</dt><dd>{{ asset.buyer.name }}</dd>{% endif %}
+                {% endif %}
+            </dl>
+        </twig:Px:Card>
+    {% else %}
+        <twig:Px:Card title="Sortie de l’actif"><p class="px-u-muted">Cette immobilisation est toujours à l’actif.</p></twig:Px:Card>
+    {% endif %}
+
+    {% if calculation and calculates %}
+        <twig:Px:Card title="Calcul" meta="Au {{ asset.disposedOn|date_fr }}" :flush="true">
+            <twig:Px:Table caption="Calcul de la sortie de {{ asset.code }}" :rows="false">
+                <tbody>
+                    <tr><th scope="row">Coût d’entrée</th><td class="px-u-num">{{ calculation.cost|amount }}</td></tr>
+                    <tr><th scope="row">Amortissements déjà passés</th><td class="px-u-num">{{ calculation.before|amount }}</td></tr>
+                    <tr><th scope="row">Dotation complémentaire jusqu’à la sortie</th><td class="px-u-num">{{ calculation.complement|amount }}</td></tr>
+                    <tr><th scope="row">Amortissements à la sortie</th><td class="px-u-num">{{ calculation.depreciation|amount }}</td></tr>
+                    {% if not calculation.impairment.zero %}<tr><th scope="row">Dépréciation reprise</th><td class="px-u-num">{{ calculation.impairment|amount }}</td></tr>{% endif %}
+                    <tr><th scope="row">Valeur nette comptable</th><td class="px-u-num">{{ calculation.netBookValue|amount }}</td></tr>
+                    <tr><th scope="row">Prix de cession HT</th><td class="px-u-num">{{ calculation.price|amount }}</td></tr>
+                    <tr><th scope="row">{{ calculation.result.negative ? 'Moins-value' : 'Plus-value' }}</th><td class="px-u-num">{{ calculation.result.abs|amount }}</td></tr>
+                    {% if not calculation.derogatory.zero %}<tr><th scope="row">Amortissement dérogatoire repris</th><td class="px-u-num">{{ calculation.derogatory|amount }}</td></tr>{% endif %}
+                    {% if not calculation.vatRegularisation.zero %}<tr><th scope="row">TVA déduite à reverser (régularisation)</th><td class="px-u-num">{{ calculation.vatRegularisation|amount }}</td></tr>{% endif %}
+                </tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+    {% endif %}
+
+    {% if asset.disposedOn %}
+        {% if asset.disposedOn > dossier.dossierDate and entry.entries is empty %}
+            <twig:Px:Alert tone="info">L’écriture de sortie se passe quand la date du dossier atteint le {{ asset.disposedOn|date_fr }}.</twig:Px:Alert>
+        {% elseif entry.proposal or entry.entries is not empty %}
+            {{ include('assets/_entry_card.html.twig', {
+                card_id: 'disposal',
+                title: 'Écriture de sortie',
+                document: document,
+                post_url: path('app_assets_disposal_post', {dossier: dossier.id, code: asset.code}),
+                token_id: 'fixed-asset-disposal-post-' ~ asset.id,
+            }) }}
+        {% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>Comptabilisation · <b>{{ behaviour.label }}</b></span>{% endblock %}

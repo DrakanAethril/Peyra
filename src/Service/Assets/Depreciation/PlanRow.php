@@ -11,7 +11,8 @@ use App\Service\Shared\Money;
  * months for the declining one, units for the units of work), the depreciation before it, its
  * dotation, after it and the net book value at its end. Beside a linear plan with a fiscal
  * declining one: the fiscal annuity and the dérogatoire - positive a dotation, negative a reprise -
- * and its balance at the end.
+ * and its balance at the end. `impairment`: the dépréciation's balance at its end, once there is one
+ * (the net book value is then net of it).
  */
 final readonly class PlanRow
 {
@@ -27,6 +28,7 @@ final readonly class PlanRow
         public ?Money $fiscal = null,
         public ?Money $derogatory = null,
         public ?Money $derogatoryBalance = null,
+        public ?Money $impairment = null,
     ) {
     }
 

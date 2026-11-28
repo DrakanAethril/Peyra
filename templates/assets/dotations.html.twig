@@ -1,0 +1,86 @@
+{#
+ # Immobilisations et clôture › Dotations (step 3.4b, gabarit E; design-ux.md § 3.2): the dotations of the
+ # period up to the dossier's date, asset by asset - from the last day they were passed for it -, the
+ # dérogatoire and, on the exercise's last day, the impairment's movement; the entry in preview and
+ # « Comptabiliser les dotations » (or, under « Laisser saisir », the journal to enter it in).
+ #}
+{% extends 'closing/_layout.html.twig' %}
+
+{% set closing_tab = 'dotations' %}
+{% set dossier_title = 'Dotations' %}
+{% set fiscal = lines|filter(l => l.derogatory is not null)|length > 0 %}
+{% set impaired = lines|filter(l => l.impairment is not null and not l.impairment.zero)|length > 0 %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Dotations{{ through ? ' au ' ~ through|date_fr : '' }}" :trail="[
+        {label: 'Immobilisations et clôture', href: path('app_assets', {dossier: dossier.id})},
+        {label: 'Dotations', href: path('app_assets_dotations', {dossier: dossier.id})},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    {% if not exercise %}
+        <twig:Px:Empty icon="calendar" title="Aucun exercice ne contient la date du dossier." text="Les dotations se calculent dans l’exercice de la date du dossier."/>
+    {% elseif not calculates %}
+        <twig:Px:Card title="Dotations">
+            <p class="px-u-muted">Au niveau « Aucun filet », les dotations sont à calculer vous-même et à saisir dans le journal des opérations diverses.</p>
+        </twig:Px:Card>
+    {% else %}
+        <twig:Px:Card title="Dotations de la période" meta="Exercice {{ exercise.code }}, jusqu’au {{ through|date_fr }} : depuis le dernier jour où les dotations de chaque immobilisation ont été passées." :flush="true">
+            {% if lines is empty %}
+                <twig:Px:Empty icon="check" title="Aucune dotation à passer." text="Les dotations sont passées jusqu’à la date du dossier. Une immobilisation sortie dans la période reçoit sa dotation avec l’écriture de sa sortie."/>
+            {% else %}
+                <twig:Px:Table caption="Dotations de la période par immobilisation" :rows="false">
+                    <thead>
+                        <tr>
+                            <th scope="col">Code</th>
+                            <th scope="col">Intitulé</th>
+                            <th scope="col" class="px-u-right">Du</th>
+                            <th scope="col" class="px-u-right">Au</th>
+                            <th scope="col" class="px-u-right">Dotation</th>
+                            <th scope="col">Comptes</th>
+                            {% if fiscal %}<th scope="col" class="px-u-right">Dérogatoire</th>{% endif %}
+                            {% if impaired %}<th scope="col" class="px-u-right">Dépréciation</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for line in lines %}
+                            <tr>
+                                <td class="px-u-code"><a class="px-link" href="{{ path('app_assets_fiche', {dossier: dossier.id, code: line.code}) }}">{{ line.code }}</a></td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ line.label }}">{{ line.label }}</td>
+                                <td class="px-u-num">{{ line.from|date_fr }}</td>
+                                <td class="px-u-num">{{ line.through|date_fr }}</td>
+                                <td class="px-u-num">{{ line.dotation|amount_cell }}</td>
+                                <td class="px-u-code px-u-nowrap">{% if line.depreciationAccount %}{{ line.dotationAccount }} / {{ line.depreciationAccount }}{% endif %}</td>
+                                {% if fiscal %}<td class="px-u-num">{% if line.derogatory and line.derogatory.negative %}reprise {{ line.derogatory.abs|amount }}{% else %}{{ line.derogatory|amount_cell }}{% endif %}</td>{% endif %}
+                                {% if impaired %}<td class="px-u-num">{% if line.impairment and line.impairment.negative %}reprise {{ line.impairment.abs|amount }}{% else %}{{ line.impairment|amount_cell }}{% endif %}</td>{% endif %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th scope="row" colspan="4">Total</th>
+                            <td class="px-u-num">{{ total|amount }}</td>
+                            <td></td>
+                            {% if fiscal %}<td></td>{% endif %}
+                            {% if impaired %}<td></td>{% endif %}
+                        </tr>
+                    </tfoot>
+                </twig:Px:Table>
+            {% endif %}
+        </twig:Px:Card>
+    {% endif %}
+
+    {% if exercise and calculates and (entry.proposal or entry.entries is not empty) %}
+        {{ include('assets/_entry_card.html.twig', {
+            card_id: 'dotations',
+            title: 'Écriture des dotations',
+            document: document,
+            post_url: path('app_assets_dotations_post', {dossier: dossier.id}),
+            token_id: 'fixed-asset-dotations-' ~ dossier.id,
+            post_label: 'Comptabiliser les dotations',
+        }) }}
+    {% endif %}
+{% endblock %}
+
+{% block facts %}{% if through %}<span>Dotations au · <b>{{ through|date_fr }}</b></span>{% endif %}<span>Comptabilisation · <b>{{ behaviour.label }}</b></span>{% endblock %}

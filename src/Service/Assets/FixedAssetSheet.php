@@ -7,18 +7,24 @@ namespace App\Service\Assets;
 use App\Entity\Assets\FixedAsset;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
+use App\Enum\Assets\AssetPostingKind;
 use App\Enum\Audit\AuditAction;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Assets\FixedAssetRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Audit\AuditTrail;
+use App\Service\Shared\DateValue;
+use App\Service\Shared\FrenchFormat;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * The one door to a dossier's fixed assets (Immobilisations et clôture › Immobilisations): checks a
  * fiche as typed (FixedAssetRules, every fault under its field), creates, changes and deletes it -
  * each gesture in the audit trail. A fiche writes nothing in the books (its entries go through the
- * accounting gateway). Runs inside the dossier's context; the caller asks the voter and flushes.
+ * accounting gateway, FixedAssetPostings: under « Comptabiliser » its acquisition is written at its
+ * creation); an impairment stays under the net book value its plan gives; a fiche whose pièces have
+ * entries in the books is no longer deleted. Runs inside the dossier's context; the caller asks the
+ * voter and flushes.
  */
 final readonly class FixedAssetSheet
 {
@@ -28,10 +34,44 @@ final readonly class FixedAssetSheet
         private AccountRepository $accounts,
         private ThirdPartyRepository $thirdParties,
         private AuditTrail $auditTrail,
+        private FixedAssetPlans $plans,
+        private FixedAssetPostings $postings,
     ) {
     }
 
     public function check(FixedAssetDraft $draft, Dossier $dossier, ?FixedAsset $asset = null): ?FixedAssetValues
+    {
+        $values = $this->rules($draft, $dossier, $asset);
+        if (null === $values || [] === array_filter($values->impairments)) {
+            return $values;
+        }
+        // The plan of the fiche as typed says what the net book value is at each exercise's end.
+        $probe = new FixedAsset($dossier, $values->account, $values->acquiredOn);
+        $probe->describe($values);
+        $plan = $this->plans->plan($dossier, $probe);
+        foreach ($values->impairments as $day => $cents) {
+            $end = DateValue::parse((string) $day);
+            if (null === $end) {
+                continue;
+            }
+            $net = $values->price->plus($values->incidentalCosts)->minus($plan->cumulativeAt($end));
+            if ($cents > $net->cents) {
+                $draft->errors['impairments'] = \sprintf('La dépréciation au %s dépasse la valeur nette comptable de ce jour-là, %s.', FrenchFormat::date($end), FrenchFormat::amount($net));
+
+                return null;
+            }
+        }
+
+        return $values;
+    }
+
+    /** Whether the fiche may be deleted: none of its pièces has an entry in the books. */
+    public function isDeletable(FixedAsset $asset): bool
+    {
+        return !$this->postings->carriesEntries($asset);
+    }
+
+    private function rules(FixedAssetDraft $draft, Dossier $dossier, ?FixedAsset $asset): ?FixedAssetValues
     {
         return FixedAssetRules::check(
             $draft,
@@ -57,6 +97,7 @@ final readonly class FixedAssetSheet
             \sprintf('Immobilisation %s %s créée', $values->code, $values->label),
             ['dossier' => $dossier->getId(), 'code' => $values->code, 'account' => $values->account->getNumber(), 'cost' => $asset->getCost()->cents, 'method' => $values->method->value],
         );
+        $this->postings->postAtOnce($dossier, $asset, AssetPostingKind::Acquisition, $by);
 
         return $asset;
     }
@@ -82,6 +123,9 @@ final readonly class FixedAssetSheet
 
     public function delete(FixedAsset $asset, User $by): void
     {
+        if (!$this->isDeletable($asset)) {
+            throw new \LogicException('A fiche with entries is not deleted.');
+        }
         $this->auditTrail->inDossier(
             $asset->getDossier(),
             AuditAction::FixedAssetDeleted,
@@ -115,6 +159,7 @@ final readonly class FixedAssetSheet
             'unitsUsed' => $asset->getUnitsUsed(),
             'fiscalDeclining' => $asset->isFiscalDeclining(),
             'components' => $asset->getComponents(),
+            'impairments' => $asset->getImpairments(),
         ];
     }
 }

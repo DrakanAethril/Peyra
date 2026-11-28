@@ -3,7 +3,8 @@
  # is and where it is kept, its cost of entry, how it is depreciated (method, length, residual value,
  # the fiscal declining plan beside a linear one, the components, the units of work consumed), and
  # its depreciation plan as a card - calculated at levels G, B and A and for a teacher. F10 saves;
- # whoever only reads sees the facts and the plan.
+ # whoever only reads sees the facts and the plan. Step 3.4b adds the impairment at each exercise's end,
+ # the acquisition's entry, the way out (its own screen) and keeps a fiche with entries from deletion.
  #}
 {% extends 'closing/_layout.html.twig' %}
 
@@ -23,7 +24,8 @@
     ]">
         <twig:block name="actions">
             {% if can_edit %}
-                {% if asset %}<twig:Px:ConfirmButton label="Supprimer l’immobilisation" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="asset-delete"/>{% endif %}
+                {% if asset and deletable %}<twig:Px:ConfirmButton label="Supprimer l’immobilisation" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="asset-delete"/>{% endif %}
+                {% if asset %}<twig:Px:Button href="{{ path('app_assets_disposal', {dossier: dossier.id, code: asset.code}) }}" icon="log-out">{{ asset.disposedOn ? asset.disposalKind.label : 'Céder ou mettre au rebut' }}</twig:Px:Button>{% endif %}
                 <twig:Px:Button type="submit" variant="primary" form="asset-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
             {% endif %}
         </twig:block>
@@ -130,6 +132,25 @@
                     </twig:Px:Table>
                 </twig:Px:Card>
 
+                {% if impairment_ends is not empty %}
+                    <twig:Px:Card title="Dépréciation">
+                        <p class="px-u-muted">Le montant cumulé de la dépréciation à la fin de l’exercice, quand la valeur actuelle passe sous la valeur nette comptable ; le plan d’amortissement en tient compte ensuite.</p>
+                        {% if draft.error('impairments') %}<p class="px-field__error" id="impairments_error">{{ draft.error('impairments') }}</p>{% endif %}
+                        <twig:Px:Table caption="Dépréciation à la fin de chaque exercice" :rows="false">
+                            <thead><tr><th scope="col">Exercice clos le</th><th scope="col" class="px-u-right">Dépréciation cumulée</th></tr></thead>
+                            <tbody>
+                                {% for end in impairment_ends %}
+                                    {% set day = end|date('Y-m-d') %}
+                                    <tr>
+                                        <td class="px-u-num">{{ end|date_fr }}</td>
+                                        <td><twig:Px:AmountInput id="impairments_{{ day }}" name="impairments[{{ day }}]" :value="draft.impairments[day] ?? null" :error="draft.error('impairments')" aria-label="Dépréciation cumulée au {{ end|date_fr }}"/></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </twig:Px:Table>
+                    </twig:Px:Card>
+                {% endif %}
+
                 {% if unit_windows is not empty %}
                     <twig:Px:Card title="Unités d’œuvre consommées">
                         {% if draft.error('units') %}<p class="px-field__error" id="units_error">{{ draft.error('units') }}</p>{% endif %}
@@ -163,11 +184,25 @@
                 <dt>Mise en service</dt><dd>{{ asset.inServiceOn|date_fr }}</dd>
                 <dt>Coût d’entrée</dt><dd class="px-u-num">{{ asset.cost|amount_eur }}</dd>
                 <dt>Mode</dt><dd>{{ asset.method.label }}{% if asset.years %}, {{ asset.years }} ans{% endif %}</dd>
+                {% if asset.disposedOn %}<dt>Sortie</dt><dd>{{ asset.disposalKind.done }} le {{ asset.disposedOn|date_fr }}</dd>{% endif %}
             </dl>
         </twig:Px:Card>
     {% endif %}
 
     {% if asset %}
+        {% if asset.disposedOn %}
+            <twig:Px:Alert tone="info">{{ asset.disposalKind.done }} le {{ asset.disposedOn|date_fr }} : <a class="px-link" href="{{ path('app_assets_disposal', {dossier: dossier.id, code: asset.code}) }}">voir la sortie et son écriture</a>.</twig:Px:Alert>
+        {% endif %}
+        {% if acquisition and (acquisition.proposal or acquisition.entries is not empty) %}
+            {{ include('assets/_entry_card.html.twig', {
+                card_id: 'acquisition',
+                title: asset.origin.value == 'production' ? 'Écriture de production immobilisée' : 'Écriture d’acquisition',
+                document: acquisition.document,
+                entry: acquisition,
+                post_url: path('app_assets_acquisition_post', {dossier: dossier.id, code: asset.code}),
+                token_id: 'fixed-asset-acquisition-' ~ asset.id,
+            }) }}
+        {% endif %}
         {{ include('assets/_plan.html.twig') }}
     {% endif %}
 {% endblock %}

@@ -216,7 +216,9 @@ final class DemoInstallCommandTest extends KernelTestCase
         // Its fixed assets (step 3.4): the twelve of the opening, whose gross values and depreciation at
         // 31/12/2025 are the opening balance's (immobilisations.yaml: 225 200,00 and 117 034,42, account by
         // account), and the machining centre by components (2026: 5 587,50 + 1 800,00 = 7 387,50); the
-        // planer's dérogatoire is taken back in 2026 (592,84).
+        // planer's dérogatoire is taken back in 2026 (592,84); the van I07, sold on 30/06/2026, is depreciated
+        // up to that day (21 500,00 × 180 / 1 800 = 2 150,00), the dust extractor I14 from 20/11/2026
+        // (6 000,00 × 41 / 2 880 = 85,42).
         $context->within($vasseur, static function () use ($vasseur, $reader, $account): void {
             $assets = self::getContainer()->get(FixedAssetRepository::class)->findByDossier($vasseur);
             $plans = self::getContainer()->get(FixedAssetPlans::class);
@@ -225,7 +227,7 @@ final class DemoInstallCommandTest extends KernelTestCase
             $dotations = [];
             foreach ($assets as $asset) {
                 $plan = $plans->plan($vasseur, $asset);
-                if ('I13' !== $asset->getCode()) {
+                if (!\in_array($asset->getCode(), ['I13', 'I14'], true)) {
                     $gross[$asset->getAccount()->getNumber()] = ($gross[$asset->getAccount()->getNumber()] ?? 0) + $asset->getCost()->cents;
                     if (null !== $asset->getDepreciationAccount()) {
                         $number = $asset->getDepreciationAccount()->getNumber();
@@ -241,7 +243,7 @@ final class DemoInstallCommandTest extends KernelTestCase
                 self::assertSame($books, $balance, 'Le compte '.$number.' des fiches est celui de la balance d’ouverture.');
             }
             ksort($dotations);
-            self::assertSame(['I01' => null, 'I02' => 37_777, 'I03' => 420_000, 'I04' => 57_812, 'I05' => 174_978, 'I06' => 371_429, 'I07' => 430_000, 'I08' => 680_000, 'I09' => 140_000, 'I10' => 56_000, 'I11' => null, 'I12' => null, 'I13' => 738_750], $dotations);
+            self::assertSame(['I01' => null, 'I02' => 37_777, 'I03' => 420_000, 'I04' => 57_812, 'I05' => 174_978, 'I06' => 371_429, 'I07' => 215_000, 'I08' => 680_000, 'I09' => 140_000, 'I10' => 56_000, 'I11' => null, 'I12' => null, 'I13' => 738_750, 'I14' => 8_542], $dotations);
             $planer = array_values(array_filter($assets, static fn ($asset): bool => 'I05' === $asset->getCode()))[0];
             self::assertSame(-59_284, $plans->plan($vasseur, $planer)->rowAt(new \DateTimeImmutable('2026-12-31'))?->derogatory?->cents);
         });

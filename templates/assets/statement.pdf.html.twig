@@ -1,0 +1,7 @@
+{# The state of fixed assets and depreciation on paper (step 3.4b): a state's header (doc/_report), the table. #}
+{% extends 'doc/_report.html.twig' %}
+
+{% block content %}
+    {{ include('assets/_statement_table.html.twig', {pdf: true}) }}
+    <p class="px-doc__legal">Lu sur les fiches d’immobilisation et leurs plans d’amortissement, arrêté au {{ statement.at|date_fr }}. Document fictif établi par Peyra, PGI pédagogique : la société est inventée.</p>
+{% endblock %}

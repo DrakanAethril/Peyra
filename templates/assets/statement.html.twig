@@ -1,0 +1,38 @@
+{#
+ # Immobilisations et clôture › État des immobilisations (step 3.4b, gabarit R): the state of fixed assets
+ # and depreciation of the exercise of the dossier's date, drawn up on that date; « Aperçu PDF ».
+ #}
+{% extends 'closing/_layout.html.twig' %}
+
+{% set closing_tab = 'statement' %}
+{% set dossier_title = 'État des immobilisations' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="État des immobilisations{{ statement ? ' au ' ~ statement.at|date_fr : '' }}" :trail="[
+        {label: 'Immobilisations et clôture', href: path('app_assets', {dossier: dossier.id})},
+        {label: 'État des immobilisations', href: path('app_assets_statement', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if statement and not statement.empty %}
+                <twig:Px:Button href="{{ path('app_assets_statement_pdf', {dossier: dossier.id}) }}" icon="printer" target="_blank" data-turbo="false">Aperçu PDF</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if not statement %}
+        <twig:Px:Empty icon="calendar" title="Aucun exercice ne contient la date du dossier." text="L’état des immobilisations se dresse sur l’exercice de la date du dossier."/>
+    {% elseif statement.empty %}
+        <twig:Px:Empty icon="building-2" title="Aucune immobilisation à l’actif." text="L’état reprend les fiches d’immobilisation : leur valeur brute, leurs amortissements et leurs dépréciations."/>
+    {% else %}
+        <twig:Px:Card title="Exercice {{ statement.exercise.code }}" meta="Du {{ statement.exercise.startsOn|date_fr }} au {{ statement.at|date_fr }}, lu sur les fiches et leurs plans d’amortissement." :flush="true">
+            {{ include('assets/_statement_table.html.twig') }}
+        </twig:Px:Card>
+        {% if not calculates %}
+            <p class="px-u-muted">Au niveau « Aucun filet », les amortissements sont à établir vous-même : l’état ne montre que les valeurs brutes.</p>
+        {% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block facts %}{% if statement %}<span>Arrêté au · <b>{{ statement.at|date_fr }}</b></span>{% endif %}{% endblock %}

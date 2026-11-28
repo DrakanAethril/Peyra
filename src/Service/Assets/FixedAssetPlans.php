@@ -21,7 +21,8 @@ use App\Service\Shared\Money;
  * dossier's exercises (ExerciseWindows), the declining coefficient read in the regulatory values
  * on the day of acquisition, each component's plan added up. Read at each display, never stored.
  * The units of work are laid until the exercise of the dossier's date, the units consumed later
- * not being known.
+ * not being known. A plan stops on the day of disposal, or on an earlier day asked for (`through`:
+ * the dotations up to the dossier's date, step 3.4b); an impairment moves the annuities after it.
  */
 final readonly class FixedAssetPlans
 {
@@ -31,8 +32,18 @@ final readonly class FixedAssetPlans
     ) {
     }
 
-    public function plan(Dossier $dossier, FixedAsset $asset): FixedAssetPlan
+    public function plan(Dossier $dossier, FixedAsset $asset, ?\DateTimeImmutable $through = null): FixedAssetPlan
     {
+        $stop = $asset->getDisposedOn();
+        if (null !== $through && (null === $stop || $through < $stop)) {
+            $stop = $through;
+        }
+        $impairments = [];
+        foreach ($asset->impairmentBalances() as $day => $balance) {
+            if ([] !== $impairments || $balance->isPositive()) {
+                $impairments[(string) $day] = $balance;
+            }
+        }
         $method = $asset->getMethod();
         if (DepreciationMethod::None === $method) {
             return new FixedAssetPlan([]);
@@ -63,7 +74,7 @@ final readonly class FixedAssetPlans
                     'label' => $component['label'],
                     'cost' => $cost,
                     'years' => $component['years'],
-                    'rows' => DepreciationPlan::rows(new PlanInput(DepreciationMethod::Linear, $cost, Money::zero(), $asset->getAcquiredOn(), $asset->getInServiceOn(), $windows, $component['years'])),
+                    'rows' => DepreciationPlan::rows(new PlanInput(DepreciationMethod::Linear, $cost, Money::zero(), $asset->getAcquiredOn(), $asset->getInServiceOn(), $windows, $component['years'], disposedOn: $stop)),
                 ];
             }
 
@@ -81,7 +92,9 @@ final readonly class FixedAssetPlans
             $coefficient,
             $asset->getTotalUnits(),
             $asset->getUnitsUsed(),
-            fiscalDeclining: $asset->isFiscalDeclining(),
+            $stop,
+            $asset->isFiscalDeclining(),
+            $impairments,
         )), coefficient: $coefficient);
     }
 
