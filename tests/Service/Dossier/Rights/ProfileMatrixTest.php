@@ -28,6 +28,8 @@ final class ProfileMatrixTest extends TestCase
         'treasury' => ['Saisie', 'Saisie', 'Consultation', 'Validation'],
         'general' => ['Consultation', 'Consultation', 'Saisie', 'Validation'],
         'settings' => ['Consultation', 'Consultation', 'Consultation', 'Modification'],
+        // Step 4.1: the payroll is the payroll manager's and the chief accountant's alone.
+        'payroll' => ['Fermé', 'Fermé', 'Validation', 'Validation'],
     ];
 
     public function testTheMatrixAsDecided(): void

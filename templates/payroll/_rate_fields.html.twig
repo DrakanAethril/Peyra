@@ -1,0 +1,16 @@
+{# One side of a rubrique's fiche: where its rate comes from and what that source needs. `side` is employee or employer. #}
+<div class="px-fieldgrid">
+    <twig:Px:Field id="{{ side }}Source" label="Origine du taux" :wide="true" :error="draft.error(side ~ 'Source')">
+        <twig:Px:Select id="{{ side }}Source" :options="source_options" value="{{ attribute(draft, side ~ 'Source') }}" :error="draft.error(side ~ 'Source')"/>
+    </twig:Px:Field>
+    <twig:Px:Field id="{{ side }}Key" label="Clé réglementaire" hint="Pour une valeur réglementaire ou une majoration : social.contrib.health." :error="draft.error(side ~ 'Key')">
+        <twig:Px:Input id="{{ side }}Key" value="{{ attribute(draft, side ~ 'Key') }}" hint="1" :error="draft.error(side ~ 'Key')" class="px-u-code" maxlength="80" autocomplete="off" spellcheck="false"/>
+    </twig:Px:Field>
+    <twig:Px:Field id="{{ side }}Path" label="Chemin dans la valeur" hint="employer_rate ; 0.employee_rate dans une liste." :error="draft.error(side ~ 'Path')">
+        <twig:Px:Input id="{{ side }}Path" value="{{ attribute(draft, side ~ 'Path') }}" hint="1" :error="draft.error(side ~ 'Path')" class="px-u-code" maxlength="80" autocomplete="off" spellcheck="false"/>
+    </twig:Px:Field>
+    <twig:Px:Field id="{{ side }}Value" label="Taux ou montant du dossier" hint="Un taux du dossier en % (1,50), un montant en euros (28,00)." :error="draft.error(side ~ 'Value')">
+        <twig:Px:Input id="{{ side }}Value" value="{{ attribute(draft, side ~ 'Value') }}" hint="1" :error="draft.error(side ~ 'Value')" class="px-u-num" maxlength="20" autocomplete="off"/>
+    </twig:Px:Field>
+</div>
+{% if reading %}<p class="px-u-muted">Au {{ dossier.dossierDate|date_fr }} : <b>{{ reading.text ?: '—' }}</b>{% if reading.source %} · {{ reading.source }}{% endif %}</p>{% endif %}

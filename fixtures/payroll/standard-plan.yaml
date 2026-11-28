@@ -1,0 +1,94 @@
+# Peyra - plan de paie standard (lot 4, étape 4.1), installé dans un dossier dont le plan de paie
+# est vide (Paie et social › Paramètres de paie › Plan de paie, « Installer le plan de paie
+# standard ») et dans le dossier de démonstration. Format : App\Service\Payroll\Plan\PayrollPlanFile.
+#
+# Une rubrique par cotisation, à la manière de Sage ; la ligne du bulletin clarifié (line) dit sous
+# quelle ligne elle s'additionne, comme la maquette 4 les regroupe. Aucun taux légal n'est écrit
+# ici : chaque taux nomme sa valeur réglementaire (config/regulatory/<année>.yaml), lue à la date
+# de la paie. Ce qui est propre à l'entreprise (complémentaire santé, contrat de prévoyance
+# au-delà du minimum, taux d'accident du travail et de versement mobilité) est au dossier.
+# Le moteur de bulletin (étape 4.3) applique ce que les rubriques ne disent pas : la régularisation
+# des plafonds, les taux réduits de 2025, l'exonération des apprentis, la réduction générale du
+# millésime et son imputation, l'assiette de la CSG.
+#
+# Aucune convention collective (périmètre accepté par les référents).
+
+bodies:
+  urssaf: Urssaf
+  retirement: Caisse de retraite complémentaire
+  provident: Organisme de prévoyance
+
+items:
+  # --- Éléments de brut -------------------------------------------------------------------------
+  - {code: '1000', label: Salaire de base, kind: gross, base: contract_hours, employee: {source: hourly_rate}}
+  - {code: '1010', label: Prime d’ancienneté, kind: gross, base: base_salary, employee: {source: entered}}
+  - {code: '1020', label: Prime exceptionnelle, kind: gross, base: entered_amount}
+  - {code: '1100', label: Heures supplémentaires à 25 %, kind: gross, base: entered_hours, employee: {source: hourly_rate_premium, key: social.overtime.premium, path: hours_36_to_43}}
+  - {code: '1110', label: Heures supplémentaires à 50 %, kind: gross, base: entered_hours, employee: {source: hourly_rate_premium, key: social.overtime.premium, path: from_44}}
+  - {code: '1120', label: Heures complémentaires à 10 %, kind: gross, base: entered_hours, employee: {source: hourly_rate_premium, key: social.overtime.complementary_premium, path: up_to_one_tenth}}
+  - {code: '1130', label: Heures complémentaires à 25 %, kind: gross, base: entered_hours, employee: {source: hourly_rate_premium, key: social.overtime.complementary_premium, path: beyond_one_tenth}}
+  - {code: '1200', label: Absence non rémunérée, kind: gross, subtracts: true, base: entered_hours, employee: {source: hourly_rate}}
+  - {code: '1210', label: Absence maladie, kind: gross, subtracts: true, base: entered_hours, employee: {source: hourly_rate}}
+  - {code: '1220', label: Maintien de salaire maladie, kind: gross, base: entered_amount}
+  - {code: '1300', label: Absence congés payés, kind: gross, subtracts: true, base: entered_hours, employee: {source: hourly_rate}}
+  - {code: '1310', label: Indemnité de congés payés, kind: gross, base: entered_amount}
+  - {code: '1400', label: Avantage en nature véhicule, kind: gross, base: entered_amount}
+  - {code: '1410', label: Avantage en nature nourriture, kind: gross, base: entered_count, employee: {source: regulatory, key: social.benefit_in_kind.meal, path: per_meal}}
+
+  # --- Cotisations : santé ------------------------------------------------------------------------
+  - {code: '2000', label: 'Maladie, maternité, invalidité, décès', kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.health, path: employer_rate}, body: urssaf, line: social_security_health}
+  - code: '2050'
+    label: 'Prévoyance des cadres (minimum conventionnel, tranche 1)'
+    kind: contribution
+    base: gross
+    ceiling: tranche_1
+    employer: {source: regulatory, key: social.executive_death_insurance_minimum, path: employer_rate}
+    status: executive
+    body: provident
+    line: complementary_provident
+
+  # --- Accidents du travail -----------------------------------------------------------------------
+  - {code: '2100', label: Accidents du travail, kind: contribution, base: gross, employer: {source: work_accident}, body: urssaf, line: work_accident}
+
+  # --- Retraite -----------------------------------------------------------------------------------
+  - {code: '2200', label: Vieillesse plafonnée, kind: contribution, base: gross, ceiling: tranche_1, employee: {source: regulatory, key: social.contrib.old_age_capped, path: employee_rate}, employer: {source: regulatory, key: social.contrib.old_age_capped, path: employer_rate}, body: urssaf, line: social_security_capped}
+  - {code: '2210', label: Vieillesse déplafonnée, kind: contribution, base: gross, employee: {source: regulatory, key: social.contrib.old_age_uncapped, path: employee_rate}, employer: {source: regulatory, key: social.contrib.old_age_uncapped, path: employer_rate}, body: urssaf, line: social_security_uncapped}
+  - {code: '2300', label: Retraite complémentaire tranche 1, kind: contribution, base: gross, ceiling: tranche_1, employee: {source: regulatory, key: social.agirc_arrco.t1, path: employee_rate}, employer: {source: regulatory, key: social.agirc_arrco.t1, path: employer_rate}, body: retirement, line: complementary_tranche_1}
+  - {code: '2310', label: Contribution d’équilibre général tranche 1, kind: contribution, base: gross, ceiling: tranche_1, employee: {source: regulatory, key: social.agirc_arrco.ceg, path: 0.employee_rate}, employer: {source: regulatory, key: social.agirc_arrco.ceg, path: 0.employer_rate}, body: retirement, line: complementary_tranche_1}
+  - {code: '2320', label: Retraite complémentaire tranche 2, kind: contribution, base: gross, ceiling: tranche_2, employee: {source: regulatory, key: social.agirc_arrco.t2, path: employee_rate}, employer: {source: regulatory, key: social.agirc_arrco.t2, path: employer_rate}, body: retirement, line: complementary_tranche_2}
+  - {code: '2330', label: Contribution d’équilibre général tranche 2, kind: contribution, base: gross, ceiling: tranche_2, employee: {source: regulatory, key: social.agirc_arrco.ceg, path: 1.employee_rate}, employer: {source: regulatory, key: social.agirc_arrco.ceg, path: 1.employer_rate}, body: retirement, line: complementary_tranche_2}
+  - {code: '2340', label: Contribution d’équilibre technique, kind: contribution, base: gross, ceiling: tranches_1_2, employee: {source: regulatory, key: social.agirc_arrco.cet, path: employee_rate}, employer: {source: regulatory, key: social.agirc_arrco.cet, path: employer_rate}, salary: above_ceiling, body: retirement, line: complementary_tranche_2}
+
+  # --- Famille, chômage, autres contributions -----------------------------------------------------
+  - {code: '2400', label: Allocations familiales, kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.family, path: employer_rate}, body: urssaf, line: family}
+  - {code: '2500', label: Assurance chômage, kind: contribution, base: gross, ceiling: four_ceilings, employer: {source: regulatory, key: social.contrib.unemployment, path: employer_rate}, body: urssaf, line: unemployment}
+  - {code: '2510', label: Garantie des salaires (AGS), kind: contribution, base: gross, ceiling: four_ceilings, employer: {source: regulatory, key: social.contrib.ags, path: employer_rate}, body: urssaf, line: unemployment}
+  - {code: '2520', label: Apec, kind: contribution, base: gross, ceiling: four_ceilings, employee: {source: regulatory, key: social.apec, path: employee_rate}, employer: {source: regulatory, key: social.apec, path: employer_rate}, status: executive, body: retirement, line: apec}
+  - {code: '2600', label: Contribution solidarité autonomie, kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.csa, path: employer_rate}, body: urssaf, line: other_employer_contributions}
+  - {code: '2610', label: FNAL (moins de 50 salariés), kind: contribution, base: gross, ceiling: tranche_1, employer: {source: regulatory, key: social.contrib.fnal, path: 0.employer_rate}, headcount: below_50, body: urssaf, line: other_employer_contributions}
+  - {code: '2620', label: FNAL (50 salariés et plus), kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.fnal, path: 1.employer_rate}, headcount: from_50, body: urssaf, line: other_employer_contributions}
+  - {code: '2630', label: Contribution au dialogue social, kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.social_dialogue, path: employer_rate}, body: urssaf, line: other_employer_contributions}
+  - {code: '2640', label: Formation professionnelle (moins de 11 salariés), kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.vocational_training, path: 0.employer_rate}, headcount: below_11, body: urssaf, line: other_employer_contributions}
+  - {code: '2650', label: Formation professionnelle (11 salariés et plus), kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.vocational_training, path: 1.employer_rate}, headcount: from_11, body: urssaf, line: other_employer_contributions}
+  - {code: '2660', label: Taxe d’apprentissage, kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.apprenticeship_tax, path: total}, body: urssaf, line: other_employer_contributions}
+  - {code: '2670', label: Versement mobilité, kind: contribution, base: gross, employer: {source: mobility}, headcount: from_11, body: urssaf, line: other_employer_contributions}
+
+  # --- CSG et CRDS ---------------------------------------------------------------------------------
+  - {code: '2800', label: CSG déductible, kind: contribution, base: csg_base, employee: {source: regulatory, key: social.contrib.csg_deductible, path: employee_rate}, body: urssaf, line: csg_deductible}
+  - {code: '2810', label: CSG non déductible, kind: contribution, base: csg_base, employee: {source: regulatory, key: social.contrib.csg_non_deductible, path: employee_rate}, body: urssaf, line: csg_crds_non_deductible}
+  - {code: '2820', label: CRDS, kind: contribution, base: csg_base, employee: {source: regulatory, key: social.contrib.crds, path: employee_rate}, body: urssaf, line: csg_crds_non_deductible}
+
+  # --- Exonérations et allègements ------------------------------------------------------------------
+  - {code: '2900', label: Réduction générale des cotisations patronales, kind: contribution, subtracts: true, base: gross, employer: {source: general_reduction}, body: urssaf, line: reductions}
+  - {code: '2910', label: Réduction salariale sur heures supplémentaires, kind: contribution, subtracts: true, base: overtime_pay, employee: {source: regulatory, key: social.overtime.employee_reduction_rate, path: max_rate}, body: urssaf, line: reductions}
+  - {code: '2920', label: Déduction patronale sur heures supplémentaires (moins de 20 salariés), kind: contribution, subtracts: true, base: overtime_hours, employer: {source: regulatory, key: social.overtime.employer_flat_deduction, path: 0.amount_per_hour}, headcount: below_20, body: urssaf, line: reductions}
+  - {code: '2930', label: Déduction patronale sur heures supplémentaires (20 salariés et plus), kind: contribution, subtracts: true, base: overtime_hours, employer: {source: regulatory, key: social.overtime.employer_flat_deduction, path: 1.amount_per_hour}, headcount: from_20, body: urssaf, line: reductions}
+
+  # --- Non soumis -----------------------------------------------------------------------------------
+  - {code: '3000', label: Indemnité de repas (déplacement), kind: not_subject, base: entered_count, employee: {source: regulatory, key: social.expenses.meal_allowances, path: meal_on_travel_not_restaurant}}
+  - {code: '3010', label: Remboursement de frais professionnels, kind: not_subject, base: entered_amount}
+
+  # --- Retenues sur le net --------------------------------------------------------------------------
+  - {code: '4000', label: Avantages en nature (déduction), kind: deduction, base: benefits_in_kind}
+  - {code: '4100', label: Acompte, kind: deduction, base: entered_amount}
+  - {code: '4200', label: Prélèvement à la source, kind: deduction, base: net_taxable, employee: {source: withholding_rate}}
