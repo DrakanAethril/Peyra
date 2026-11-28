@@ -1,0 +1,107 @@
+{#
+ # Immobilisations et clôture › Clôture › FEC (design-ux.md § 3.2, « Archivage et FEC », gabarit R;
+ # step 1.9a): the fichier des écritures comptables of an exercise (A47 A-1 du LPF) - what it holds,
+ # its conformity check, read on the very bytes « Télécharger le FEC » hands over, and the faults
+ # line by line when there are some.
+ #}
+{% extends 'closing/_layout.html.twig' %}
+
+{% set dossier_title = 'FEC' ~ (exercise ? ' ' ~ exercise.code : '') %}
+{% set fec_url = path('app_closing_fec', {dossier: dossier.id}) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ exercise ? 'FEC de l’exercice ' ~ exercise.code : 'FEC' }}" :trail="[
+        {label: 'Immobilisations et clôture', href: fec_url},
+        {label: 'Clôture', href: fec_url},
+        {label: 'FEC', href: fec_url},
+    ]">
+        <twig:block name="badge">{% if fec %} {% if fec.report.conform %}<twig:Px:Badge tone="success" label="Conforme"/>{% else %}<twig:Px:Badge tone="danger" label="Non conforme"/>{% endif %}{% endif %}</twig:block>
+        <twig:block name="actions">
+            {% if fec %}
+                <twig:Px:Button variant="primary" href="{{ path('app_closing_fec_download', {dossier: dossier.id, exercise: exercise.code}) }}" icon="download" data-turbo="false">Télécharger le FEC</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if fec is null %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="calendar" title="Aucun exercice ouvert" text="Le FEC rassemble les écritures validées d’un exercice : ouvrez d’abord l’exercice du dossier, sur la fiche de la société.">
+                <twig:block name="action"><twig:Px:Button href="{{ path('app_dossier_company', {dossier: dossier.id}) }}">Fiche de la société</twig:Px:Button></twig:block>
+            </twig:Px:Empty>
+        </twig:Px:Card>
+    {% else %}
+        <div class="px-kpis">
+            <twig:Px:Kpi label="Écritures" value="{{ fec.entries }}" note="validées, exercice {{ exercise.code }}"/>
+            <twig:Px:Kpi label="Lignes" value="{{ fec.lines }}" note="une par ligne d’écriture"/>
+            <twig:Px:Kpi label="Total débit" value="{{ fec.report.debit|amount }}" note="toutes les lignes du fichier"/>
+            <twig:Px:Kpi label="Total crédit" value="{{ fec.report.credit|amount }}" note="{{ fec.report.debit.equals(fec.report.credit) ? 'égal au débit' : 'différent du débit' }}" :state="fec.report.debit.equals(fec.report.credit) ? 'ok' : 'alert'"/>
+        </div>
+
+        <div class="px-split px-split--doc">
+            <twig:Px:Card title="Contrôle de conformité" meta="article A47 A-1 du LPF">
+                <twig:block name="actions">
+                    {% if exercises|length > 1 %}
+                        {% for one in exercises %}
+                            <twig:Px:FilterChip label="Exercice {{ one.code }}" href="{{ path('app_closing_fec', {dossier: dossier.id, exercise: one.code}) }}" :current="one.id == exercise.id"/>
+                        {% endfor %}
+                    {% endif %}
+                </twig:block>
+                <twig:block name="content">
+                    {% set count = fec.report.findings|length %}
+                    <twig:Px:Checks :items="[
+                        fec.report.conform
+                            ? {state: 'passed', text: 'Le fichier est conforme : nom, dix-huit zones, formats des dates et des montants, écritures équilibrées, numérotation continue par journal, ordre chronologique de validation.'}
+                            : {state: 'blocking', text: count ~ (count > 1 ? ' anomalies' : ' anomalie') ~ ' : le fichier n’est pas conforme (détail ci-dessous).'},
+                        fec.drafts == 0
+                            ? {state: 'passed', text: 'Aucune écriture au brouillard : tout l’exercice est dans le fichier.'}
+                            : {state: 'warning', text: fec.drafts ~ (fec.drafts > 1 ? ' écritures du brouillard ne figurent pas' : ' écriture du brouillard ne figure pas') ~ ' dans le FEC : seules les écritures validées y entrent.'},
+                        exercise.closed
+                            ? {state: 'passed', text: 'L’exercice est clos.'}
+                            : {state: 'warning', text: 'L’exercice n’est pas clos : ce FEC n’en est qu’un état provisoire, sans les écritures d’inventaire à venir.'},
+                    ]"/>
+                </twig:block>
+            </twig:Px:Card>
+            <twig:Px:Card title="Le fichier">
+                <twig:block name="content">
+                    <dl class="px-facts">
+                        <dt>Nom</dt><dd class="px-u-code">{{ fec.name }}</dd>
+                        <dt>Exercice</dt><dd>du {{ exercise.startsOn|date_fr }} au {{ exercise.endsOn|date_fr }}</dd>
+                        <dt>Format</dt><dd>dix-huit zones séparées par une {{ fec.report.separator }}, en {{ fec.report.encoding }}</dd>
+                        <dt>Dates et montants</dt><dd>AAAAMMJJ ; virgule décimale, sans séparateur de milliers</dd>
+                        <dt>Ordre</dt><dd>les à-nouveaux, puis l’ordre chronologique de validation</dd>
+                    </dl>
+                </twig:block>
+            </twig:Px:Card>
+        </div>
+
+        {% if not fec.report.conform %}
+            <twig:Px:Card :flush="true" title="Anomalies" meta="{{ fec.report.findings|length }}">
+                <twig:Px:Table caption="Anomalies du fichier, dans son ordre">
+                    <thead><tr>
+                        <th scope="col" class="px-u-right">Ligne</th>
+                        <th scope="col">Zone</th>
+                        <th scope="col">Anomalie</th>
+                    </tr></thead>
+                    <tbody>
+                        {% for finding in fec.report.findings %}
+                            <tr class="is-error">
+                                <td class="px-u-num">{{ finding.line ?? '' }}</td>
+                                <td class="px-u-code">{{ finding.zone ?? '' }}</td>
+                                <td>{{ finding.message }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            </twig:Px:Card>
+        {% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block facts %}
+    {% if fec %}
+        <span>{{ fec.name }} · <b>{{ fec.report.conform ? 'conforme' : 'non conforme' }}</b></span>
+    {% endif %}
+    {{ parent() }}
+{% endblock %}
