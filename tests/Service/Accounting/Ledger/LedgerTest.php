@@ -115,6 +115,33 @@ final class LedgerTest extends KernelTestCase
         self::assertSame(0, self::getContainer()->get(EntryRepository::class)->lastNumber($good->getJournal(), $good->getExercise()));
     }
 
+    /**
+     * Two people validate the same brouillard at once (step 1.10b, load test): the second had read
+     * the drafts before the first validated them. Under the journal's lock the Ledger reads them
+     * again, refuses what is already validated and renumbers nothing.
+     */
+    public function testAnEntryValidatedMeanwhileByAnotherRequestIsNeitherRenumberedNorValidatedAgain(): void
+    {
+        $dossier = $this->ledgerDossier();
+        $entry = $this->entry($dossier, 'ACH', '2026-01-05', 'A1', self::PURCHASE);
+        $id = (int) $entry->getId();
+        // The other request, committed meanwhile: this one still holds the draft it read.
+        self::getContainer()->get(EntityManagerInterface::class)->getConnection()->executeStatement(
+            "UPDATE entry SET state = 'validated', number = 1, validated_on = '2026-03-15' WHERE id = ?",
+            [$id],
+        );
+        self::assertSame(EntryState::Draft, $entry->getState());
+
+        try {
+            self::getContainer()->get(Ledger::class)->validate([$entry], 'test');
+            self::fail('Une écriture déjà validée ne se valide pas deux fois.');
+        } catch (EntryRefused $refused) {
+            self::assertSame('L’écriture ACH-2026-00001 est déjà validée.', $refused->getMessage());
+        }
+        self::assertSame(1, (int) self::getContainer()->get(EntityManagerInterface::class)->getConnection()->fetchOne('SELECT number FROM entry WHERE id = ?', [$id]));
+        self::assertSame(1, self::getContainer()->get(EntryRepository::class)->lastNumber($entry->getJournal(), $entry->getExercise()));
+    }
+
     public function testTheBrouillardIsValidatedByJournalOrByPeriod(): void
     {
         $dossier = $this->ledgerDossier();
