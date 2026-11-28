@@ -141,7 +141,7 @@ final class PayslipNet
             $netTaxable,
             $exempt['amount'],
             $netBeforeTax,
-            $tax?->employeeRate ?? BigDecimal::zero(),
+            $tax->employeeRate ?? BigDecimal::zero(),
             null !== $tax && null === $input->employee->withholdingRate,
             $withholding,
             $netPay,
