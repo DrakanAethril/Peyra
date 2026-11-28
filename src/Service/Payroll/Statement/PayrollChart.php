@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Service\Payroll\Statement;
 
 use App\Entity\Payroll\PayrollBody;
+use App\Enum\Payroll\PayrollBase;
 use App\Enum\Payroll\PayrollBodyKind;
+use App\Enum\Payroll\PayrollItemKind;
 use App\Service\Payroll\Plan\PayrollItemSpec;
 
 /**
@@ -44,5 +46,17 @@ final readonly class PayrollChart
     public function item(string $code): ?PayrollItemSpec
     {
         return $this->items[$code] ?? null;
+    }
+
+    /** The account the withholding tax is owed on (step 4.6): the plan's tax rubrique's - a deduction on the net taxable -, else 442100. */
+    public function withholdingAccount(): string
+    {
+        foreach ($this->items as $spec) {
+            if (PayrollItemKind::Deduction === $spec->kind && PayrollBase::NetTaxable === $spec->base) {
+                return PayrollAccounts::of($spec);
+            }
+        }
+
+        return PayrollAccounts::WITHHOLDING;
     }
 }

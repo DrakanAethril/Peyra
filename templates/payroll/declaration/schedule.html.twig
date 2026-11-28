@@ -1,0 +1,63 @@
+{#
+ # Paie et social › Déclarations › Échéancier social (step 4.6): what each month of pay leaves to pay to
+ # the bodies and to the tax office, at the DSN's due date, and where each payment stands at the
+ # dossier's date - paid once its pièce stands in the books. Payments are passed from Écritures de paie.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'declarations' %}
+{% set dossier_title = 'Échéancier social' %}
+{% set open = dues|filter(d => d.state.value != 'paid') %}
+{% set late = dues|filter(d => d.state.value == 'late') %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Échéancier social au {{ dossier.dossierDate|date_fr }}" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Déclarations', href: path('app_payroll_declarations', {dossier: dossier.id})},
+        {label: 'Échéancier social', href: path('app_payroll_declarations_schedule', {dossier: dossier.id})},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    {{ include('payroll/declaration/_tabs.html.twig') }}
+    {% if missing %}
+        <twig:Px:Alert tone="warning">L’échéancier ne s’établit pas : une valeur réglementaire manque ({{ missing }}).</twig:Px:Alert>
+    {% elseif dues is empty %}
+        <twig:Px:Empty icon="calendar" title="Aucune échéance sociale." text="Les échéances naissent des bulletins validés : cotisations de chaque organisme et prélèvement à la source, à l’échéance de la DSN du mois."/>
+    {% else %}
+        <div class="px-kpis">
+            <twig:Px:Kpi label="Reste à payer" value="{{ (open|map(d => d.amount.cents)|reduce((a, b) => a + b, 0))|amount_eur }}" note="{{ open|length }} échéance{{ open|length > 1 ? 's' : '' }}" :state="open is empty ? 'ok' : null"/>
+            <twig:Px:Kpi label="En retard" value="{{ (late|map(d => d.amount.cents)|reduce((a, b) => a + b, 0))|amount_eur }}" note="{{ late|length }} échéance{{ late|length > 1 ? 's' : '' }} passée{{ late|length > 1 ? 's' : '' }}"/>
+        </div>
+        <twig:Px:Card :flush="true">
+            <twig:Px:Table caption="Échéancier social au {{ dossier.dossierDate|date_fr }}" density="compact">
+                <thead>
+                    <tr>
+                        <th scope="col">Échéance</th>
+                        <th scope="col">Paie</th>
+                        <th scope="col">Versement</th>
+                        <th scope="col">Compte</th>
+                        <th scope="col" class="px-u-num">Montant</th>
+                        <th scope="col">Pièce</th>
+                        <th scope="col">État</th>
+                        <th scope="col"><span class="px-u-sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for due in dues %}
+                        <tr>
+                            <td>{{ due.dueOn|date_fr }}</td>
+                            <td><a class="px-link" href="{{ path('app_payroll_declarations', {dossier: dossier.id, month: due.month|date('Y-m')}) }}">{{ due.month|period|capitalize }}</a></td>
+                            <td>{{ due.label }}</td>
+                            <td class="px-u-code">{{ due.account }}</td>
+                            <td class="px-u-num">{{ due.amount|amount }}</td>
+                            <td class="px-u-code">{{ due.document }}</td>
+                            <td><twig:Px:Badge :of="due.state"/></td>
+                            <td>{% if due.state.value != 'paid' %}<a class="px-link" href="{{ path('app_payroll_entries', {dossier: dossier.id, month: due.month|date('Y-m')}) }}">Régler</a>{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}

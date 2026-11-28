@@ -32,13 +32,14 @@ final readonly class PayrollMonthStatements
         public \DateTimeImmutable $month,
         public array $payslips,
         public array $allocations,
+        public string $withholdingAccount,
     ) {
     }
 
     /** @param list<PayrollMonthPayslip> $payslips the month's validated payslips */
     public static function of(\DateTimeImmutable $month, array $payslips, PayrollChart $chart): self
     {
-        return new self($month, $payslips, PayrollAllocations::of($payslips, $chart));
+        return new self($month, $payslips, PayrollAllocations::of($payslips, $chart), $chart->withholdingAccount());
     }
 
     public function isEmpty(): bool

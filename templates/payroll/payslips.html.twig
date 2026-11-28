@@ -27,6 +27,7 @@
                             <twig:Px:Button type="submit" variant="quiet" icon="lock-open">Rouvrir {{ last_closed.month|period }}</twig:Px:Button>
                         </form>
                     {% endif %}
+                    {% if employee_rows is not empty %}<twig:Px:Button href="{{ path('app_payroll_payslips_export', {dossier: dossier.id, month: month|date('Y-m')}) }}" variant="quiet" icon="download" data-turbo="false">Exporter les variables</twig:Px:Button>{% endif %}
                     {% if first_to_do %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: first_to_do.registrationNumber}) }}" :variant="can_close ? 'secondary' : 'primary'">Ouvrir le bulletin</twig:Px:Button>{% endif %}
                     {% if can_close %}<twig:Px:Button variant="primary" shortcut="Ctrl+Enter" data-action="confirm-bar#open">Clore le mois</twig:Px:Button>{% endif %}
                 </div>

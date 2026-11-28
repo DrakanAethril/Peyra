@@ -72,6 +72,7 @@ final class PayrollStatementsTest extends TestCase
         self::assertSame(389775, $entry->totalDebit(), '50 + 3 500 + 100 + 59,25 + 28 + 160,50.');
         self::assertSame($entry->totalDebit(), $entry->totalCredit());
         self::assertSame(285350, $this->statements()->totals()['netPay']->cents, 'The net credited is the payslips’ net paid.');
+        self::assertSame('442100', $this->statements()->withholdingAccount, 'The tax is paid back from the account 4200 credits (step 4.6).');
     }
 
     public function testTheCotisationsByBody(): void

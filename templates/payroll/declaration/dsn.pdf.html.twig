@@ -1,0 +1,17 @@
+{# The DSN's preparatory state on paper (step 4.6): a state's header (doc/_report), the checks, the blocks. #}
+{% extends 'doc/_report.html.twig' %}
+
+{% block content %}
+    <p class="px-doc__subtitle">État préparatoire, en lecture seule : rien n’a été déposé. Lu sur les {{ preparation.individuals|length }} bulletins validés {{ month|of_period }}.</p>
+    <h2 class="px-doc__section">Contrôles de cohérence</h2>
+    <table class="px-doc__table">
+        <colgroup><col style="width: 10%"><col style="width: 35%"><col></colgroup>
+        <tbody>
+            {% for control in preparation.controls %}
+                <tr><td>{{ control.holds ? 'Passé' : 'À revoir' }}</td><td>{{ control.label }}</td><td>{{ control.finding }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {{ include('payroll/declaration/_dsn_blocks.html.twig', {pdf: true}) }}
+    <p class="px-doc__legal">Document fictif établi par Peyra, PGI pédagogique : la société et les salariés sont inventés.</p>
+{% endblock %}
