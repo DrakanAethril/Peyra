@@ -71,6 +71,7 @@ final class DossierRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('d')
             ->andWhere('d.kind = :template')
             ->andWhere('d.owner = :author')
+            ->andWhere('d.importing = false')
             ->setParameter('template', DossierKind::Template)
             ->setParameter('author', $author)
             ->orderBy('d.id', 'DESC')
