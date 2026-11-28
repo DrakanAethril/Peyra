@@ -1,0 +1,26 @@
+{# « Remettre la distribution à l'état de départ »: the récapitulatif of its ready dossiers, then the reset (Ctrl Entrée). #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'distributions' %}
+{% set library_title = 'Remettre à l’état de départ · ' ~ distribution.title %}
+{% set page_url = path('app_library_distribution', {id: distribution.id}) %}
+{% set status_keys = [{combo: 'Ctrl+Enter', verb: 'Remettre à l’état de départ'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Remettre à l’état de départ" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Distribution', href: path('app_library_distributions')},
+        {label: distribution.title, href: page_url},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button variant="quiet" href="{{ page_url }}">Annuler</twig:Px:Button>
+            <twig:Px:Button type="submit" variant="primary" form="start-reset" icon="undo-2" shortcut="Ctrl+Enter">Remettre à l’état de départ</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('dossier/_start_reset.html.twig', {reset_url: path('app_library_distribution_reset_start', {id: distribution.id}), reset_token: 'distribution-reset-' ~ distribution.id}) }}
+{% endblock %}
+
+{% block facts %}<span>{{ distribution.schoolClass.label }}</span><span>Dossiers · <b>{{ lines|length }}</b></span>{% endblock %}

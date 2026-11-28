@@ -49,4 +49,29 @@ final class DossierRestorationRepository extends ServiceEntityRepository
             ->getQuery()
             ->getSingleScalarResult() > 0;
     }
+
+    /**
+     * Which of these dossiers are going back to a point now.
+     *
+     * @param list<Dossier> $dossiers
+     *
+     * @return list<int> their ids
+     */
+    public function findRunningDossierIds(array $dossiers): array
+    {
+        if ([] === $dossiers) {
+            return [];
+        }
+        /** @var list<array{id: int|string}> $rows */
+        $rows = $this->createQueryBuilder('r')
+            ->select('IDENTITY(r.dossier) AS id')
+            ->andWhere('r.dossier IN (:dossiers)')
+            ->andWhere('r.state = :running')
+            ->setParameter('dossiers', $dossiers)
+            ->setParameter('running', RestorationState::Running)
+            ->getQuery()
+            ->getScalarResult();
+
+        return array_map(static fn (array $row): int => (int) $row['id'], $rows);
+    }
 }
