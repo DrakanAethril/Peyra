@@ -101,7 +101,7 @@ Application commands (`src/Command/`). **Three are scheduled** (`app:restore-poi
 | `app:regulatory:sync [--dry-run]` | Installs the millésime files `config/regulatory/<année>.yaml`; only ever adds rows, never over an administrator's value. **Every deploy runs it** |
 | `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
-| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, the first quarter in every journal with drafts at the end of March, seven entry templates, two subscriptions, three suppliers lettered, the payroll settings and eleven employees; date 31/03/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
+| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, the first quarter in every journal with drafts at the end of March, seven entry templates, two subscriptions, three suppliers lettered, the Crédit Coopératif's statements of January to March (March left to reconcile) and three assignment rules, the payroll settings and eleven employees; date 31/03/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
 | `app:dev:dossiers` | **Development and test only.** Distributes Menuiserie Vasseur (the common library's template, installed first if missing) to each class of the current year - every student who holds no copy of it yet -, then as one shared dossier to `ines.morel` (Comptable fournisseurs), `theo.garnier` (Comptable clients) and `chloe.fabre` (Chef comptable) when enrolled in one class; the copies are made at once. Sign the students in first: their first sign-in places them |
 | `app:distribution:advance` | **Scheduled every minute.** Makes the dossiers of the distributions a request left waiting (a worker restarted), one copy per pass under its own lock; usually finds nothing |
 | `app:fec-import:advance` | **Scheduled every minute.** Runs the passes of the FEC imports a request left (the page's 12 s budget, a worker restarted); a pass that fails stops its import, never retried on its own |
@@ -1161,6 +1161,17 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   writes one `Adjustment` per gap (`StockMovement::$stockCount`) and freezes them: a refusal must come **before any
   `persist`**, inside a plain connection transaction - `wrapInTransaction()` closes the EntityManager on a refusal.
 - `BigDecimal` in Twig: write `x.isZero()` / `x.isPositive()`, never `x.zero` - Twig calls the static `zero()`.
+
+## Bank and reconciliation (built at step 2.6a)
+
+- **A statement is imported whole** (`BankStatement` + lines, amounts signed as the company reads them: positive = money in) by
+  `BankStatements::import()` from CSV (`StatementCsv`: débit/crédit columns or one signed montant; the export writes
+  `Date;Libellé;Montant`), or not at all; its days never overlap another statement of the journal.
+- **`Pointings` is the one door of the reconciliation** (point, unpoint, G's proposals, the entry a line asks for through
+  `AccountingGateway` - module Banking, pièce `RLV<n>-<pos>` -, validate, reopen), under a lock on the statement. A pointing holds
+  **entries, not lines** (`BankPointing`: a draft rewrites its lines, its id stays); a group whose two sides no longer meet is read
+  as broken (`ReconciliationRules`, pure: état, refusal, proposals). The à-nouveaux are never pointed.
+- Rules (`BankRule`, `BankRuleMatch`) are proposed at G and B only; what each level does is `Assistance` (`proposesBankPointing`…).
 
 ## Référentiel and assistance levels (built at step 2.8)
 
