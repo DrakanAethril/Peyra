@@ -51,9 +51,9 @@
                             <th scope="col">Emploi</th>
                             <th scope="col">Statut</th>
                             <th scope="col">Contrat</th>
-                            <th scope="col" class="px-u-num">Entrée</th>
-                            <th scope="col" class="px-u-num">Horaire</th>
-                            <th scope="col" class="px-u-num">Salaire de base</th>
+                            <th scope="col" class="px-u-right">Entrée</th>
+                            <th scope="col" class="px-u-right">Horaire</th>
+                            <th scope="col" class="px-u-right">Salaire de base</th>
                             <th scope="col">État</th>
                             <th scope="col">Formalités</th>
                         </tr>
@@ -63,16 +63,16 @@
                             {% set terms = employee.termsAt(dossier.dossierDate) %}
                             <tr data-rows-target="row">
                                 <td class="px-u-code"><a class="px-link" href="{{ path('app_payroll_employee', {dossier: dossier.id, number: employee.registrationNumber}) }}">{{ employee.registrationNumber }}</a></td>
-                                <td>{{ employee.sortName }}</td>
+                                <td class="px-u-nowrap">{{ employee.sortName }}</td>
                                 <td class="px-u-truncate px-u-truncate-short" title="{{ terms.jobTitle }}">{{ terms.jobTitle }}</td>
-                                <td>{{ terms.statusLabel }}</td>
-                                <td><twig:Px:Badge :of="employee.contractType"/>{% if terms.workingTime.value == 'part_time' %} <span class="px-u-muted">temps partiel</span>{% endif %}</td>
+                                <td class="px-u-nowrap">{{ terms.statusLabel }}</td>
+                                <td class="px-u-nowrap"><twig:Px:Badge :of="employee.contractType"/>{% if terms.workingTime.value == 'part_time' %} <span class="px-u-muted">temps partiel</span>{% endif %}</td>
                                 <td class="px-u-num">{{ employee.hiredOn|date_fr }}</td>
                                 <td class="px-u-num">{{ terms.monthlyHours|hours }}</td>
                                 <td class="px-u-num">{{ terms.baseSalary|amount }}</td>
                                 <td><twig:Px:Badge :of="employee.stateAt(dossier.dossierDate)"/></td>
                                 {% set checklist = checklists[employee.id] %}
-                                <td><a class="px-link" href="{{ path('app_payroll_employee_formalities', {dossier: dossier.id, number: employee.registrationNumber}) }}">{% if not checklist.followed %}<span class="px-u-muted">Avant le dossier</span>{% elseif checklist.openCount == 0 %}<twig:Px:Badge tone="success" label="À jour"/>{% else %}<twig:Px:Badge tone="{{ checklist.dpae.value == 'overdue' or checklist.visit.value == 'overdue' ? 'danger' : 'warning' }}" label="{{ checklist.openCount }} à faire"/>{% endif %}</a></td>
+                                <td class="px-u-nowrap"><a class="px-link" href="{{ path('app_payroll_employee_formalities', {dossier: dossier.id, number: employee.registrationNumber}) }}">{% if not checklist.followed %}<span class="px-u-muted">Avant le dossier</span>{% elseif checklist.openCount == 0 %}<twig:Px:Badge tone="success" label="À jour"/>{% else %}<twig:Px:Badge tone="{{ checklist.dpae.value == 'overdue' or checklist.visit.value == 'overdue' ? 'danger' : 'warning' }}" label="{{ checklist.openCount }} à faire"/>{% endif %}</a></td>
                             </tr>
                         {% endfor %}
                     </tbody>

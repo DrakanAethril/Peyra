@@ -7,6 +7,7 @@ namespace App\Controller\Payroll;
 use App\Entity\Dossier\Dossier;
 use App\Repository\Payroll\EmployeeRepository;
 use App\Security\Voter\DossierRightVoter;
+use App\Service\Accounting\Edition\Editions;
 use App\Service\Payroll\Hiring\PersonnelRegister;
 use App\Service\Shared\Pdf\PdfRenderer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -43,6 +44,7 @@ final class PersonnelRegisterController extends AbstractController
                 'title' => 'Registre unique du personnel',
                 'fiscalYear' => 'SIRET '.$company->getSiret(),
                 'dossierDate' => $dossier->getDossierDate(),
+                'student' => Editions::student($dossier),
             ],
             'register_rows' => $this->rows($dossier, $employees),
         ], 'registre du personnel', $dossier);

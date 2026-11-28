@@ -23,8 +23,8 @@
                         <th scope="col">Mois</th>
                         <th scope="col">Congés payés pris</th>
                         <th scope="col">Absences</th>
-                        <th scope="col" class="px-u-num">Maladie : heures maintenues</th>
-                        <th scope="col" class="px-u-num">Jours sans aucun versement</th>
+                        <th scope="col" class="px-u-right">Maladie : heures maintenues</th>
+                        <th scope="col" class="px-u-right">Jours sans aucun versement</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -33,8 +33,8 @@
                             <td>{{ row.month|period|capitalize }}</td>
                             <td>{{ row.paidLeave ?? '—' }}</td>
                             <td>{{ row.absences is empty ? '—' : row.absences|join(' · ') }}</td>
-                            <td class="px-u-num">{{ row.sickHours is null ? '—' : row.sickHours|hours }}</td>
-                            <td class="px-u-num">{{ row.unpaidDays ?: '—' }}</td>
+                            <td class="px-u-num">{{ row.sickHours is null ? '' : row.sickHours|hours }}</td>
+                            <td class="px-u-num">{{ row.unpaidDays ?: '' }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

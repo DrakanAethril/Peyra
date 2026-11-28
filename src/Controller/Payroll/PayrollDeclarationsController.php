@@ -6,6 +6,7 @@ namespace App\Controller\Payroll;
 
 use App\Entity\Dossier\Dossier;
 use App\Security\Voter\DossierRightVoter;
+use App\Service\Accounting\Edition\Editions;
 use App\Service\Payroll\Declaration\DsnStatements;
 use App\Service\Payroll\Declaration\SocialSchedule;
 use App\Service\Payroll\Statement\PayrollStatementsReader;
@@ -49,8 +50,10 @@ final class PayrollDeclarationsController extends AbstractController
         return self::pdf($renderer, 'payroll/declaration/dsn.pdf.html.twig', [...$context, 'pdf' => true, 'orientation' => 'landscape', 'report_header' => [
             'company' => $dossier->getCompany()->getName(),
             'title' => 'État préparatoire de la DSN',
-            'fiscalYear' => 'Paie '.FrenchFormat::ofPeriod($month),
+            'fiscalYear' => 'Paie '.$month->format('Y'),
+            'period' => ucfirst(FrenchFormat::period($month)).' · bulletins validés',
             'dossierDate' => $dossier->getDossierDate(),
+            'student' => Editions::student($dossier),
         ]], 'etat preparatoire dsn '.$month->format('Y-m'), $dossier);
     }
 

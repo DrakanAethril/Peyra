@@ -7,6 +7,7 @@ namespace App\Controller\Payroll;
 use App\Entity\Dossier\Dossier;
 use App\Enum\Payroll\PayslipLine;
 use App\Security\Voter\DossierRightVoter;
+use App\Service\Accounting\Edition\Editions;
 use App\Service\Payroll\Statement\PaidLeaveProvisions;
 use App\Service\Payroll\Statement\PayrollMonthStatements;
 use App\Service\Payroll\Statement\PayrollStatementsReader;
@@ -54,11 +55,13 @@ final class PayrollEditionsController extends AbstractController
         }
         $company = $dossier->getCompany();
 
-        return self::pdf($renderer, 'payroll/edition/pdf.html.twig', [...$context, 'pdf' => true, 'orientation' => 'book' === $view ? 'landscape' : 'portrait', 'report_header' => [
+        return self::pdf($renderer, 'payroll/edition/pdf.html.twig', [...$context, 'pdf' => true, 'orientation' => \in_array($view, ['journal', 'book'], true) ? 'landscape' : 'portrait', 'report_header' => [
             'company' => $company->getName(),
             'title' => self::VIEWS[$view],
-            'fiscalYear' => 'Paie '.FrenchFormat::ofPeriod($statements->month),
+            'fiscalYear' => 'Paie '.$statements->month->format('Y'),
+            'period' => ucfirst(FrenchFormat::period($statements->month)).' · bulletins validés',
             'dossierDate' => $dossier->getDossierDate(),
+            'student' => Editions::student($dossier),
         ]], mb_strtolower(self::VIEWS[$view]).' '.$statements->month->format('Y-m'), $dossier);
     }
 
