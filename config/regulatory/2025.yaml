@@ -709,15 +709,19 @@ entries:
     value: "Revenus d'activité bruts (salaires, primes, HS, avantages en nature…), hors financement par l'employeur des garanties collectives de santé, de prévoyance et de retraite supplémentaire, diminués des cotisations et contributions sociales à la charge du salarié, y compris sa part de ces garanties collectives."
     unit: text
     effective_from: 2024-01-01
-    source_url: https://open.lefebvre-dalloz.fr/actualites/droit-social/definition-montant-net-social-codifiee_fa5ce929c-b860-48bd-b174-a41bd747646e
+    source_url: https://solidarites.gouv.fr/sites/solidarite/files/2023-12/Montant-net-social-Fiche-technique-Gestionnaires-de-paie-decembre-2023.pdf
     consulted_on: 2026-11-28
-    verified: false
+    verified: true
     note: >-
-      Article R. 844-1, II du code de la sécurité sociale (décret n° 2023-1378), affiché en application de R. 3243-1,
-      9° bis du code du travail ; revenus perçus à compter du 1er janvier 2024. Lu sur une source secondaire
-      (boss.gouv.fr et Légifrance injoignables le 28/11/2026). La part patronale santé et prévoyance, ajoutée dans
-      la première définition (juillet 2023), n'y entre plus ; sa réintégration annoncée vise 2027. Le moteur de
-      bulletin (étape 4.3c) en fait : brut - cotisations salariales.
+      Fiche « Gestionnaire de paie » du ministère des Solidarités (décembre 2023, définition en vigueur au
+      1er janvier 2024) : revenus bruts « dont on déduit la totalité des cotisations et contributions sociales
+      précomptées au salarié dès lors qu'elles sont instaurées par une obligation légale ou conventionnelle ou
+      qu'elles financent des garanties complémentaires collectives » ; « la contribution du salarié au
+      financement d'une protection sociale individuelle n'est pas déduite, tandis que la contribution de
+      l'employeur n'est pas ajoutée ». Inchangée jusqu'en 2026 : le BOSS (mise à jour du 2 octobre 2026, lue
+      sur open.lefebvre-dalloz.fr le 28/11/2026) annonce l'ajout des contributions patronales de protection
+      sociale complémentaire pour les revenus dus à compter du 1er janvier 2027 seulement, par un décret en
+      projet. Le moteur de bulletin en fait : brut - cotisations salariales.
 
   # --- Formalités d'embauche (étape 4.2b) ---------------------------------------------------------
   - key: social.hiring.dpae_earliest_days
