@@ -16,6 +16,7 @@ use App\Enum\Dossier\TemplateLevel;
 use App\Enum\Payroll\ContractType;
 use App\Enum\Payroll\EmployeeState;
 use App\Enum\Payroll\FormalityState;
+use App\Enum\Payroll\SocialDueState;
 use App\Enum\Payroll\WorkingTime;
 use App\Enum\Shared\BtsProcess;
 use App\Enum\ThirdParty\PaymentMethod;
@@ -37,7 +38,9 @@ use App\Service\Accounting\Subscription\SubscriptionSchedule;
 use App\Service\Accounting\Template\TemplateCall;
 use App\Service\Dossier\DossierContext;
 use App\Service\Inventory\Stock\StockReader;
+use App\Service\Payroll\Declaration\SocialSchedule;
 use App\Service\Payroll\Hiring\HiringFormalities;
+use App\Service\Payroll\Payslip\PayslipBook;
 use App\Service\Regulatory\RegulatorySync;
 use App\Service\Shared\Money;
 use Doctrine\ORM\EntityManagerInterface;
@@ -131,8 +134,8 @@ final class DemoInstallCommandTest extends KernelTestCase
         // The install clears the entity manager as it goes: what follows reads lazily, inside the dossier.
         $context->enter($vasseur);
         $entries = $context->within($vasseur, static fn (): array => self::getContainer()->get(EntryRepository::class)->findBy([], ['id' => 'ASC']));
-        self::assertCount(245, $entries, 'Les à-nouveaux, les 80 écritures de janvier, 82 de février, 80 de mars et les deux abonnements de mars.');
-        $opening = $entries[0];
+        self::assertCount(245, $entries, 'Les à-nouveaux, les écritures du trimestre (sans la paie), les deux abonnements de mars, et les 16 écritures que la paie passe par la passerelle.');
+        $opening = array_values(array_filter($entries, static fn ($entry): bool => 'AN-2026-001' === $entry->getDocument()))[0];
         self::assertSame(['AN-2026-00001', 'AN-2026-001', '2026-01-01', EntryOrigin::Opening, 67], [$opening->getNumberLabel(), $opening->getDocument(), $opening->getEntryDate()->format('Y-m-d'), $opening->getOrigin(), \count($opening->getLines())]);
         self::assertSame([45_926_031, 45_926_031], [$opening->totalDebit()->cents, $opening->totalCredit()->cents]);
 
@@ -170,9 +173,13 @@ final class DemoInstallCommandTest extends KernelTestCase
         self::assertSame([415_812, '2026-02-07'], [$purchase->totalCredit()->cents, $purchase->getLines()[3]->getDueDate()?->format('Y-m-d')]);
         $context->within($vasseur, static function () use ($reader, $account): void {
             $at = static fn (string $number, string $day): int => $reader->accountBalance($account($number) ?? throw new \LogicException($number), new \DateTimeImmutable('2026-01-01'), new \DateTimeImmutable($day), EntryScope::Validated)->balance()->cents;
-            // operations-2026.md § 2.5: January's balances.
+            // operations-2026.md § 2.5: January's balances, the payroll's from the engine (review 4.7a): the
+            // prepared data's 512200 15 116,78, 431000 8 748,56, 437100 1 838,78 and 442100 883,70 move by
+            // the employer's provident share left out of Paul Vasseur's net taxable (DECISIONS 4.3c: 60,08 ×
+            // 9,9 % = 5,95 of withholding tax less) and the rounding rubrique by rubrique (DECISIONS 4.3b:
+            // 0,05 on the Urssaf, 0,03 on the pension, 0,02 on the net).
             self::assertSame(
-                [3_109_029, 1_511_678, 11_272_990, 684_000, -1_414_080, -874_856, -183_878, -88_370, -888_379, 0, 0, 0],
+                [3_109_029, 1_511_085, 11_272_990, 684_000, -1_414_080, -874_861, -183_881, -87_775, -888_379, 0, 0, 0],
                 array_map(static fn (string $number): int => $at($number, '2026-01-31'), ['512100', '512200', '411000', '416000', '401000', '431000', '437100', '442100', '445510', '445710', '445660', '421000']),
                 'Soldes au 31/01/2026 (operations-2026.md § 2.5).',
             );
@@ -307,6 +314,32 @@ final class DemoInstallCommandTest extends KernelTestCase
             $list = $formalities->checklist($yanis, $today);
             self::assertSame([FormalityState::Done, FormalityState::ToDo, '2026-07-01', 3], [$list->dpae, $list->visit, $list->visitDeadline->format('Y-m-d'), $list->affiliationsMissing]);
             self::assertFalse($formalities->checklist($paul, $today)->followed);
+        });
+
+        // Its payroll (review 4.7a, payslips.yaml): December 2025 to March 2026 validated and closed, ten
+        // payslips a month (Yanis Chabert comes in April), April the month paid; each month of 2026 posted
+        // by the payroll (PAIE-2026-01…) and paid through the gateway - March's contributions fall due on
+        // 15/04, after the dossier's date. December's, owed in the opening balance, were paid on 15/01.
+        $context->within($vasseur, static function () use ($vasseur): void {
+            $book = self::getContainer()->get(PayslipBook::class);
+            self::assertSame('2026-04-01', $book->month($vasseur)->format('Y-m-d'));
+            foreach (['2025-12-01', '2026-01-01', '2026-02-01', '2026-03-01'] as $month) {
+                $payslips = $book->payslipsOf($vasseur, new \DateTimeImmutable($month));
+                self::assertCount(10, $payslips, $month);
+                self::assertCount(10, array_filter($payslips, static fn ($payslip): bool => $payslip->isValidated()), $month);
+            }
+            $entries = self::getContainer()->get(EntryRepository::class);
+            $paie = $entries->findOneBy(['dossier' => $vasseur, 'document' => 'PAIE-2026-01']);
+            self::assertSame(['OD', '2026-01-31', 'payroll', true], [$paie?->getJournal()->getCode(), $paie?->getEntryDate()->format('Y-m-d'), $paie?->getSource(), $paie?->isValidated()]);
+            $states = [];
+            foreach (self::getContainer()->get(SocialSchedule::class)->of($vasseur) as $due) {
+                $states[$due->document] = $due->state;
+            }
+            self::assertSame(SocialDueState::Paid, $states['COT-URSSAF-2025-12']);
+            self::assertSame(SocialDueState::Paid, $states['PAS-2026-02']);
+            self::assertSame(SocialDueState::Due, $states['COT-URSSAF-2026-03']);
+            self::assertCount(20, $states, 'Four bodies and the withholding tax, four months.');
+            self::assertSame(['VIRSAL-2026-03', '2026-03-31'], [$entries->findOneBy(['dossier' => $vasseur, 'document' => 'VIRSAL-2026-03'])?->getDocument(), $entries->findOneBy(['dossier' => $vasseur, 'document' => 'VIRSAL-2026-03'])?->getEntryDate()->format('Y-m-d')]);
         });
     }
 }

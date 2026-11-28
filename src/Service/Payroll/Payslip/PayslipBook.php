@@ -225,9 +225,10 @@ final readonly class PayslipBook
     /**
      * Validates the payslip: calculated once more from what it keeps, then frozen on the dossier's date;
      * given the level, a payslip the student establishes (0) has every cell typed, and at B its « Contrôles »
-     * card has no fault. Null when done, else why not, in French. Flushed by the caller.
+     * card has no fault. Validated on the dossier's date, or on `$on` (the demonstration's months gone by).
+     * Null when done, else why not, in French. Flushed by the caller.
      */
-    public function validate(MonthlyPayslip $payslip, User $actor, ?Assistance $assistance = null): ?string
+    public function validate(MonthlyPayslip $payslip, User|string $actor, ?Assistance $assistance = null, ?\DateTimeImmutable $on = null): ?string
     {
         if (!$payslip->getStatus()->isToValidate()) {
             return 'Ce bulletin n’est pas calculé : calculez-le avant de le valider.';
@@ -247,7 +248,7 @@ final readonly class PayslipBook
                 return $refusal;
             }
         }
-        $payslip->validate(PayslipSnapshot::toArray($result['payslip'], $this->yearToDate($employee, $month)), $dossier->getDossierDate());
+        $payslip->validate(PayslipSnapshot::toArray($result['payslip'], $this->yearToDate($employee, $month)), $on ?? $dossier->getDossierDate());
         $this->auditTrail->inDossier($dossier, AuditAction::PayslipValidated, $actor, \sprintf('Bulletin de %s validé (%s) : net à payer %s', $employee->getFullName(), FrenchFormat::period($month), FrenchFormat::amountInEuros($result['payslip']->totals->netPay)), ['employee' => $employee->getRegistrationNumber(), 'month' => $month->format('Y-m')]);
 
         return null;

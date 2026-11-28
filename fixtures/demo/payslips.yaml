@@ -1,0 +1,51 @@
+# Menuiserie Vasseur SARL - its payroll from December 2025 to March 2026 (lot 4, review 4.7a), after
+# plan/donnees/demo/operations-2026.md § 2.3 and the preparation's year.py: the elements of each month,
+# entered on each payslip as the « Éléments du mois » card takes them; everything else (the salary, the
+# contributions, the general reduction, the year to date, the net) is the payroll engine's.
+#
+# Installed by app:demo:install through the payroll's own doors, month after month: each payslip
+# calculated and validated (PayslipBook), the month closed, then - from January 2026 - the month's entry
+# (PAIE-2026-01…) and the payments (VIRSAL-…, COT-…, PAS-…) handed to the accounting gateway and
+# validated. December 2025 serves the year before (the employees' history and cumuls of 2025): its
+# contributions are owed in the opening balance and paid on 15/01 in entries.yaml under the payroll's
+# pièces. March's contributions fall due on 15/04, after the dossier's date: left to pay.
+#
+# Elements by registration number: `rates` (percent, by rubrique: the seniority bonus 1010), `quantities`
+# (hours or a count: overtime 1100, meals 3000), `amounts` (euros: the vehicle 1400), and `removed`, the
+# rubriques taken off the payslip by hand (Ctrl+Suppr): Hugo Marchand, apprentice, is exempted from the
+# company's health insurance (dispense d'adhésion, D911-2 CSS; the prepared data covers him by none), so
+# his payslips are « Modifié ». An employee the month pays with no line has no element.
+# Format: App\Service\Dossier\Demo\DemoPayslipFile.
+
+months:
+  - month: '2025-12'
+    elements: &usual
+      S001: {amounts: {'1400': '322.50'}}
+      S002: {rates: {'1010': '10'}}
+      S003: {rates: {'1010': '3'}, quantities: {'3000': '16'}}
+      S004: {removed: ['2010']}
+      S005: {rates: {'1010': '10'}}
+      S007: {rates: {'1010': '7'}}
+      S008: {rates: {'1010': '6'}, quantities: {'3000': '15'}}
+      S009: {rates: {'1010': '4'}}
+      S010: {rates: {'1010': '5'}}
+
+  - month: '2026-01'
+    elements: *usual
+    post: true
+    salaries_paid_on: '2026-01-30'
+    contributions_paid_on: '2026-02-15'
+
+  - month: '2026-02'
+    elements: *usual
+    post: true
+    salaries_paid_on: '2026-02-27'
+    contributions_paid_on: '2026-03-15'
+
+  - month: '2026-03'
+    elements:
+      <<: *usual
+      # Mehdi Benali's eight overtime hours at 25 % (operations-2026.md § 3.2).
+      S008: {rates: {'1010': '6'}, quantities: {'3000': '15', '1100': '8'}}
+    post: true
+    salaries_paid_on: '2026-03-31'

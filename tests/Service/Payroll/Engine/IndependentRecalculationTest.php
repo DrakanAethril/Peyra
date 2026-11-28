@@ -64,7 +64,7 @@ final class IndependentRecalculationTest extends TestCase
 
         return [
             $money($payslip->gross), $money($totals->employeeContributions), $money($totals->employerContributions),
-            $money($reduction?->amount), (string) ($reduction?->coefficient ?? '0'), (string) ($payslip->row('2800')?->base ?? '0'),
+            $money($reduction?->amount), (string) ($reduction->coefficient ?? '0'), (string) ($payslip->row('2800')->base ?? '0'),
             $money($totals->netSocial), $money($totals->netTaxable), $money($totals->apprenticeExempt), $money($totals->withholdingTax), $money($totals->netPay), $money($totals->employerCost),
         ];
     }
