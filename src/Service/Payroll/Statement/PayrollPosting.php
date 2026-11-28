@@ -39,8 +39,9 @@ use App\Service\Shared\Money;
  * - a payslip cancelled in a month whose entry was posted takes that entry back: deleted while in the
  *   brouillard, reversed once validated (design-ux.md § 4.7, point 6).
  *
- * The entries are found again by their pièce (« PAIE-2026-03 », « VIRSAL-2026-03 »…) and their module:
- * a pièce still standing is one neither a reversal nor reversed. Read inside the dossier's context.
+ * The entries are found again by their pièce (« PAIE-2026-03 », « VIRSAL-2026-03 »…): a pièce still
+ * standing (neither a reversal nor reversed) is not proposed again; only what the payroll wrote itself
+ * (its module) is taken back. Read inside the dossier's context.
  */
 final readonly class PayrollPosting
 {
@@ -97,12 +98,17 @@ final readonly class PayrollPosting
         return $this->entries->findByDocumentReference($dossier, $document);
     }
 
-    /** @return list<Entry> the payroll's entries of that pièce still standing: neither a reversal nor reversed */
+    /**
+     * The entries of that pièce still standing - neither a reversal nor reversed -, whoever wrote them: a
+     * pièce written already, by the payroll or by hand, is not proposed again.
+     *
+     * @return list<Entry>
+     */
     public function standing(Dossier $dossier, string $document): array
     {
         return array_values(array_filter(
             $this->entries($dossier, $document),
-            fn (Entry $entry): bool => AccountingModule::Payroll->value === $entry->getSource() && EntryOrigin::Reversal !== $entry->getOrigin() && null === $this->entries->findReversalOf($entry),
+            fn (Entry $entry): bool => EntryOrigin::Reversal !== $entry->getOrigin() && null === $this->entries->findReversalOf($entry),
         ));
     }
 
@@ -151,6 +157,9 @@ final readonly class PayrollPosting
     public function withdraw(Dossier $dossier, \DateTimeImmutable $month, User|string $by): ?string
     {
         foreach ($this->standing($dossier, PayrollEntries::monthDocument($month)) as $entry) {
+            if (AccountingModule::Payroll->value !== $entry->getSource()) {
+                continue; // Entered by hand: the student's to correct.
+            }
             try {
                 $this->gateway->withdraw($entry, $dossier->getDossierDate(), $by);
             } catch (EntryRefused $refused) {
