@@ -1,0 +1,40 @@
+{#
+ # Pièces › Déposer une pièce: a PDF or a picture and its nature; the pièce arrives « à traiter »
+ # on the dossier's date and its sheet opens, where its read data are typed.
+ #}
+{% extends 'document/_layout.html.twig' %}
+
+{% set dossier_title = 'Déposer une pièce' %}
+{% set status_keys = [{combo: 'F10', verb: 'Déposer'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Déposer une pièce" :trail="[
+        {label: 'Pièces', href: path('app_documents', {dossier: dossier.id})},
+        {label: 'Boîte de réception', href: path('app_documents', {dossier: dossier.id})},
+        {label: 'Déposer une pièce', href: path('app_document_new', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button variant="quiet" href="{{ path('app_documents', {dossier: dossier.id}) }}">Annuler</twig:Px:Button>
+            <twig:Px:Button type="submit" variant="primary" form="document-new" shortcut="F10 Ctrl+S" icon="upload">Déposer</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <form method="post" action="{{ path('app_document_new', {dossier: dossier.id}) }}" enctype="multipart/form-data" class="px-stack" id="document-new" data-turbo="false" novalidate data-controller="focus-error">
+        <input type="hidden" name="_token" value="{{ csrf_token('document-new-' ~ dossier.id) }}">
+        {% if errors is not empty %}
+            <twig:Px:Alert tone="danger">La pièce n’est pas déposée : {{ errors|length > 1 ? errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+        {% endif %}
+        <twig:Px:Card title="La pièce">
+            <div class="px-fieldgrid">
+                <twig:Px:Field id="type" label="Nature" :required="true" :error="errors.type ?? null">
+                    <twig:Px:Select id="type" placeholder="Choisir la nature…" :options="type_options" value="{{ type }}" :required="true" :error="errors.type ?? null" autofocus/>
+                </twig:Px:Field>
+                <twig:Px:Field id="file" label="Fichier" :required="true" :wide="true" :error="errors.file ?? null" hint="Un PDF ou une image (JPEG, PNG, WebP), 20 Mo au plus.">
+                    <input type="file" id="file" name="file" class="px-input" accept="{{ accept }}" aria-describedby="file_hint{{ errors.file is defined ? ' file_error' : '' }}"{% if errors.file is defined %} aria-invalid="true"{% endif %} required>
+                </twig:Px:Field>
+            </div>
+        </twig:Px:Card>
+    </form>
+{% endblock %}

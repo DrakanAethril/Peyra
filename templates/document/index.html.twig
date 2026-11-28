@@ -1,0 +1,73 @@
+{#
+ # Pièces › Boîte de réception (gabarit L): the dossier's pièces, the latest arrived first - nature
+ # and number, third party, date of the pièce, day it arrived (the dossier's date), total, state;
+ # filtered by state, searched by number, third party or file name. Entrée opens the sheet.
+ #}
+{% extends 'document/_layout.html.twig' %}
+
+{% set dossier_title = 'Boîte de réception' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Déposer une pièce'}, {combo: '/', verb: 'Rechercher'}] : [{combo: '/', verb: 'Rechercher'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Boîte de réception" :trail="[
+        {label: 'Pièces', href: path('app_documents', {dossier: dossier.id})},
+        {label: 'Boîte de réception', href: path('app_documents', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button href="{{ path('app_document_new', {dossier: dossier.id}) }}" variant="primary" icon="upload" shortcut="N">Déposer une pièce</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if total == 0 %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="inbox" title="Aucune pièce à traiter" text="Les prochaines arriveront ici : les factures, tickets et relevés de l’entreprise, à contrôler puis à comptabiliser.{{ can_edit ? ' Vous pouvez aussi déposer une pièce, un PDF ou une image.' : '' }}"/>
+        </twig:Px:Card>
+    {% else %}
+        {% set keep = {state: state ? state.value : null, q: search ?: null} %}
+        <twig:Px:Card :flush="true">
+            <twig:Px:Filters action="{{ path('app_documents', {dossier: dossier.id}) }}" search="{{ search }}" searchLabel="Numéro, tiers ou fichier" resetHref="{{ state or search ? path('app_documents', {dossier: dossier.id}) : null }}">
+                <twig:Px:FilterChip label="Toutes" href="{{ path('app_documents', {dossier: dossier.id}|merge(keep)|merge({state: null})) }}" :count="counts['']" :current="state is null"/>
+                {% for case in states %}
+                    {% if counts[case.value] > 0 or state == case %}
+                        <twig:Px:FilterChip label="{{ case.plural }}" href="{{ path('app_documents', {dossier: dossier.id}|merge(keep)|merge({state: case.value})) }}" :count="counts[case.value]" :current="state == case"/>
+                    {% endif %}
+                {% endfor %}
+                {% if state %}<input type="hidden" name="state" value="{{ state.value }}">{% endif %}
+            </twig:Px:Filters>
+            {% if document_rows is empty %}
+                <twig:Px:Empty icon="search" title="Aucune pièce" text="{{ search ? 'Aucune pièce de ce filtre ne correspond à « ' ~ search ~ ' ».' : 'Aucune pièce dans cet état.' }}"/>
+            {% else %}
+                <twig:Px:Table caption="Pièces de {{ dossier.name }}" :rows="true">
+                    <thead>
+                        <tr>
+                            <th scope="col">Pièce</th>
+                            <th scope="col">Tiers</th>
+                            <th scope="col">Date</th>
+                            <th scope="col">Arrivée le</th>
+                            <th scope="col" class="px-u-num">Montant TTC</th>
+                            <th scope="col">État</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for document in document_rows %}
+                            <tr data-rows-target="row">
+                                <td class="px-u-truncate px-u-fill"><a class="px-link" href="{{ path('app_document', {dossier: dossier.id, id: document.id}) }}">{{ document.type.label }} {{ document.number ?? document.fileName }}</a></td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ document.thirdParty ? document.thirdParty.name : '' }}">{{ document.thirdParty ? document.thirdParty.name : '—' }}</td>
+                                <td>{{ document.documentDate ? document.documentDate|date_fr : '—' }}</td>
+                                <td>{{ document.receivedOn|date_fr }}</td>
+                                <td class="px-u-num">{{ document.totalIncludingTax ? document.totalIncludingTax|amount : '' }}</td>
+                                <td><twig:Px:Badge :of="document.state"/></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+            <twig:Px:Pager :total="shown_total" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>Pièces · <b>{{ total }}</b></span><span>À traiter · <b>{{ counts['to_process'] }}</b></span>{% endblock %}

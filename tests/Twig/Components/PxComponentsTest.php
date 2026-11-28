@@ -46,6 +46,28 @@ final class PxComponentsTest extends KernelTestCase
         self::assertStringContainsString('dans un nouvel onglet', $html);
     }
 
+    public function testViewerDrawsAPictureItZoomsOrThePdfReaderInAFrame(): void
+    {
+        $image = $this->renderTwigComponent('Px:Viewer', ['src' => '/d/1/documents/4/file', 'kind' => 'image', 'name' => 'ticket.jpg', 'alt' => 'Ticket Station U', 'download' => '/d/1/documents/4/file?download=1'])->toString();
+
+        self::assertStringContainsString('<section class="px-viewer" aria-label="Pièce ticket.jpg" data-controller="viewer">', $image);
+        self::assertStringContainsString('<img class="px-viewer__page" src="/d/1/documents/4/file" alt="Ticket Station U" data-viewer-target="page">', $image);
+        self::assertStringContainsString('tabindex="0" data-action="keydown->viewer#keydown wheel->viewer#wheel"', $image);
+        self::assertStringContainsString('data-px-shortcut="F7"', $image);
+        self::assertStringContainsString('href="/d/1/documents/4/file?download=1"', $image);
+
+        $pdf = $this->renderTwigComponent('Px:Viewer', ['src' => '/d/1/documents/5/file', 'kind' => 'pdf', 'name' => 'FA-2611-0457.pdf'])->toString();
+        self::assertStringContainsString('<iframe class="px-viewer__frame" src="/d/1/documents/5/file" title="FA-2611-0457.pdf"></iframe>', $pdf);
+        self::assertStringNotContainsString('viewer#zoomIn', $pdf);
+        self::assertStringNotContainsString('Télécharger', $pdf);
+    }
+
+    public function testViewerRefusesAPictureWithoutItsText(): void
+    {
+        $this->expectException(RuntimeError::class);
+        $this->renderTwigComponent('Px:Viewer', ['src' => '/x', 'kind' => 'image', 'name' => 'scan.png']);
+    }
+
     public function testButtonIsAButtonThatNeverSubmitsByAccident(): void
     {
         $html = $this->renderTwigComponent('Px:Button', [], 'Enregistrer')->toString();

@@ -12,12 +12,12 @@ use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 
 /**
  * The screens and actions of a dossier the global search offers (Ctrl K, design-ux.md § 2.1): the
- * catalogue of what exists today - the dashboard, Comptabilité's screens (Saisie, one line per
+ * catalogue of what exists today - the dashboard, Pièces › Boîte de réception, Comptabilité's screens (Saisie, one line per
  * journal, the guided entry when it is open to the person, À-nouveaux, Brouillard, Consultation,
  * Lettrage, Recherche d'écritures, the five editions, the five views of the settings), Immobilisations et clôture › FEC, Paie et social's
  * three views of its settings (to whoever reads the payroll), Système d'information ›
  * Société, Utilisateurs et droits, Piste d'audit - and, for whoever may change the dossier, the
- * actions that create (« Nouvelle écriture », « Nouveau compte »…). The search never offers a
+ * actions that create (« Déposer une pièce », « Nouvelle écriture », « Nouveau compte »…). The search never offers a
  * module a mission closes, nor what a profile closes (a journal it does not open, the settings'
  * actions it does not change: DossierRightVoter); the missions (step 2.9) narrow this catalogue
  * too. Read inside the dossier's context.
@@ -29,7 +29,7 @@ final readonly class SearchScreens
 {
     /** The routes of the catalogue's screens: those a visit records among the recent ones. */
     public const array SCREEN_ROUTES = [
-        'app_dossier_dashboard', 'app_accounting_entry', 'app_accounting_guided', 'app_accounting_opening', 'app_accounting_brouillard',
+        'app_dossier_dashboard', 'app_documents', 'app_accounting_entry', 'app_accounting_guided', 'app_accounting_opening', 'app_accounting_brouillard',
         'app_accounting_consultation', 'app_accounting_lettering', 'app_accounting_entries', 'app_accounting_edition_journals',
         'app_accounting_edition_general_ledger', 'app_accounting_edition_trial_balance',
         'app_accounting_edition_third_party_balance', 'app_accounting_edition_aged_balance',
@@ -88,6 +88,7 @@ final readonly class SearchScreens
 
         $items = [
             $screen('app_dossier_dashboard', 'Tableau de bord', null, 'house', 'accueil'),
+            $screen('app_documents', 'Boîte de réception', 'Pièces', 'inbox', 'pieces factures tickets a traiter'),
             $screen('app_accounting_entry', 'Saisie par journal', self::ENTRY, 'book-text', 'ecriture grille comptabilite'),
         ];
         foreach ($this->journals->findByDossier($dossier) as $journal) {
@@ -161,6 +162,7 @@ final readonly class SearchScreens
         );
 
         $actions = [
+            $action('app_document_new', 'Déposer une pièce', 'Pièces', 'upload', 'ajouter facture ticket pdf image'),
             $action('app_accounting_entry', 'Nouvelle écriture', self::ENTRY, 'plus', 'creer saisir ajouter'),
             $action('app_dossier_restore_point_new', 'Poser un point de restauration', 'Système d’information', 'history', 'sauvegarde instantane'),
         ];

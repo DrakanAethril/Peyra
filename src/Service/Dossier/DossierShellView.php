@@ -23,6 +23,7 @@ final readonly class DossierShellView
      * @param list<ListingGroup>      $switcher
      * @param list<User>              $holders     the student, or the group's members
      * @param DossierProfile|null     $profile     the person's profile in a group's dossier (the chip of the top bar)
+     * @param int                     $documentsToProcess the rail's counter of « Pièces »
      */
     public function __construct(
         public Dossier $dossier,
@@ -36,6 +37,7 @@ final readonly class DossierShellView
         public array $holders,
         public bool $dateMoved,
         public ?DossierProfile $profile = null,
+        public int $documentsToProcess = 0,
     ) {
     }
 

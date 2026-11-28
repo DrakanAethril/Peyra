@@ -1,0 +1,120 @@
+/*
+ * The viewer of a pièce (design-ui.md § 4.12, Px:Viewer): a bar over a grey stage, the page a white
+ * sheet with its shadow, centred; « en grand » lays it over the window. The pièce's sheet keeps the
+ * viewer in sight while its read data scroll (`px-document`).
+ */
+@layer px.components {
+    .px-viewer {
+        display: flex;
+        flex-direction: column;
+        background: var(--px-surface-viewer);
+        border: 1px solid var(--px-border);
+        border-radius: 10px;
+        min-height: 0;
+        overflow: hidden;
+
+        &.is-full {
+            position: fixed;
+            inset: var(--px-space-16);
+            z-index: var(--px-z-dialog);
+            box-shadow: var(--px-shadow-paper);
+        }
+    }
+
+    .px-viewer__bar {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-6);
+        padding: 6px 10px;
+        font-size: 12px;
+        color: var(--px-text-muted);
+    }
+
+    .px-viewer__name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--px-text-strong);
+    }
+
+    .px-viewer__zoom {
+        margin-left: auto;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .px-viewer__stage {
+        flex: 1 1 auto;
+        min-height: 0;
+        padding: 0 14px 14px;
+        overflow: auto;
+        text-align: center;
+
+        &:focus-visible {
+            outline: 2px solid var(--px-focus);
+            outline-offset: -2px;
+        }
+    }
+
+    .px-viewer__page {
+        display: inline-block;
+        width: 100%;
+        max-width: none;
+        height: auto;
+        border-radius: 4px;
+        background: var(--px-surface);
+        box-shadow: var(--px-shadow-paper);
+    }
+
+    .px-viewer__frame {
+        display: block;
+        width: 100%;
+        height: 100%;
+        min-height: 560px;
+        border: 0;
+        border-radius: 4px;
+        background: var(--px-surface);
+        box-shadow: var(--px-shadow-paper);
+    }
+
+    /* The pièce's sheet: the viewer stays in sight beside its read data (gabarit P). */
+    .px-document__viewer {
+        position: sticky;
+        top: 0;
+        display: flex;
+        height: calc(100dvh - 220px);
+        min-height: 420px;
+
+        & > .px-viewer {
+            flex: 1 1 auto;
+        }
+
+        /* Sticky makes a stacking context: lifted whole, the viewer laid over the window goes above the bars. */
+        &:has(> .px-viewer.is-full) {
+            z-index: var(--px-z-dialog);
+        }
+    }
+
+    @media (max-width: 1023.98px) {
+        .px-document__viewer {
+            position: static;
+            height: 70vh;
+        }
+    }
+
+    .px-document__section {
+        margin: var(--px-space-16) 0 var(--px-space-8);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: .02em;
+        text-transform: uppercase;
+        color: var(--px-text-muted);
+    }
+
+    .px-vatrows {
+        display: grid;
+        grid-template-columns: 7rem 11rem 11rem;
+        gap: var(--px-space-8) var(--px-space-12);
+        align-items: start;
+    }
+}
