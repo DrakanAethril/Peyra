@@ -1,7 +1,7 @@
 {#
  # One template of the library as a card (`template_card`, a TemplateCard): its title and its
  # exercise, where it sits for this teacher, the company, the year and processes it is for, how
- # often it was handed out; « Ouvrir » enters it, the title leads to its fiche.
+ # often it was handed out; « Ouvrir » enters it, « Distribuer » hands it out (step 1.8c).
  #}
 {% set template = template_card.template %}
 <twig:Px:Card title="{{ template.libraryTitle }}" class="px-templatecard">
@@ -19,6 +19,7 @@
     {% if template.libraryDescription %}<p class="px-templatecard__text">{{ template.libraryDescription|length > 160 ? template.libraryDescription|slice(0, 159)|trim ~ '…' : template.libraryDescription }}</p>{% endif %}
     <twig:block name="foot">
         <twig:Px:Button variant="secondary" size="sm" href="{{ path('app_library_template', {dossier: template.id}) }}" icon="info">Fiche</twig:Px:Button>
+        <twig:Px:Button variant="secondary" size="sm" href="{{ path('app_library_distribute', {dossier: template.id}) }}" icon="send">Distribuer</twig:Px:Button>
         <twig:Px:Button variant="primary" size="sm" href="{{ path('app_dossier_dashboard', {dossier: template.id}) }}" icon="folder-open">Ouvrir</twig:Px:Button>
     </twig:block>
 </twig:Px:Card>

@@ -7,14 +7,10 @@ namespace App\Service\Dossier\Demo;
 use App\Entity\Accounting\Account;
 use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Dossier;
-use App\Entity\Dossier\DossierMember;
-use App\Entity\Identity\SchoolYear;
-use App\Entity\Identity\User;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Audit\AuditAction;
 use App\Enum\Dossier\DossierKind;
-use App\Enum\Dossier\DossierProfile;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Dossier\DossierRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
@@ -40,9 +36,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 /**
  * The demonstration dossier, Menuiserie Vasseur SARL (plan README § 11), built from
  * `fixtures/demo/`: installed once as a template of the common library (app:demo:install, in
- * development and in production alike: it is the first template the référents get), and - in
- * development only, until the distribution of step 1.8 - built again as a student's own dossier
- * (app:dev:dossiers). Grows with each step.
+ * development and in production alike: it is the first template the référents get), which
+ * app:dev:dossiers distributes to the development classes. Grows with each step.
  */
 final readonly class DemoInstaller
 {
@@ -75,7 +70,7 @@ final readonly class DemoInstaller
             return null;
         }
 
-        return $this->build(DossierKind::Template, null, null, $actor, $at, null);
+        return $this->build($actor, $at);
     }
 
     public function findTemplate(): ?Dossier
@@ -83,32 +78,7 @@ final readonly class DemoInstaller
         return $this->dossiers->findCommonTemplateNamed(self::DENOMINATION);
     }
 
-    /** The demonstration dossier as a student's own, made in a school year from the template. */
-    public function buildForStudent(User $student, SchoolYear $year, Dossier $template, string $actor, \DateTimeImmutable $at): Dossier
-    {
-        return $this->build(DossierKind::Student, $student, $year, $actor, $at, $template);
-    }
-
-    /**
-     * The demonstration dossier as a group's, its members each with their profile (development
-     * only, until the distribution of step 1.8 makes the groups' dossiers).
-     *
-     * @param list<array{0: User, 1: DossierProfile|null}> $members
-     */
-    public function buildForGroup(array $members, SchoolYear $year, Dossier $template, string $actor, \DateTimeImmutable $at): Dossier
-    {
-        $dossier = $this->build(DossierKind::Group, null, $year, $actor, $at, $template);
-        foreach ($members as [$student, $profile]) {
-            $member = new DossierMember($dossier, $student, $at);
-            $member->assignProfile($profile);
-            $this->entityManager->persist($member);
-        }
-        $this->entityManager->flush();
-
-        return $dossier;
-    }
-
-    private function build(DossierKind $kind, ?User $owner, ?SchoolYear $year, string $actor, \DateTimeImmutable $at, ?Dossier $template): Dossier
+    private function build(string $actor, \DateTimeImmutable $at): Dossier
     {
         $file = DemoCompanyFile::read($this->directory.'/company.yaml');
         $chartFile = DemoChartFile::read($this->directory);
@@ -117,8 +87,7 @@ final readonly class DemoInstaller
         $templateFile = DemoTemplateFile::read($this->directory.'/templates.yaml');
         $subscriptionFile = DemoSubscriptionFile::read($this->directory.'/subscriptions.yaml');
         $letteringFile = DemoLetteringFile::read($this->directory.'/letterings.yaml');
-        $dossier = new Dossier($kind, $file->company, $file->dossierDate, $owner, $year, $at, null);
-        $dossier->comesFrom($template, null);
+        $dossier = new Dossier(DossierKind::Template, $file->company, $file->dossierDate, null, null, $at, null);
         $dossier->describeInLibrary($file->library['title'], $file->library['description'], $file->library['level'], $file->library['processes']);
         $this->entityManager->persist($dossier);
         // An id first: the exercises enter the dossier's context.
@@ -145,8 +114,8 @@ final readonly class DemoInstaller
             $dossier,
             AuditAction::DossierCreated,
             $actor,
-            \sprintf('%s créé (%s)', $dossier->getName(), $kind->label()),
-            ['dossier' => $dossier->getId(), 'kind' => $kind->value, 'owner' => $owner?->getLogin()],
+            \sprintf('%s créé (%s)', $dossier->getName(), DossierKind::Template->label()),
+            ['dossier' => $dossier->getId(), 'kind' => DossierKind::Template->value],
         );
         $this->entityManager->flush();
 

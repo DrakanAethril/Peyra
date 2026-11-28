@@ -26,7 +26,7 @@ use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 final class TemplateVoterTest extends KernelTestCase
 {
     use SavesDossiers;
-    private const array ALL = [TemplateVoter::SHARE, TemplateVoter::DELETE, TemplateVoter::DUPLICATE];
+    private const array ALL = [TemplateVoter::SHARE, TemplateVoter::DELETE, TemplateVoter::DUPLICATE, TemplateVoter::DISTRIBUTE];
 
     private EntityManagerInterface $entityManager;
 
@@ -36,15 +36,15 @@ final class TemplateVoterTest extends KernelTestCase
         $this->entityManager = self::getContainer()->get(EntityManagerInterface::class);
     }
 
-    public function testTheAuthorSharesDeletesAndDuplicates(): void
+    public function testTheAuthorSharesDeletesDuplicatesAndDistributes(): void
     {
         $durand = $this->account(AccountKind::Teacher, 'durand');
         $template = $this->savedDossier(DossierKind::Template, $durand);
 
-        self::assertSame([true, true, true], $this->votes($durand, $template));
+        self::assertSame([true, true, true, true], $this->votes($durand, $template));
     }
 
-    public function testAColleagueItIsSharedWithDuplicatesItOnly(): void
+    public function testAColleagueItIsSharedWithDuplicatesAndDistributesItOnly(): void
     {
         $durand = $this->account(AccountKind::Teacher, 'durand');
         $reader = $this->account(AccountKind::Teacher, 'lecteur');
@@ -55,9 +55,9 @@ final class TemplateVoterTest extends KernelTestCase
         $this->entityManager->persist(new DossierShare($template, $editor, true, new \DateTimeImmutable('2026-11-28')));
         $this->entityManager->flush();
 
-        self::assertSame([false, false, true], $this->votes($reader, $template));
-        self::assertSame([false, false, true], $this->votes($editor, $template));
-        self::assertSame([false, false, false], $this->votes($other, $template), 'Un modèle qui ne lui est pas partagé ne lui est pas ouvert.');
+        self::assertSame([false, false, true, true], $this->votes($reader, $template));
+        self::assertSame([false, false, true, true], $this->votes($editor, $template));
+        self::assertSame([false, false, false, false], $this->votes($other, $template), 'Un modèle qui ne lui est pas partagé ne lui est pas ouvert.');
     }
 
     public function testTheCommonLibraryIsDeletedByAnAdministratorAndSharedByNobody(): void
@@ -68,8 +68,8 @@ final class TemplateVoterTest extends KernelTestCase
         $this->entityManager->flush();
         $common = $this->savedDossier(DossierKind::Template, null);
 
-        self::assertSame([false, false, true], $this->votes($teacher, $common));
-        self::assertSame([false, true, true], $this->votes($administrator, $common));
+        self::assertSame([false, false, true, true], $this->votes($teacher, $common));
+        self::assertSame([false, true, true, true], $this->votes($administrator, $common));
     }
 
     public function testNothingButATemplateAndNobodyButATeacher(): void
@@ -80,9 +80,9 @@ final class TemplateVoterTest extends KernelTestCase
         $administrator->makeAdministrator(new \DateTimeImmutable('2026-01-01'), null);
         $this->entityManager->flush();
 
-        self::assertSame([false, false, false], $this->votes($administrator, $this->savedDossier(DossierKind::Student, $student)));
-        self::assertSame([false, false, false], $this->votes($teacher, $this->savedDossier(DossierKind::Snapshot, null)));
-        self::assertSame([false, false, false], $this->votes($student, $this->savedDossier(DossierKind::Template, null)));
+        self::assertSame([false, false, false, false], $this->votes($administrator, $this->savedDossier(DossierKind::Student, $student)));
+        self::assertSame([false, false, false, false], $this->votes($teacher, $this->savedDossier(DossierKind::Snapshot, null)));
+        self::assertSame([false, false, false, false], $this->votes($student, $this->savedDossier(DossierKind::Template, null)));
     }
 
     /** @return list<bool> */

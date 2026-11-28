@@ -6,6 +6,7 @@ namespace App\Security\Voter;
 
 use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\RestorePoint;
+use App\Entity\Identity\User;
 use App\Enum\Dossier\DossierKind;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
@@ -19,6 +20,7 @@ use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
  * - RETURN and DELETE (a point): whoever works in its dossier with the right on its settings
  *   (DossierRightVoter::SETTINGS: in a group's dossier, the chef comptable or a member without a
  *   profile; the student of their own dossier; its teachers) - a return undoes everybody's work.
+ *   The « État de départ » a distribution posed is deleted by a teacher only: the reset reads it.
  *
  * Reading the list is DossierVoter::VIEW, asked by the dossier's route. A restore point is never
  * itself a dossier one poses points on.
@@ -47,6 +49,13 @@ final class RestorePointVoter extends Voter
         if (DossierKind::Snapshot === $dossier->getKind()
             || VoterInterface::ACCESS_GRANTED !== $this->dossiers->vote($token, $dossier, [DossierVoter::EDIT])) {
             return false;
+        }
+
+        if (self::DELETE === $attribute && $subject instanceof RestorePoint && !$subject->getOrigin()->countsAgainstLimit()) {
+            $user = $token->getUser();
+            if (!$user instanceof User || !$user->isTeacher()) {
+                return false;
+            }
         }
 
         return self::POSE === $attribute

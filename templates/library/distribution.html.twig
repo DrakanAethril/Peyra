@@ -1,0 +1,85 @@
+{#
+ # A distribution's progress page (design-ux.md § 4.2, step 3): the global bar and one line per
+ # dossier - en attente, en copie, prêt, en échec with « Relancer » -, redrawn live (the
+ # distribution's private topic) and asked again every two seconds while copies are pending; the
+ # date of all its dossiers in one gesture; « Retirer la distribution ». The copies go on when the
+ # page is left.
+ #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'distributions' %}
+{% set library_title = distribution.title %}
+{% set page_url = path('app_library_distribution', {id: distribution.id}) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ distribution.title }} · {{ distribution.schoolClass.label }}" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Distribution', href: path('app_library_distributions')},
+        {label: distribution.title, href: page_url},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button variant="quiet" href="{{ path('app_library_distribution_withdraw', {id: distribution.id}) }}" icon="trash-2">Retirer la distribution</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% set live_url = distribution_live_url(distribution) %}
+    {% if live_url %}<div hidden data-controller="dossier-live" data-dossier-live-url-value="{{ live_url }}"></div>{% endif %}
+
+    <turbo-frame id="distribution-progress" target="_top">
+        <div hidden data-controller="live-frame" data-live-frame-frame-value="distribution-progress" data-live-frame-events-value="{{ ['progress']|json_encode }}" data-live-frame-poll-value="{{ progress.running ? 2000 : 0 }}"></div>
+        <twig:Px:Card title="{{ progress.sentence }}" meta="{{ distribution.mode.label|lower }} · date de départ {{ distribution.startDate|date('d/m/Y') }}">
+            <progress class="px-distribution-bar" max="100" value="{{ progress.percent }}" aria-label="Dossiers faits">{{ progress.percent }} %</progress>
+            {% if progress.running %}<p class="px-u-muted">Vous pouvez quitter cette page : les copies continuent.</p>{% endif %}
+        </twig:Px:Card>
+
+        <twig:Px:Card :flush="true" title="Dossiers" meta="{{ copies|length }}">
+            <twig:Px:Table caption="Les dossiers de la distribution et où en est chacun" :rows="true">
+                <thead><tr>
+                    <th scope="col">{{ distribution.mode.value == 'group' ? 'Groupe' : 'Étudiant' }}</th>
+                    <th scope="col">État</th>
+                    <th scope="col">Date du dossier</th>
+                    <th scope="col"><span class="px-u-sr-only">Actions</span></th>
+                </tr></thead>
+                <tbody>
+                    {% for copy in copies %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-fill">
+                                {% if copy.student %}{{ copy.student.sortName }}{% else %}
+                                    {{ copy.groupName }} <span class="px-u-muted">· {% for member in copy.members %}{{ members[member.student] is defined ? members[member.student].displayName : '?' }}{% if member.profile %} ({{ member.profile.label|lower }}){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+                                {% endif %}
+                            </td>
+                            <td>{% if copy.state.value == 'failed' %}<twig:Px:Badge :of="copy.state" full="En échec : {{ copy.failure }}"/>{% else %}<twig:Px:Badge :of="copy.state"/>{% endif %}</td>
+                            <td class="px-u-code">{{ copy.dossier ? copy.dossier.dossierDate|date('d/m/Y') : '—' }}</td>
+                            <td class="px-u-right px-u-nowrap">
+                                {% if copy.dossier %}
+                                    <twig:Px:Button size="sm" icon="folder-open" href="{{ path('app_dossier_dashboard', {dossier: copy.dossier.id}) }}">Ouvrir</twig:Px:Button>
+                                {% elseif copy.state.value == 'failed' %}
+                                    <form method="post" action="{{ path('app_library_distribution_retry', {id: distribution.id, copy: copy.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('distribution-' ~ distribution.id) }}">
+                                        <twig:Px:Button type="submit" size="sm" icon="rotate-cw">Relancer</twig:Px:Button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+    </turbo-frame>
+
+    {% if progress.ready > 0 %}
+        <twig:Px:Card title="Date des dossiers" meta="tous les dossiers prêts de la distribution">
+            <form method="post" action="{{ path('app_library_distribution_date', {id: distribution.id}) }}" class="px-restore-pose">
+                <input type="hidden" name="_token" value="{{ csrf_token('distribution-' ~ distribution.id) }}">
+                <twig:Px:Field id="date" label="Nouvelle date" hint="Chaque dossier garde l’historique de sa date ; les étudiants voient la puce clignoter à leur prochaine visite.">
+                    <twig:Px:DateInput id="date" :reference="dossier_date" :value="dossier_date" :hint="true"/>
+                </twig:Px:Field>
+                <twig:Px:Button type="submit" icon="calendar">Dater les dossiers</twig:Px:Button>
+            </form>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>{{ distribution.schoolClass.label }}</span><span>{{ progress.sentence }}</span>{% endblock %}

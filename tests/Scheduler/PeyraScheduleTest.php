@@ -18,7 +18,7 @@ use Symfony\Component\Scheduler\Generator\MessageContext;
 final class PeyraScheduleTest extends TestCase
 {
     /** Each scheduled command, as `messenger:consume scheduler_default` will run it. */
-    private const array EXPECTED = ['app:restore-points:advance'];
+    private const array EXPECTED = ['app:restore-points:advance', 'app:distribution:advance'];
 
     public function testTheScheduleRunsExactlyTheseCommands(): void
     {

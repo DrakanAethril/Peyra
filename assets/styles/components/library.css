@@ -53,3 +53,32 @@
         }
     }
 }
+
+/*
+ * Bibliothèque › Distribution: the global bar of a distribution's progress page (design-ux.md
+ * § 4.2), a native <progress> in the action blue.
+ */
+@layer px.components {
+    .px-distribution-bar {
+        display: block;
+        inline-size: 100%;
+        block-size: 8px;
+        border: 0;
+        border-radius: var(--px-radius-pill);
+        background: var(--px-surface-sunken);
+        accent-color: var(--px-action);
+        overflow: hidden;
+
+        &::-webkit-progress-bar {
+            background: var(--px-surface-sunken);
+        }
+
+        &::-webkit-progress-value {
+            background: var(--px-action);
+        }
+
+        &::-moz-progress-bar {
+            background: var(--px-action);
+        }
+    }
+}
