@@ -7,6 +7,7 @@ namespace App\Service\Payroll\Engine;
 use App\Enum\Payroll\PayrollItemKind;
 use App\Enum\Payroll\PayslipLine;
 use App\Enum\Payroll\PayslipUnit;
+use App\Service\Payroll\Plan\PayrollItemSpec;
 use App\Service\Shared\Money;
 use Brick\Math\BigDecimal;
 
@@ -17,9 +18,12 @@ use Brick\Math\BigDecimal;
  * employer's share, each rounded to the cent on its own, negative for a reduction - and the line of
  * the clarified payslip it is summed under. An apprentice's employee share stands on a smaller base than
  * the employer's (step 4.3e): `employeeBase` says which; null, the employee's base is the line's.
+ * Step 4.4b: the cells forced by hand (`forced`, among PayslipForcing::FIELDS) and whether the rubrique
+ * was added by hand (`added`).
  */
 final readonly class PayslipRow
 {
+    /** @param list<string> $forced */
     public function __construct(
         public string $code,
         public string $label,
@@ -35,7 +39,27 @@ final readonly class PayslipRow
         public ?Money $employerAmount = null,
         public ?PayslipLine $line = null,
         public ?BigDecimal $employeeBase = null,
+        public array $forced = [],
+        public bool $added = false,
     ) {
+    }
+
+    /** Whether that cell of the line (PayslipForcing::FIELDS) was forced by hand (step 4.4b). */
+    public function isForced(string $field): bool
+    {
+        return \in_array($field, $this->forced, true);
+    }
+
+    /** A rubrique added by hand that had nothing to calculate this month: a line with nothing on it, its amounts to force. */
+    public static function empty(PayrollItemSpec $spec): self
+    {
+        $contribution = PayrollItemKind::Contribution === $spec->kind;
+
+        return new self($spec->code, $spec->label, $spec->kind, null, null, null, null, Money::zero(), new PayslipExplanation(
+            'Rubrique ajoutée à la main : rien à calculer pour ce mois.',
+            'Sans base calculée : saisissez le montant sur la ligne.',
+            'Sans taux.',
+        ), null, null, $contribution ? Money::zero() : null, $spec->line, null, [], true);
     }
 
     /** The base the employee's share was calculated on. */

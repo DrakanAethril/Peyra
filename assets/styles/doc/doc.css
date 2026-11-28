@@ -294,3 +294,99 @@
         display: none;
     }
 }
+
+/*
+ * The payslip, clarified model (design-ui.md § 4.18): employer and employee side by side, the band
+ * of the period, a compact table (lines of 5 mm, 8 pt), four cases of the same width - the net paid
+ * framed at 0.75 pt, 12 pt -, the year to date, the mentions. « Duplicata » above it when reprinted.
+ */
+.px-doc--payslip .px-doc__parties {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6mm;
+    margin-bottom: 3mm;
+    font-size: 8pt;
+    line-height: 1.4;
+}
+
+.px-doc--payslip .px-doc__party-name {
+    font-family: var(--doc-serif);
+    font-size: 12pt;
+    font-weight: 600;
+}
+
+.px-doc--payslip .px-doc__band {
+    margin-bottom: 2mm;
+    padding: 1.5mm 2mm;
+    background: var(--doc-head);
+    border-top: 0.5pt solid var(--doc-rule);
+    border-bottom: 0.5pt solid var(--doc-rule);
+    font-size: 9pt;
+    font-weight: 600;
+}
+
+.px-doc--payslip .px-doc__duplicate {
+    margin-bottom: 2mm;
+    font-size: 10pt;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-align: right;
+    text-transform: uppercase;
+}
+
+.px-doc__table--payslip td,
+.px-doc__table--payslip th {
+    height: 5mm;
+    font-size: 8pt;
+}
+
+.px-doc__table--payslip thead th,
+.px-doc__table--payslip thead th.px-doc__num {
+    font-size: 7pt;
+    white-space: normal;
+    vertical-align: bottom;
+}
+
+.px-doc__cases {
+    width: 100%;
+    margin-top: 4mm;
+    border-collapse: separate;
+    border-spacing: 2mm 0;
+    table-layout: fixed;
+    break-inside: avoid;
+}
+
+.px-doc__cases td {
+    padding: 2mm;
+    vertical-align: top;
+    border: 0.5pt solid var(--doc-rule);
+}
+
+.px-doc__cases span,
+.px-doc__cases small {
+    display: block;
+    color: var(--doc-muted);
+    font-size: 7.5pt;
+}
+
+.px-doc__cases b {
+    display: block;
+    margin: 1mm 0;
+    font-family: var(--doc-mono);
+    font-size: 10pt;
+    text-align: right;
+}
+
+.px-doc__cases .px-doc__case--net {
+    border-width: 0.75pt;
+    border-color: var(--doc-ink);
+}
+
+.px-doc__cases .px-doc__case--net b {
+    font-size: 12pt;
+    font-weight: 600;
+}
+
+.px-doc__table--year {
+    margin-top: 4mm;
+}

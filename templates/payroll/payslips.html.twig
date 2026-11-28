@@ -1,31 +1,62 @@
 {#
- # Paie et social › Bulletins (step 4.4a, gabarit L; design-ux.md § 4.7): the month paid - the
- # dossier's date's -, one payslip per employee under contract that month and where it stands.
- # Entrée opens the first one « À faire »; a line opens its payslip.
+ # Paie et social › Bulletins (steps 4.4a and 4.4b, gabarit L; design-ux.md § 4.7): the month paid -
+ # the one after the last closed, else the dossier's date's -, one payslip per employee under contract
+ # that month and where it stands. Entrée opens the first one « À faire »; a line opens its payslip.
+ # « Clore le mois » (confirmation bar, its controls above it) once every payslip is validated; a
+ # teacher reopens the last month closed.
  #}
 {% extends 'payroll/_layout.html.twig' %}
 
 {% set payroll_tab = 'payslips' %}
 {% set dossier_title = 'Bulletins' %}
+{% set can_enter = is_granted('PAYROLL_ENTER', dossier) %}
+{% set can_close = can_enter and closing_refusals is empty %}
 {% set status_keys = first_to_do ? [{combo: 'Enter', verb: 'ouvrir le bulletin'}, {combo: 'ArrowUp', verb: 'ligne précédente'}, {combo: 'ArrowDown', verb: 'ligne suivante'}] : [] %}
 
 {% block page_head %}
-    <twig:Px:PageHead title="Bulletins de {{ month|period }}" :trail="[
+    <twig:Px:PageHead title="Bulletins {{ month|of_period }}" :trail="[
         {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
         {label: 'Bulletins', href: path('app_payroll_payslips', {dossier: dossier.id})},
     ]">
         <twig:block name="actions">
-            {% if first_to_do %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: first_to_do.registrationNumber}) }}" variant="primary">Ouvrir le bulletin</twig:Px:Button>{% endif %}
+            <div class="px-entry-confirmable" data-controller="confirm-bar">
+                <div class="px-entry-actions" data-confirm-bar-target="actions">
+                    {% if can_reopen and last_closed %}
+                        <form method="post" action="{{ path('app_payroll_payslips_reopen', {dossier: dossier.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('payroll-reopen-' ~ dossier.id) }}">
+                            <twig:Px:Button type="submit" variant="quiet" icon="lock-open">Rouvrir {{ last_closed.month|period }}</twig:Px:Button>
+                        </form>
+                    {% endif %}
+                    {% if first_to_do %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: first_to_do.registrationNumber}) }}" :variant="can_close ? 'secondary' : 'primary'">Ouvrir le bulletin</twig:Px:Button>{% endif %}
+                    {% if can_close %}<twig:Px:Button variant="primary" shortcut="Ctrl+Enter" data-action="confirm-bar#open">Clore le mois</twig:Px:Button>{% endif %}
+                </div>
+                {% if can_close %}
+                    <form class="px-confirmbar" method="post" action="{{ path('app_payroll_payslips_close', {dossier: dossier.id}) }}" role="alertdialog" aria-labelledby="payroll-close-text" hidden data-confirm-bar-target="bar" data-action="keydown->confirm-bar#keydown">
+                        <input type="hidden" name="_token" value="{{ csrf_token('payroll-close-' ~ dossier.id) }}">
+                        <p id="payroll-close-text">Clore la paie {{ month|of_period }} ? Les bulletins ne pourront plus être annulés sans rouvrir le mois.</p>
+                        <twig:Px:Button variant="quiet" data-action="confirm-bar#close">Annuler</twig:Px:Button>
+                        <twig:Px:Button type="submit" variant="primary" data-confirm-bar-target="confirm">Clore le mois</twig:Px:Button>
+                    </form>
+                {% endif %}
+            </div>
         </twig:block>
     </twig:Px:PageHead>
 {% endblock %}
 
 {% block page %}
+    {% for message in app.flashes('payslip_fault') %}<twig:Px:Alert tone="danger">{{ message }}</twig:Px:Alert>{% endfor %}
+    {% if employee_rows is not empty %}
+        {% if closing_refusals is empty %}
+            <twig:Px:Alert tone="success">Tous les bulletins {{ month|of_period }} sont validés : le mois peut être clos. Les cumuls de l’année se lisent sur les bulletins validés, et {{ month|date_modify('first day of next month')|period }} s’ouvre.</twig:Px:Alert>
+        {% else %}
+            <twig:Px:Alert tone="info">{{ month|period|capitalize }} se clôt quand tous ses bulletins sont validés : {{ closing_refusals|length }} {{ closing_refusals|length > 1 ? 'restent' : 'reste' }} à valider.</twig:Px:Alert>
+        {% endif %}
+    {% endif %}
     <twig:Px:Card :flush="true">
         {% if employee_rows is empty %}
             <twig:Px:Empty icon="users" title="Aucun salarié dans ce dossier." text="Aucun contrat ne couvre {{ month|period }} : le bulletin d’un salarié se prépare dès que sa fiche le met sous contrat dans le mois."/>
         {% else %}
-            <twig:Px:Table caption="Bulletins de {{ month|period }}" :rows="true">
+            <twig:Px:Table caption="Bulletins {{ month|of_period }}" :rows="true">
                 <thead>
                     <tr>
                         <th scope="col">Matricule</th>
@@ -54,4 +85,4 @@
     </twig:Px:Card>
 {% endblock %}
 
-{% block facts %}<span>Mois de paie · <b>{{ month|period }}</b></span><span>Bulletins · <b>{{ employee_rows|length }}</b></span>{% endblock %}
+{% block facts %}<span>Mois de paie · <b>{{ month|period }}</b></span><span>Bulletins · <b>{{ employee_rows|length }}</b></span>{% if last_closed %}<span>Dernier mois clos · <b>{{ last_closed.month|period }}</b> le {{ last_closed.closedOn|date_fr }}</span>{% endif %}{% endblock %}

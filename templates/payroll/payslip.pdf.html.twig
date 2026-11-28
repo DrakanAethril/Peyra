@@ -1,0 +1,96 @@
+{#
+ # The payslip on paper (step 4.4b; design-ui.md § 4.18, maquette 4), the clarified model (arrêté du
+ # 25 février 2016): the employer and the employee side by side, the period and the payment, the
+ # elements of gross pay, the contributions grouped by line of the clarified model under its sections
+ # (PayslipPrintLines), the items not subject and the deductions, then four cases - net social, net
+ # before tax, the tax withheld (its base and rate), the net paid -, the year to date and the
+ # employer's cost, the mentions. Read from the frozen payslip alone; a payslip sent once prints as a
+ # duplicata.
+ #}
+{% extends 'doc/_document.html.twig' %}
+
+{% block title %}{{ duplicate ? 'Duplicata · ' : '' }}Bulletin de paie · {{ employee.fullName }} · {{ month|period }}{% endblock %}
+{% block page_style %}<style>@page { size: A4 portrait; margin: 12mm 12mm 16mm; }</style>{% endblock %}
+
+{% macro line(line) %}
+    <tr>
+        <td>{{ line.label }}</td>
+        <td class="px-doc__num">{{ line.base is null ? '' : (line.baseUnit ? line.baseUnit.format(line.base) : line.base) }}</td>
+        <td class="px-doc__num">{{ line.employeeRate is null ? '' : (line.employeeRateUnit ? line.employeeRateUnit.format(line.employeeRate) : line.employeeRate) }}</td>
+        <td class="px-doc__num">{{ line.employeeAmount is null ? '' : line.employeeAmount|amount }}</td>
+        <td class="px-doc__num">{{ line.employerRate is null ? '' : (line.employerRateUnit ? line.employerRateUnit.format(line.employerRate) : line.employerRate) }}</td>
+        <td class="px-doc__num">{{ line.employerAmount is null ? '' : line.employerAmount|amount }}</td>
+    </tr>
+{% endmacro %}
+
+{% block body %}
+    {% set totals = result.totals %}
+    <article class="px-doc px-doc--payslip">
+        {% if duplicate %}<p class="px-doc__duplicate">Duplicata</p>{% endif %}
+        <header class="px-doc__parties">
+            <div>
+                <p class="px-doc__party-name">{{ company.name }}</p>
+                <p>{{ company.street }}{% if company.street2 %}, {{ company.street2 }}{% endif %}, {{ company.postalCode }} {{ company.city }}</p>
+                <p>SIRET {{ company.siret }}{% if company.nafCode %} · APE {{ company.nafCode }}{% endif %}</p>
+                <p>Cotisations versées à l’Urssaf · convention collective : aucune</p>
+            </div>
+            <div>
+                <p class="px-doc__party-name">{{ employee.fullName }}</p>
+                <p>Matricule {{ employee.registrationNumber }} · {{ terms.jobTitle }}</p>
+                <p>{{ terms.statusLabel }}{% if terms.classification %} · {{ terms.classification }}{% endif %}</p>
+                <p>Entré{{ employee.sex.value == 'F' ? 'e' : '' }} le {{ employee.hiredOn|date_fr }}{% if employee.nir %} · n° de sécurité sociale {{ nir }}{% endif %}</p>
+            </div>
+        </header>
+        <p class="px-doc__band">Bulletin de paie · du 1er au {{ pay_day|date('j') }} {{ month|period }} · paiement le {{ pay_day|date_fr }} par virement</p>
+
+        <table class="px-doc__table px-doc__table--payslip">
+            <colgroup><col><col style="width: 24mm"><col style="width: 20mm"><col style="width: 22mm"><col style="width: 20mm"><col style="width: 22mm"></colgroup>
+            <thead>
+                <tr>
+                    <th scope="col">Rubrique</th>
+                    <th scope="col" class="px-doc__num">Base</th>
+                    <th scope="col" class="px-doc__num">Taux salarié</th>
+                    <th scope="col" class="px-doc__num">Part salarié</th>
+                    <th scope="col" class="px-doc__num">Taux employeur</th>
+                    <th scope="col" class="px-doc__num">Part employeur</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in lines.gross %}{{ _self.line(line) }}{% endfor %}
+                <tr class="px-doc__subtotal"><th scope="row">Salaire brut</th><td></td><td></td><td class="px-doc__num">{{ result.gross|amount }}</td><td></td><td></td></tr>
+                {% for block in lines.contributions %}
+                    <tr class="px-doc__group"><th scope="rowgroup" colspan="6">{{ block.heading }}</th></tr>
+                    {% for line in block.lines %}{{ _self.line(line) }}{% endfor %}
+                {% endfor %}
+                <tr class="px-doc__subtotal"><th scope="row">Total des cotisations et contributions</th><td></td><td></td><td class="px-doc__num">{{ totals.employeeContributions|amount }}</td><td></td><td class="px-doc__num">{{ totals.employerContributions|amount }}</td></tr>
+                {% for block in lines.after %}
+                    <tr class="px-doc__group"><th scope="rowgroup" colspan="6">{{ block.heading }}</th></tr>
+                    {% for line in block.lines %}{{ _self.line(line) }}{% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <table class="px-doc__cases">
+            <tr>
+                <td><span>Montant net social</span><b>{{ totals.netSocial|amount }}</b></td>
+                <td><span>Net à payer avant impôt sur le revenu</span><b>{{ totals.netBeforeTax|amount }}</b></td>
+                <td><span>Impôt sur le revenu prélevé à la source</span><b>{{ totals.withholdingTax|amount }}</b><small>base {{ totals.netTaxable|amount }} · taux {{ totals.withholdingRate|percent }}{{ totals.neutralRate ? ' (non personnalisé)' : '' }}</small></td>
+                <td class="px-doc__case--net"><span>Net à payer</span><b>{{ totals.netPay|amount }}</b></td>
+            </tr>
+        </table>
+
+        <table class="px-doc__table px-doc__table--year">
+            <thead>
+                <tr><th scope="col"></th><th scope="col" class="px-doc__num">Salaire brut</th><th scope="col" class="px-doc__num">Net imposable</th><th scope="col" class="px-doc__num">Coût employeur</th></tr>
+            </thead>
+            <tbody>
+                <tr><th scope="row">Mois</th><td class="px-doc__num">{{ result.gross|amount }}</td><td class="px-doc__num">{{ totals.netTaxable|amount }}</td><td class="px-doc__num">{{ totals.employerCost|amount }}</td></tr>
+                <tr><th scope="row">Cumul de l’année</th><td class="px-doc__num">{{ result.yearToDate.gross|amount }}</td><td class="px-doc__num">{{ result.yearToDate.netTaxable|amount }}</td><td></td></tr>
+            </tbody>
+        </table>
+
+        <p class="px-doc__legal">Total versé par l’employeur (coût employeur) : {{ totals.employerCost|amount }} €{% if result.generalReduction %}, dont allègement de cotisations {{ result.generalReduction.amount|amount }} €{% endif %}. Bulletin validé le {{ payslip.validatedOn|date_fr }}{% if duplicate %}, envoyé au salarié le {{ payslip.sentOn|date_fr }}{% endif %}.</p>
+        <p class="px-doc__legal">Dans votre intérêt et pour vous aider à faire valoir vos droits, conservez ce bulletin de paie sans limitation de durée. Pour en savoir plus sur le montant net social : mesdroitssociaux.gouv.fr.</p>
+        <p class="px-doc__legal">Document fictif établi par Peyra, PGI pédagogique, pour un dossier d’entraînement : la société et le salarié sont inventés.</p>
+    </article>
+{% endblock %}

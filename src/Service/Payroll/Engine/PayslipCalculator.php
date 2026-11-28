@@ -42,6 +42,9 @@ use Brick\Math\RoundingMode;
  *   compensatory paid leave indemnity (the paid leave's rule on the days left, its tenth on a reference
  *   that includes the month and that indemnity); among the items not subject, the dismissal or conventional
  *   termination indemnity (PayslipSeverance).
+ * - step 4.4b: what was changed by hand (PayslipAdjustments) - a rubrique removed is not read, one
+ *   added is read whatever its condition of status, a value forced replaces the calculated one and what
+ *   follows it is calculated from it.
  */
 final class PayslipCalculator
 {
@@ -50,20 +53,23 @@ final class PayslipCalculator
         $ordered = self::ordered($input->plan);
         $rows = [];
         $closing = [];
+        $adjustments = $input->adjustments;
+        $taken = [];
         foreach ($ordered as $spec) {
-            if (PayrollItemKind::Gross !== $spec->kind || !$spec->status->holds($input->employee->executive)) {
+            if (PayrollItemKind::Gross !== $spec->kind || !$adjustments->takes($spec, $input->employee->executive)) {
                 continue;
             }
             if (PayrollBase::FixedTermEnd === $spec->base || PayrollBase::LeaveCompensation === $spec->base) {
                 $closing[] = $spec;
                 continue;
             }
+            $taken[] = $spec;
             $row = self::grossRow($spec, $input);
             if (null !== $row) {
                 $rows[] = $row;
             }
         }
-        $rows = PayslipPresence::capped($input->plan, $rows);
+        $rows = self::adjusted($taken, PayslipPresence::capped($input->plan, $rows), $adjustments);
         // The end of the contract reads the month's gross pay: the fixed-term indemnity first, the
         // compensatory leave last (its tenth counts that indemnity).
         foreach ([PayrollBase::FixedTermEnd, PayrollBase::LeaveCompensation] as $base) {
@@ -72,7 +78,7 @@ final class PayslipCalculator
                     continue;
                 }
                 $soFar = Money::sum(array_map(static fn (PayslipRow $row): Money => $row->employeeAmount, $rows));
-                $row = PayrollBase::FixedTermEnd === $base ? self::fixedTermRow($spec, $input, $soFar) : self::compensatoryLeaveRow($spec, $input, $soFar);
+                $row = $adjustments->apply($spec, PayrollBase::FixedTermEnd === $base ? self::fixedTermRow($spec, $input, $soFar) : self::compensatoryLeaveRow($spec, $input, $soFar));
                 if (null !== $row) {
                     $rows[] = $row;
                 }
@@ -83,8 +89,8 @@ final class PayslipCalculator
         $contributions = PayslipContributions::calculate($input, $ordered, $rows, $gross);
         $notSubject = [];
         foreach ($ordered as $spec) {
-            if (PayrollItemKind::NotSubject === $spec->kind && $spec->status->holds($input->employee->executive)) {
-                $row = self::grossRow($spec, $input);
+            if (PayrollItemKind::NotSubject === $spec->kind && $adjustments->takes($spec, $input->employee->executive)) {
+                $row = $adjustments->apply($spec, self::grossRow($spec, $input));
                 if (null !== $row) {
                     $notSubject[] = $row;
                 }
@@ -107,6 +113,35 @@ final class PayslipCalculator
         usort($plan, static fn (PayrollItemSpec $a, PayrollItemSpec $b): int => [$families[$a->kind->value], $a->sortOrder, $a->code] <=> [$families[$b->kind->value], $b->sortOrder, $b->code]);
 
         return $plan;
+    }
+
+    /**
+     * The gross rows once adjusted by hand (step 4.4b), after the absences were capped: what is forced
+     * is what the payslip pays.
+     *
+     * @param list<PayrollItemSpec> $taken the rubriques of gross pay the payslip takes, in the plan's order
+     * @param list<PayslipRow>      $rows
+     *
+     * @return list<PayslipRow>
+     */
+    private static function adjusted(array $taken, array $rows, PayslipAdjustments $adjustments): array
+    {
+        if ($adjustments->isEmpty()) {
+            return $rows;
+        }
+        $byCode = [];
+        foreach ($rows as $row) {
+            $byCode[$row->code] = $row;
+        }
+        $adjusted = [];
+        foreach ($taken as $spec) {
+            $row = $adjustments->apply($spec, $byCode[$spec->code] ?? null);
+            if (null !== $row) {
+                $adjusted[] = $row;
+            }
+        }
+
+        return $adjusted;
     }
 
     /**

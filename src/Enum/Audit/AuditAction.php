@@ -182,6 +182,18 @@ enum AuditAction: string
 
     case EmployeeExitCancelled = 'payroll.employee_exit_cancelled';
 
+    /** A payslip validated (frozen), its validation cancelled, or sent to the employee - simulated (step 4.4b). */
+    case PayslipValidated = 'payroll.payslip_validated';
+
+    case PayslipCancelled = 'payroll.payslip_cancelled';
+
+    case PayslipSent = 'payroll.payslip_sent';
+
+    /** A month of pay closed, or reopened by a teacher (step 4.4b). */
+    case PayrollMonthClosed = 'payroll.month_closed';
+
+    case PayrollMonthReopened = 'payroll.month_reopened';
+
     /** A pièce deposited into the dossier, or its read data changed (step 2.1a). */
     case DocumentDeposited = 'document.deposited';
 
@@ -294,6 +306,11 @@ enum AuditAction: string
             self::EmployeeDeleted => 'Salarié supprimé',
             self::EmployeeExitRecorded => 'Sortie de salarié enregistrée',
             self::EmployeeExitCancelled => 'Sortie de salarié annulée',
+            self::PayslipValidated => 'Bulletin de paie validé',
+            self::PayslipCancelled => 'Validation d’un bulletin de paie annulée',
+            self::PayslipSent => 'Bulletin de paie envoyé au salarié',
+            self::PayrollMonthClosed => 'Mois de paie clos',
+            self::PayrollMonthReopened => 'Mois de paie rouvert',
             self::DocumentDeposited => 'Pièce déposée',
             self::DocumentReadingChanged => 'Données lues d’une pièce modifiées',
             self::DocumentGenerated => 'Pièce générée',

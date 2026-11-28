@@ -199,6 +199,8 @@ Gotchas met while building it:
   sourcing it, and a script written to be sourced dies with « bad interpreter ».
 - Until the first migration exists, `doctrine:migrations:migrate` fails without
   `--allow-no-migration`; CI passes it, and it is a no-op afterwards.
+- **Migrations born on two tracks**: a migration is named after the last one in `staging` *at merge time* (recheck after merging `origin/staging`; `MigrationOrderTest`).
+  A renamed migration already played is never replayed: dev and test run `doctrine:migrations:version 'DoctrineMigrations\Version<new>' --add -n`, then `… Version<old> --delete -n`, then `doctrine:migrations:status` (New: 0).
 - The development worker reloads on a changed file under `src/`, `templates/` or `config/`, but not
   in a **directory created after `php` started**: its PHP keeps the old code (a new controller
   answers with the previous one, a template gets variables it no longer expects). `docker compose
@@ -1269,6 +1271,13 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   reading. `PayslipBook` is the one door (month paid, employees of the month, engine input on the month's last
   day, `record()`); the card's fields come from the plan (`PayslipElementFields`, by base, never by code). In a
   payroll template never name a variable `view`: the shell's `DossierShellView` already is.
+- **Changed by hand, validated, closed** (step 4.4b): what is changed on a payslip is `PayslipAdjustments`
+  (removed, added, `PayslipForcing` per code), an **engine input** applied where each line is made so that
+  what follows reads the forced value; the general reduction is never forced. `PayslipLineCells` is the grid
+  (open cells, typed vs shown, `removable()`). Validated, a payslip is **frozen** (`PayslipSnapshot`, the whole
+  Payslip in JSON) and only that is read again; the year to date is the sum of the validated payslips' month
+  figures. The month paid is the one after the last `PayrollMonthClosure`, else the dossier's date's. The
+  « de / d’ » before a month is `of_period` (`FrenchFormat::ofPeriod()`).
 
 ## Cross-cutting building blocks (built at step 0.6a)
 
