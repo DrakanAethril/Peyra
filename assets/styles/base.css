@@ -134,10 +134,18 @@
         max-width: 14rem;
     }
 
-    /* The table cell that takes the room left, and is cut there (with px-u-truncate): a label column. */
+    /*
+     * The table cell that takes the room left, and is cut there (with px-u-truncate): a label column.
+     * Cut, it keeps 10rem whatever its neighbours take - a table wider than its container scrolls
+     * rather than squeeze the label to its ellipsis; a label that wraps keeps its longest word.
+     */
     .px-u-fill {
         width: 100%;
         max-width: 0;
+
+        &.px-u-truncate {
+            min-width: 10rem;
+        }
     }
 
     .px-u-nowrap {
