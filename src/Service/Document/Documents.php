@@ -77,6 +77,27 @@ final readonly class Documents
     }
 
     /**
+     * The same pièce arriving a second time (a « doublon » the teacher slips in, step 2.2b): a copy
+     * of its file under a key of its own, its nature and name, the day it arrived, what the
+     * generator made it from; its read data are left to the caller. The caller flushes.
+     */
+    public function secondArrival(Document $first, User $actor): Document
+    {
+        $dossier = $first->getDossier();
+        $extension = pathinfo($first->getFileKey(), \PATHINFO_EXTENSION);
+        $key = $this->files->storeContents((int) $dossier->getId(), self::CATEGORY, '' === $extension ? 'pdf' : $extension, $this->files->read((int) $dossier->getId(), $first->getFileKey()));
+        $second = new Document($dossier, $first->getType(), $key, $first->getFileName(), $first->getMediaType(), $first->getReceivedOn(), $actor);
+        $generation = $first->getGeneration();
+        if (null !== $generation) {
+            $second->generatedFrom(['copy' => 2] + $generation);
+        }
+        $second->markDuplicateOf($first);
+        $this->entityManager->persist($second);
+
+        return $second;
+    }
+
+    /**
      * Checks the read data and writes them; false (the reading's errors set) when refused.
      */
     public function saveReading(Document $document, DocumentReading $reading, User $actor): bool

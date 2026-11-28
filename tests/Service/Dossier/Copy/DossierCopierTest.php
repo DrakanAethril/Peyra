@@ -83,12 +83,15 @@ final class DossierCopierTest extends KernelTestCase
         });
         self::getContainer()->get(DossierDates::class)->move($this->source, new \DateTimeImmutable('2026-02-28'), $this->teacher, $at);
         $entityManager->flush();
-        // A pièce: a row of its own and a file whose key the copy rewrites.
+        // A pièce: a row of its own and a file whose key the copy rewrites; and its doublon, which names it.
         $path = tempnam(sys_get_temp_dir(), 'piece');
         \assert(\is_string($path));
         file_put_contents($path, "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n");
         self::getContainer()->get(DossierContext::class)->within($this->source, function () use ($entityManager, $path): void {
-            self::getContainer()->get(Documents::class)->deposit($this->source, new UploadedFile($path, 'FA-2603-0112.pdf', null, null, true), DocumentType::PurchaseInvoice, $this->teacher);
+            $documents = self::getContainer()->get(Documents::class);
+            $first = $documents->deposit($this->source, new UploadedFile($path, 'FA-2603-0112.pdf', null, null, true), DocumentType::PurchaseInvoice, $this->teacher);
+            $entityManager->flush();
+            $documents->secondArrival($first, $this->teacher);
             $entityManager->flush();
         });
     }
@@ -102,12 +105,12 @@ final class DossierCopierTest extends KernelTestCase
         $export = $this->export();
         self::assertSame($export->of($this->source), $export->of($copy));
         self::assertSame(1, $report->rowsOf('pending_entry'));
-        self::assertSame(1, $report->files);
+        self::assertSame(2, $report->files, 'The pièce’s file and its doublon’s.');
         self::assertSame($this->source->getCompany()->getSiret(), $copy->getCompany()->getSiret());
         self::assertSame('pcg-2026', $copy->getChartCode());
-        // Its file, under its own prefix.
+        // Their files, under its own prefix.
         $files = self::getContainer()->get(DossierFiles::class);
-        self::assertSame(1, $files->deleteAll((int) $copy->getId()));
+        self::assertSame(2, $files->deleteAll((int) $copy->getId()));
     }
 
     public function testATemplateCopyLeavesThePendingWorkBehind(): void

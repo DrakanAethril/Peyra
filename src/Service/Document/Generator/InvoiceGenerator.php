@@ -89,6 +89,9 @@ final readonly class InvoiceGenerator
         $made = [];
         for ($copy = 1; $copy <= $copies; ++$copy) {
             $document = $this->documents->generated($dossier, $pdf, $invoice->fileName(), $invoice->supplier, $invoice->printed, $invoice->operation->toArray() + ['copy' => $copy], $actor);
+            if ([] !== $made) {
+                $document->markDuplicateOf($made[0]); // The doublon's second arrival, as « mode préparation » shows it (step 2.2b).
+            }
             $this->processing->arrived($document, $actor);
             $made[] = $document;
         }

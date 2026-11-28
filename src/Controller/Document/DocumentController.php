@@ -24,6 +24,7 @@ use App\Service\Accounting\Entry\PendingEntries;
 use App\Service\Document\DocumentReading;
 use App\Service\Document\Documents;
 use App\Service\Document\PieceAnomaly;
+use App\Service\Document\Preparation\PiecePreparation;
 use App\Service\Document\Processing\PieceProcessing;
 use App\Service\Document\Processing\PieceProposal;
 use App\Service\Shared\PostValue;
@@ -47,7 +48,8 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * entry, the pièce stays « en cours ». « Reprendre l'écriture depuis les données lues » makes the
  * proposal again; « Signaler une anomalie » keeps one, and may reject the pièce. Whoever may change
  * the dossier works an open pièce. Its file is served here, inline or as a download, to whoever
- * opens the dossier: the storage is private.
+ * opens the dossier: the storage is private. In a template, the pièce opens « mode préparation »
+ * (step 2.2b): this sheet is then what the student will receive.
  */
 #[Route('/d/{dossier}/documents', requirements: ['dossier' => '\d+'])]
 final class DocumentController extends AbstractController
@@ -111,6 +113,7 @@ final class DocumentController extends AbstractController
             'document' => $document,
             'reading' => $reading,
             'can_edit' => $canEdit,
+            'can_prepare' => $canEdit && PiecePreparation::isPreparable($document),
             'behaviour' => $behaviour,
             'entry_form' => $canEdit ? $this->withSpareLines($entry ?? $this->blankEntry($document, $proposal)) : null,
             'proposed' => $canEdit && AccountingBehaviour::LetEnter !== $behaviour && null !== $proposal && !$request->isMethod('POST'),

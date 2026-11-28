@@ -23,6 +23,9 @@
     ]">
         <twig:block name="badge"> <twig:Px:Badge :of="document.state"/></twig:block>
         <twig:block name="actions">
+            {% if can_prepare %}
+                <twig:Px:Button href="{{ path('app_document_prepare', {dossier: dossier.id, id: document.id}) }}" icon="pencil">Mode préparation</twig:Px:Button>
+            {% endif %}
             {% if can_edit %}
                 <twig:Px:Button variant="quiet" data-px-open="document-anomaly">Signaler une anomalie</twig:Px:Button>
                 <twig:Px:Button type="submit" variant="primary" form="document-reading" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>

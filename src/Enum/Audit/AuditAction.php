@@ -200,6 +200,17 @@ enum AuditAction: string
     /** A pièce's entry written in the brouillard: the pièce is posted (step 2.2a). */
     case DocumentPosted = 'document.posted';
 
+    /** An error slipped into a pièce of a template or taken back, its right proposal fixed, a doublon added or withdrawn (step 2.2b). */
+    case DocumentErrorSlipped = 'document.error_slipped';
+
+    case DocumentErrorRemoved = 'document.error_removed';
+
+    case DocumentProposalFixed = 'document.proposal_fixed';
+
+    case DocumentDuplicateAdded = 'document.duplicate_added';
+
+    case DocumentDuplicateWithdrawn = 'document.duplicate_withdrawn';
+
     public function label(): string
     {
         return match ($this) {
@@ -270,6 +281,11 @@ enum AuditAction: string
             self::DocumentAnomalyReported => 'Anomalie signalée sur une pièce',
             self::DocumentRejected => 'Pièce rejetée',
             self::DocumentPosted => 'Pièce comptabilisée',
+            self::DocumentErrorSlipped => 'Erreur glissée dans une pièce',
+            self::DocumentErrorRemoved => 'Erreur retirée d’une pièce',
+            self::DocumentProposalFixed => 'Écriture juste d’une pièce corrigée',
+            self::DocumentDuplicateAdded => 'Doublon glissé',
+            self::DocumentDuplicateWithdrawn => 'Doublon retiré',
         };
     }
 }
