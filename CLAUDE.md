@@ -676,6 +676,11 @@ Lot 1, step 1.4b (design-ux.md § 3.2, « Modèles d'écriture », « Saisie gui
   FRAISBQ2, REGLFOUR, installed by `DemoInstaller` through `TemplateSheet`.
 - A Twig variable `{% set %}` outside a component's `<twig:block>` is not seen inside it: set it in
   the block (`_guided_preview.html.twig`).
+- **Standard templates** (step 3.3): `fixtures/accounting/standard-templates.yaml` (constitution,
+  capital, allocation of the result), read by `TemplateFile` like the demonstration's but naming
+  its journal by its type (`journal_type`), installed by `StandardTemplates` into every new empty
+  dossier (`TemplateFactory`) and into the demonstration. `StandardTemplatesTest` calls each on the
+  PCG 2025 and 2026.
 
 ## Subscriptions (built at step 1.4c)
 

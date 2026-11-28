@@ -1,0 +1,93 @@
+# The entry templates every new dossier receives (step 3.3, « constitution et capital : des modèles
+# d'écriture »), installed by App\Service\Accounting\Template\StandardTemplates into an empty
+# dossier and into the demonstration, then the dossier's own: renamed, changed or deleted on
+# Comptabilité › Paramètres comptables › Modèles. Called with F6 in the entry grid.
+#
+# Same shape as fixtures/demo/templates.yaml, but a template names its journal by its type
+# (`journal_type`: purchases, sales, bank, cash, general) - the dossier's first journal of that type.
+# The accounts are those of the PCG 2025 and 2026, padded to six digits (StandardTemplatesTest).
+# A template with no VAT asks one amount: `base: ht` at the rate 0. An amount that depends on two
+# figures (a nominal and its premium, the shares of a result) is « à saisir » (`typed`).
+#
+# The chain of the capital: the subscription (CAPSOUS, or CAPAUGN with a premium) credits
+# 101100 « non appelé » against the associates' 456100; the money received (CAPLIBN, in the bank
+# journal) and an asset brought (CAPNAT) settle 456100; what is paid then moves to 101300 « appelé,
+# versé » (CAPVERS).
+
+templates:
+  - code: CAPSOUS
+    label: "Constitution : promesse d'apport"
+    journal_type: general
+    base: ht
+    rate: '0'
+    lines:
+      - { account: '456100', side: debit, amount: ht, label: "Promesse d'apport des associés" }
+      - { account: '101100', side: credit, amount: ht, label: "Capital souscrit, non appelé" }
+  - code: CAPLIBN
+    label: "Libération des apports en numéraire"
+    journal_type: bank
+    base: ht
+    rate: '0'
+    lines:
+      - { account: '456100', side: credit, amount: ht, label: "Libération des apports en numéraire" }
+  - code: CAPVERS
+    label: "Capital libéré : appelé et versé"
+    journal_type: general
+    base: ht
+    rate: '0'
+    lines:
+      - { account: '101100', side: debit, amount: ht, label: "Capital libéré" }
+      - { account: '101300', side: credit, amount: ht, label: "Capital souscrit, appelé, versé" }
+  - code: CAPNAT
+    label: "Constitution : apport en nature"
+    journal_type: general
+    base: ht
+    rate: '0'
+    lines:
+      - { account: '215400', side: debit, amount: ht, label: "Apport en nature" }
+      - { account: '456100', side: credit, amount: ht, label: "Apport en nature" }
+  - code: CAPFRAIS
+    label: "Frais de constitution"
+    journal_type: purchases
+    base: ttc
+    rate: '20'
+    lines:
+      - { account: '622700', side: debit, amount: ht, label: "Frais de constitution" }
+      - { account: '445660', side: debit, amount: tva, label: "Frais de constitution" }
+      - { account: '401000', side: credit, amount: ttc, label: "Frais de constitution" }
+  - code: CAPAUGN
+    label: "Augmentation de capital en numéraire"
+    journal_type: general
+    base: ht
+    rate: '0'
+    lines:
+      - { account: '456100', side: debit, amount: ht, label: "Souscription de l'augmentation de capital" }
+      - { account: '101100', side: credit, amount: typed, label: "Augmentation de capital : nominal" }
+      - { account: '104100', side: credit, amount: typed, label: "Augmentation de capital : prime d'émission" }
+  - code: CAPINCR
+    label: "Augmentation de capital par incorporation de réserves"
+    journal_type: general
+    base: ht
+    rate: '0'
+    lines:
+      - { account: '106800', side: debit, amount: ht, label: "Incorporation de réserves au capital" }
+      - { account: '101300', side: credit, amount: ht, label: "Incorporation de réserves au capital" }
+  - code: AFFRES
+    label: "Affectation du bénéfice"
+    journal_type: general
+    base: ht
+    rate: '0'
+    lines:
+      - { account: '120000', side: debit, amount: ht, label: "Affectation du résultat" }
+      - { account: '106100', side: credit, amount: typed, label: "Dotation à la réserve légale" }
+      - { account: '106800', side: credit, amount: typed, label: "Dotation aux autres réserves" }
+      - { account: '457000', side: credit, amount: typed, label: "Dividendes à payer" }
+      - { account: '110000', side: credit, amount: typed, label: "Report à nouveau" }
+  - code: AFFPERTE
+    label: "Affectation de la perte en report à nouveau"
+    journal_type: general
+    base: ht
+    rate: '0'
+    lines:
+      - { account: '119000', side: debit, amount: ht, label: "Report à nouveau débiteur" }
+      - { account: '129000', side: credit, amount: ht, label: "Affectation de la perte" }

@@ -2,22 +2,27 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Dossier\Demo;
+namespace App\Service\Accounting\Template;
 
-use App\Service\Accounting\Template\TemplateDraft;
-use App\Service\Accounting\Template\TemplateLineDraft;
+use App\Enum\Accounting\JournalType;
 use App\Service\Shared\Money;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * `fixtures/demo/templates.yaml` read and checked for its shape: the demonstration's entry
- * templates, each a TemplateDraft that TemplateRules checks like the fiche (a fault there names the
- * template and installs nothing). Fixed amounts are euros as text, read exactly.
+ * A file of entry templates read and checked for its shape - the demonstration's
+ * (`fixtures/demo/templates.yaml`) and the standard ones every new dossier receives
+ * (`fixtures/accounting/standard-templates.yaml`): each a TemplateDraft that TemplateRules checks
+ * like the fiche (a fault there names the template and installs nothing). Fixed amounts are euros
+ * as text, read exactly. A template names its journal by its code (`journal`) or, in a file meant
+ * for any dossier, by its type (`journal_type`: the dossier's first journal of that type).
  */
-final readonly class DemoTemplateFile
+final readonly class TemplateFile
 {
-    /** @param list<TemplateDraft> $drafts */
-    private function __construct(public array $drafts)
+    /**
+     * @param list<TemplateDraft> $drafts
+     * @param list<?JournalType>  $journalTypes the type a draft's journal is chosen by, by index; null when it names its code
+     */
+    private function __construct(public array $drafts, public array $journalTypes)
     {
     }
 
@@ -30,6 +35,7 @@ final readonly class DemoTemplateFile
         }
 
         $drafts = [];
+        $journalTypes = [];
         foreach ($list as $index => $entry) {
             $where = 'templates['.$index.']';
             if (!\is_array($entry)) {
@@ -38,7 +44,13 @@ final readonly class DemoTemplateFile
             $draft = new TemplateDraft();
             $draft->code = self::text($entry, 'code', $where);
             $draft->label = self::text($entry, 'label', $where);
-            $draft->journal = self::text($entry, 'journal', $where);
+            $type = self::optional($entry, 'journal_type', $where);
+            if (null === $type) {
+                $draft->journal = self::text($entry, 'journal', $where);
+                $journalTypes[] = null;
+            } else {
+                $journalTypes[] = JournalType::tryFrom($type) ?? throw new \InvalidArgumentException($where.'.journal_type : un type de journal est attendu (purchases, sales, bank, cash, general).');
+            }
             $draft->base = self::optional($entry, 'base', $where) ?? '';
             $draft->rate = self::optional($entry, 'rate', $where) ?? '';
             $lines = $entry['lines'] ?? null;
@@ -66,7 +78,7 @@ final readonly class DemoTemplateFile
             $drafts[] = $draft;
         }
 
-        return new self($drafts);
+        return new self($drafts, $journalTypes);
     }
 
     /** @param array<mixed> $entry */
