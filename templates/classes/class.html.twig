@@ -8,6 +8,7 @@
 {% set classes_tab = history ? 'past' : 'year' %}
 {% set classes_title = class.label %}
 {% set switcher_class = history ? null : class %}
+{% set class_current = 'students' %}
 
 {% block page_head %}
     <twig:Px:PageHead title="{{ class.name }}" :trail="history
@@ -22,6 +23,8 @@
 {% endblock %}
 
 {% block page %}
+    {{ include('classes/_class_tabs.html.twig') }}
+
     {% if can_place %}
         <twig:Px:Card title="Ajouter un étudiant" meta="un étudiant déjà dans une autre classe de l’année en change ; ses dossiers ne bougent pas">
             <form method="post" action="{{ path('app_teacher_class_add', {id: class.id}) }}" class="px-formline">

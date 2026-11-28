@@ -1,0 +1,5 @@
+{# The views of a class (design-ux.md § 2.6): Étudiants, Dossiers. A screen sets `class_current`. #}
+<twig:Px:Tabs label="{{ class.name }}" :tabs="[
+    {label: 'Étudiants', href: path('app_teacher_class', {id: class.id}), current: class_current == 'students'},
+    {label: 'Dossiers', href: path('app_teacher_class_dossiers', {id: class.id}), current: class_current == 'dossiers'},
+]"/>

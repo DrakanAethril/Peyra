@@ -1,0 +1,63 @@
+{#
+ # The récapitulatif of « Remettre à l'état de départ » (design-ux.md §§ 4.9 step 4 and 6.2: gabarit
+ # E, one step, « qui compte ce qui change »), for Classe › Dossiers and a distribution: one line per
+ # dossier - its « État de départ », the gestures made since and the elements that change, or why it
+ # is left -, the box « Poser d'abord un point de l'état actuel », then the form (id `start-reset`)
+ # the page head's primary button submits. Takes `lines`, `reset_url`, `reset_token`, `max_points`.
+ #}
+{% set resettable = lines|filter(l => l.summary is not null) %}
+<twig:Px:Stepper label="Remise à l’état de départ" :steps="[{label: 'Récapitulatif', href: '#', state: 'current'}]"/>
+
+<twig:Px:Card :flush="true" title="Ce qui sera perdu" meta="{{ resettable|length }} {{ resettable|length > 1 ? 'dossiers reprennent' : 'dossier reprend' }} l’état où sa distribution l’a donné">
+    <twig:Px:Table caption="Dossiers à remettre à l’état de départ" variant="plain" density="compact">
+        <thead><tr>
+            <th scope="col">Étudiant ou groupe</th>
+            <th scope="col">Dossier</th>
+            <th scope="col">État de départ</th>
+            <th scope="col" class="px-u-right">Gestes défaits</th>
+            <th scope="col" class="px-u-right">Éléments qui changent</th>
+            <th scope="col">Remarque</th>
+        </tr></thead>
+        <tbody>
+            {% for line in lines %}
+                {% set row = line.row %}
+                <tr>
+                    <td>{{ row.holderLabel }}</td>
+                    <td class="px-u-nowrap">{{ row.dossier.name }}</td>
+                    {% if line.summary %}
+                        <td class="px-u-nowrap"><span class="px-u-code">{{ row.start.createdAt|date('d/m/Y') }}</span> <span class="px-u-muted">· date du dossier {{ row.start.dossierDate|date('d/m/Y') }}</span></td>
+                        <td class="px-u-num">{{ line.summary.gestures }}</td>
+                        <td class="px-u-num">{{ line.summary.changed }}</td>
+                        <td class="px-u-fill">{% if line.full %}<span class="px-u-muted">{{ max_points }} points : l’état actuel ne sera pas gardé</span>{% endif %}</td>
+                    {% else %}
+                        <td class="px-u-muted">—</td>
+                        <td></td>
+                        <td></td>
+                        <td class="px-u-fill">{{ row.restoring ? 'Retour à un point déjà en cours : laissé' : 'Pas d’état de départ : laissé tel quel' }}</td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </twig:Px:Table>
+</twig:Px:Card>
+
+<div class="px-split">
+    <twig:Px:Card title="Ce qui reste">
+        <ul class="px-recap">
+            <li>La date de chaque dossier, telle qu’elle est.</li>
+            <li>La piste d’audit, entière, avec une ligne de plus pour ce retour.</li>
+            <li>Les points de restauration des dossiers, et leur état de départ : on peut y revenir encore.</li>
+        </ul>
+    </twig:Px:Card>
+    <form method="post" action="{{ reset_url }}" id="start-reset" novalidate>
+        <input type="hidden" name="_token" value="{{ csrf_token(reset_token) }}">
+        {% for line in lines %}<input type="hidden" name="dossiers[]" value="{{ line.row.dossier.id }}">{% endfor %}
+        <twig:Px:Card title="Avant de remettre à zéro">
+            <label class="px-check">
+                <input type="checkbox" name="keep" value="1" checked>
+                <span>Poser d’abord un point de l’état actuel de chaque dossier, pour pouvoir y revenir</span>
+            </label>
+            <p class="px-field__hint">Pendant le retour, chaque dossier affiche une page d’attente dans les onglets ouverts de ses étudiants, puis les recharge.</p>
+        </twig:Px:Card>
+    </form>
+</div>

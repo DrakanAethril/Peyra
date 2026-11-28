@@ -1,0 +1,102 @@
+{#
+ # Classe › Dossiers (design-ux.md §§ 3.3 and 4.9, gabarit L): the dossiers of the class's students
+ # this year - holder, dossier, its date, its last restore point, its « État de départ » -, and,
+ # once rows are ticked, « Poser un point » (one name for all) and « Remettre à l'état de départ »
+ # (a récapitulatif first). Redrawn every two seconds while a dossier is going back to a point.
+ #}
+{% extends 'classes/_layout.html.twig' %}
+
+{% set classes_tab = history ? 'past' : 'year' %}
+{% set classes_title = 'Dossiers · ' ~ class.label %}
+{% set switcher_class = history ? null : class %}
+{% set class_current = 'dossiers' %}
+{% set can_tick = true in tickable %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ class.name }}" :trail="history
+        ? [{label: 'Classes', href: path('app_teacher_classes')}, {label: 'Années précédentes', href: path('app_teacher_classes_past')}, {label: 'Dossiers', href: path('app_teacher_class_dossiers', {id: class.id})}]
+        : [{label: 'Classes', href: path('app_teacher_classes')}, {label: 'Classes de l’année', href: path('app_teacher_classes')}, {label: 'Dossiers', href: path('app_teacher_class_dossiers', {id: class.id})}]">
+        <twig:block name="badge">
+            <twig:Px:Chip>{{ class.schoolYear.label }} · {{ class.level.label }}</twig:Px:Chip>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('classes/_class_tabs.html.twig') }}
+
+    <turbo-frame id="class-dossiers" target="_top">
+        <div hidden data-controller="live-frame" data-live-frame-frame-value="class-dossiers" data-live-frame-events-value="[]" data-live-frame-poll-value="{{ restoring ? 2000 : 0 }}"></div>
+        <twig:Px:Card :flush="true" title="Dossiers de la classe" meta="{{ dossier_rows|length }} {{ dossier_rows|length > 1 ? 'dossiers' : 'dossier' }} de {{ class.schoolYear.label }}">
+            {% if dossier_rows is empty %}
+                <twig:Px:Empty icon="folder-open" title="Aucun dossier" text="Les dossiers que les étudiants de la classe reçoivent cette année, par une distribution, apparaissent ici.">
+                    <twig:block name="action"><twig:Px:Button href="{{ path('app_library') }}" icon="book-copy">Bibliothèque</twig:Px:Button></twig:block>
+                </twig:Px:Empty>
+            {% else %}
+                <form method="get" action="{{ path('app_teacher_class_dossiers_reset', {id: class.id}) }}" id="class-dossiers-lot"
+                      data-controller="selection" data-selection-one-value="%d dossier coché" data-selection-many-value="%d dossiers cochés"
+                      data-action="change->selection#refresh">
+                    {% if can_tick %}
+                        <div class="px-lotbar" data-selection-target="bar" hidden>
+                            <span class="px-lotbar__count" data-selection-target="count" aria-live="polite"></span>
+                            <label class="px-u-sr-only" for="point-name">Nom du point</label>
+                            <input type="text" id="point-name" name="name" value="{{ point_name }}" class="px-input px-input--sm" size="28" maxlength="80" autocomplete="off">
+                            <twig:Px:Button type="submit" size="sm" icon="history" formmethod="post" formaction="{{ path('app_teacher_class_dossiers_points', {id: class.id}) }}">Poser un point</twig:Px:Button>
+                            <twig:Px:Button type="submit" size="sm" variant="primary" icon="undo-2">Remettre à l’état de départ</twig:Px:Button>
+                            <input type="hidden" name="_token" value="{{ csrf_token('class-dossiers-' ~ class.id) }}">
+                        </div>
+                    {% endif %}
+                    <twig:Px:Table caption="Dossiers des étudiants de {{ class.label }}" :rows="true">
+                        <thead><tr>
+                            {% if can_tick %}
+                                <th scope="col" class="px-table__pick">
+                                    <label class="px-check"><input type="checkbox" data-selection-target="all" data-action="selection#toggleAll"><span class="px-u-sr-only">Tout cocher</span></label>
+                                </th>
+                            {% endif %}
+                            <th scope="col">Étudiant ou groupe</th>
+                            <th scope="col">Dossier</th>
+                            <th scope="col">Date du dossier</th>
+                            <th scope="col">Dernier point de restauration</th>
+                            <th scope="col">État de départ</th>
+                        </tr></thead>
+                        <tbody>
+                            {% for row in dossier_rows %}
+                                <tr data-rows-target="row">
+                                    {% if can_tick %}
+                                        <td class="px-table__pick">
+                                            {% if tickable[loop.index0] %}
+                                                <label class="px-check"><input type="checkbox" name="dossiers[]" value="{{ row.dossier.id }}" data-selection-target="box"><span class="px-u-sr-only">Cocher le dossier de {{ row.holderLabel }}</span></label>
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+                                    <td>{{ row.holderLabel }}{% if row.group %} <twig:Px:Badge tone="neutral" label="Groupe"/>{% endif %}</td>
+                                    <td class="px-u-fill"><a class="px-link" href="{{ path('app_dossier_dashboard', {dossier: row.dossier.id}) }}">{{ row.dossier.name }}</a></td>
+                                    <td class="px-u-code">{{ row.dossier.dossierDate|date('d/m/Y') }}</td>
+                                    <td>
+                                        {% if row.restoring %}
+                                            <twig:Px:Badge tone="info" label="Retour à un point en cours"/>
+                                        {% elseif row.lastPoint %}
+                                            <a class="px-link" href="{{ path('app_dossier_restore_points', {dossier: row.dossier.id}) }}">{{ row.lastPoint.name }}</a>
+                                            <span class="px-u-muted px-u-nowrap">· {{ row.lastPoint.createdAt|date('d/m/Y H:i') }}</span>
+                                            {% if not row.lastPoint.ready %} <twig:Px:Badge :of="row.lastPoint.state"/>{% endif %}
+                                        {% else %}
+                                            <span class="px-u-muted">Aucun</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{% if row.start %}<span class="px-u-code">{{ row.start.createdAt|date('d/m/Y') }}</span>{% else %}<span class="px-u-muted">Aucun</span>{% endif %}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                </form>
+            {% endif %}
+            <twig:block name="foot">
+                {% if can_tick %}
+                    <p class="px-u-muted">Cochez des dossiers pour les remettre à l’état où leur distribution les a donnés, après un récapitulatif, ou pour y poser un point de restauration. Un dossier sans état de départ n’est pas remis à zéro.</p>
+                {% endif %}
+            </twig:block>
+        </twig:Px:Card>
+    </turbo-frame>
+{% endblock %}
+
+{% block facts %}<span>{{ class.label }}</span><span>Dossiers · <b>{{ dossier_rows|length }}</b></span>{% endblock %}

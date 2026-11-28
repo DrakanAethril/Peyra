@@ -67,4 +67,39 @@ final class RestorePointRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * The points of several dossiers, by dossier id, each list the newest first (Classe ›
+     * Dossiers: the last point and the « État de départ » of every row in one query).
+     *
+     * @param list<Dossier> $dossiers
+     *
+     * @return array<int, list<RestorePoint>>
+     */
+    public function findByDossiers(array $dossiers): array
+    {
+        if ([] === $dossiers) {
+            return [];
+        }
+        /** @var list<RestorePoint> $points */
+        $points = $this->createQueryBuilder('p')
+            ->andWhere('p.dossier IN (:dossiers)')
+            ->setParameter('dossiers', $dossiers)
+            ->orderBy('p.createdAt', 'DESC')
+            ->addOrderBy('p.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+        $byDossier = [];
+        foreach ($points as $point) {
+            $byDossier[(int) $point->getDossier()->getId()][] = $point;
+        }
+
+        return $byDossier;
+    }
+
+    /** The « État de départ » a distribution posed on the dossier, when it is ready (the latest, should there be two). */
+    public function findStart(Dossier $dossier): ?RestorePoint
+    {
+        return $this->findOneBy(['dossier' => $dossier, 'origin' => RestorePointOrigin::Start, 'state' => RestorePointState::Ready], ['id' => 'DESC']);
+    }
 }

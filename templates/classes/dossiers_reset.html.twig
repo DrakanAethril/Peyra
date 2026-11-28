@@ -1,0 +1,26 @@
+{# « Remettre à l'état de départ » from Classe › Dossiers: the récapitulatif, then the reset (Ctrl Entrée). #}
+{% extends 'classes/_layout.html.twig' %}
+
+{% set classes_tab = 'year' %}
+{% set classes_title = 'Remettre à l’état de départ · ' ~ class.label %}
+{% set dossiers_url = path('app_teacher_class_dossiers', {id: class.id}) %}
+{% set status_keys = [{combo: 'Ctrl+Enter', verb: 'Remettre à l’état de départ'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Remettre à l’état de départ" :trail="[
+        {label: 'Classes', href: path('app_teacher_classes')},
+        {label: class.name, href: path('app_teacher_class', {id: class.id})},
+        {label: 'Dossiers', href: dossiers_url},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button variant="quiet" href="{{ dossiers_url }}">Annuler</twig:Px:Button>
+            <twig:Px:Button type="submit" variant="primary" form="start-reset" icon="undo-2" shortcut="Ctrl+Enter">Remettre à l’état de départ</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('dossier/_start_reset.html.twig', {reset_url: path('app_teacher_class_dossiers_reset_start', {id: class.id}), reset_token: 'class-dossiers-reset-' ~ class.id}) }}
+{% endblock %}
+
+{% block facts %}<span>{{ class.label }}</span><span>Dossiers · <b>{{ lines|length }}</b></span>{% endblock %}
