@@ -97,6 +97,16 @@ class Document implements DossierOwned
     #[ORM\Column(type: 'money', nullable: true)]
     private ?Money $totalIncludingTax = null;
 
+    /**
+     * What the generator made it from (step 2.1b: InvoiceOperation::toArray(), plus `copy`, 2 for
+     * a « doublon »'s second arrival), the faults asked for included; null for a pièce deposited.
+     * Part of the answer key: no student screen shows it.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $generation = null;
+
     public function __construct(Dossier $dossier, DocumentType $type, string $fileKey, string $fileName, string $mediaType, \DateTimeImmutable $receivedOn, ?User $depositedBy)
     {
         $this->dossier = $dossier;
@@ -197,6 +207,23 @@ class Document implements DossierOwned
     public function getTotalIncludingTax(): ?Money
     {
         return $this->totalIncludingTax;
+    }
+
+    public function isGenerated(): bool
+    {
+        return null !== $this->generation;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function getGeneration(): ?array
+    {
+        return $this->generation;
+    }
+
+    /** @param array<string, mixed> $generation */
+    public function generatedFrom(array $generation): void
+    {
+        $this->generation = $generation;
     }
 
     /**

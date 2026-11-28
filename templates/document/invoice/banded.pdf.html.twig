@@ -1,0 +1,11 @@
+{# The « banded » invoice (InvoiceLayout::Banded): a band of the supplier's colour across the top, shaded table head. #}
+{% extends 'document/invoice/_invoice.html.twig' %}
+
+{% block layout_style %}
+    .inv--banded .inv__head { padding: 5mm 6mm; background: var(--brand); color: #ffffff; }
+    .inv--banded .inv__name, .inv--banded .inv__title { color: #ffffff; }
+    .inv--banded .inv__head .inv__small, .inv--banded .inv__meta dt { color: #e8ecef; }
+    .inv--banded .inv__mark { background: #ffffff; color: var(--brand); border-radius: 2mm; }
+    .inv--banded .inv__lines thead th { background: #eef1f4; border-bottom: 0; }
+    .inv--banded .inv__to { border: 0; border-left: 1mm solid var(--brand); background: #f6f7f9; }
+{% endblock %}

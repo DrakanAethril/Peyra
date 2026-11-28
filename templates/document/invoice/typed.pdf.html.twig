@@ -1,0 +1,19 @@
+{# The « typed » invoice (InvoiceLayout::Typed): typewriter type, boxed blocks, the title on the left. #}
+{% extends 'document/invoice/_invoice.html.twig' %}
+
+{% block layout_style %}
+    .inv--typed, .inv--typed th { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 8.5pt; }
+    .inv--typed .inv__head { flex-direction: row-reverse; }
+    .inv--typed .inv__title { text-align: left; font-size: 16pt; }
+    .inv--typed .inv__meta { justify-content: start; }
+    .inv--typed .inv__meta dt { text-align: left; }
+    .inv--typed .inv__mark { display: none; }
+    .inv--typed .inv__name { color: #1c232b; font-size: 11pt; text-decoration: underline; text-decoration-color: var(--brand); text-decoration-thickness: .6mm; }
+    .inv--typed .inv__brand { padding: 3mm 4mm; border: .3mm solid #1c232b; }
+    .inv--typed .inv__parties { justify-content: flex-start; }
+    .inv--typed .inv__to { border-color: #1c232b; }
+    .inv--typed .inv__lines { border: .3mm solid #1c232b; }
+    .inv--typed .inv__lines thead th { border-bottom: .3mm solid #1c232b; text-transform: uppercase; }
+    .inv--typed .inv__lines tbody td { border-bottom: 0; }
+    .inv--typed .inv__totals tr:last-child td { color: #1c232b; border-top: .3mm solid #1c232b; }
+{% endblock %}
