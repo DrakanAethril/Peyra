@@ -8,13 +8,15 @@
 {% extends 'accounting/_layout.html.twig' %}
 
 {% set module_current = 'entry' %}
-{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{# In a group's dossier the member's profile decides: « saisie » changes, « validation » validates and reverses. #}
+{% set can_edit = is_granted('JOURNAL_ENTER', entry.journal) %}
+{% set can_validate = is_granted('JOURNAL_VALIDATE', entry.journal) %}
 {% set open_month = not entry.period.closed and not entry.period.exercise.closed %}
 {% set title = entry.numberLabel ?? entry.document %}
 {% set dossier_title = 'Écriture ' ~ (entry.numberLabel ?? entry.document) %}
 {% set here = path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id}) %}
 {% set grid_href = path('app_accounting_entry', {dossier: dossier.id, journal: entry.journal.code, period: entry.period.startsOn|date('Y-m-d'), entry: entry.id}) %}
-{% set status_keys = can_edit and not entry.validated ? [{combo: 'Ctrl+Enter', verb: 'Valider'}] : [] %}
+{% set status_keys = can_validate and not entry.validated ? [{combo: 'Ctrl+Enter', verb: 'Valider'}] : [] %}
 
 {% block page_head %}
     <twig:Px:PageHead title="Écriture {{ title }}" :trail="[
@@ -36,10 +38,10 @@
                     {% if not entry.validated %}
                         <twig:Px:ConfirmButton label="Supprimer le brouillon" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="entry-delete"/>
                         <twig:Px:Button href="{{ grid_href }}" icon="pencil">Modifier</twig:Px:Button>
-                        <twig:Px:Button variant="primary" shortcut="Ctrl+Enter" data-action="confirm-bar#open">Valider</twig:Px:Button>
+                        {% if can_validate %}<twig:Px:Button variant="primary" shortcut="Ctrl+Enter" data-action="confirm-bar#open">Valider</twig:Px:Button>{% endif %}
                     {% endif %}
                 </div>
-                {% if not entry.validated %}
+                {% if not entry.validated and can_validate %}
                     <form class="px-confirmbar" method="post" action="{{ path('app_accounting_entry_validate_one', {dossier: dossier.id, id: entry.id}) }}" role="alertdialog" aria-labelledby="entry-validate-text" hidden data-confirm-bar-target="bar" data-action="keydown->confirm-bar#keydown">
                         <input type="hidden" name="_token" value="{{ csrf_token('entry-validate-' ~ entry.id) }}">
                         <p id="entry-validate-text">Valider l’écriture {{ entry.document }} ? Elle ne pourra plus être modifiée, seulement contrepassée.</p>
@@ -102,7 +104,7 @@
         </form>
     {% endif %}
 
-    {% if entry.validated and can_edit and reversal is null and entry.reversalOf is null %}
+    {% if entry.validated and can_validate and reversal is null and entry.reversalOf is null %}
         <twig:Px:Card title="Contrepasser l’écriture">
             <p class="px-u-muted">Une écriture validée ne se modifie plus : sa contrepassation l’annule par l’écriture inverse, datée et validée aussitôt. « Contrepasser et ressaisir » remet en plus une copie de l’écriture dans la grille, à corriger puis enregistrer.</p>
             <form method="post" action="{{ path('app_accounting_entry_reverse', {dossier: dossier.id, id: entry.id}) }}" class="px-entry__reverse" novalidate data-controller="focus-error">

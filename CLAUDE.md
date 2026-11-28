@@ -101,7 +101,7 @@ empty, and `PeyraScheduleTest` pins that list, so adding a task is a decision th
 | `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
 | `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, January's purchases and Banque Populaire with two drafts in each, seven entry templates, two subscriptions, three suppliers lettered; date 31/01/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
-| `app:dev:dossiers` | **Development and test only**, until the distribution of step 1.8: gives each student enrolled this year their own Menuiserie Vasseur, built from the fixtures (the template installed first if missing). Sign the students in first: their first sign-in places them |
+| `app:dev:dossiers` | **Development and test only**, until the distribution of step 1.8: gives each student enrolled this year their own Menuiserie Vasseur, built from the fixtures (the template installed first if missing), and one group's Menuiserie Vasseur to `ines.morel` (Comptable fournisseurs), `theo.garnier` (Comptable clients) and `chloe.fabre` (Chef comptable) when enrolled. Sign the students in first: their first sign-in places them |
 | `app:test:parallel-databases` | **Test only.** Copies the migrated `peyra_test` into `peyra_test1`… for ParaTest (tests/README.md) |
 
 ```console
@@ -860,6 +860,51 @@ Lot 1, step 1.6 (design-ux.md §§ 3.1 gabarit X, 3.2, 5.3, 6.3), held by code i
 - `fixtures/demo/letterings.yaml` (`DemoLetteringFile`): automatic letterings by amount, installed
   after the subscriptions (F0001, F0009, F0018). The copier (1.8) copies `letter` and `letteredOn`.
 
+## Profiles and the dossier's trail (built at step 1.7)
+
+Lot 1, step 1.7 (conception § 4; design-ux.md §§ 3.2 and 6.1), held by code in
+`src/Service/Dossier/Rights/`, `App\Security\Voter\DossierRightVoter`, `App\Service\Audit\` and
+`App\Controller\Dossier\{UsersController,AuditTrailController}`:
+
+- **A member of a group's dossier has a profile** (`DossierMember::$profile`, `DossierProfile`:
+  comptable fournisseurs, comptable clients, gestionnaire de paie, chef comptable; null = every
+  right). **`ProfileMatrix::level()` is the one place the rights are written** (pure): rows are
+  `DossierArea`s - the journals by type (`ofJournal()`: Achats, Ventes, Banque et caisse, Opérations
+  diverses et à-nouveaux) and « Paramètres du dossier » (fiche société, plan, journaux, tiers,
+  modèles, abonnements) -, levels are `AccessLevel` Closed < Read < Enter < Validate (Settings tops at
+  Enter, « Modification »). A lettering is in its key's area (`ofLettering()`: a supplier with the
+  purchases, a customer with the sales, else the OD). Readings (consultation, editions, brouillard
+  list) stay open to every profile. A later module adds its area and its row: the `match` refuses a
+  forgotten case.
+- **`DossierRights`** reads a person's profile (`profileOf()`, memoised per request, reset in the
+  worker) and words a refusal as design-ux § 6.1 does (« Votre profil “Comptable fournisseurs” ne
+  permet pas de valider le journal de banque. », `Gesture`). Anybody who is not a group's member - the
+  student of an individual dossier, a teacher, a command - has every right; DossierVoter still decides
+  who enters.
+- **The doors hold it**: `Ledger` (draft, update - old and new journal -, discard: Enter; validate,
+  reverse: Validate; refusal under `journal`, or `entry.<id>` for a validation) and `Lettering`
+  (Enter on the key's area) ask `DossierRights` whenever the actor is a `User`. **The screens ask
+  `DossierRightVoter`**: `DOSSIER_SETTINGS` (a dossier: every settings screen and post, Alt Inser in
+  the grid), `JOURNAL_READ` (a closed journal is not offered in the grid, Ctrl K, the guided entry;
+  asking it opens the first one allowed), `JOURNAL_ENTER` (the grid's fields and posts, F6, the
+  à-nouveaux), `JOURNAL_VALIDATE` (Valider / Ctrl Entrée, the entry's validation and reversal). The
+  brouillard holds back what the person may not validate (`BrouillardRow::$refused`, « Hors de votre
+  profil »). A grid the profile reads or does not validate says why above it.
+- **Utilisateurs et droits** (`/d/{dossier}/users`, Système d'information): who enters and how far
+  (`DossierUsers`: the student or the members with their profiles, the teachers of their classes
+  this year, the distributor; a template's author and shares), then the matrix. In a group's dossier
+  a teacher of the class (`DossierVoter::SET_DATE`) gives the profiles with F10 (`DossierProfiles`,
+  one line of the trail per change). The member's profile is the violet chip of the top bar.
+- **The dossier's trail**: `AuditTrail::inDossier(dossier, action, actor, summary, details)` stamps
+  `dossier_id` (no foreign key: the trail outlives the dossier, and the copier of 1.8 never copies it),
+  `dossier_date` (the dossier's date at the gesture), `actor_role` (teacher / student; null for a
+  command) and `actor_profile`; `record()` throws on the subject « dossier ». **Piste d'audit**
+  (`/d/{dossier}/audit`, read by whoever opens the dossier): newest first, the real time - the one
+  place of the PGI it shows - and the dossier's date, the author (« Enseignant » chip, or the
+  profile), the gesture, its sentence; chips by role, a gesture, words; `…/audit/export.{csv,xlsx}`
+  (`DossierTrailExport`). Lines written before 1.7 have their dossier (migration) but no date.
+- Both screens are in Ctrl K (`SearchScreens`), under the module tabs `dossier/_si_tabs.html.twig`.
+
 ## Cross-cutting building blocks (built at step 0.6a)
 
 Reach for these rather than re-implement them; each has its test.
@@ -942,7 +987,8 @@ Reach for these rather than re-implement them; each has its test.
   which stamps the real time itself - `src/Service/Audit/` is the one business place that reads the
   clock): who (an account, or a command's name), what (`AuditAction`, one case per gesture), on what
   (`subjectType` + `subjectId`), a French sentence and JSON details. The caller flushes with its
-  gesture. The dossier and its date join it at step 1.7, with its screen.
+  gesture. A gesture in a dossier goes through `inDossier()` (step 1.7, « Profiles and the dossier's
+  trail »).
 
 ## Conventions (as in Formatool)
 

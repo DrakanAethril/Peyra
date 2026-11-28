@@ -25,6 +25,9 @@ enum AuditAction: string
     /** The dossier's date moved by a teacher. */
     case DossierDateMoved = 'dossier.date_moved';
 
+    /** A member's profile in a group's dossier given, changed or taken away by a teacher (step 1.7). */
+    case MemberProfileChanged = 'dossier.member_profile_changed';
+
     /** A reference chart copied into a dossier's empty plan. */
     case ChartInstalled = 'accounting.chart_installed';
 
@@ -111,6 +114,7 @@ enum AuditAction: string
             self::DossierCreated => 'Dossier créé',
             self::DossierCompanyChanged => 'Fiche société modifiée',
             self::DossierDateMoved => 'Date du dossier changée',
+            self::MemberProfileChanged => 'Profil d’un membre changé',
             self::ChartInstalled => 'Plan de comptes installé',
             self::AccountCreated => 'Compte créé',
             self::AccountChanged => 'Compte modifié',

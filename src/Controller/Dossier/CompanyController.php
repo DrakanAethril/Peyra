@@ -8,7 +8,7 @@ use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
 use App\Repository\Dossier\ExerciseRepository;
 use App\Repository\Dossier\PeriodRepository;
-use App\Security\Voter\DossierVoter;
+use App\Security\Voter\DossierRightVoter;
 use App\Service\Dossier\CompanyDraft;
 use App\Service\Dossier\CompanySheet;
 use App\Service\Shared\PostValue;
@@ -23,7 +23,8 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 /**
  * Système d'information › Société (design-ux.md § 3.2, gabarit F): the company's identity, its
  * regimes, and its exercises with their periods (read: they open and close with the closing
- * screens). F10 saves for whoever works in the dossier (DossierVoter::EDIT); anybody else reads.
+ * screens). F10 saves for whoever works in the dossier and keeps its settings
+ * (DossierRightVoter::SETTINGS: in a group's dossier, the profile decides); anybody else reads.
  */
 final class CompanyController extends AbstractController
 {
@@ -34,7 +35,7 @@ final class CompanyController extends AbstractController
         $status = Response::HTTP_OK;
 
         if ($request->isMethod('POST')) {
-            if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !$this->isCsrfTokenValid('dossier-company-'.$dossier->getId(), $request->request->getString('_token'))) {
+            if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier) || !$this->isCsrfTokenValid('dossier-company-'.$dossier->getId(), $request->request->getString('_token'))) {
                 throw new NotFoundHttpException('Not yours to change.');
             }
             $draft->denomination = PostValue::trimmed($request, 'denomination');

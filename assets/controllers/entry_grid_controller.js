@@ -72,6 +72,7 @@ export default class extends Controller {
         this.exercise = grid.exercise;
         this.dossierDate = grid.dossierDate;
         this.counterpart = grid.counterpart;
+        this.accountRefusal = grid.accountRefusal ?? null;
         this.lookup = new Lookup(this.lookupValue);
         this.revision = this.revisionValue;
         this.groups = grid.groups.map((group) => this.adopt(group));
@@ -1713,6 +1714,11 @@ export default class extends Controller {
 
     openCreate() {
         if (this.pos?.field !== 'account') {
+            return;
+        }
+        if (this.accountRefusal) {
+            this.say(this.accountRefusal);
+
             return;
         }
         const typed = this.inputAt().value.replace(/\s+/g, '');

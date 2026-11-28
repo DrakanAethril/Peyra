@@ -1,0 +1,80 @@
+{#
+ # Système d'information › Piste d'audit (design-ux.md § 3.2, gabarit L; conception § 4): the
+ # gestures made in the dossier, newest first - when in real time (the one place of the PGI where
+ # it shows) and at the dossier's date, who (a teacher's gesture signed with their name and marked
+ # « Enseignant », a member's with their profile), what. Read only; filtered by who, by gesture and
+ # by words; exported whole with its filters.
+ #}
+{% extends 'dossier/_layout.html.twig' %}
+
+{% set rail_current = 'si' %}
+{% set dossier_title = 'Piste d’audit' %}
+{% set status_keys = [{combo: '/', verb: 'Rechercher'}] %}
+{% set role_filter = criteria.role ? criteria.role.value : '' %}
+{% set audit_url = path('app_dossier_audit', {dossier: dossier.id}) %}
+
+{% block module_tabs %}{% set si_current = 'audit' %}{{ include('dossier/_si_tabs.html.twig') }}{% endblock %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Piste d’audit" :trail="[
+        {label: 'Système d’information', href: path('app_dossier_company', {dossier: dossier.id})},
+        {label: 'Piste d’audit', href: audit_url},
+    ]">
+        <twig:block name="actions">
+            {% if total > 0 %}
+                <twig:Px:ExportMenu xlsx="{{ path('app_dossier_audit_export', {dossier: dossier.id, format: 'xlsx'}|merge(filters)) }}" csv="{{ path('app_dossier_audit_export', {dossier: dossier.id, format: 'csv'}|merge(filters)) }}"/>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card :flush="true">
+        <twig:Px:Filters action="{{ audit_url }}" search="{{ filters.q ?? '' }}" searchLabel="Détail ou auteur" resetHref="{{ filters is not empty ? audit_url : null }}">
+            <twig:Px:FilterChip label="Tous" href="{{ path('app_dossier_audit', {dossier: dossier.id}|merge(filters)|merge({role: null})) }}" :count="role_counts.all" :current="role_filter == ''"/>
+            <twig:Px:FilterChip label="Enseignants" href="{{ path('app_dossier_audit', {dossier: dossier.id}|merge(filters)|merge({role: 'teacher'})) }}" :count="role_counts.teacher" :current="role_filter == 'teacher'"/>
+            <twig:Px:FilterChip label="Étudiants" href="{{ path('app_dossier_audit', {dossier: dossier.id}|merge(filters)|merge({role: 'student'})) }}" :count="role_counts.student" :current="role_filter == 'student'"/>
+            <span class="px-filters__sep" aria-hidden="true"></span>
+            <label class="px-u-sr-only" for="audit-action">Action</label>
+            <twig:Px:Select id="audit-action" name="action" size="sm" :value="criteria.action ? criteria.action.value : ''" :options="[{value: '', label: 'Toutes les actions'}]|merge(actions|map(a => {value: a.value, label: a.label}))"/>
+            {% if role_filter %}<input type="hidden" name="role" value="{{ role_filter }}">{% endif %}
+            <twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button>
+        </twig:Px:Filters>
+
+        {% if events is empty %}
+            <twig:Px:Empty icon="history" title="{{ filters is empty ? 'Aucun geste pour l’instant' : 'Aucun geste' }}" text="{{ filters is empty ? 'Chaque enregistrement, validation, lettrage ou changement de date s’inscrira ici.' : 'Aucun geste de ce dossier ne répond à ces filtres.' }}"/>
+        {% else %}
+            <twig:Px:Table caption="Piste d’audit de {{ dossier.name }}, la plus récente d’abord">
+                <thead><tr>
+                    <th scope="col">Date réelle</th>
+                    <th scope="col">Date du dossier</th>
+                    <th scope="col">Auteur</th>
+                    <th scope="col">Action</th>
+                    <th scope="col">Détail</th>
+                </tr></thead>
+                <tbody>
+                    {% for event in events %}
+                        <tr>
+                            <td class="px-u-code px-u-nowrap">{{ event.occurredAt|date('d/m/Y') }} {{ event.occurredAt|date('H:i') }}</td>
+                            <td class="px-u-code">{{ event.dossierDate ? event.dossierDate|date('d/m/Y') : '—' }}</td>
+                            <td class="px-u-nowrap">
+                                {{ event.actorName }}
+                                {% if event.actorRole and event.actorRole.value == 'teacher' %} <twig:Px:Chip tone="role">Enseignant</twig:Px:Chip>
+                                {% elseif event.actorProfile %} <twig:Px:Chip tone="role">{{ event.actorProfile.label }}</twig:Px:Chip>
+                                {% elseif event.actorRole is null %} <span class="px-u-muted">(commande)</span>{% endif %}
+                            </td>
+                            <td class="px-u-nowrap">{{ event.action.label }}</td>
+                            <td class="px-u-truncate px-u-fill" title="{{ event.summary }}">{{ event.summary }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+        <twig:Px:Pager :total="total" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}
+    <span>{{ total }} geste{{ total > 1 ? 's' : '' }}</span>
+    <span>Date du dossier · <b>{{ dossier.dossierDate|date_fr }}</b></span>
+{% endblock %}

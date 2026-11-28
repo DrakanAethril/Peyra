@@ -67,11 +67,10 @@ final readonly class TemplateSheet
         $template = new EntryTemplate($dossier, $fields->code, $fields->label, $fields->journal);
         $template->describe($fields->code, $fields->label, $fields->journal, $fields->base, $fields->vatRate, $fields->lines);
         $this->entityManager->persist($template);
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $dossier,
             AuditAction::EntryTemplateCreated,
             $by,
-            'dossier',
-            (string) $dossier->getId(),
             \sprintf('Modèle d’écriture %s %s créé', $fields->code, $fields->label),
             ['dossier' => $dossier->getId(), 'code' => $fields->code, 'journal' => $fields->journal->getCode(), 'lines' => \count($fields->lines)],
         );
@@ -87,11 +86,10 @@ final readonly class TemplateSheet
         if (self::snapshot($template) === $before) {
             return false;
         }
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $template->getDossier(),
             AuditAction::EntryTemplateChanged,
             $by,
-            'dossier',
-            (string) $template->getDossier()->getId(),
             \sprintf('Modèle d’écriture %s modifié', $fields->code),
             ['dossier' => $template->getDossier()->getId(), 'before' => $before],
         );
@@ -117,11 +115,10 @@ final readonly class TemplateSheet
         if (null !== $this->deletionRefusal($template)) {
             throw new \LogicException('A subscription calls this template.');
         }
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $template->getDossier(),
             AuditAction::EntryTemplateDeleted,
             $by,
-            'dossier',
-            (string) $template->getDossier()->getId(),
             \sprintf('Modèle d’écriture %s %s supprimé', $template->getCode(), $template->getLabel()),
             ['dossier' => $template->getDossier()->getId(), 'code' => $template->getCode()],
         );

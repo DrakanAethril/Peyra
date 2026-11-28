@@ -118,11 +118,10 @@ final readonly class CompanySheet
             return false;
         }
         $dossier->describeCompany($company);
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $dossier,
             AuditAction::DossierCompanyChanged,
             $by,
-            'dossier',
-            (string) $dossier->getId(),
             \sprintf('Fiche société de %s modifiée', $company->getName()),
             ['dossier' => $dossier->getId(), 'fields' => $changed],
         );

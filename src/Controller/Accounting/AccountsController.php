@@ -9,7 +9,7 @@ use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Dossier\ExerciseRepository;
-use App\Security\Voter\DossierVoter;
+use App\Security\Voter\DossierRightVoter;
 use App\Service\Accounting\Chart\AccountSearch;
 use App\Service\Accounting\Chart\ChartCsv;
 use App\Service\Accounting\Chart\ChartInstaller;
@@ -86,7 +86,7 @@ final class AccountsController extends AbstractController
     #[Route('/install', name: 'app_accounting_accounts_install', methods: ['POST'])]
     public function install(Dossier $dossier, Request $request, AccountRepository $accounts, ReferenceCharts $charts, ExerciseRepository $exercises, ChartInstaller $installer, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !$this->isCsrfTokenValid('accounting-install-'.$dossier->getId(), $request->request->getString('_token'))) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier) || !$this->isCsrfTokenValid('accounting-install-'.$dossier->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         if (0 === $accounts->countPlan($dossier)) {

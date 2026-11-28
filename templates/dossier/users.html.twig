@@ -1,0 +1,101 @@
+{#
+ # Système d'information › Utilisateurs et droits (design-ux.md § 3.2, gabarit L puis F; lot 1,
+ # step 1.7): who enters the dossier and how far, then the matrix of the profiles area by area. In
+ # a group's dossier a teacher of the class gives each member a profile and saves with F10; the
+ # members read their own (the chip of the top bar says it too). Elsewhere the screen only reads.
+ #}
+{% extends 'dossier/_layout.html.twig' %}
+
+{% set rail_current = 'si' %}
+{% set dossier_title = 'Utilisateurs et droits' %}
+{% set status_keys = can_assign ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+
+{% block module_tabs %}{% set si_current = 'users' %}{{ include('dossier/_si_tabs.html.twig') }}{% endblock %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Utilisateurs et droits" :trail="[
+        {label: 'Système d’information', href: path('app_dossier_company', {dossier: dossier.id})},
+        {label: 'Utilisateurs et droits', href: path('app_dossier_users', {dossier: dossier.id})},
+    ]">
+        <twig:block name="badge"> <twig:Px:Badge tone="neutral" label="{{ group ? 'Dossier de groupe' : (dossier.template ? 'Dossier modèle' : 'Dossier individuel') }}"/></twig:block>
+        <twig:block name="actions">
+            {% if can_assign %}<twig:Px:Button type="submit" variant="primary" form="users-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if my_profile %}
+        <twig:Px:Alert tone="info" title="Votre profil : {{ my_profile.label }}">{{ my_profile.description }} Le tableau ci-dessous dit ce qu’il ouvre et ce qu’il ferme.</twig:Px:Alert>
+    {% elseif not group %}
+        <p class="px-u-muted">Les profils (comptable fournisseurs, comptable clients, gestionnaire de paie, chef comptable) servent aux dossiers partagés par un groupe. Dans ce dossier, chacun a les droits de sa place ci-dessous.</p>
+    {% endif %}
+
+    <twig:Px:Card :flush="true" title="Utilisateurs du dossier" meta="{{ user_rows is empty ? '' : user_rows|length ~ ' personne' ~ (user_rows|length > 1 ? 's' : '') }}">
+        {% if user_rows is empty %}
+            {% if dossier.template and dossier.owner is null %}
+                <twig:Px:Empty icon="users" title="Bibliothèque commune" text="Tout enseignant de la filière lit ce modèle ; les administrateurs de Peyra le modifient."/>
+            {% else %}
+                <twig:Px:Empty icon="users" title="Personne d’autre" text="Ce dossier n’est encore partagé avec personne."/>
+            {% endif %}
+        {% else %}
+            {% if can_assign %}<form method="post" action="{{ path('app_dossier_users_save', {dossier: dossier.id}) }}" id="users-form">
+                <input type="hidden" name="_token" value="{{ csrf_token('dossier-users-' ~ dossier.id) }}">{% endif %}
+            <twig:Px:Table caption="Utilisateurs du dossier {{ dossier.name }}">
+                <thead><tr>
+                    <th scope="col">Nom</th>
+                    <th scope="col">Place dans le dossier</th>
+                    <th scope="col">{{ group ? 'Profil' : 'Droits' }}</th>
+                </tr></thead>
+                <tbody>
+                    {% for row in user_rows %}
+                        <tr{% if row.user == app.user %} class="is-current"{% endif %}>
+                            <th scope="row">{{ row.user.sortName }}{% if row.user == app.user %} <span class="px-u-muted">(vous)</span>{% endif %}</th>
+                            <td>{{ row.role }}</td>
+                            <td>
+                                {% if can_assign and row.member %}
+                                    <label class="px-u-sr-only" for="profile-{{ row.member.id }}">Profil de {{ row.user.displayName }}</label>
+                                    <twig:Px:Select id="profile-{{ row.member.id }}" name="profile[{{ row.member.id }}]" size="sm" class="px-rights__profile" :value="row.profile ? row.profile.value : ''" :options="[{value: '', label: 'Sans profil (tous les droits)'}]|merge(profiles|map(p => {value: p.value, label: p.label}))"/>
+                                {% elseif row.profile %}
+                                    <twig:Px:Chip tone="role">{{ row.profile.label }}</twig:Px:Chip>
+                                {% else %}
+                                    {{ row.rights }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+            {% if can_assign %}</form>{% endif %}
+        {% endif %}
+    </twig:Px:Card>
+
+    <twig:Px:Card :flush="true" title="Profils et droits" meta="dossiers de groupe">
+        <twig:Px:Table caption="Ce que chaque profil ouvre, domaine par domaine" class="px-rights__matrix">
+            <thead><tr>
+                <th scope="col">Domaine</th>
+                {% for profile in profiles %}
+                    <th scope="col"{% if profile == my_profile %} class="is-current"{% endif %}>{{ profile.label }}{% if profile == my_profile %} <span class="px-u-muted">(vous)</span>{% endif %}</th>
+                {% endfor %}
+            </tr></thead>
+            <tbody>
+                {% for line in matrix %}
+                    <tr>
+                        <th scope="row">{{ line.area.label }}<br><small class="px-u-muted">{{ line.area.covers }}</small></th>
+                        {% for level in line.levels %}
+                            <td><twig:Px:Badge :tone="level.badgeTone" label="{{ level.labelIn(line.area) }}"/></td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </twig:Px:Table>
+        <twig:block name="foot">
+            <p class="px-u-muted">Fermé : le journal n’est pas proposé à la saisie. Consultation : il se lit sans se saisir. Saisie : brouillard, saisie en attente et lettrage. Validation : en plus, valider et contrepasser. Les consultations et les éditions se lisent dans tous les profils. Un membre sans profil, et les enseignants de la classe, ont tous les droits ; les gestes d’un enseignant sont signés de son nom dans la piste d’audit.</p>
+        </twig:block>
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}
+    {% if user_rows is not empty %}<span>{{ user_rows|length }} utilisateur{{ user_rows|length > 1 ? 's' : '' }}</span>{% endif %}
+    {% if my_profile %}<span>Votre profil · <b>{{ my_profile.label }}</b></span>{% endif %}
+{% endblock %}

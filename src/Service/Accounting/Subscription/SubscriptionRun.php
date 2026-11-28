@@ -115,11 +115,10 @@ final readonly class SubscriptionRun
             } else {
                 ++$outcome->drafts;
             }
-            $this->auditTrail->record(
+            $this->auditTrail->inDossier(
+                $dossier,
                 AuditAction::EntrySubscriptionGenerated,
                 $actor,
-                'dossier',
-                (string) $dossier->getId(),
                 \sprintf('Abonnement %s : écriture %d sur %d générée (%s du %s, %s)', $subscription->getLabel(), $rank, $subscription->getOccurrences(), $document, FrenchFormat::date($date), mb_strtolower($subscription->getTarget()->label())),
                 ['dossier' => $dossier->getId(), 'subscription' => $subscription->getId(), 'rank' => $rank, 'date' => $date->format('Y-m-d'), 'document' => $document, 'target' => $subscription->getTarget()->value],
             );

@@ -8,7 +8,7 @@
 {% extends 'accounting/_layout.html.twig' %}
 
 {% set settings_current = 'third_parties' %}
-{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set can_edit = is_granted('DOSSIER_SETTINGS', dossier) %}
 {% set dossier_title = third_party ? 'Tiers ' ~ third_party.code : 'Nouveau tiers' %}
 {% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}, {combo: 'F4', verb: 'Liste des comptes'}] : [] %}
 

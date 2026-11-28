@@ -28,7 +28,7 @@
                 <div class="px-entry-actions" id="entry-actions">
                     <twig:Px:Button id="entry-template" shortcut="F6">Modèle</twig:Px:Button>
                     <twig:Px:Button id="entry-balance" shortcut="+" disabled>Équilibrer</twig:Px:Button>
-                    <twig:Px:Button id="entry-validate" shortcut="Ctrl+Enter">Valider</twig:Px:Button>
+                    {% if can_validate %}<twig:Px:Button id="entry-validate" shortcut="Ctrl+Enter">Valider</twig:Px:Button>{% endif %}
                     <twig:Px:Button id="entry-save" variant="primary" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
                 </div>
                 <div class="px-confirmbar" id="entry-confirm" role="alertdialog" aria-labelledby="entry-confirm-text" hidden>
@@ -90,6 +90,7 @@
         </form>
 
         {% if closed_reason %}<twig:Px:Alert tone="info">{{ closed_reason }}</twig:Px:Alert>{% endif %}
+        {% if profile_note %}<twig:Px:Alert tone="info">{{ profile_note }}</twig:Px:Alert>{% endif %}
         {% if others is not empty %}
             <twig:Px:Alert tone="warning">
                 {% for other in others %}Saisie en attente de {{ other.name }} dans ce journal et ce mois : {{ other.count > 1 ? other.count ~ ' écritures pas encore enregistrées au brouillard' : 'une écriture pas encore enregistrée au brouillard' }}.{% if not loop.last %}<br>{% endif %}{% endfor %}

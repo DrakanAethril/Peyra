@@ -8,7 +8,7 @@ use App\Entity\Accounting\Entry;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
 use App\Repository\Accounting\EntryRepository;
-use App\Security\Voter\DossierVoter;
+use App\Security\Voter\DossierRightVoter;
 use App\Service\Accounting\Entry\GridDrafts;
 use App\Service\Accounting\Entry\GridGroup;
 use App\Service\Accounting\Entry\JournalGrid;
@@ -34,6 +34,8 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * (« Contrepasser », or « Contrepasser et ressaisir », which also puts a copy back in the grid) or
  * duplicated. A duplicate is a new entry of the grid, pending, never written before F10. Reached
  * from a consultation (`return`), it offers the way back; each line's account opens its consultation.
+ * In a group's dossier, the member's profile decides which gestures the journal allows
+ * (DossierRightVoter: « saisie » changes, deletes and duplicates, « validation » validates and reverses).
  */
 #[Route('/d/{dossier}/accounting/entries/{id}', requirements: ['dossier' => '\d+', 'id' => '\d+'])]
 final class EntryController extends AbstractController
@@ -139,11 +141,12 @@ final class EntryController extends AbstractController
         $grid->append($journal, $entry->getPeriod(), $me, $copy, $clock->now());
     }
 
-    /** The entry, for whoever works in the dossier and sent the form's token. */
+    /** The entry, for whoever may make the gesture in its journal and sent the form's token. */
     private function editable(Dossier $dossier, int $id, Request $request, EntryRepository $entries, string $gesture): Entry
     {
         $entry = $entries->find($id) ?? throw new NotFoundHttpException('No such entry.');
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !$this->isCsrfTokenValid('entry-'.$gesture.'-'.$entry->getId(), $request->request->getString('_token'))) {
+        $right = \in_array($gesture, ['validate', 'reverse'], true) ? DossierRightVoter::JOURNAL_VALIDATE : DossierRightVoter::JOURNAL_ENTER;
+        if (!$this->isGranted($right, $entry->getJournal()) || !$this->isCsrfTokenValid('entry-'.$gesture.'-'.$entry->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
         }
 

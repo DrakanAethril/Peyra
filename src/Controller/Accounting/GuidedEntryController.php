@@ -8,6 +8,7 @@ use App\Entity\Accounting\EntryTemplate;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
 use App\Repository\Accounting\EntryTemplateRepository;
+use App\Security\Voter\DossierRightVoter;
 use App\Security\Voter\DossierVoter;
 use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Accounting\Template\GuidedEntry;
@@ -94,10 +95,13 @@ final class GuidedEntryController extends AbstractController
         }
     }
 
-    /** @return list<EntryTemplate> */
+    /** @return list<EntryTemplate> the templates it computes whole, in the journals the person's profile enters in */
     private function offered(Dossier $dossier, EntryTemplateRepository $templates): array
     {
-        return array_values(array_filter($templates->findByDossier($dossier), GuidedEntry::offers(...)));
+        return array_values(array_filter(
+            $templates->findByDossier($dossier),
+            fn (EntryTemplate $template): bool => GuidedEntry::offers($template) && $this->isGranted(DossierRightVoter::JOURNAL_ENTER, $template->getJournal()),
+        ));
     }
 
     /** @param list<EntryTemplate> $offered */

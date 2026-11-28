@@ -9,7 +9,7 @@
 
 {% set settings_current = 'subscriptions' %}
 {% set dossier_title = 'Abonnements' %}
-{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set can_edit = is_granted('DOSSIER_SETTINGS', dossier) %}
 {% set due_total = due_pending + due_drafts %}
 {% set today = dossier.dossierDate %}
 {% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouvel abonnement'}]|merge(due_total > 0 ? [{combo: 'Ctrl+Enter', verb: 'Générer'}] : []) : [] %}

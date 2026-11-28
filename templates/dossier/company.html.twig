@@ -1,19 +1,16 @@
 {#
  # Système d'information › Société (design-ux.md § 3.2, gabarit F): identity and regimes, saved with
- # F10 by whoever works in the dossier; the exercises and their periods below, read only (they open
+ # F10 by whoever works in the dossier and whose profile keeps its settings; the exercises and their periods below, read only (they open
  # and close with the closing screens). A person who only reads sees the same fiche, without fields.
  #}
 {% extends 'dossier/_layout.html.twig' %}
 
 {% set rail_current = 'si' %}
 {% set dossier_title = 'Société' %}
-{% set status_keys = is_granted('DOSSIER_EDIT', dossier) ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+{% set can_settings = is_granted('DOSSIER_SETTINGS', dossier) %}
+{% set status_keys = can_settings ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
 
-{% block module_tabs %}
-    <twig:Px:ModuleTabs label="Système d’information" :tabs="[
-        {label: 'Société', href: path('app_dossier_company', {dossier: dossier.id}), current: true},
-    ]"/>
-{% endblock %}
+{% block module_tabs %}{% set si_current = 'company' %}{{ include('dossier/_si_tabs.html.twig') }}{% endblock %}
 
 {% block page_head %}
     <twig:Px:PageHead title="{{ dossier.name }}" :trail="[
@@ -21,13 +18,13 @@
         {label: 'Société', href: path('app_dossier_company', {dossier: dossier.id})},
     ]">
         <twig:block name="actions">
-            {% if view.canEdit %}<twig:Px:Button type="submit" variant="primary" form="company-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>{% endif %}
+            {% if can_settings %}<twig:Px:Button type="submit" variant="primary" form="company-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>{% endif %}
         </twig:block>
     </twig:Px:PageHead>
 {% endblock %}
 
 {% block page %}
-    {% if view.canEdit %}
+    {% if can_settings %}
         {{ include('dossier/_company_form.html.twig') }}
     {% else %}
         {{ include('dossier/_company_facts.html.twig') }}

@@ -10,7 +10,8 @@
 
 {% set module_current = 'consultation' %}
 {% set consultation_current = 'lettering' %}
-{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{# can_letter: whoever works in the dossier, and in a group's dossier a profile that enters in the key's area. #}
+{% set can_edit = can_letter %}
 {% set dossier_title = key ? 'Lettrage · ' ~ key.code : 'Lettrage' %}
 {% set status_keys = face and can_edit
     ? [{combo: 'Space', verb: 'Choisir la ligne'}, {combo: 'Tab', verb: 'Autre côté'}, {combo: 'Ctrl+Enter', verb: 'Lettrer'}]
@@ -40,6 +41,7 @@
     {{ include('accounting/_consultation_tabs.html.twig') }}
 
     {% if error %}<twig:Px:Alert tone="danger">{{ error }}</twig:Px:Alert>{% endif %}
+    {% if profile_note %}<twig:Px:Alert tone="info">{{ profile_note }}</twig:Px:Alert>{% endif %}
     {% for fault in app.flashes('lettering_fault') %}<twig:Px:Alert tone="danger" title="Lettrage refusé">{{ fault }}</twig:Px:Alert>{% endfor %}
 
     {% if face is null %}

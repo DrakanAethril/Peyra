@@ -1,0 +1,6 @@
+{# The module tabs of Système d'information (design-ux.md § 2.5): the screen sets `si_current`. #}
+<twig:Px:ModuleTabs label="Système d’information" :tabs="[
+    {label: 'Société', href: path('app_dossier_company', {dossier: dossier.id}), current: si_current == 'company'},
+    {label: 'Utilisateurs et droits', href: path('app_dossier_users', {dossier: dossier.id}), current: si_current == 'users'},
+    {label: 'Piste d’audit', href: path('app_dossier_audit', {dossier: dossier.id}), current: si_current == 'audit'},
+]"/>

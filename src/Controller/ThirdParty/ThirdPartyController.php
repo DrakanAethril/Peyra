@@ -12,7 +12,7 @@ use App\Enum\ThirdParty\PaymentTermKind;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
-use App\Security\Voter\DossierVoter;
+use App\Security\Voter\DossierRightVoter;
 use App\Service\Accounting\Ledger\EntryScope;
 use App\Service\Accounting\Ledger\LedgerReader;
 use App\Service\Shared\PostValue;
@@ -29,7 +29,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
  * The fiche of a third party (gabarit F): identity, account and auxiliary code, details, payment
- * terms and mode. F10 saves for whoever works in the dossier (DossierVoter::EDIT), anybody else
+ * terms and mode. F10 saves for whoever works in the dossier (DossierRightVoter::SETTINGS: the profile's « Paramètres du dossier »), anybody else
  * reads; the two-step button deletes. The address is the third party's code; a new one starts on
  * the next code of its nature and its usual account.
  */
@@ -41,7 +41,7 @@ final class ThirdPartyController extends AbstractController
     #[Route('/new', name: 'app_third_party_new', methods: ['GET', 'POST'])]
     public function create(Dossier $dossier, Request $request, ThirdPartySheet $sheet, AccountRepository $accounts, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier)) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $draft = $sheet->blank($dossier, ThirdPartyKind::tryFrom(QueryValue::trimmed($request, 'kind')) ?? ThirdPartyKind::Customer);
@@ -69,7 +69,7 @@ final class ThirdPartyController extends AbstractController
         $draft = ThirdPartyDraft::of($thirdParty);
         $status = Response::HTTP_OK;
         if ($request->isMethod('POST')) {
-            if (!$this->isGranted(DossierVoter::EDIT, $dossier)) {
+            if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
                 throw new NotFoundHttpException('Not yours to change.');
             }
             $this->read($request, $draft, 'third-party-'.$thirdParty->getId());
@@ -96,7 +96,7 @@ final class ThirdPartyController extends AbstractController
     public function delete(Dossier $dossier, string $code, Request $request, ThirdPartyRepository $thirdParties, ThirdPartySheet $sheet, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $thirdParty = $thirdParties->findOneByCode($dossier, $code) ?? throw new NotFoundHttpException('No such third party.');
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !$this->isCsrfTokenValid('third-party-delete-'.$thirdParty->getId(), $request->request->getString('_token'))) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier) || !$this->isCsrfTokenValid('third-party-delete-'.$thirdParty->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $refusal = $sheet->deletionRefusal($thirdParty);

@@ -137,11 +137,10 @@ final readonly class ChartImport
         }
         $created = $report->count(ChartImportLine::CREATE);
         $updated = $report->count(ChartImportLine::UPDATE);
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $dossier,
             AuditAction::ChartImported,
             $by,
-            'dossier',
-            (string) $dossier->getId(),
             \sprintf('Plan de comptes importé de %s : %d créés, %d modifiés', $fileName, $created, $updated),
             ['dossier' => $dossier->getId(), 'file' => $fileName, 'created' => $created, 'updated' => $updated, 'unchanged' => $report->count(ChartImportLine::SAME)],
         );

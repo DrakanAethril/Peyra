@@ -167,11 +167,10 @@ final readonly class ThirdPartyImport
         }
         $created = $report->count(ThirdPartyImportLine::CREATE);
         $updated = $report->count(ThirdPartyImportLine::UPDATE);
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $dossier,
             AuditAction::ThirdPartiesImported,
             $by,
-            'dossier',
-            (string) $dossier->getId(),
             \sprintf('Tiers importés de %s : %d créés, %d modifiés', $fileName, $created, $updated),
             ['dossier' => $dossier->getId(), 'file' => $fileName, 'created' => $created, 'updated' => $updated, 'unchanged' => $report->count(ThirdPartyImportLine::SAME)],
         );

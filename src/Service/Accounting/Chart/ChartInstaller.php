@@ -51,11 +51,10 @@ final readonly class ChartInstaller
             ++$copied;
         }
         $dossier->usesChart($chart->code);
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $dossier,
             AuditAction::ChartInstalled,
             $actor,
-            'dossier',
-            (string) $dossier->getId(),
             \sprintf('Plan de comptes %s installé dans %s (%d comptes)', $chart->label, $dossier->getName(), $copied),
             ['dossier' => $dossier->getId(), 'chart' => $chart->code, 'accounts' => $copied],
         );

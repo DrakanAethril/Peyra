@@ -4,7 +4,7 @@
  # then « Tous mes dossiers ». With a single dossier it is a text, without a menu. Changing dossier
  # opens the other one's dashboard. (The restore point joins the panel at step 1.8.)
  #}
-{% set exercise_label = view.exercise ? 'Exercice ' ~ view.exercise.code : 'Hors exercice' %}
+{% set exercise_label = (view.exercise ? 'Exercice ' ~ view.exercise.code : 'Hors exercice') ~ (dossier.kind.value == 'group' ? ' · groupe' : '') %}
 {% if view.switcherCount <= 1 %}
     <div class="px-switcher px-switcher--static">
         <b class="px-switcher__name">{{ dossier.name }}</b>
@@ -27,7 +27,7 @@
                         {% set here = row.dossier == dossier %}
                         <a class="px-menu__item px-switcher__option" role="menuitem" href="{{ path('app_dossier_dashboard', {dossier: row.dossier.id}) }}"{% if here %} aria-current="true"{% endif %}>
                             <span>{% if here %}<twig:ux:icon name="check" aria-hidden="true"/>{% endif %}{{ row.dossier.name }}{% if here %} <span class="px-u-sr-only">(dossier ouvert)</span>{% endif %}</span>
-                            <small>{{ row.exercise ? 'Exercice ' ~ row.exercise.code : 'Hors exercice' }} · {{ row.dossier.dossierDate|date_chip }}</small>
+                            <small>{{ row.exercise ? 'Exercice ' ~ row.exercise.code : 'Hors exercice' }} · {{ row.dossier.dossierDate|date_chip }}{% if row.dossier.kind.value == 'group' %} · groupe{% endif %}</small>
                         </a>
                     {% endfor %}
                 {% endfor %}

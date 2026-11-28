@@ -7,7 +7,7 @@
 
 {% set settings_current = 'accounts' %}
 {% set dossier_title = 'Plan de comptes' %}
-{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set can_edit = is_granted('DOSSIER_SETTINGS', dossier) %}
 {% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouveau compte'}, {combo: '/', verb: 'Rechercher'}] : [{combo: '/', verb: 'Rechercher'}] %}
 {% set short_classes = {1: 'Capitaux', 2: 'Immobilisations', 3: 'Stocks', 4: 'Tiers', 5: 'Financiers', 6: 'Charges', 7: 'Produits', 8: 'Spéciaux'} %}
 

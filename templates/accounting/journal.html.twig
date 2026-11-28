@@ -7,7 +7,7 @@
 {% extends 'accounting/_layout.html.twig' %}
 
 {% set settings_current = 'journals' %}
-{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set can_edit = is_granted('DOSSIER_SETTINGS', dossier) %}
 {% set dossier_title = journal ? 'Journal ' ~ journal.code : 'Nouveau journal' %}
 {% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}, {combo: 'F4', verb: 'Liste des comptes'}] : [] %}
 {% set type_options = types|map(t => {value: t.value, label: t.label}) %}

@@ -13,7 +13,7 @@ use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntrySubscriptionRepository;
 use App\Repository\Accounting\EntryTemplateRepository;
 use App\Repository\Dossier\PeriodRepository;
-use App\Security\Voter\DossierVoter;
+use App\Security\Voter\DossierRightVoter;
 use App\Service\Accounting\Subscription\SubscriptionDraft;
 use App\Service\Accounting\Subscription\SubscriptionRun;
 use App\Service\Accounting\Subscription\SubscriptionSchedule;
@@ -38,7 +38,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * of one with the dates and documents of all its occurrences. « Générer jusqu'au » the dossier's
  * date (Ctrl Entrée, after the confirmation bar that counts the entries) makes every occurrence
  * due, into the grid's pending work or the brouillard. For whoever works in the dossier
- * (DossierVoter::EDIT); anybody else reads.
+ * (DossierRightVoter::SETTINGS: the profile's « Paramètres du dossier »); anybody else reads.
  */
 #[Route('/d/{dossier}/accounting/subscriptions', requirements: ['dossier' => '\d+'])]
 final class SubscriptionsController extends AbstractController
@@ -70,7 +70,7 @@ final class SubscriptionsController extends AbstractController
     #[Route('/generate', name: 'app_accounting_subscriptions_generate', methods: ['POST'])]
     public function generate(Dossier $dossier, Request $request, SubscriptionRun $run, ClockInterface $clock, #[CurrentUser] User $me): Response
     {
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !$this->isCsrfTokenValid('dossier-subscriptions-generate-'.$dossier->getId(), $request->request->getString('_token'))) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier) || !$this->isCsrfTokenValid('dossier-subscriptions-generate-'.$dossier->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $today = $dossier->getDossierDate();
@@ -96,7 +96,7 @@ final class SubscriptionsController extends AbstractController
     #[Route('/new', name: 'app_accounting_subscription_new', methods: ['GET', 'POST'])]
     public function create(Dossier $dossier, Request $request, SubscriptionSheet $sheet, EntryTemplateRepository $templates, AccountRepository $accounts, PeriodRepository $periods, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier)) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $draft = new SubscriptionDraft();
@@ -130,7 +130,7 @@ final class SubscriptionsController extends AbstractController
         $status = Response::HTTP_OK;
         $fault = null;
         if ($request->isMethod('POST')) {
-            if (!$this->isGranted(DossierVoter::EDIT, $dossier)) {
+            if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
                 throw new NotFoundHttpException('Not yours to change.');
             }
             $this->read($request, $draft, 'dossier-subscription-'.$subscription->getId());
@@ -154,7 +154,7 @@ final class SubscriptionsController extends AbstractController
     public function delete(Dossier $dossier, int $id, Request $request, EntrySubscriptionRepository $subscriptions, SubscriptionSheet $sheet, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $subscription = $subscriptions->findOneInDossier($dossier, $id) ?? throw new NotFoundHttpException('No such subscription.');
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !$this->isCsrfTokenValid('dossier-subscription-delete-'.$subscription->getId(), $request->request->getString('_token'))) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier) || !$this->isCsrfTokenValid('dossier-subscription-delete-'.$subscription->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $label = $subscription->getLabel();

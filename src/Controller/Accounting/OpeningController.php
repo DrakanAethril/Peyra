@@ -6,6 +6,7 @@ namespace App\Controller\Accounting;
 
 use App\Entity\Dossier\Dossier;
 use App\Repository\Dossier\ExerciseRepository;
+use App\Security\Voter\DossierRightVoter;
 use App\Security\Voter\DossierVoter;
 use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Accounting\Opening\OpeningBalance;
@@ -40,12 +41,14 @@ final class OpeningController extends AbstractController
         }
         $exercise ??= $exercises->findAt($dossier, $dossier->getDossierDate()) ?? ($all[0] ?? null);
         $editable = $this->isGranted(DossierVoter::EDIT, $dossier);
+        $report = null === $exercise ? null : $openings->of($dossier, $exercise);
 
         return $this->render('accounting/opening.html.twig', [
             'dossier' => $dossier,
             'exercises' => $all,
-            'report' => null === $exercise ? null : $openings->of($dossier, $exercise),
-            'can_edit' => $editable,
+            'report' => $report,
+            'can_edit' => null !== $report?->journal && $this->isGranted(DossierRightVoter::JOURNAL_ENTER, $report->journal),
+            'can_settings' => $this->isGranted(DossierRightVoter::SETTINGS, $dossier),
             'guided_open' => $editable && GuidedEntry::isOpen($assistance->for($dossier), $this->isGranted('ROLE_TEACHER')),
             'here' => ReturnPath::here($request->getPathInfo(), (string) $request->getQueryString()),
         ]);

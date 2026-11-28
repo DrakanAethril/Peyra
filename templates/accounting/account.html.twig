@@ -7,7 +7,7 @@
 {% extends 'accounting/_layout.html.twig' %}
 
 {% set settings_current = 'accounts' %}
-{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set can_edit = is_granted('DOSSIER_SETTINGS', dossier) %}
 {% set dossier_title = account ? 'Compte ' ~ account.number : 'Nouveau compte' %}
 {% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
 {% set form_id = 'account-form' %}

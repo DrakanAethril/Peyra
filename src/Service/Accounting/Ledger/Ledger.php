@@ -12,12 +12,14 @@ use App\Entity\Dossier\Period;
 use App\Entity\Identity\User;
 use App\Enum\Accounting\EntryOrigin;
 use App\Enum\Audit\AuditAction;
+use App\Enum\Dossier\AccessLevel;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntryRepository;
 use App\Repository\Accounting\JournalRepository;
 use App\Repository\Dossier\PeriodRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Audit\AuditTrail;
+use App\Service\Dossier\Rights\DossierRights;
 use App\Service\Shared\FrenchFormat;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -34,6 +36,9 @@ use Doctrine\ORM\EntityManagerInterface;
  *   A validated entry never changes again (App\Doctrine\LedgerGuard holds it at flush).
  * - `reverse()` undoes a validated entry by its inverse, validated at once, dated as asked.
  *
+ * The actor's profile in a group's dossier is asked here too (DossierRights, step 1.7): drafting,
+ * changing and deleting need « saisie » on the journal, validating and reversing « validation ».
+ *
  * Every gesture is checked again here (a period closed since the draft refuses it), recorded in
  * the audit trail and flushed in one transaction by the Ledger itself; a refusal is an
  * EntryRefused, which writes nothing. Runs inside the dossier's context.
@@ -48,6 +53,7 @@ final readonly class Ledger
         private ThirdPartyRepository $thirdParties,
         private EntryRepository $entries,
         private AuditTrail $auditTrail,
+        private DossierRights $rights,
     ) {
     }
 
@@ -67,6 +73,7 @@ final readonly class Ledger
     public function draft(Dossier $dossier, EntryDraft $draft, User|string $actor, EntryOrigin $origin = EntryOrigin::Manual, ?string $source = null): Entry
     {
         $fields = $this->checked($dossier, $draft);
+        $this->refuseUnlessAllowed($fields->journal, $actor, AccessLevel::Enter);
 
         return $this->transactional(function () use ($dossier, $draft, $fields, $actor, $origin, $source): Entry {
             $entry = new Entry($dossier, $fields->journal, $fields->period, $draft->date ?? throw new \LogicException(), $draft->document, $draft->label, $origin, $source);
@@ -83,7 +90,9 @@ final readonly class Ledger
     public function update(Entry $entry, EntryDraft $draft, User|string $actor): void
     {
         self::refuseUnlessDraft($entry, 'modifier');
+        $this->refuseUnlessAllowed($entry->getJournal(), $actor, AccessLevel::Enter);
         $fields = $this->checked($entry->getDossier(), $draft);
+        $this->refuseUnlessAllowed($fields->journal, $actor, AccessLevel::Enter);
 
         $this->transactional(function () use ($entry, $draft, $fields, $actor): void {
             $entry->ledgerRewrite($fields->journal, $fields->period, $draft->date ?? throw new \LogicException(), $draft->document, $draft->label);
@@ -96,6 +105,7 @@ final readonly class Ledger
     public function discard(Entry $entry, User|string $actor): void
     {
         self::refuseUnlessDraft($entry, 'supprimer');
+        $this->refuseUnlessAllowed($entry->getJournal(), $actor, AccessLevel::Enter);
 
         $this->transactional(function () use ($entry, $actor): void {
             $this->record(AuditAction::EntryDiscarded, $actor, $entry, \sprintf('Écriture du brouillard supprimée : %s', self::describe($entry)));
@@ -116,6 +126,11 @@ final readonly class Ledger
         foreach ($entries as $entry) {
             if ($entry->isValidated()) {
                 $errors['entry.'.$entry->getId()] = \sprintf('L’écriture %s est déjà validée.', $entry->getNumberLabel());
+                continue;
+            }
+            $refusal = $this->rights->journalRefusal($entry->getJournal(), $actor, AccessLevel::Validate);
+            if (null !== $refusal) {
+                $errors['entry.'.$entry->getId()] = $refusal;
                 continue;
             }
             $draft = EntryDraft::of($entry);
@@ -174,6 +189,7 @@ final readonly class Ledger
         if (null !== $reversal) {
             throw EntryRefused::because(\sprintf('L’écriture %s est déjà contrepassée par %s.', $entry->getNumberLabel(), $reversal->getNumberLabel()));
         }
+        $this->refuseUnlessAllowed($entry->getJournal(), $actor, AccessLevel::Validate);
 
         $label = mb_strimwidth(\sprintf('Contrepassation de %s : %s', $entry->getNumberLabel(), $entry->getLabel()), 0, EntryRules::LABEL_MAX, '…');
         $draft = new EntryDraft($entry->getJournal()->getCode(), $on, $entry->getDocument(), $label, array_map(
@@ -209,6 +225,15 @@ final readonly class Ledger
         }
 
         return $lines;
+    }
+
+    /** The actor's profile allows the gesture in the journal, or the Ledger refuses it under « journal ». */
+    private function refuseUnlessAllowed(Journal $journal, User|string $actor, AccessLevel $wanted): void
+    {
+        $refusal = $this->rights->journalRefusal($journal, $actor, $wanted);
+        if (null !== $refusal) {
+            throw new EntryRefused(['journal' => $refusal]);
+        }
     }
 
     private static function refuseUnlessDraft(Entry $entry, string $verb): void
@@ -262,7 +287,7 @@ final readonly class Ledger
     /** @param array<string, mixed> $details */
     private function record(AuditAction $action, User|string $actor, Entry $entry, string $summary, array $details = []): void
     {
-        $this->auditTrail->record($action, $actor, 'dossier', (string) $entry->getDossier()->getId(), $summary, [
+        $this->auditTrail->inDossier($entry->getDossier(), $action, $actor, $summary, [
             'dossier' => $entry->getDossier()->getId(),
             'entry' => $entry->getId(),
             'journal' => $entry->getJournal()->getCode(),

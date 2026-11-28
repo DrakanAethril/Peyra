@@ -7,7 +7,7 @@
 
 {% set settings_current = 'journals' %}
 {% set dossier_title = 'Journaux' %}
-{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set can_edit = is_granted('DOSSIER_SETTINGS', dossier) %}
 {% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouveau journal'}] : [] %}
 
 {% block page_head %}

@@ -10,7 +10,7 @@ use App\Entity\Identity\User;
 use App\Enum\Accounting\JournalType;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\JournalRepository;
-use App\Security\Voter\DossierVoter;
+use App\Security\Voter\DossierRightVoter;
 use App\Service\Accounting\Journal\JournalDraft;
 use App\Service\Accounting\Journal\JournalSheet;
 use App\Service\Shared\PostValue;
@@ -25,7 +25,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 /**
  * Comptabilité › Paramètres comptables › Journaux (design-ux.md § 3.2, gabarits L then F): the
  * dossier's journals, and the fiche of one - code, label, type, counterpart account picked with F4.
- * F10 saves for whoever works in the dossier (DossierVoter::EDIT), anybody else reads. The address
+ * F10 saves for whoever works in the dossier (DossierRightVoter::SETTINGS: the profile's « Paramètres du dossier »), anybody else reads. The address
  * of a journal is its code.
  */
 #[Route('/d/{dossier}/accounting/journals', requirements: ['dossier' => '\d+'])]
@@ -43,7 +43,7 @@ final class JournalsController extends AbstractController
     #[Route('/new', name: 'app_accounting_journal_new', methods: ['GET', 'POST'])]
     public function create(Dossier $dossier, Request $request, JournalSheet $sheet, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier)) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $draft = new JournalDraft();
@@ -71,7 +71,7 @@ final class JournalsController extends AbstractController
         $draft = JournalDraft::of($journal);
         $status = Response::HTTP_OK;
         if ($request->isMethod('POST')) {
-            if (!$this->isGranted(DossierVoter::EDIT, $dossier)) {
+            if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
                 throw new NotFoundHttpException('Not yours to change.');
             }
             $this->read($request, $draft, 'dossier-journal-'.$journal->getId());
@@ -100,7 +100,7 @@ final class JournalsController extends AbstractController
     public function delete(Dossier $dossier, string $code, Request $request, JournalRepository $journals, JournalSheet $sheet, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $journal = $journals->findOneByCode($dossier, $code) ?? throw new NotFoundHttpException('No such journal.');
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !$this->isCsrfTokenValid('dossier-journal-delete-'.$journal->getId(), $request->request->getString('_token'))) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier) || !$this->isCsrfTokenValid('dossier-journal-delete-'.$journal->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $refusal = $sheet->deletionRefusal($journal);

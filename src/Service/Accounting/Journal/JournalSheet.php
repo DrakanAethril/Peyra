@@ -106,11 +106,10 @@ final readonly class JournalSheet
     {
         $journal = new Journal($dossier, $draft->code, $draft->label, $fields->type, $fields->counterpart);
         $this->entityManager->persist($journal);
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $dossier,
             AuditAction::JournalCreated,
             $by,
-            'dossier',
-            (string) $dossier->getId(),
             \sprintf('Journal %s %s créé dans %s', $draft->code, $draft->label, $dossier->getName()),
             ['dossier' => $dossier->getId(), 'code' => $draft->code, 'type' => $fields->type->value],
         );
@@ -128,11 +127,10 @@ final readonly class JournalSheet
             return false;
         }
         $journal->describe($draft->code, $draft->label, $fields->type, $fields->counterpart);
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $journal->getDossier(),
             AuditAction::JournalChanged,
             $by,
-            'dossier',
-            (string) $journal->getDossier()->getId(),
             \sprintf('Journal %s modifié', $draft->code),
             ['dossier' => $journal->getDossier()->getId(), 'fields' => $changed, 'before' => $before],
         );
@@ -160,11 +158,10 @@ final readonly class JournalSheet
         if (null !== $this->deletionRefusal($journal)) {
             throw new \LogicException('This journal carries entries.');
         }
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $journal->getDossier(),
             AuditAction::JournalDeleted,
             $by,
-            'dossier',
-            (string) $journal->getDossier()->getId(),
             \sprintf('Journal %s %s supprimé', $journal->getCode(), $journal->getLabel()),
             ['dossier' => $journal->getDossier()->getId(), 'code' => $journal->getCode()],
         );

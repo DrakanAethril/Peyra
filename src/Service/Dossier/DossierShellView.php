@@ -9,6 +9,7 @@ use App\Entity\Dossier\DossierDateChange;
 use App\Entity\Dossier\Exercise;
 use App\Entity\Dossier\Period;
 use App\Entity\Identity\User;
+use App\Enum\Dossier\DossierProfile;
 
 /**
  * DossierShell's reading for the templates of a dossier's screens.
@@ -21,6 +22,7 @@ final readonly class DossierShellView
      * @param list<DossierDateChange> $dateChanges the latest first
      * @param list<ListingGroup>      $switcher
      * @param list<User>              $holders     the student, or the group's members
+     * @param DossierProfile|null     $profile     the person's profile in a group's dossier (the chip of the top bar)
      */
     public function __construct(
         public Dossier $dossier,
@@ -33,6 +35,7 @@ final readonly class DossierShellView
         public bool $teacher,
         public array $holders,
         public bool $dateMoved,
+        public ?DossierProfile $profile = null,
     ) {
     }
 

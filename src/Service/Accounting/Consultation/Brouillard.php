@@ -9,6 +9,7 @@ use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\Period;
 use App\Entity\Identity\User;
+use App\Enum\Dossier\AccessLevel;
 use App\Repository\Accounting\EntryRepository;
 use App\Service\Accounting\Entry\GridContext;
 use App\Service\Accounting\Entry\GridDrafts;
@@ -17,6 +18,7 @@ use App\Service\Accounting\Entry\JournalGrid;
 use App\Service\Accounting\Entry\PendingEntries;
 use App\Service\Accounting\Ledger\EntryRefused;
 use App\Service\Accounting\Ledger\Ledger;
+use App\Service\Dossier\Rights\DossierRights;
 
 /**
  * Comptabilité › Brouillard (lot 1, step 1.5; design-ux.md § 3.2, « Brouillard »): the entries not
@@ -24,7 +26,8 @@ use App\Service\Accounting\Ledger\Ledger;
  * the controls of the dossier's level of assistance), and the validation of a selection - all or
  * nothing, through the Ledger. At levels G and B a draft a control stops is held back (its box
  * cannot be ticked); at level A its controls are warnings. A draft the person is changing in the
- * grid is held back too, as the grid's Ctrl Entrée does. Runs in the dossier's context.
+ * grid is held back too, as the grid's Ctrl Entrée does, and so is a draft of a journal the person's
+ * profile does not validate (a group's dossier). Runs in the dossier's context.
  */
 final readonly class Brouillard
 {
@@ -33,6 +36,7 @@ final readonly class Brouillard
         private JournalGrid $grid,
         private PendingEntries $pending,
         private Ledger $ledger,
+        private DossierRights $rights,
     ) {
     }
 
@@ -97,7 +101,8 @@ final readonly class Brouillard
             }
             $context = $contexts[$key];
             $check = $this->grid->check($context, new GridGroup('e'.$draft->getId(), $draft->getId(), $draft->getEntryDate()->format('Y-m-d'), $draft->getDocument(), GridDrafts::linesOf($draft, $context->counterpart())));
-            $rows[] = new BrouillardRow($draft, $check->controls, $check->errors, !$check->isWritable(), isset($changing[$key][(int) $draft->getId()]));
+            $refused = null === $me ? null : $this->rights->journalRefusal($draft->getJournal(), $me, AccessLevel::Validate);
+            $rows[] = new BrouillardRow($draft, $check->controls, $check->errors, !$check->isWritable(), isset($changing[$key][(int) $draft->getId()]), $refused);
         }
 
         return $rows;
