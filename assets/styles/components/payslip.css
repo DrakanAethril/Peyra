@@ -42,6 +42,18 @@
         font-weight: var(--px-fw-semibold);
     }
 
+    .px-payslip__cell.is-gap {
+        background: var(--px-danger-tint);
+        color: var(--px-danger-text);
+        font-weight: var(--px-fw-semibold);
+    }
+
+    .px-payslip__gap {
+        display: block;
+        color: var(--px-danger-text);
+        font-size: var(--px-fs-11);
+    }
+
     .px-payslip__forced {
         display: block;
         color: var(--px-warning-text);

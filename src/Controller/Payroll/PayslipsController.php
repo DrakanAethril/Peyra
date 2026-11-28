@@ -11,6 +11,7 @@ use App\Entity\Payroll\MonthlyPayslip;
 use App\Enum\Payroll\PayslipStatus;
 use App\Security\Voter\DossierRightVoter;
 use App\Security\Voter\DossierVoter;
+use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Payroll\Engine\PayslipAdjustments;
 use App\Service\Payroll\Engine\PayslipRow;
 use App\Service\Payroll\Payslip\PayslipBook;
@@ -21,6 +22,7 @@ use App\Service\Payroll\Payslip\PayslipElementsRules;
 use App\Service\Payroll\Payslip\PayslipLineCells;
 use App\Service\Payroll\Payslip\PayslipView;
 use App\Service\Payroll\Plan\PayrollItemSpec;
+use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\Pdf\PdfRenderer;
 use App\Service\Shared\PostValue;
@@ -106,9 +108,10 @@ final class PayslipsController extends AbstractController
     }
 
     #[Route('/{number}', name: 'app_payroll_payslip', requirements: ['number' => '[A-Z0-9]{1,10}'], methods: ['GET', 'POST'])]
-    public function payslip(Dossier $dossier, string $number, Request $request, PayslipBook $book, EntityManagerInterface $entityManager): Response
+    public function payslip(Dossier $dossier, string $number, Request $request, PayslipBook $book, AssistanceLevels $levels, EntityManagerInterface $entityManager): Response
     {
         $this->readable($dossier);
+        $assistance = Assistance::at($levels->for($dossier));
         $month = $book->month($dossier);
         [$employees, $index] = $this->place($book, $dossier, $month, $number);
         $employee = $employees[$index];
@@ -134,10 +137,16 @@ final class PayslipsController extends AbstractController
             $errors = $read['errors'];
             $lines = PayslipLineCells::read($current['payslip']->rows ?? [], $plan, $adjustments, $cells, PostValue::stringsByKey($request, 'shown'));
             $errors += $lines['errors'];
-            $adjustments = $this->addedOrRemoved($request, $plan, $lines['adjustments'], $errors);
+            $adjustments = $this->addedOrRemoved($request, $plan, $lines['adjustments'], $errors, $assistance->startsPayslipEmpty());
             if (null !== $read['elements'] && [] === $errors) {
                 $calculation = $book->calculate($employee, $month, $read['elements'], $plan, $adjustments);
                 if (null === $calculation['refusal']) {
+                    if (null === $payslip && null !== $calculation['payslip'] && $assistance->startsPayslipEmpty()) {
+                        // Level 0: the payslip starts with no line, the student adds each rubrique (Inser).
+                        foreach ($calculation['payslip']->rows as $row) {
+                            $adjustments = $adjustments->withRemoved($row->code);
+                        }
+                    }
                     $book->record($employee, $month, $read['elements'], $adjustments);
                     $entityManager->flush();
                     $this->addFlash('status', \sprintf('Bulletin de %s calculé.', $employee->getFullName()));
@@ -157,7 +166,8 @@ final class PayslipsController extends AbstractController
         $shown = null === $current['payslip'] ? [] : array_map(static fn (PayslipRow $row): string => $row->code, $current['payslip']->rows);
         // The cells stay those of the payslip as it stood when the post is refused: what was typed is shown in them.
         $grid = null === $current['payslip'] || true === $payslip?->isValidated() || !$this->isGranted(DossierRightVoter::PAYROLL_ENTER, $dossier) ? [] : $current['payslip']->rows;
-        [$open, $texts] = $this->openCells($grid, $specs);
+        [$open, $texts] = $this->openCells($grid, $specs, !$assistance->calculatesPayslip());
+        $check = null === $current['payslip'] || true === $payslip?->isValidated() ? null : $book->entryCheck($employee, $month, $elements, PayslipAdjustments::fromArray($payslip?->getAdjustments() ?? []), $current['payslip'], $plan, $assistance);
 
         return $this->render('payroll/payslip.html.twig', [
             'dossier' => $dossier,
@@ -182,16 +192,18 @@ final class PayslipsController extends AbstractController
             'refusal' => $current['refusal'],
             'payslip_view' => null === $current['payslip'] ? null : PayslipView::of($current['payslip']),
             'open_cells' => $open,
+            'entry_check' => $check,
+            'assistance' => $assistance,
             'cell_texts' => $texts,
             'addable' => null === $current['payslip'] ? [] : array_values(array_filter($plan, static fn (PayrollItemSpec $spec): bool => !\in_array($spec->code, $shown, true))),
         ], new Response(null, [] === $errors ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY));
     }
 
     #[Route('/{number}/validate', name: 'app_payroll_payslip_validate', requirements: ['number' => '[A-Z0-9]{1,10}'], methods: ['POST'])]
-    public function validate(Dossier $dossier, string $number, Request $request, PayslipBook $book, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
+    public function validate(Dossier $dossier, string $number, Request $request, PayslipBook $book, AssistanceLevels $levels, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $payslip = $this->stored($dossier, $number, $request, $book, 'payslip-validate-');
-        $refusal = $book->validate($payslip, $me);
+        $refusal = $book->validate($payslip, $me, Assistance::at($levels->for($dossier)));
         if (null !== $refusal) {
             $this->addFlash('payslip_fault', $refusal);
 
@@ -294,12 +306,13 @@ final class PayslipsController extends AbstractController
     }
 
     /**
-     * A rubrique added (Inser, the list of the plan) or removed (Ctrl+Suppr) by the button that posted.
+     * A rubrique added (Inser, the list of the plan) or removed (Ctrl+Suppr) by the button that posted;
+     * a due rubrique is removed only where the student establishes the payslip from nothing (level 0).
      *
      * @param list<PayrollItemSpec>  $plan
      * @param array<string, string>  $errors
      */
-    private function addedOrRemoved(Request $request, array $plan, PayslipAdjustments $adjustments, array &$errors): PayslipAdjustments
+    private function addedOrRemoved(Request $request, array $plan, PayslipAdjustments $adjustments, array &$errors, bool $anyRemovable): PayslipAdjustments
     {
         $add = PostValue::trimmed($request, 'add');
         $remove = PostValue::trimmed($request, 'remove');
@@ -308,7 +321,7 @@ final class PayslipsController extends AbstractController
                 return $adjustments->withAdded($add);
             }
             if ($spec->code === $remove) {
-                if (!PayslipLineCells::removable($spec)) {
+                if (!$anyRemovable && !PayslipLineCells::removable($spec)) {
                     $errors['remove'] = \sprintf('La rubrique %s · %s est due : elle ne se retire pas du bulletin.', $spec->code, $spec->label);
 
                     return $adjustments;
@@ -322,19 +335,20 @@ final class PayslipsController extends AbstractController
     }
 
     /**
-     * @param list<PayslipRow>               $rows
-     * @param array<array-key, PayrollItemSpec> $specs by code
+     * @param list<PayslipRow>                  $rows
+     * @param array<array-key, PayrollItemSpec>  $specs by code
      *
      * @return array{0: array<string, list<string>>, 1: array<string, string>} the open cells of each line by code, and what each shows by « code.field »
      */
-    private function openCells(array $rows, array $specs): array
+    private function openCells(array $rows, array $specs, bool $typedOnly): array
     {
         $open = [];
         $texts = [];
         foreach ($rows as $row) {
             $open[$row->code] = PayslipLineCells::open($row, $specs[$row->code] ?? null);
             foreach ($open[$row->code] as $field) {
-                $texts[$row->code.'.'.$field] = PayslipLineCells::text($row, $field);
+                // Where the student establishes the payslip (B, A, 0) a cell shows what they typed, never the calculation.
+                $texts[$row->code.'.'.$field] = $typedOnly && !$row->isForced($field) ? '' : PayslipLineCells::text($row, $field);
             }
         }
 

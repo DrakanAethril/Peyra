@@ -24,21 +24,25 @@ final class AssistanceTest extends TestCase
             'runsControls' => true, 'blocks' => true, 'allowsPartialLettering' => false, 'proposesLettering' => true,
             'opensGuidedEntry' => true, 'refusesAccountOutsideChart' => true, 'signalsAccountOutsideChart' => true,
             'requiresHiringDeclarationFields' => true, 'explainsPortalRejections' => true,
+            'calculatesPayslip' => true, 'signalsPayslipGaps' => false, 'blocksPayslipGaps' => false, 'startsPayslipEmpty' => false,
         ]];
         yield 'Contrôles bloquants' => [AssistanceLevel::Blocking, [
             'runsControls' => true, 'blocks' => true, 'allowsPartialLettering' => false, 'proposesLettering' => false,
             'opensGuidedEntry' => true, 'refusesAccountOutsideChart' => true, 'signalsAccountOutsideChart' => true,
             'requiresHiringDeclarationFields' => true, 'explainsPortalRejections' => false,
+            'calculatesPayslip' => false, 'signalsPayslipGaps' => true, 'blocksPayslipGaps' => true, 'startsPayslipEmpty' => false,
         ]];
         yield 'Avertissements' => [AssistanceLevel::Warnings, [
             'runsControls' => true, 'blocks' => false, 'allowsPartialLettering' => true, 'proposesLettering' => false,
             'opensGuidedEntry' => false, 'refusesAccountOutsideChart' => false, 'signalsAccountOutsideChart' => true,
             'requiresHiringDeclarationFields' => false, 'explainsPortalRejections' => false,
+            'calculatesPayslip' => false, 'signalsPayslipGaps' => true, 'blocksPayslipGaps' => false, 'startsPayslipEmpty' => false,
         ]];
         yield 'Aucun filet' => [AssistanceLevel::None, [
             'runsControls' => false, 'blocks' => false, 'allowsPartialLettering' => true, 'proposesLettering' => false,
             'opensGuidedEntry' => false, 'refusesAccountOutsideChart' => false, 'signalsAccountOutsideChart' => false,
             'requiresHiringDeclarationFields' => false, 'explainsPortalRejections' => false,
+            'calculatesPayslip' => false, 'signalsPayslipGaps' => false, 'blocksPayslipGaps' => false, 'startsPayslipEmpty' => true,
         ]];
     }
 
@@ -58,6 +62,10 @@ final class AssistanceTest extends TestCase
             'signalsAccountOutsideChart' => $assistance->signalsAccountOutsideChart(),
             'requiresHiringDeclarationFields' => $assistance->requiresHiringDeclarationFields(),
             'explainsPortalRejections' => $assistance->explainsPortalRejections(),
+            'calculatesPayslip' => $assistance->calculatesPayslip(),
+            'signalsPayslipGaps' => $assistance->signalsPayslipGaps(),
+            'blocksPayslipGaps' => $assistance->blocksPayslipGaps(),
+            'startsPayslipEmpty' => $assistance->startsPayslipEmpty(),
         ]);
         self::assertSame($level, $assistance->level);
     }

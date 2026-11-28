@@ -27,6 +27,7 @@ use App\Service\Payroll\Engine\PayslipInput;
 use App\Service\Payroll\Engine\PayslipYearToDate;
 use App\Service\Payroll\Plan\PayrollItemSpec;
 use App\Service\Regulatory\RegulatoryReader;
+use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\FrenchFormat;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -174,6 +175,23 @@ final readonly class PayslipBook
         }
     }
 
+    /**
+     * The cells the student types on the payslip, at levels B, A and 0 (step 4.4c): which are still
+     * missing and, at B and A, which differ from the tool's calculation - the same payslip with nothing
+     * forced. Null at G, where the tool calculates.
+     *
+     * @param list<PayrollItemSpec> $plan
+     */
+    public function entryCheck(Employee $employee, \DateTimeImmutable $month, PayslipElements $elements, PayslipAdjustments $adjustments, Payslip $payslip, array $plan, Assistance $assistance): ?PayslipEntryCheck
+    {
+        if ($assistance->calculatesPayslip()) {
+            return null;
+        }
+        $reference = $assistance->signalsPayslipGaps() ? $this->calculate($employee, $month, $elements, $plan, new PayslipAdjustments($adjustments->removed, $adjustments->added))['payslip'] : null;
+
+        return PayslipEntryCheck::of($payslip, $reference, $plan);
+    }
+
     /** Keeps the elements and what was changed by hand on the payslip of the month (created at its first calculation) and marks it calculated; flushed by the caller. */
     public function record(Employee $employee, \DateTimeImmutable $month, PayslipElements $elements, PayslipAdjustments $adjustments): MonthlyPayslip
     {
@@ -188,10 +206,11 @@ final readonly class PayslipBook
     }
 
     /**
-     * Validates the payslip: calculated once more from what it keeps, then frozen on the dossier's date.
-     * Null when done, else why not, in French. Flushed by the caller.
+     * Validates the payslip: calculated once more from what it keeps, then frozen on the dossier's date;
+     * given the level, a payslip the student establishes (B, A, 0) has every cell typed and, at B, none
+     * in gap. Null when done, else why not, in French. Flushed by the caller.
      */
-    public function validate(MonthlyPayslip $payslip, User $actor): ?string
+    public function validate(MonthlyPayslip $payslip, User $actor, ?Assistance $assistance = null): ?string
     {
         if (!$payslip->getStatus()->isToValidate()) {
             return 'Ce bulletin n’est pas calculé : calculez-le avant de le valider.';
@@ -203,6 +222,13 @@ final readonly class PayslipBook
             return $result['refusal'] ?? 'Ce bulletin ne se calcule pas.';
         }
         $dossier = $payslip->getDossier();
+        if (null !== $assistance) {
+            $check = $this->entryCheck($employee, $month, PayslipElements::fromArray($payslip->getElements()), PayslipAdjustments::fromArray($payslip->getAdjustments()), $result['payslip'], $this->plan($dossier), $assistance);
+            $refusal = $check?->validationRefusal($assistance);
+            if (null !== $refusal) {
+                return $refusal;
+            }
+        }
         $payslip->validate(PayslipSnapshot::toArray($result['payslip'], $this->yearToDate($employee, $month)), $dossier->getDossierDate());
         $this->auditTrail->inDossier($dossier, AuditAction::PayslipValidated, $actor, \sprintf('Bulletin de %s validé (%s) : net à payer %s', $employee->getFullName(), FrenchFormat::period($month), FrenchFormat::amountInEuros($result['payslip']->totals->netPay)), ['employee' => $employee->getRegistrationNumber(), 'month' => $month->format('Y-m')]);
 

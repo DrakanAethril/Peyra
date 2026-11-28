@@ -100,7 +100,7 @@ final readonly class PayslipElements
             self::leaveFromArray($stored['paidLeave'] ?? null),
             \is_int($unpaid) ? $unpaid : 0,
             self::leaveFromArray($stored['compensatoryLeave'] ?? null),
-            null === $reference || !$reference->isPositive() || !\is_array($severance) ? null : new Severance($reference, $cents($severance['agreed'] ?? null), $cents($severance['previousYearGross'] ?? null)),
+            null === $reference || !$reference->isPositive() ? null : new Severance($reference, $cents($severance['agreed'] ?? null), $cents($severance['previousYearGross'] ?? null)),
         );
     }
 
