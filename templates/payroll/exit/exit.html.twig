@@ -1,0 +1,89 @@
+{#
+ # An employee's end of contract (lot 4, step 4.2c; design-ux.md § 3.2 « Fin de contrat »): the
+ # exit - reason, notification, last day -, saved with F10 or cancelled in two steps, then the
+ # documents it gives: the work certificate. Whoever only reads the payroll sees the facts.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'employees' %}
+{% set can_edit = is_granted('PAYROLL_ENTER', dossier) %}
+{% set dossier_title = employee.fullName ~ ' · Fin de contrat' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ employee.registrationNumber }} · {{ employee.fullName }}" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Salariés', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: employee.registrationNumber, href: path('app_payroll_employee', {dossier: dossier.id, number: employee.registrationNumber})},
+        {label: 'Fin de contrat', href: path('app_payroll_employee_exit', {dossier: dossier.id, number: employee.registrationNumber})},
+    ]">
+        <twig:block name="badge"> <twig:Px:Badge :of="employee.contractType"/> <twig:Px:Badge :of="employee.stateAt(dossier.dossierDate)"/></twig:block>
+        <twig:block name="actions">
+            {% if can_edit %}
+                {% if employee.exitOn %}<twig:Px:ConfirmButton label="Annuler la sortie" confirmLabel="Confirmer l’annulation" icon="undo-2" type="submit" form="exit-cancel"/>{% endif %}
+                <twig:Px:Button type="submit" variant="primary" form="exit-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('payroll/hiring/_employee_tabs.html.twig', {employee_current: 'exit'}) }}
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">La sortie n’est pas enregistrée : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+
+    <div class="px-split px-split--even">
+        <twig:Px:Card title="Sortie du salarié">
+            <twig:block name="actions">{% if employee.exitOn %}<twig:Px:Badge tone="neutral" label="Enregistrée"/>{% endif %}</twig:block>
+            <twig:block name="content">
+                <p>
+                    {{ employee.contractType.longLabel }} depuis le {{ employee.hiredOn|date_fr }}
+                    {%- if employee.contractType.hasEnd %}, terme le {{ employee.contractEndsOn|date_fr }}{% endif %}.
+                    {% if employee.trialPeriod %}Période d’essai : {{ employee.trialPeriod }}.{% endif %}
+                </p>
+                {% if can_edit %}
+                    <form method="post" action="{{ path('app_payroll_employee_exit', {dossier: dossier.id, number: employee.registrationNumber}) }}" id="exit-form" novalidate data-controller="focus-error">
+                        <input type="hidden" name="_token" value="{{ csrf_token('exit-' ~ employee.id) }}">
+                        <div class="px-fieldgrid">
+                            <twig:Px:Field id="reason" label="Motif" :required="true" :wide="true" :error="draft.error('reason')">
+                                <twig:Px:Select id="reason" placeholder="Choisir…" :options="reason_options" value="{{ draft.reason }}" :required="true" :error="draft.error('reason')"/>
+                            </twig:Px:Field>
+                            <twig:Px:Field id="notifiedOn" label="Notifiée le" hint="Lettre de démission ou de licenciement, convention signée. Vide pour un contrat qui arrive à son terme." :error="draft.error('notifiedOn')">
+                                <twig:Px:DateInput id="notifiedOn" :reference="dossier.dossierDate" :value="draft.date('notifiedOn')" hint="1" :error="draft.error('notifiedOn')"/>
+                            </twig:Px:Field>
+                            <twig:Px:Field id="exitOn" label="Dernier jour du contrat" :required="true" hint="Fin du préavis, effectué ou non." :error="draft.error('exitOn')">
+                                <twig:Px:DateInput id="exitOn" :reference="dossier.dossierDate" :value="draft.date('exitOn')" :required="true" hint="1" :error="draft.error('exitOn')"/>
+                            </twig:Px:Field>
+                        </div>
+                    </form>
+                {% elseif employee.exitOn %}
+                    <dl class="px-facts">
+                        <dt>Motif</dt><dd>{{ employee.exitReason.label }}</dd>
+                        {% if employee.exitNotifiedOn %}<dt>Notifiée le</dt><dd>{{ employee.exitNotifiedOn|date_fr }}</dd>{% endif %}
+                        <dt>Dernier jour du contrat</dt><dd>{{ employee.exitOn|date_fr }}</dd>
+                    </dl>
+                {% else %}
+                    <p class="px-u-muted">Aucune sortie enregistrée.</p>
+                {% endif %}
+            </twig:block>
+        </twig:Px:Card>
+
+        <twig:Px:Card title="Documents de fin de contrat">
+            <twig:block name="content">
+                {% if employee.exitOn %}
+                    <p>Le certificat de travail indique les dates d’entrée et de sortie, les emplois occupés et leurs périodes, et le maintien des garanties santé et prévoyance. Il est tenu à la disposition du salarié le dernier jour du contrat, le {{ employee.exitOn|date_fr }}.</p>
+                    <p><twig:Px:Button href="{{ path('app_payroll_employee_work_certificate', {dossier: dossier.id, number: employee.registrationNumber}) }}" icon="printer" target="_blank" data-turbo="false">Générer le certificat de travail (PDF)</twig:Px:Button></p>
+                {% else %}
+                    <twig:Px:Empty icon="file-text" title="Aucun document pour l’instant." text="Les documents de fin de contrat s’établissent une fois la sortie enregistrée."/>
+                {% endif %}
+            </twig:block>
+        </twig:Px:Card>
+    </div>
+
+    {% if can_edit and employee.exitOn %}
+        <form method="post" action="{{ path('app_payroll_employee_exit_cancel', {dossier: dossier.id, number: employee.registrationNumber}) }}" id="exit-cancel" hidden>
+            <input type="hidden" name="_token" value="{{ csrf_token('exit-cancel-' ~ employee.id) }}">
+        </form>
+    {% endif %}
+{% endblock %}

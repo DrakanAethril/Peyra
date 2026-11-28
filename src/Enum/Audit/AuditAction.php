@@ -177,6 +177,11 @@ enum AuditAction: string
     /** The information and prevention visit's day or an affiliation recorded (step 4.2b). */
     case HiringFormalitiesChanged = 'payroll.hiring_formalities_changed';
 
+    /** An employee's exit recorded or changed, or cancelled (step 4.2c). */
+    case EmployeeExitRecorded = 'payroll.employee_exit_recorded';
+
+    case EmployeeExitCancelled = 'payroll.employee_exit_cancelled';
+
     public function label(): string
     {
         return match ($this) {
@@ -238,6 +243,8 @@ enum AuditAction: string
             self::HiringDeclared => 'DPAE déposée',
             self::HiringFormalitiesChanged => 'Formalités d’embauche modifiées',
             self::EmployeeDeleted => 'Salarié supprimé',
+            self::EmployeeExitRecorded => 'Sortie de salarié enregistrée',
+            self::EmployeeExitCancelled => 'Sortie de salarié annulée',
         };
     }
 }

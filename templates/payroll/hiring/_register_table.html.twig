@@ -27,7 +27,7 @@
                 <td>{{ row.qualification }}</td>
                 <td>{{ row.contract }}</td>
                 <td class="{{ num }}">{{ row.employee.hiredOn|date_fr }}</td>
-                <td class="{{ num }}">—</td>
+                <td class="{{ num }}">{{ row.exitOn ? row.exitOn|date_fr : '—' }}</td>
             </tr>
         {% endfor %}
     </tbody>

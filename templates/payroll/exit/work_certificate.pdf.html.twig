@@ -1,0 +1,53 @@
+{#
+ # The work certificate (certificat de travail, articles L1234-19 and D1234-6 du code du travail;
+ # lot 4, step 4.2c), generated from the fiche and the exit: the employer, the employee, the days
+ # of entry and exit, the jobs held one after the other and their periods (JobPeriods), the free
+ # maintenance of the health and provident guarantees, then the place, the last day and the
+ # signature. Nothing else: no reason for leaving, no judgement on the employee.
+ #}
+{% extends 'doc/_document.html.twig' %}
+
+{% set feminine = employee.sex.value == 'F' %}
+{% block title %}Certificat de travail · {{ employee.fullName }}{% endblock %}
+
+{% block body %}
+    <article class="px-doc">
+        <h1 class="px-doc__title">Certificat de travail</h1>
+        <p class="px-doc__subtitle">Articles L1234-19 et D1234-6 du code du travail</p>
+
+        <p class="px-doc__clause">Je soussigné, représentant de <strong>{{ company.name }}</strong>, SIRET {{ company.siret }}{% if company.nafCode %}, code APE {{ company.nafCode }}{% endif %}, {{ company.street }}{% if company.street2 %}, {{ company.street2 }}{% endif %}, {{ company.postalCode }} {{ company.city }},</p>
+        <p class="px-doc__clause">certifie avoir employé <strong>{{ feminine ? 'Madame' : 'Monsieur' }} {{ employee.firstName }} {{ employee.lastName }}</strong>, né{{ feminine ? 'e' : '' }} le {{ employee.birthDate|date_fr }}{% if employee.street %}, demeurant {{ employee.street }}, {{ employee.postalCode }} {{ employee.city }}{% endif %},</p>
+        <p class="px-doc__clause">du <strong>{{ employee.hiredOn|date_fr }}</strong> au <strong>{{ employee.exitOn|date_fr }}</strong>, en qualité de :</p>
+
+        <table class="px-doc__table">
+            <thead>
+                <tr>
+                    <th scope="col">Emploi occupé</th>
+                    <th scope="col" class="px-doc__num">Du</th>
+                    <th scope="col" class="px-doc__num">Au</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for period in periods %}
+                    <tr>
+                        <td>{{ period.job }}</td>
+                        <td class="px-doc__num">{{ period.from|date_fr }}</td>
+                        <td class="px-doc__num">{{ period.to|date_fr }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p class="px-doc__clause">{{ feminine ? 'Madame' : 'Monsieur' }} {{ employee.lastName }} peut bénéficier du maintien à titre gratuit des garanties de frais de santé et de prévoyance de l’entreprise, s’{{ feminine ? 'elle' : 'il' }} est pris{{ feminine ? 'e' : '' }} en charge par l’assurance chômage, dans les conditions de l’article L911-8 du code de la sécurité sociale.</p>
+        <p class="px-doc__clause">{{ feminine ? 'Elle' : 'Il' }} quitte l’entreprise libre de tout engagement.</p>
+
+        <p class="px-doc__clause">Fait à {{ company.city }}, le {{ employee.exitOn|date_fr }}, pour servir et valoir ce que de droit.</p>
+        <table class="px-doc__signatures">
+            <tr>
+                <td></td>
+                <td>Pour l’employeur<br><span class="px-doc__dim-text">Nom, qualité et signature</span></td>
+            </tr>
+        </table>
+        <p class="px-doc__legal">Document fictif établi par Peyra, PGI pédagogique, pour un dossier d’entraînement : la société et le salarié sont inventés.</p>
+    </article>
+{% endblock %}

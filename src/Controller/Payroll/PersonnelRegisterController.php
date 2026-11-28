@@ -48,13 +48,13 @@ final class PersonnelRegisterController extends AbstractController
         ], 'registre du personnel', $dossier);
     }
 
-    /** @return list<array{rank: int, employee: \App\Entity\Payroll\Employee, job: string, qualification: string, contract: string}> */
+    /** @return list<array{rank: int, employee: \App\Entity\Payroll\Employee, job: string, qualification: string, contract: string, exitOn: ?\DateTimeImmutable}> */
     private function rows(Dossier $dossier, EmployeeRepository $employees): array
     {
         if (!$this->isGranted(DossierRightVoter::PAYROLL_READ, $dossier)) {
             throw new NotFoundHttpException('The payroll is closed to this profile.');
         }
 
-        return PersonnelRegister::rows($employees->findByDossier($dossier));
+        return PersonnelRegister::rows($employees->findByDossier($dossier), $dossier->getDossierDate());
     }
 }
