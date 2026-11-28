@@ -1,0 +1,17 @@
+{# The entries a payroll pièce led to (step 4.5): journal, date, number or brouillard, each opening its sheet or its grid. Takes `entries`. #}
+<ul class="px-stack">
+    {% for entry in entries %}
+        <li class="px-cluster">
+            <twig:Px:Badge :of="entry.state"/>
+            <span class="px-u-code">{{ entry.journal.code }}</span>
+            <span>{{ entry.entryDate|date_fr }}</span>
+            <span class="px-u-code">{{ entry.validated ? entry.numberLabel : 'Brouillard' }}</span>
+            <span>{{ entry.label }}</span>
+            {% if entry.validated %}
+                <a class="px-link" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id, return: app.request.requestUri}) }}">Voir l’écriture</a>
+            {% else %}
+                <a class="px-link" href="{{ path('app_accounting_entry', {dossier: dossier.id, journal: entry.journal.code, period: entry.period.startsOn|date('Y-m-d'), entry: entry.id}) }}">Corriger l’écriture</a>
+            {% endif %}
+        </li>
+    {% endfor %}
+</ul>

@@ -1,0 +1,55 @@
+{# The livre de paie (step 4.5): each validated payslip of the month, one line per employee, and their total. On screen a matricule opens the payslip's PDF. #}
+{% set pdf = pdf|default(false) %}
+{% set num = pdf ? 'px-doc__num' : 'px-u-num' %}
+{% set totals = statements.totals %}
+{% set cells %}
+    <thead>
+        <tr>
+            <th scope="col">Matricule</th>
+            <th scope="col">Salarié</th>
+            <th scope="col" class="{{ num }}">Salaire brut</th>
+            <th scope="col" class="{{ num }}">Cotisations salariales</th>
+            <th scope="col" class="{{ num }}">Net social</th>
+            <th scope="col" class="{{ num }}">Net imposable</th>
+            <th scope="col" class="{{ num }}">Impôt prélevé</th>
+            <th scope="col" class="{{ num }}">Net à payer</th>
+            <th scope="col" class="{{ num }}">Cotisations patronales</th>
+            <th scope="col" class="{{ num }}">Coût employeur</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for line in statements.payslips %}
+            {% set t = line.payslip.totals %}
+            <tr>
+                <td class="px-u-code">{% if pdf %}{{ line.number }}{% else %}<a class="px-link" href="{{ path('app_payroll_employee_payslip_pdf', {dossier: dossier.id, number: line.number, month: statements.month|date('Y-m')}) }}" target="_blank" data-turbo="false">{{ line.number }}</a>{% endif %}</td>
+                <td>{{ line.name }}</td>
+                <td class="{{ num }}">{{ line.payslip.gross|amount }}</td>
+                <td class="{{ num }}">{{ t.employeeContributions|amount }}</td>
+                <td class="{{ num }}">{{ t.netSocial|amount }}</td>
+                <td class="{{ num }}">{{ t.netTaxable|amount }}</td>
+                <td class="{{ num }}">{{ t.withholdingTax|amount }}</td>
+                <td class="{{ num }}">{{ t.netPay|amount }}</td>
+                <td class="{{ num }}">{{ t.employerContributions|amount }}</td>
+                <td class="{{ num }}">{{ t.employerCost|amount }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <th scope="row" colspan="2">Total · {{ statements.payslips|length }} bulletin{{ statements.payslips|length > 1 ? 's' : '' }}</th>
+            <td class="{{ num }}">{{ totals.gross|amount }}</td>
+            <td class="{{ num }}">{{ totals.employee|amount }}</td>
+            <td class="{{ num }}">{{ totals.netSocial|amount }}</td>
+            <td class="{{ num }}">{{ totals.netTaxable|amount }}</td>
+            <td class="{{ num }}">{{ totals.withholding|amount }}</td>
+            <td class="{{ num }}">{{ totals.netPay|amount }}</td>
+            <td class="{{ num }}">{{ totals.employer|amount }}</td>
+            <td class="{{ num }}">{{ totals.cost|amount }}</td>
+        </tr>
+    </tfoot>
+{% endset %}
+{% if pdf %}
+    <table class="px-doc__table">{{ cells }}</table>
+{% else %}
+    <twig:Px:Table caption="Livre de paie {{ statements.month|of_period }}" density="compact">{{ cells }}</twig:Px:Table>
+{% endif %}

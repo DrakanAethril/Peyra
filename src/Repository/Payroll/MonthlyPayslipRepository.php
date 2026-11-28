@@ -69,4 +69,33 @@ final class MonthlyPayslipRepository extends ServiceEntityRepository
 
         return $months;
     }
+
+    /** @return list<MonthlyPayslip> the validated payslips of that month, their employees loaded, by the employees' names */
+    public function findValidatedOfMonth(Dossier $dossier, \DateTimeImmutable $month): array
+    {
+        /* @var list<MonthlyPayslip> */
+        return $this->createQueryBuilder('p')
+            ->addSelect('e')->join('p.employee', 'e')
+            ->where('p.dossier = :dossier')->andWhere('p.month = :month')->andWhere('p.status = :validated')
+            ->setParameter('dossier', $dossier)->setParameter('month', $month, Types::DATE_IMMUTABLE)->setParameter('validated', PayslipStatus::Validated)
+            ->orderBy('e.lastName')->addOrderBy('e.firstName')->addOrderBy('e.registrationNumber')
+            ->getQuery()->getResult();
+    }
+
+    /** @return list<\DateTimeImmutable> the months that have a validated payslip, the latest first */
+    public function findValidatedMonthsOf(Dossier $dossier): array
+    {
+        $months = [];
+        foreach ($this->createQueryBuilder('p')->select('DISTINCT p.month AS month')
+            ->where('p.dossier = :dossier')->andWhere('p.status = :validated')
+            ->setParameter('dossier', $dossier)->setParameter('validated', PayslipStatus::Validated)
+            ->orderBy('p.month', 'DESC')->getQuery()->getArrayResult() as $row) {
+            $month = \is_array($row) ? ($row['month'] ?? null) : null;
+            if ($month instanceof \DateTimeImmutable) {
+                $months[] = $month;
+            }
+        }
+
+        return $months;
+    }
 }

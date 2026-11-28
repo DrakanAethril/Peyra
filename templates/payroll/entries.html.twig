@@ -1,0 +1,105 @@
+{#
+ # Paie et social › Écritures de paie (step 4.5, gabarit E; design-ux.md §§ 3.2 and 4.7): the month's entry
+ # from its validated payslips, once the month is closed, and the payments it leaves (net salaries, each
+ # body's contributions), each through the accounting gateway as the mission says - « Proposer »: the
+ # proposal and « Passer au brouillard »; « Comptabiliser »: the month's entry written at the closing;
+ # « Laisser saisir »: the journal to enter it in, the proposal kept for the correction.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'entries' %}
+{% set dossier_title = 'Écritures de paie' %}
+{% set can_post = is_granted('PAYROLL_ENTER', dossier) %}
+{% set let_enter = behaviour.value == 'let_enter' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Écritures de paie{{ month ? ' ' ~ month|of_period : '' }}" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Écritures de paie', href: path('app_payroll_entries', {dossier: dossier.id})},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    {% if not month %}
+        <twig:Px:Empty icon="file-text" title="Aucun bulletin validé dans ce dossier." text="L’écriture de paie d’un mois se tire de ses bulletins validés : validez-les dans Bulletins, puis clôturez le mois."/>
+    {% else %}
+        {{ include('payroll/edition/_month_choice.html.twig', {month_route: 'app_payroll_entries'}) }}
+        {% set entry = month_entry %}
+        <section class="px-card px-card--flush" aria-labelledby="payroll-entry-title">
+            <header class="px-card__head">
+                <h2 id="payroll-entry-title">Écriture de paie</h2>
+                <small>{% if journal %}Journal <span class="px-u-code">{{ journal.code }}</span> · {% endif %}{{ month|date_modify('last day of this month')|date_fr }} · pièce <span class="px-u-code">{{ entry.document }}</span></small>
+                {% if entry.standing is empty and entry.proposal and closed and can_post and entry.check.writable %}
+                    <div class="px-card__actions">
+                        <form method="post" action="{{ path('app_payroll_entries_post', {dossier: dossier.id}) }}">
+                            <input type="hidden" name="month" value="{{ month|date('Y-m') }}">
+                            <twig:Px:Button type="submit" size="sm" variant="primary" icon="check" name="_token" value="{{ csrf_token('payroll-post-' ~ dossier.id) }}">Passer l’écriture au brouillard</twig:Px:Button>
+                        </form>
+                    </div>
+                {% endif %}
+            </header>
+            <div class="px-card__body px-stack">
+                {% if entry.entries is not empty %}
+                    {{ include('payroll/_entry_links.html.twig', {entries: entry.entries}) }}
+                {% endif %}
+                {% if entry.standing is empty %}
+                    {% if let_enter %}
+                        <p>À vous de la saisir dans le journal des opérations diverses, pièce <span class="px-u-code">{{ entry.document }}</span>, au {{ month|date_modify('last day of this month')|date_fr }}, depuis le <a class="px-link" href="{{ path('app_payroll_edition_journal', {dossier: dossier.id, month: month|date('Y-m')}) }}">journal de paie</a>.</p>
+                        {% if journal %}<twig:Px:Button href="{{ path('app_accounting_entry', {dossier: dossier.id, journal: journal.code, period: month|date('Y-m-01')}) }}" icon="arrow-right">Saisir dans le journal {{ journal.code }}</twig:Px:Button>{% endif %}
+                    {% elseif not closed %}
+                        <twig:Px:Alert tone="info">L’écriture se passe une fois la paie {{ month|of_period }} close : ses bulletins ne bougent plus. Clôturez le mois dans Bulletins.</twig:Px:Alert>
+                    {% elseif not entry.proposal %}
+                        <twig:Px:Alert tone="warning">Aucune écriture proposée : le dossier n’a pas de journal d’opérations diverses.</twig:Px:Alert>
+                    {% elseif entry.check.errors is not empty %}
+                        <twig:Px:Alert tone="danger">{{ behaviour.value == 'post' ? 'L’écriture n’a pas pu être passée à la clôture : ' : 'L’écriture ne peut pas être passée : ' }}{{ entry.check.errors|join(' ') }}</twig:Px:Alert>
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% if entry.standing is empty and entry.proposal and not let_enter %}
+                {{ include('payroll/_proposal_lines.html.twig', {proposal: entry.proposal, caption: 'Lignes de l’écriture de paie proposée'}) }}
+            {% endif %}
+        </section>
+
+        <section class="px-card px-card--flush" aria-labelledby="payroll-payments-title">
+            <header class="px-card__head">
+                <h2 id="payroll-payments-title">Règlements</h2>
+                <small>Au {{ dossier.dossierDate|date_fr }}, date du dossier. Le prélèvement à la source se reverse avec la DSN.</small>
+            </header>
+            <div class="px-card__body px-stack">
+                {% if banks is empty %}
+                    <twig:Px:Alert tone="warning">Le dossier n’a pas de journal de banque : aucun règlement ne se propose.</twig:Px:Alert>
+                {% elseif not let_enter %}
+                    <form method="get" action="{{ path('app_payroll_entries', {dossier: dossier.id}) }}" class="px-cluster">
+                        <input type="hidden" name="month" value="{{ month|date('Y-m') }}">
+                        <twig:Px:Field id="bank" label="Journal de banque">
+                            <twig:Px:Select id="bank" name="bank" value="{{ bank.code }}" :options="banks|map(b => {value: b.code, label: b.code ~ ' · ' ~ b.label})"/>
+                        </twig:Px:Field>
+                        <twig:Px:Button type="submit">Afficher</twig:Px:Button>
+                    </form>
+                {% endif %}
+                {% for payment in payments %}
+                    <div class="px-stack">
+                        <p class="px-cluster"><b>{{ payment.label }}</b> <span class="px-u-code">{{ payment.account }}</span> <span class="px-u-num">{{ payment.amount|amount_eur }}</span> · pièce <span class="px-u-code">{{ payment.document }}</span></p>
+                        {% if payment.entries is not empty %}{{ include('payroll/_entry_links.html.twig', {entries: payment.entries}) }}{% endif %}
+                        {% if payment.standing is empty %}
+                            {% if let_enter %}
+                                <p class="px-u-muted">À vous de le saisir dans un journal de banque, pièce <span class="px-u-code">{{ payment.document }}</span>.</p>
+                            {% elseif payment.check and payment.check.errors is not empty %}
+                                <twig:Px:Alert tone="danger">Le règlement ne peut pas être passé : {{ payment.check.errors|join(' ') }}</twig:Px:Alert>
+                            {% elseif payment.proposal and can_post %}
+                                <form method="post" action="{{ path('app_payroll_entries_pay', {dossier: dossier.id}) }}">
+                                    <input type="hidden" name="month" value="{{ month|date('Y-m') }}">
+                                    <input type="hidden" name="payment" value="{{ payment.key }}">
+                                    <input type="hidden" name="bank" value="{{ bank.code }}">
+                                    <twig:Px:Button type="submit" size="sm" icon="check" name="_token" value="{{ csrf_token('payroll-pay-' ~ dossier.id) }}">Passer le règlement au brouillard ({{ bank.code }} : débit {{ payment.account }}, crédit {{ payment.proposal.lines|last.account }})</twig:Px:Button>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}{% if month %}<span>Mois de paie · <b>{{ month|period }}</b> {{ closed ? 'clos' : 'ouvert' }}</span><span>Comptabilisation · <b>{{ behaviour.label }}</b></span>{% endif %}{% endblock %}

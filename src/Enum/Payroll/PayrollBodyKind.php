@@ -22,6 +22,31 @@ enum PayrollBodyKind: string
         };
     }
 
+    /**
+     * The account its contributions are owed on (step 4.5) when the body names none: 431000 « Sécurité
+     * sociale » for the Urssaf, the 437 accounts of « Autres organismes sociaux » for the others.
+     */
+    public function defaultAccount(): string
+    {
+        return match ($this) {
+            self::Urssaf => '431000',
+            self::Retirement => '437100',
+            self::Health => '437200',
+            self::Provident => '437300',
+        };
+    }
+
+    /** The charge account of its employer's contributions (step 4.5) when the body names none: 645 by kind of body. */
+    public function defaultChargeAccount(): string
+    {
+        return match ($this) {
+            self::Urssaf => '645100',
+            self::Retirement => '645300',
+            self::Health => '645200',
+            self::Provident => '645800',
+        };
+    }
+
     /** What the body's reference is called: the Urssaf account, a contract number. */
     public function referenceLabel(): string
     {

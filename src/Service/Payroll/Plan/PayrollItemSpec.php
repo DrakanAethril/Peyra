@@ -33,6 +33,8 @@ final readonly class PayrollItemSpec
         public ?PayrollBody $body,
         public ?PayslipLine $line,
         public bool $benefitInKind = false,
+        /** Its account in the payroll's entry (step 4.5); null: PayrollAccounts' default. */
+        public ?string $account = null,
     ) {
     }
 }

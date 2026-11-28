@@ -89,6 +89,14 @@ class PayrollItem implements DossierOwned
     #[ORM\Column(length: 32, nullable: true, enumType: PayslipLine::class)]
     private ?PayslipLine $payslipLine = null;
 
+    /**
+     * Its account in the payroll's entry (step 4.5): an element of gross pay or an item not subject is
+     * charged on it, a deduction from the net credited to it, a contribution's employer share charged on
+     * it; null, PayrollAccounts gives the default (a contribution: its body's charge account).
+     */
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $account = null;
+
     public function __construct(Dossier $dossier, PayrollItemSpec $spec)
     {
         $this->dossier = $dossier;
@@ -175,11 +183,16 @@ class PayrollItem implements DossierOwned
         return $this->payslipLine;
     }
 
+    public function getAccount(): ?string
+    {
+        return $this->account;
+    }
+
     /** The rubrique as the payslip engine reads it (step 4.4a). */
     public function spec(): PayrollItemSpec
     {
         return new PayrollItemSpec($this->code, $this->label, $this->kind, $this->sortOrder, $this->subtracts, $this->base, $this->ceiling, $this->employeeRate, $this->employerRate,
-            $this->statusCondition, $this->headcountCondition, $this->salaryCondition, $this->body, $this->payslipLine, $this->benefitInKind);
+            $this->statusCondition, $this->headcountCondition, $this->salaryCondition, $this->body, $this->payslipLine, $this->benefitInKind, $this->account);
     }
 
     /** PayrollItemSheet and PayrollPlanInstaller are the callers: the spec has passed PayrollItemRules. */
@@ -200,5 +213,6 @@ class PayrollItem implements DossierOwned
         $this->salaryCondition = $spec->salary;
         $this->body = $spec->body;
         $this->payslipLine = $spec->line;
+        $this->account = $spec->account;
     }
 }

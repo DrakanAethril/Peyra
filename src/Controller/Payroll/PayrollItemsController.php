@@ -22,6 +22,7 @@ use App\Service\Payroll\Plan\PayrollItemDraft;
 use App\Service\Payroll\Plan\PayrollItemSheet;
 use App\Service\Payroll\Plan\PayrollPlanInstaller;
 use App\Service\Payroll\Plan\PayrollPlanView;
+use App\Service\Payroll\Statement\PayrollAccounts;
 use App\Service\Shared\PostValue;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -153,6 +154,7 @@ final class PayrollItemsController extends AbstractController
             'dossier' => $dossier,
             'draft' => $draft,
             'item' => $item,
+            'default_account' => null === $item ? null : PayrollAccounts::defaultOf($item->spec()),
             'kind_options' => $options(PayrollItemKind::cases()),
             'base_options' => $options(PayrollBase::cases()),
             'ceiling_options' => $options(PayrollCeiling::cases()),
@@ -171,7 +173,7 @@ final class PayrollItemsController extends AbstractController
             throw new NotFoundHttpException('Not yours to change.');
         }
         foreach (['code', 'label', 'kind', 'sortOrder', 'base', 'ceiling', 'employeeSource', 'employeeKey', 'employeePath', 'employeeValue',
-            'employerSource', 'employerKey', 'employerPath', 'employerValue', 'status', 'headcount', 'salary', 'body', 'line'] as $field) {
+            'employerSource', 'employerKey', 'employerPath', 'employerValue', 'status', 'headcount', 'salary', 'body', 'line', 'account'] as $field) {
             $draft->{$field} = PostValue::trimmed($request, $field);
         }
         $draft->subtracts = '1' === PostValue::trimmed($request, 'subtracts');

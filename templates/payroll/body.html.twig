@@ -1,4 +1,4 @@
-{# The fiche of a collecting body (lot 4, step 4.1, gabarit F): its kind, name and reference. F10 saves. #}
+{# The fiche of a collecting body (lot 4, step 4.1, gabarit F): its kind, name and reference, and its two accounts in the payroll's entry (step 4.5). F10 saves. #}
 {% extends 'payroll/_layout.html.twig' %}
 
 {% set settings_current = 'bodies' %}
@@ -42,6 +42,12 @@
                     <twig:Px:Field id="reference" label="Référence" hint="Numéro de compte Urssaf, numéro d’adhérent ou de contrat (fictif)." :error="draft.error('reference')">
                         <twig:Px:Input id="reference" value="{{ draft.reference }}" hint="1" :error="draft.error('reference')" class="px-u-code" maxlength="40" autocomplete="off" spellcheck="false"/>
                     </twig:Px:Field>
+                    <twig:Px:Field id="account" label="Compte de l’organisme" hint="Les cotisations y sont dues dans l’écriture de paie. Vide : {{ default_accounts.account }}." :error="draft.error('account')">
+                        <twig:Px:Input id="account" value="{{ draft.account }}" hint="1" :error="draft.error('account')" class="px-u-code" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="{{ default_accounts.account }}"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="chargeAccount" label="Compte de charges patronales" hint="La part patronale y est imputée, sauf rubrique qui nomme le sien. Vide : {{ default_accounts.charge }}." :error="draft.error('chargeAccount')">
+                        <twig:Px:Input id="chargeAccount" value="{{ draft.chargeAccount }}" hint="1" :error="draft.error('chargeAccount')" class="px-u-code" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="{{ default_accounts.charge }}"/>
+                    </twig:Px:Field>
                 </div>
                 {% if body and deletion_refusal %}<p class="px-u-muted">{{ deletion_refusal }}</p>{% endif %}
             </twig:Px:Card>
@@ -57,6 +63,8 @@
                 <dt>Type</dt><dd>{{ body.kind.label }}</dd>
                 <dt>Nom</dt><dd>{{ body.name }}</dd>
                 <dt>{{ body.kind.referenceLabel }}</dt><dd class="px-u-code">{{ body.reference ?: '—' }}</dd>
+                <dt>Compte de l’organisme</dt><dd class="px-u-code">{{ body.owedAccount }}</dd>
+                <dt>Compte de charges patronales</dt><dd class="px-u-code">{{ body.employerChargeAccount }}</dd>
             </dl>
         </twig:Px:Card>
     {% endif %}
