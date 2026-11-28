@@ -22,7 +22,7 @@
     <twig:Px:RailGroup label="Comptabilité">
         <twig:Px:RailItem href="{{ path('app_accounting_entry', {dossier: dossier.id}) }}" icon="book-text" label="Comptabilité" :current="(rail_current ?? '') == 'accounting'"/>
         <twig:Px:RailItem href="{{ path('app_bank_reconciliation', {dossier: dossier.id}) }}" icon="landmark" label="Banque" :current="(rail_current ?? '') == 'bank'"/>
-        <twig:Px:RailItem href="{{ path('app_closing_fec', {dossier: dossier.id}) }}" icon="lock" label="Immobilisations et clôture" :current="(rail_current ?? '') == 'closing'"/>
+        <twig:Px:RailItem href="{{ path('app_assets', {dossier: dossier.id}) }}" icon="lock" label="Immobilisations et clôture" :current="(rail_current ?? '') == 'closing'"/>
         {% if is_granted('PAYROLL_READ', dossier) %}<twig:Px:RailItem href="{{ path('app_payroll_employees', {dossier: dossier.id}) }}" icon="users" label="Paie et social" :current="(rail_current ?? '') == 'payroll'"/>{% endif %}
     </twig:Px:RailGroup>
     <twig:Px:RailGroup label="Analyse">

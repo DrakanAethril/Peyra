@@ -1,0 +1,38 @@
+# Menuiserie Vasseur SARL - its fixed assets (step 3.4; immobilisations.yaml of the prepared data):
+# the twelve at 31/12/2025, whose gross values (225 200,00) and depreciation (117 034,42) are those of
+# the opening balance, and the machining centre bought in March 2026 (invoice MBI-2026-0311, entered in
+# entries.yaml), depreciated by components from its putting into service on 01/04/2026. Checked by
+# FixedAssetRules, as the fiche. The van I07 is sold on 30/06/2026 and the dust extractor I14 bought in
+# November 2026: both after the dossier's date, neither is written here yet.
+#
+# Amounts are euros as text, read exactly; `method`: none, linear, declining, units; `fiscal_declining`
+# a fiscal declining plan beside the linear one (the dérogatoire of I05).
+
+fixed_assets:
+  - { code: I01, label: "Fonds commercial (ancienne menuiserie Grangeon)", account: '207000', acquired_on: '1994-03-14', in_service_on: '1994-03-14', price: '38000.00', method: none }
+  - { code: I02, label: "Logiciel de conception et de devis (licence perpétuelle)", account: '205000', depreciation_account: '280500', acquired_on: '2023-03-01', in_service_on: '2023-03-01', price: '6800.00', method: linear, years: 3 }
+  - { code: I03, label: "Agencements et installations de l'atelier", account: '218100', depreciation_account: '281810', acquired_on: '2019-06-01', in_service_on: '2019-06-01', price: '42000.00', method: linear, years: 10 }
+  - { code: I04, label: "Scie à panneaux (scie à format)", account: '215400', depreciation_account: '281540', acquired_on: '2018-04-01', in_service_on: '2018-04-01', price: '18500.00', method: linear, years: 8 }
+  - { code: I05, label: "Raboteuse-dégauchisseuse", account: '215400', depreciation_account: '281540', acquired_on: '2021-09-15', in_service_on: '2021-09-15', price: '12400.00', method: linear, years: 5, fiscal_declining: true }
+  - { code: I06, label: "Plaqueuse de chants", account: '215400', depreciation_account: '281540', acquired_on: '2024-10-01', in_service_on: '2024-10-01', price: '26000.00', method: linear, years: 7 }
+  - { code: I07, label: "Fourgonnette Peugeot Partner", account: '218200', depreciation_account: '281820', acquired_on: '2022-02-01', in_service_on: '2022-02-01', price: '21500.00', method: linear, years: 5 }
+  - { code: I08, label: "Fourgon Renault Master", account: '218200', depreciation_account: '281820', acquired_on: '2023-07-01', in_service_on: '2023-07-01', price: '34000.00', method: linear, years: 5 }
+  - { code: I09, label: "Matériel informatique (postes et traceur)", account: '218300', depreciation_account: '281830', acquired_on: '2024-01-15', in_service_on: '2024-01-15', price: '4200.00', method: linear, years: 3 }
+  - { code: I10, label: "Mobilier de bureau", account: '218400', depreciation_account: '281840', acquired_on: '2020-01-01', in_service_on: '2020-01-01', price: '5600.00', method: linear, years: 10 }
+  - { code: I11, label: "Toupie (totalement amortie, toujours en service)", account: '215400', depreciation_account: '281540', acquired_on: '2014-05-12', in_service_on: '2014-05-12', price: '9800.00', method: linear, years: 10 }
+  - { code: I12, label: "Dépôt de garantie du bail (SCI Vasseur Immobilier)", account: '275100', acquired_on: '2022-01-01', in_service_on: '2022-01-01', price: '6400.00', method: none }
+  - code: I13
+    label: "Centre d'usinage à commande numérique 5 axes"
+    account: '215400'
+    depreciation_account: '281540'
+    supplier: F0019
+    document: MBI-2026-0311
+    acquired_on: '2026-03-16'
+    in_service_on: '2026-04-01'
+    price: '84000.00'
+    incidental_costs: '2500.00'
+    vat: '17300.00'
+    method: linear
+    components:
+      - { label: "Structure et commande numérique (installation et formation comprises)", cost: '74500.00', years: 10 }
+      - { label: "Broche d'usinage (renouvelée tous les 5 ans)", cost: '12000.00', years: 5 }

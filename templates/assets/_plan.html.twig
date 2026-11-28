@@ -1,0 +1,92 @@
+{#
+ # A fixed asset's depreciation plan, as a card of its fiche (step 3.4): one line per exercise - the
+ # time counted, the depreciation before it, the dotation, the cumul and the net book value at its end;
+ # beside a fiscal declining plan, the fiscal annuity and the dérogatoire; for an asset by components,
+ # each component's plan below. Not calculated at « Aucun filet » for a student.
+ #}
+{% set unit = asset.method.value == 'declining' ? 'mois' : (asset.method.value == 'units' ? 'unités' : 'jours') %}
+{% if asset.method.value == 'none' %}
+    <twig:Px:Card title="Plan d’amortissement">
+        <p class="px-u-muted">Cette immobilisation n’est pas amortie.</p>
+    </twig:Px:Card>
+{% elseif not calculates %}
+    <twig:Px:Card title="Plan d’amortissement">
+        <p class="px-u-muted">Au niveau « Aucun filet », le plan d’amortissement est à établir vous-même.</p>
+    </twig:Px:Card>
+{% elseif plan.fault %}
+    <twig:Px:Alert tone="warning">{{ plan.fault }}</twig:Px:Alert>
+{% elseif plan.rows is empty %}
+    <twig:Px:Card title="Plan d’amortissement">
+        <p class="px-u-muted">{{ asset.method.value == 'units' ? 'Indiquez les unités d’œuvre consommées par exercice pour établir le plan.' : 'Le plan ne commence pas avant la mise en service.' }}</p>
+    </twig:Px:Card>
+{% else %}
+    {% set fiscal = asset.fiscalDeclining %}
+    <twig:Px:Card title="Plan d’amortissement" :flush="true">
+        <p class="px-u-muted px-card__note">
+            {{ asset.method.label }}{% if asset.years %} sur {{ asset.years }} ans{% endif %}{% if plan.coefficient %}, coefficient {{ plan.coefficient|number_format(2, ',') }}{% endif %} ;
+            base {{ asset.cost.minus(asset.residualValue)|amount_eur }}{% if asset.residualValue.positive %} (valeur résiduelle {{ asset.residualValue|amount_eur }} déduite){% endif %} ;
+            {{ asset.method.value == 'declining' ? 'depuis le premier jour du mois d’acquisition' : (asset.method.value == 'units' ? 'selon les unités consommées' : 'au prorata en jours sur 360 depuis la mise en service') }}.
+        </p>
+        <twig:Px:Table caption="Plan d’amortissement de {{ asset.code }}" :rows="false">
+            <thead>
+                <tr>
+                    <th scope="col">Exercice</th>
+                    {% if plan.components is empty %}<th scope="col" class="px-u-right">{{ unit|capitalize }}</th>{% endif %}
+                    <th scope="col" class="px-u-right">Amortissements antérieurs</th>
+                    <th scope="col" class="px-u-right">Dotation</th>
+                    <th scope="col" class="px-u-right">Cumul</th>
+                    <th scope="col" class="px-u-right">VNC</th>
+                    {% if fiscal %}
+                        <th scope="col" class="px-u-right">Dégressif fiscal</th>
+                        <th scope="col" class="px-u-right">Dérogatoire</th>
+                        <th scope="col" class="px-u-right">Solde dérogatoire</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in plan.rows %}
+                    <tr{% if row.covers(dossier.dossierDate) %} aria-current="true" class="px-u-current"{% endif %}>
+                        <td class="px-u-nowrap">{{ row.start|date_fr }} – {{ row.end|date_fr }}{% if row.switched and asset.method.value == 'declining' %} <span class="px-u-muted">linéaire</span>{% endif %}</td>
+                        {% if plan.components is empty %}<td class="px-u-num">{{ row.counted }}</td>{% endif %}
+                        <td class="px-u-num">{{ row.opening|amount_cell }}</td>
+                        <td class="px-u-num">{{ row.dotation|amount }}</td>
+                        <td class="px-u-num">{{ row.closing|amount }}</td>
+                        <td class="px-u-num">{{ row.netValue|amount }}</td>
+                        {% if fiscal %}
+                            <td class="px-u-num">{{ row.fiscal|amount_cell }}</td>
+                            <td class="px-u-num">{% if row.derogatory and row.derogatory.negative %}reprise {{ row.derogatory.abs|amount }}{% else %}{{ row.derogatory|amount_cell }}{% endif %}</td>
+                            <td class="px-u-num">{{ row.derogatoryBalance|amount_cell }}</td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </twig:Px:Table>
+    </twig:Px:Card>
+    {% for component in plan.components %}
+        <twig:Px:Card title="Composant : {{ component.label }}" :flush="true">
+            <p class="px-u-muted px-card__note">Linéaire sur {{ component.years }} ans, valeur {{ component.cost|amount_eur }}.</p>
+            <twig:Px:Table caption="Plan du composant {{ component.label }}" :rows="false">
+                <thead>
+                    <tr>
+                        <th scope="col">Exercice</th>
+                        <th scope="col" class="px-u-right">Jours</th>
+                        <th scope="col" class="px-u-right">Dotation</th>
+                        <th scope="col" class="px-u-right">Cumul</th>
+                        <th scope="col" class="px-u-right">VNC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in component.rows %}
+                        <tr>
+                            <td class="px-u-nowrap">{{ row.start|date_fr }} – {{ row.end|date_fr }}</td>
+                            <td class="px-u-num">{{ row.counted }}</td>
+                            <td class="px-u-num">{{ row.dotation|amount }}</td>
+                            <td class="px-u-num">{{ row.closing|amount }}</td>
+                            <td class="px-u-num">{{ row.netValue|amount }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+    {% endfor %}
+{% endif %}

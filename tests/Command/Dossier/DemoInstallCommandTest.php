@@ -26,6 +26,7 @@ use App\Repository\Accounting\EntryLineRepository;
 use App\Repository\Accounting\EntryRepository;
 use App\Repository\Accounting\EntrySubscriptionRepository;
 use App\Repository\Accounting\EntryTemplateRepository;
+use App\Repository\Assets\FixedAssetRepository;
 use App\Repository\Banking\BankRuleRepository;
 use App\Repository\Banking\BankStatementRepository;
 use App\Repository\Dossier\DossierRepository;
@@ -39,6 +40,7 @@ use App\Service\Accounting\Lettering\LetteringBoard;
 use App\Service\Accounting\Subscription\SubscriptionRun;
 use App\Service\Accounting\Subscription\SubscriptionSchedule;
 use App\Service\Accounting\Template\TemplateCall;
+use App\Service\Assets\FixedAssetPlans;
 use App\Service\Banking\Reconciliation\ReconciliationBoard;
 use App\Service\Dossier\DossierContext;
 use App\Service\Inventory\Stock\StockReader;
@@ -210,6 +212,39 @@ final class DemoInstallCommandTest extends KernelTestCase
             array_map(static fn ($line): array => [$line->account, $line->debit, $line->credit], $call['lines']),
             'Le loyer de février : 3 200,00 HT, 640,00 de TVA, 3 840,00 à la SCI (LOY-2026-02).',
         );
+
+        // Its fixed assets (step 3.4): the twelve of the opening, whose gross values and depreciation at
+        // 31/12/2025 are the opening balance's (immobilisations.yaml: 225 200,00 and 117 034,42, account by
+        // account), and the machining centre by components (2026: 5 587,50 + 1 800,00 = 7 387,50); the
+        // planer's dérogatoire is taken back in 2026 (592,84).
+        $context->within($vasseur, static function () use ($vasseur, $reader, $account): void {
+            $assets = self::getContainer()->get(FixedAssetRepository::class)->findByDossier($vasseur);
+            $plans = self::getContainer()->get(FixedAssetPlans::class);
+            $gross = [];
+            $depreciation = [];
+            $dotations = [];
+            foreach ($assets as $asset) {
+                $plan = $plans->plan($vasseur, $asset);
+                if ('I13' !== $asset->getCode()) {
+                    $gross[$asset->getAccount()->getNumber()] = ($gross[$asset->getAccount()->getNumber()] ?? 0) + $asset->getCost()->cents;
+                    if (null !== $asset->getDepreciationAccount()) {
+                        $number = $asset->getDepreciationAccount()->getNumber();
+                        $depreciation[$number] = ($depreciation[$number] ?? 0) - $plan->cumulativeAt(new \DateTimeImmutable('2025-12-31'))->cents;
+                    }
+                }
+                $dotations[$asset->getCode()] = $plan->rowAt(new \DateTimeImmutable('2026-12-31'))?->dotation->cents;
+            }
+            self::assertSame(22_520_000, array_sum($gross));
+            self::assertSame(-11_703_442, array_sum($depreciation));
+            foreach ($gross + $depreciation as $number => $balance) {
+                $books = $reader->accountBalance($account((string) $number) ?? throw new \LogicException((string) $number), new \DateTimeImmutable('2026-01-01'), new \DateTimeImmutable('2026-01-01'), EntryScope::Validated)->balance()->cents;
+                self::assertSame($books, $balance, 'Le compte '.$number.' des fiches est celui de la balance d’ouverture.');
+            }
+            ksort($dotations);
+            self::assertSame(['I01' => null, 'I02' => 37_777, 'I03' => 420_000, 'I04' => 57_812, 'I05' => 174_978, 'I06' => 371_429, 'I07' => 430_000, 'I08' => 680_000, 'I09' => 140_000, 'I10' => 56_000, 'I11' => null, 'I12' => null, 'I13' => 738_750], $dotations);
+            $planer = array_values(array_filter($assets, static fn ($asset): bool => 'I05' === $asset->getCode()))[0];
+            self::assertSame(-59_284, $plans->plan($vasseur, $planer)->rowAt(new \DateTimeImmutable('2026-12-31'))?->derogatory?->cents);
+        });
 
         // Its subscriptions (step 1.4c): the rent and the leasing from March, into the brouillard;
         // March's are generated at install (the dossier's date is 31/03), April's come next.
