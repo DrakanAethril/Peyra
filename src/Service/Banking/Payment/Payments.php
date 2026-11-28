@@ -116,43 +116,103 @@ final readonly class Payments
      */
     public function openInvoices(ThirdParty $party, PaymentDirection $direction): array
     {
-        $account = $party->getAccount();
-        if (null === $account) {
-            return [];
+        return $this->readOpen($party->getDossier(), $direction, $party)[0][(int) $party->getId()] ?? [];
+    }
+
+    /**
+     * The same for every customer or every supplier of the dossier at once (the payment proposal of
+     * step 2.7), by third party id.
+     *
+     * @return array<int, list<OpenInvoice>>
+     */
+    public function openInvoicesOf(Dossier $dossier, PaymentDirection $direction): array
+    {
+        return $this->readOpen($dossier, $direction, null)[0];
+    }
+
+    /**
+     * What each third party has paid or been paid that settles no invoice yet (step 2.7): its
+     * unlettered lines on the other side of its account - a supplier's debits, a customer's credits -
+     * less what payments allocated to its open invoices. Paying an invoice of a supplier who carries
+     * such an amount risks paying it twice. By third party id, positive amounts only.
+     *
+     * @return array<int, Money>
+     */
+    public function unmatchedPayments(Dossier $dossier, PaymentDirection $direction): array
+    {
+        return $this->readOpen($dossier, $direction, null)[1];
+    }
+
+    /**
+     * @return array{0: array<int, list<OpenInvoice>>, 1: array<int, Money>}
+     */
+    private function readOpen(Dossier $dossier, PaymentDirection $direction, ?ThirdParty $only): array
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('l', 'e', 't')->from(EntryLine::class, 'l')->join('l.entry', 'e')->join('l.thirdParty', 't')
+            ->andWhere('e.dossier = :dossier')->setParameter('dossier', $dossier)
+            ->andWhere('t.kind = :kind')->setParameter('kind', $direction->thirdPartyKind())
+            ->andWhere('l.account = t.account')
+            ->andWhere('l.letter IS NULL')
+            ->orderBy('e.entryDate')->addOrderBy('e.id');
+        if (null !== $only) {
+            $query->andWhere('l.thirdParty = :party')->setParameter('party', $only);
         }
         /** @var list<EntryLine> $lines */
-        $lines = $this->entityManager->createQueryBuilder()
-            ->select('l', 'e')->from(EntryLine::class, 'l')->join('l.entry', 'e')
-            ->andWhere('l.account = :account')->setParameter('account', $account)
-            ->andWhere('l.thirdParty = :party')->setParameter('party', $party)
-            ->andWhere('l.letter IS NULL')
-            ->andWhere(PaymentDirection::Receipt === $direction ? 'l.debit > 0' : 'l.credit > 0')
-            ->orderBy('e.entryDate')->addOrderBy('e.id')
-            ->getQuery()->getResult();
+        $lines = $query->getQuery()->getResult();
+        // Keyed by third party then entry: an opening entry names several third parties.
         $totals = [];
+        $due = [];
         $entries = [];
+        $other = [];
         foreach ($lines as $line) {
+            $party = (int) $line->getThirdParty()?->getId();
+            $owed = PaymentDirection::Receipt === $direction ? $line->getDebit() : $line->getCredit();
+            $paid = PaymentDirection::Receipt === $direction ? $line->getCredit() : $line->getDebit();
+            if ($paid->isPositive()) {
+                $other[$party] = ($other[$party] ?? Money::zero())->plus($paid);
+            }
+            if (!$owed->isPositive()) {
+                continue;
+            }
             $entry = $line->getEntry();
             $id = (int) $entry->getId();
-            $entries[$id] = $entry;
-            $totals[$id] = ($totals[$id] ?? Money::zero())->plus(PaymentDirection::Receipt === $direction ? $line->getDebit() : $line->getCredit());
+            $entries[$party][$id] = $entry;
+            $totals[$party][$id] = ($totals[$party][$id] ?? Money::zero())->plus($owed);
+            $day = $line->getDueDate() ?? $entry->getEntryDate();
+            $due[$party][$id] = isset($due[$party][$id]) && $due[$party][$id] < $day ? $due[$party][$id] : $day;
         }
         $allocated = [];
         $transferred = [];
-        foreach ($this->payments->allocationsOf(array_keys($entries)) as $allocation) {
+        $ids = [];
+        foreach ($entries as $byEntry) {
+            $ids = [...$ids, ...array_keys($byEntry)];
+        }
+        foreach ($this->payments->allocationsOf(array_values(array_unique($ids))) as $allocation) {
+            $party = (int) $allocation->getPayment()->getThirdParty()->getId();
             $id = (int) $allocation->getInvoice()->getId();
-            $allocated[$id] = ($allocated[$id] ?? Money::zero())->plus($allocation->getAmount());
-            $transferred[$id] = ($transferred[$id] ?? Money::zero())->plus($allocation->getVatTransferred());
+            $allocated[$party][$id] = ($allocated[$party][$id] ?? Money::zero())->plus($allocation->getAmount());
+            $transferred[$party][$id] = ($transferred[$party][$id] ?? Money::zero())->plus($allocation->getVatTransferred());
         }
         $open = [];
-        foreach ($entries as $id => $entry) {
-            $invoice = new OpenInvoice($entry, $totals[$id], $allocated[$id] ?? Money::zero(), self::pendingVat($entry, $direction), $transferred[$id] ?? Money::zero());
-            if ($invoice->remaining()->isPositive()) {
-                $open[] = $invoice;
+        $unmatched = [];
+        foreach ($entries as $party => $byEntry) {
+            foreach ($byEntry as $id => $entry) {
+                $taken = $allocated[$party][$id] ?? Money::zero();
+                $other[$party] = ($other[$party] ?? Money::zero())->minus($taken);
+                $invoice = new OpenInvoice($entry, $totals[$party][$id], $taken, self::pendingVat($entry, $direction), $transferred[$party][$id] ?? Money::zero(), $due[$party][$id]);
+                if ($invoice->remaining()->isPositive()) {
+                    $open[$party][] = $invoice;
+                }
+            }
+        }
+        foreach ($other as $party => $amount) {
+            if ($amount->isPositive()) {
+                $unmatched[$party] = $amount;
             }
         }
 
-        return $open;
+        return [$open, $unmatched];
     }
 
     /**

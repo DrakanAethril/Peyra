@@ -1,0 +1,6 @@
+{# The views of Achats › Règlements (design-ux.md § 2.5, « décaissements · campagnes de paiement »; step 2.7): the disbursements, the suppliers' échéancier, the payment proposal. #}
+<twig:Px:Tabs label="Règlements" :tabs="[
+    {label: 'Décaissements', href: path('app_payments', {dossier: dossier.id, direction: 'disbursements'}), current: disbursement_view == 'payments'},
+    {label: 'Échéancier', href: path('app_due_schedule', {dossier: dossier.id, side: 'purchases'}), current: disbursement_view == 'schedule'},
+    {label: 'Proposition de paiement', href: path('app_payment_proposal', {dossier: dossier.id}), current: disbursement_view == 'proposal'},
+]"/>

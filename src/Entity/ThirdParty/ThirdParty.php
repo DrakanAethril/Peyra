@@ -100,6 +100,10 @@ class ThirdParty implements DossierOwned
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $note = null;
 
+    /** A customer whose debt is doubtful (« créance douteuse », step 2.7): a marker, read by the inventory work of lot 3. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $doubtful = false;
+
     public function __construct(Dossier $dossier, string $code, ThirdPartyKind $kind, string $name)
     {
         $this->dossier = $dossier;
@@ -257,5 +261,16 @@ class ThirdParty implements DossierOwned
         $this->paymentTerms = $terms;
         $this->paymentMethod = $method;
         $this->note = $note;
+    }
+
+    public function isDoubtful(): bool
+    {
+        return $this->doubtful;
+    }
+
+    /** DoubtfulReceivables alone sets it, for a customer. */
+    public function markDoubtful(bool $doubtful): void
+    {
+        $this->doubtful = $doubtful;
     }
 }

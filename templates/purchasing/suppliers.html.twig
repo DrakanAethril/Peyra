@@ -52,6 +52,8 @@
                                 <td class="px-u-truncate px-u-truncate-short" title="{{ supplier.paymentTerms.label }} · {{ supplier.paymentMethod.label }}">{{ supplier.paymentTerms.label }} · {{ supplier.paymentMethod.label|lower }}</td>
                                 {% set owed = outstanding[supplier.id] ?? null %}
                                 <td class="px-u-num">{% if owed is not null and not owed.balance.isZero %}<a class="px-link" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: supplier.auxiliaryCode ?? supplier.code}) }}">{{ owed.balance|balance }}</a>{% endif %}</td>
+                                {% set late = overdue[supplier.id] ?? null %}
+                                <td class="px-u-num">{% if late is not null %}<a class="px-link" href="{{ path('app_due_schedule', {dossier: dossier.id, side: 'purchases', overdue: 1}) }}">{{ late|amount }}</a>{% endif %}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
