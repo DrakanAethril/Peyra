@@ -1,0 +1,75 @@
+{#
+ # Ventes › Règlements and Achats › Règlements (step 2.6b; design-ux.md § 3.2, gabarit L): the
+ # receipts or the disbursements, the latest first - day, reference, party, method, journal, amount,
+ # the invoices settled, where it stands, its entry -; a method's chip narrows the list. A receipt
+ # list also leads to the remittance of the cheques.
+ #}
+{% extends payment_layout %}
+
+{% set sales_tab = 'payments' %}
+{% set inventory_tab = 'payments' %}
+{% set dossier_title = direction.value == 'receipt' ? 'Encaissements' : 'Décaissements' %}
+{% set status_keys = can_enter ? [{combo: 'N', verb: direction.value == 'receipt' ? 'Nouvel encaissement' : 'Nouveau décaissement'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ direction.value == 'receipt' ? 'Encaissements' : 'Décaissements' }}" :trail="[
+        {label: direction.value == 'receipt' ? 'Ventes' : 'Achats et stocks', href: path('app_payments', {dossier: dossier.id, direction: slug})},
+        {label: 'Règlements', href: path('app_payments', {dossier: dossier.id, direction: slug})},
+    ]">
+        <twig:block name="actions">
+            {% if direction.value == 'receipt' %}<twig:Px:Button href="{{ path('app_payment_deposit', {dossier: dossier.id}) }}" icon="landmark">Remise de chèques</twig:Px:Button>{% endif %}
+            {% if can_enter %}<twig:Px:Button href="{{ path('app_payment_new', {dossier: dossier.id, direction: slug}) }}" variant="primary" icon="plus" shortcut="N">{{ direction.value == 'receipt' ? 'Nouvel encaissement' : 'Nouveau décaissement' }}</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% for message in app.flashes('payment_fault') %}<twig:Px:Alert tone="danger">{{ message }}</twig:Px:Alert>{% endfor %}
+    <twig:Px:Card :flush="true">
+        <twig:Px:Filters action="{{ path('app_payments', {dossier: dossier.id, direction: slug}) }}">
+            <span class="px-filters__label">Mode</span>
+            <twig:Px:FilterChip label="Tous" href="{{ path('app_payments', {dossier: dossier.id, direction: slug}) }}" :current="method is null"/>
+            {% for one in methods %}
+                <twig:Px:FilterChip label="{{ one.label }}" href="{{ path('app_payments', {dossier: dossier.id, direction: slug, method: one.value}) }}" :current="method and method.value == one.value"/>
+            {% endfor %}
+        </twig:Px:Filters>
+        {% if payments is empty %}
+            <twig:Px:Empty icon="landmark" title="{{ direction.value == 'receipt' ? 'Aucun encaissement' : 'Aucun décaissement' }}" text="{{ direction.value == 'receipt' ? 'Un encaissement règle les factures d’un client : chèque, virement, carte, espèces ou effet.' : 'Un décaissement règle les factures d’un fournisseur : virement, chèque, carte, prélèvement ou espèces.' }}"/>
+        {% else %}
+            <twig:Px:Table caption="{{ dossier_title }} de {{ dossier.name }}" :rows="true">
+                <thead>
+                    <tr>
+                        <th scope="col" class="px-u-num">Date</th>
+                        <th scope="col">Référence</th>
+                        <th scope="col">{{ direction.value == 'receipt' ? 'Client' : 'Fournisseur' }}</th>
+                        <th scope="col">Mode</th>
+                        <th scope="col">Journal</th>
+                        <th scope="col">Factures</th>
+                        <th scope="col" class="px-u-right">Montant</th>
+                        <th scope="col">État</th>
+                        <th scope="col">Écriture</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for one in payments %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-num">{{ one.paidOn|date('d/m/Y') }}</td>
+                            <td><a class="px-link px-u-code" href="{{ path('app_payment', {dossier: dossier.id, direction: slug, id: one.id}) }}">{{ one.reference }}</a></td>
+                            <td class="px-u-fill">{{ one.thirdParty.name }}</td>
+                            <td>{{ one.method.label }}</td>
+                            <td class="px-u-code">{{ one.journal.code }}</td>
+                            <td class="px-u-code">{{ one.allocations|map(a => a.invoice.document)|join(', ') ?: '—' }}</td>
+                            <td class="px-u-num">{{ one.amount|amount }}</td>
+                            <td><twig:Px:Badge :of="one.state"/></td>
+                            <td>{{ one.entry ? (one.entry.numberLabel ?? 'Brouillard') : 'À saisir' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}
+    <span>{{ payments|length }} règlement{{ payments|length > 1 ? 's' : '' }}</span>
+{% endblock %}

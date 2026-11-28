@@ -1,0 +1,106 @@
+{#
+ # Ventes › Règlements › Nouvel encaissement, Achats et stocks › Règlements › Nouveau décaissement
+ # (step 2.6b; design-ux.md § 3.2, « Règlements », gabarit F): the customer or supplier first (a GET
+ # that lists their invoices still to settle), then the payment - method, journal, day, reference,
+ # amount, a bill's due date - and the invoices it settles, ticked in the order they are settled.
+ # In G, the invoice whose amount or number the payment carries is ticked for the student to
+ # confirm (payment_form_controller.js). Posted outside Turbo: a refusal answers the post.
+ #}
+{% extends payment_layout %}
+
+{% set sales_tab = 'payments' %}
+{% set inventory_tab = 'payments' %}
+{% set title = direction.value == 'receipt' ? 'Nouvel encaissement' : 'Nouveau décaissement' %}
+{% set dossier_title = title %}
+{% set status_keys = party ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ title }}" :trail="[
+        {label: direction.value == 'receipt' ? 'Ventes' : 'Achats et stocks', href: path('app_payments', {dossier: dossier.id, direction: slug})},
+        {label: 'Règlements', href: path('app_payments', {dossier: dossier.id, direction: slug})},
+        {label: title, href: path('app_payment_new', {dossier: dossier.id, direction: slug})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ path('app_payments', {dossier: dossier.id, direction: slug}) }}" variant="quiet">Annuler</twig:Px:Button>
+            {% if party %}<twig:Px:Button type="submit" variant="primary" form="payment-form" icon="save" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <form method="get" action="{{ path('app_payment_new', {dossier: dossier.id, direction: slug}) }}" class="px-cluster">
+        <twig:Px:Field id="party" label="{{ direction.value == 'receipt' ? 'Client' : 'Fournisseur' }}">
+            <twig:Px:Select id="party" placeholder="{{ direction.value == 'receipt' ? 'Choisir un client…' : 'Choisir un fournisseur…' }}" :options="party_options" value="{{ party ? party.code : '' }}" :autofocus="party is null"/>
+        </twig:Px:Field>
+        <twig:Px:Button type="submit" icon="arrow-right">Afficher ses factures</twig:Px:Button>
+    </form>
+
+    {% if party %}
+        {% if errors is not empty %}
+            <twig:Px:Alert tone="danger" title="Le règlement n’est pas enregistré">{{ errors|first }}</twig:Px:Alert>
+        {% endif %}
+        <form method="post" action="{{ path('app_payment_new', {dossier: dossier.id, direction: slug}) }}" id="payment-form" data-turbo="false" novalidate
+              data-controller="focus-error payment-form" data-payment-form-propose-value="{{ propose ? 'true' : 'false' }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('payment-' ~ dossier.id) }}">
+            <input type="hidden" name="thirdParty" value="{{ party.code }}">
+            <twig:Px:Card title="Règlement" meta="{{ party.code }} · {{ party.name }}">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="method" label="Mode de règlement" :required="true" :error="errors.method ?? null">
+                        <twig:Px:Select id="method" placeholder="Choisir un mode…" :options="method_options" value="{{ form.method ? form.method.value : '' }}" :required="true" :error="errors.method ?? null" autofocus/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="journal" label="Journal" :required="true" :error="errors.journal ?? null" hint="La banque où il passe ; la caisse pour des espèces ; les opérations diverses pour un effet tiré.">
+                        <twig:Px:Select id="journal" placeholder="Choisir un journal…" :options="journal_options" value="{{ form.journal }}" :required="true" hint="1" :error="errors.journal ?? null"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="date" label="Date" :required="true" :error="errors.date ?? null">
+                        <twig:Px:DateInput id="date" :value="form.date" :reference="dossier.dossierDate" :required="true" :error="errors.date ?? null"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="reference" label="Référence" :required="true" :error="errors.reference ?? null" hint="Le numéro du chèque, du virement ou de l’effet : la pièce de l’écriture.">
+                        <twig:Px:Input id="reference" value="{{ form.reference }}" :required="true" hint="1" :error="errors.reference ?? null" maxlength="40" autocomplete="off" data-payment-form-target="reference" data-action="input->payment-form#propose"/>
+                    </twig:Px:Field>
+                    <twig:Px:Field id="amount" label="Montant" :required="true" :error="errors.amount ?? null">
+                        <twig:Px:AmountInput id="amount" :value="form.amount" :required="true" :error="errors.amount ?? null" data-payment-form-target="amount" data-action="focusout->payment-form#propose"/>
+                    </twig:Px:Field>
+                    {% if direction.value == 'receipt' %}
+                        <twig:Px:Field id="dueOn" label="Échéance de l’effet" :error="errors.dueOn ?? null" hint="Pour un effet (LCR) seulement.">
+                            <twig:Px:DateInput id="dueOn" :value="form.dueOn" :reference="dossier.dossierDate" hint="1" :error="errors.dueOn ?? null"/>
+                        </twig:Px:Field>
+                    {% endif %}
+                </div>
+            </twig:Px:Card>
+            <twig:Px:Card :flush="true" title="Factures réglées" meta="{{ invoices|length }} à régler">
+                {% if errors.invoices is defined %}<twig:Px:Alert tone="danger">{{ errors.invoices }}</twig:Px:Alert>{% endif %}
+                {% if errors.entry is defined %}<twig:Px:Alert tone="danger">{{ errors.entry }}</twig:Px:Alert>{% endif %}
+                {% if invoices is empty %}
+                    <twig:Px:Empty icon="file-text" title="Aucune facture à régler" text="Le règlement s’enregistre sans facture : il reste au compte du tiers jusqu’à son lettrage."/>
+                {% else %}
+                    <twig:Px:Table caption="Factures de {{ party.name }} à régler">
+                        <thead>
+                            <tr>
+                                <th scope="col"><span class="px-u-sr-only">Réglée</span></th>
+                                <th scope="col" class="px-u-num">Date</th>
+                                <th scope="col">Pièce</th>
+                                <th scope="col">Libellé</th>
+                                <th scope="col" class="px-u-right">Montant</th>
+                                <th scope="col" class="px-u-right">Reste dû</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in invoices %}
+                                <tr>
+                                    <td><input type="checkbox" name="invoices[]" value="{{ invoice.entry.id }}" id="invoice-{{ invoice.entry.id }}" aria-label="Régler {{ invoice.entry.document }}"
+                                        data-payment-form-target="invoice" data-remaining="{{ invoice.remaining.cents }}" data-document="{{ invoice.entry.document }}" data-action="change->payment-form#touched"
+                                        {% if invoice.entry.id in form.invoices %} checked{% endif %}></td>
+                                    <td class="px-u-num">{{ invoice.entry.entryDate|date('d/m/Y') }}</td>
+                                    <td class="px-u-code"><label for="invoice-{{ invoice.entry.id }}">{{ invoice.entry.document }}</label></td>
+                                    <td class="px-u-fill">{{ invoice.entry.label }}{% if not invoice.entry.validated %} <twig:Px:Badge :of="invoice.entry.state"/>{% endif %}</td>
+                                    <td class="px-u-num">{{ invoice.total|amount }}</td>
+                                    <td class="px-u-num">{{ invoice.remaining|amount }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                {% endif %}
+            </twig:Px:Card>
+        </form>
+    {% endif %}
+{% endblock %}

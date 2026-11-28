@@ -167,4 +167,10 @@ final readonly class Assistance
     {
         return $this->runsControls();
     }
+
+    /** The payment form ticks the invoice whose amount or number the payment carries (G: « affectation proposée par montant et référence »). */
+    public function proposesPaymentAllocation(): bool
+    {
+        return AssistanceLevel::Guided === $this->level;
+    }
 }
