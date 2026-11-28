@@ -8,7 +8,7 @@
 {% set resettable = lines|filter(l => l.summary is not null) %}
 <twig:Px:Stepper label="Remise à l’état de départ" :steps="[{label: 'Récapitulatif', href: '#', state: 'current'}]"/>
 
-<twig:Px:Card :flush="true" title="Ce qui sera perdu" meta="{{ resettable|length }} {{ resettable|length > 1 ? 'dossiers reprennent' : 'dossier reprend' }} l’état où sa distribution l’a donné">
+<twig:Px:Card :flush="true" title="Ce qui sera perdu" meta="{{ resettable|length }} {{ resettable|length > 1 ? 'dossiers reprennent l’état où leur distribution les a donnés' : 'dossier reprend l’état où sa distribution l’a donné' }}">
     <twig:Px:Table caption="Dossiers à remettre à l’état de départ" variant="plain" density="compact">
         <thead><tr>
             <th scope="col">Étudiant ou groupe</th>

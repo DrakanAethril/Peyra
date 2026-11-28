@@ -7,6 +7,7 @@ namespace App\Controller\Dossier;
 use App\Entity\Dossier\Dossier;
 use App\Enum\Dossier\RestorationState;
 use App\Repository\Dossier\DossierRestorationRepository;
+use App\Service\Dossier\Restore\RestoreQueue;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,7 +19,8 @@ use Symfony\Component\Routing\Attribute\Route;
  * tab open on the dossier comes here (RestorationInProgressListener, and the shell's live
  * subscription), and leaves once the return ends - to the dashboard when it is done, to the points'
  * list when it failed (the dossier then holds what it held). The page asks `…/state` every two
- * seconds besides listening to Mercure: the live update is a comfort.
+ * seconds besides listening to Mercure: the live update is a comfort. Each asking queues the return
+ * again, so one a request left (its WorkBudget spent on a whole class) is done after the answer.
  */
 #[Route('/d/{dossier}/restoring', requirements: ['dossier' => '\d+'])]
 final class RestoringController extends AbstractController
@@ -47,8 +49,13 @@ final class RestoringController extends AbstractController
     }
 
     #[Route('/state', name: 'app_dossier_restoring_state', methods: ['GET'])]
-    public function state(Dossier $dossier, DossierRestorationRepository $restorations): JsonResponse
+    public function state(Dossier $dossier, DossierRestorationRepository $restorations, RestoreQueue $queue): JsonResponse
     {
-        return new JsonResponse(['running' => null !== $restorations->findRunning($dossier)]);
+        $running = $restorations->findRunning($dossier);
+        if (null !== $running) {
+            $queue->restoration($running);
+        }
+
+        return new JsonResponse(['running' => null !== $running]);
     }
 }

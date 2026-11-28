@@ -22,7 +22,9 @@ use App\Enum\Identity\AccountKind;
 use App\Enum\Identity\ClassLevel;
 use App\Enum\Identity\EnrolmentOrigin;
 use App\Enum\Identity\EntryBasis;
+use App\EventListener\DistributionWorkListener;
 use App\Repository\Dossier\DistributionCopyRepository;
+use App\Repository\Dossier\DistributionRepository;
 use App\Repository\Dossier\DossierMemberRepository;
 use App\Repository\Dossier\RestorePointRepository;
 use App\Service\Dossier\Demo\DemoInstaller;
@@ -38,7 +40,11 @@ use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Clock\ClockInterface;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Event\TerminateEvent;
 
 /**
  * Distributions (lot 1, step 1.8; design-ux.md § 4.2) of the demonstration template to a class:
@@ -227,6 +233,50 @@ final class DistributionsTest extends KernelTestCase
 
         self::assertStringContainsString('4 dossier(s) de distribution traité(s)', $tester->getDisplay());
         self::assertSame([], $this->copies()->findPendingIds($distribution));
+    }
+
+    public function testARequestMakesCopiesWhileItsBudgetLastsAndThePageAsksForMore(): void
+    {
+        $distribution = $this->launch(DistributionChoices::first());
+        // Each reading of this clock is five seconds later: the budget (twelve seconds) is read at
+        // 5 s - one copy, given 10 s -, then at 15 s - spent.
+        $clock = new class implements ClockInterface {
+            private \DateTimeImmutable $now;
+
+            public function __construct()
+            {
+                $this->now = new \DateTimeImmutable('2026-11-28 09:01:00');
+            }
+
+            public function now(): \DateTimeImmutable
+            {
+                $now = $this->now;
+                $this->now = $now->modify('+5 seconds');
+
+                return $now;
+            }
+
+            public function sleep(float|int $seconds): void
+            {
+            }
+
+            public function withTimeZone(\DateTimeZone|string $timezone): static
+            {
+                return $this;
+            }
+        };
+        $kernel = self::$kernel ?? throw new \LogicException('Booted.');
+        $queue = self::getContainer()->get(DistributionQueue::class);
+        $listener = new DistributionWorkListener($queue, self::getContainer()->get(DistributionRepository::class), $this->copies(), $this->runner(), $clock);
+
+        $listener->onTerminate(new TerminateEvent($kernel, new Request(), new Response()));
+        self::assertCount(3, $this->copies()->findPendingIds($distribution), 'Une copie dans le budget, les autres laissées.');
+        self::assertSame([], $queue->take());
+
+        // The progress page asks again: it queues the distribution, and its answer makes more.
+        $queue->add($distribution);
+        $listener->onTerminate(new TerminateEvent($kernel, new Request(), new Response()));
+        self::assertCount(2, $this->copies()->findPendingIds($distribution));
     }
 
     private function launch(DistributionChoices $choices): Distribution

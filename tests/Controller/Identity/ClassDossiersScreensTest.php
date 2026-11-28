@@ -78,7 +78,7 @@ final class ClassDossiersScreensTest extends WebTestCase
         // The récapitulatif, then the reset: done after the answer, each dossier keeping its state as a point.
         $crawler = $client->request('GET', $page.'/reset?'.http_build_query(['dossiers' => $ids]));
         self::assertResponseIsSuccessful();
-        self::assertSelectorTextContains('main', '2 dossiers reprennent l’état où sa distribution l’a donné');
+        self::assertSelectorTextContains('main', '2 dossiers reprennent l’état où leur distribution les a donnés');
         $token = (string) $crawler->filter('#start-reset input[name="_token"]')->attr('value');
         $client->request('POST', $page.'/reset', ['_token' => 'forged', 'dossiers' => $ids, 'keep' => '1']);
         self::assertResponseStatusCodeSame(404);

@@ -24,12 +24,18 @@ final class RestoreQueue implements ResetInterface
 
     public function point(RestorePoint $point): void
     {
-        $this->points[] = $point->getId() ?? throw new \LogicException('A saved point is queued.');
+        $id = $point->getId() ?? throw new \LogicException('A saved point is queued.');
+        if (!\in_array($id, $this->points, true)) {
+            $this->points[] = $id;
+        }
     }
 
     public function restoration(DossierRestoration $restoration): void
     {
-        $this->restorations[] = $restoration->getId() ?? throw new \LogicException('A saved return is queued.');
+        $id = $restoration->getId() ?? throw new \LogicException('A saved return is queued.');
+        if (!\in_array($id, $this->restorations, true)) {
+            $this->restorations[] = $id;
+        }
     }
 
     /** @return array{points: list<int>, restorations: list<int>} what was asked, emptied */

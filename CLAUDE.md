@@ -1192,6 +1192,13 @@ Reach for these rather than re-implement them; each has its test.
 - **Scheduled commands**: `App\Command\Shared\SharedLockableTrait` (`$this->lock()`, released when
   `run()` returns); `App\Scheduler\ScheduledCommandLogger` writes one line per run in the
   worker's log, the output's tail at error level when it fails.
+- **Background work** (step 1.10c): a request's kernel.terminate works while its
+  `App\Service\Shared\Background\WorkBudget` lasts (12 s: PHP's 30 s counts it), the progress
+  pages queue their work again when they poll, the scheduled commands finish the rest. A unit
+  that copies or erases a dossier runs in `TransactionRetry::run()`: two dossiers copied at the
+  same moment deadlock on the `dossier_id` indexes, and InnoDB's victim surfaces as « SAVEPOINT
+  DOCTRINE_2 does not exist » with DBAL left counting a dead transaction - `recover()` closes
+  that connection.
 
 ## Regulatory values and audit trail (built at step 0.6b)
 

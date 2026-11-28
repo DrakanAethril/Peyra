@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Accounting\Fec\Import;
 
 use App\Entity\Accounting\FecImportJob;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Service\Shared\Background\TransactionRetry;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\LockFactory;
@@ -16,7 +16,8 @@ use Symfony\Component\Lock\LockFactory;
  * under the import's lock (LOCK_DSN, seen by `php` and `worker` alike) and in its own
  * transaction: a pass cut short is rolled back and run again by the next one.
  *
- * A pass that fails stops the import: logged at error level (it reaches the operator), said on
+ * A pass the database gave up (a deadlock with a copy made at the same moment) is run again, up to
+ * three times (TransactionRetry). A pass that fails otherwise stops the import: logged at error level (it reaches the operator), said on
  * the progress page - « Relancer » or « Abandonner » -, never retried on its own. Each pass is
  * announced to the page.
  */
@@ -26,8 +27,8 @@ final readonly class FecImportRunner
 
     public function __construct(
         private LockFactory $locks,
-        private EntityManagerInterface $entityManager,
         private ManagerRegistry $registry,
+        private TransactionRetry $retry,
         private FecImport $import,
         private FecImportLive $live,
         private LoggerInterface $logger,
@@ -51,7 +52,7 @@ final readonly class FecImportRunner
         }
         try {
             try {
-                $left = $this->import->pass($jobId, $now, $size);
+                $left = $this->retry->run(fn (): bool => $this->import->pass($jobId, $now, $size));
             } catch (\Throwable $exception) {
                 $this->logger->error('FEC import {job} stopped: {message}', ['job' => $jobId, 'message' => $exception->getMessage(), 'exception' => $exception]);
                 $this->stop($jobId, $exception, $now);
@@ -67,11 +68,7 @@ final readonly class FecImportRunner
 
     private function stop(int $jobId, \Throwable $exception, \DateTimeImmutable $now): void
     {
-        if ($this->entityManager->isOpen()) {
-            $this->entityManager->clear();
-        } else {
-            $this->registry->resetManager();
-        }
+        $this->retry->recover();
         $entityManager = $this->registry->getManager();
         $job = $entityManager->find(FecImportJob::class, $jobId);
         if (null === $job) {

@@ -8,8 +8,8 @@ use App\Entity\Dossier\Dossier;
 use App\Repository\Dossier\DossierRestorationRepository;
 use App\Repository\Dossier\RestorePointRepository;
 use App\Service\Dossier\DossierLive;
+use App\Service\Shared\Background\TransactionRetry;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\LockFactory;
 
@@ -20,15 +20,17 @@ use Symfony\Component\Lock\LockFactory;
  * alike), and a work already taken by the other side is left to it. Each piece of work is read
  * again under the lock, so it is done once.
  *
- * A failure is logged at error level (it reaches the operator), said on the point or the return,
- * and announced to the dossier's tabs like a success: the dossier holds what it held.
+ * A transaction the database gave up (a deadlock with the work on another dossier) is made again,
+ * up to three times (TransactionRetry). A failure is logged at error level (it reaches the
+ * operator), said on the point or the return, and announced to the dossier's tabs like a success:
+ * the dossier holds what it held.
  */
 final readonly class RestoreRunner
 {
     public function __construct(
         private LockFactory $locks,
         private EntityManagerInterface $entityManager,
-        private ManagerRegistry $registry,
+        private TransactionRetry $retry,
         private RestorePointRepository $points,
         private DossierRestorationRepository $restorations,
         private RestorePoints $restorePoints,
@@ -63,10 +65,16 @@ final readonly class RestoreRunner
                 return false;
             }
             try {
-                $this->restorePoints->prepare($point, $now);
+                $this->retry->run(function () use ($pointId, $now): void {
+                    $point = $this->points->find($pointId);
+                    if (null !== $point) {
+                        $this->entityManager->refresh($point);
+                        $this->restorePoints->prepare($point, $now);
+                    }
+                });
             } catch (\Throwable $exception) {
                 $this->logger->error('Restore point {point} not copied: {message}', ['point' => $pointId, 'message' => $exception->getMessage(), 'exception' => $exception]);
-                $this->recover();
+                $this->retry->recover();
                 $point = $this->points->find($pointId);
                 if (null === $point) {
                     return true;
@@ -98,10 +106,16 @@ final readonly class RestoreRunner
                 return false;
             }
             try {
-                $this->restorer->restore($restoration, $now);
+                $this->retry->run(function () use ($restorationId, $now): void {
+                    $restoration = $this->restorations->find($restorationId);
+                    if (null !== $restoration) {
+                        $this->entityManager->refresh($restoration);
+                        $this->restorer->restore($restoration, $now);
+                    }
+                });
             } catch (\Throwable $exception) {
                 $this->logger->error('Dossier not taken back to its point (return {restoration}): {message}', ['restoration' => $restorationId, 'message' => $exception->getMessage(), 'exception' => $exception]);
-                $this->recover();
+                $this->retry->recover();
                 $restoration = $this->restorations->find($restorationId);
                 if (null === $restoration) {
                     return true;
@@ -131,19 +145,6 @@ final readonly class RestoreRunner
             return $work();
         } finally {
             $lock->release();
-        }
-    }
-
-    /**
-     * After a failure: an entity manager that flushes again, nothing stale in it. The transactions
-     * were rolled back by the `transactional()` that opened them.
-     */
-    private function recover(): void
-    {
-        if ($this->entityManager->isOpen()) {
-            $this->entityManager->clear();
-        } else {
-            $this->registry->resetManager();
         }
     }
 }
