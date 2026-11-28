@@ -36,7 +36,7 @@ final class TestParallelDatabasesCommandTest extends TestCase
         $connection = $this->createMock(Connection::class);
         $connection->expects(self::never())->method('executeStatement');
 
-        $tester = new CommandTester(new TestParallelDatabasesCommand($connection, 'dev'));
+        $tester = new CommandTester(new TestParallelDatabasesCommand($connection, 'dev', sys_get_temp_dir()));
 
         self::assertSame(Command::FAILURE, $tester->execute([]));
         self::assertStringContainsString('APP_ENV=test', $tester->getDisplay());

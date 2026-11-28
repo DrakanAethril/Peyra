@@ -19,7 +19,8 @@
  *   PEYRA_SHOT_FOCUS="#login"       a CSS selector focused before the keys;
  *   PEYRA_SHOT_KEYS="Tab,Tab,text:prof.leroy,Enter"  real key presses, in order, comma-separated:
  *                                   a key name (Tab, Enter, Escape, ArrowDown, F10…), with
- *                                   Ctrl+ / Alt+ / Shift+ prefixes, or `text:` for typed text;
+ *                                   Ctrl+ / Alt+ / Shift+ prefixes, `text:` for typed text, or
+ *                                   `wait:<ms>` to let a page the keys opened arrive;
  *   PEYRA_SHOT_EVAL="…"             a JavaScript expression run in the page after the keys
  *                                   (awaited when it returns a promise); its value is printed.
  *
@@ -123,6 +124,11 @@ const KEY_CODES = { Backspace: 8, Tab: 9, Enter: 13, Escape: 27, Space: 32, End:
 
 /** One real key press (or typed text) through the DevTools protocol. */
 async function press(cdp, step) {
+    if (step.startsWith('wait:')) {
+        await sleep(Number(step.slice(5)));
+
+        return;
+    }
     if (step.startsWith('text:')) {
         await cdp.send('Input.insertText', { text: step.slice(5) });
 

@@ -67,7 +67,7 @@ export default class extends Controller {
         const target = ALIASES[combo] ?? combo;
 
         // An element of the screen that answers this combination wins over a global gesture.
-        if (this.trigger(target, scope)) {
+        if (this.trigger(target, scope, event.repeat)) {
             return true;
         }
         if (scope !== document) {
@@ -107,7 +107,11 @@ export default class extends Controller {
         return dialogs.at(-1) ?? document;
     }
 
-    trigger(combo, scope) {
+    /**
+     * A key held down repeats its keydown: it clicks once, never again - a held Ctrl Entrée must not
+     * carry a step-by-step path past its récapitulatif, nor engage a gesture twice.
+     */
+    trigger(combo, scope, repeated = false) {
         const candidates = [...scope.querySelectorAll('[data-px-shortcut]')]
             .filter((element) => element.dataset.pxShortcut.split(' ').includes(combo))
             .filter((element) => this.isUsable(element));
@@ -120,7 +124,7 @@ export default class extends Controller {
             if (element instanceof HTMLInputElement) {
                 element.select();
             }
-        } else {
+        } else if (!repeated) {
             element.click();
         }
 

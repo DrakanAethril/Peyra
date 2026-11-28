@@ -117,7 +117,8 @@ protocol: it waits for the fonts, captures the viewport (height `0` = the whole 
 public pages), and signs in with `PEYRA_SHOT_LOGIN=<login>` (`/_dev/login-as/<login>`) or
 `PEYRA_SHOT_COOKIE="name=value"`; `PEYRA_SHOT_RAIL=collapsed` sets the rail cookie. A keyboard
 path is replayed and checked before the capture: `PEYRA_SHOT_FOCUS=<selector>` focuses an element,
-`PEYRA_SHOT_KEYS="text:prof.leroy,Tab,Enter"` presses real keys, `PEYRA_SHOT_EVAL=<js>` prints what
+`PEYRA_SHOT_KEYS="text:prof.leroy,Tab,Enter"` presses real keys (`wait:2000` lets a page the keys opened
+arrive), `PEYRA_SHOT_EVAL=<js>` prints what
 an expression returns (awaited); a Chrome that stops answering is given up after
 `PEYRA_SHOT_TIMEOUT` milliseconds (60 000). The design gallery is <https://localhost:8143/_design> (with
 `/_design/teacher` and `/_design/public`), development and test only: every Px component in every
@@ -238,6 +239,10 @@ Gotchas met while building it:
   by declaring it, `data-px-shortcut="F10 Ctrl+S"` (`Px:Button`'s `shortcut` prop does it and
   prints the key); `[data-px-open="id"]` opens a dialog or drawer. `App\Twig\Shortcut` is the
   server's half of the French key labels (`Ctrl ↵`, `Échap`), tested against the JS table.
+  A held key's repeats never click (`event.repeat`). In a path of GET steps (Distribuer), each
+  step's primary button answers `Ctrl+Enter` and the step's first field has `autofocus`.
+  A CSRF token never sits in a form that can be submitted by GET: give it to the POST button as
+  its `name="_token"` and `value` (only the submitter's pair travels).
   Never name a Stimulus controller method `scope`, `data`, `element`… — they are the base class's.
 - **Icons**: Lucide SVG files in `assets/icons/` (stroke 1.75), `px-*` ones drawn on the same grid;
   Iconify is off. `IconNamesTest` checks every name a template uses and the drawing rules.

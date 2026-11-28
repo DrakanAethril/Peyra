@@ -9,6 +9,7 @@
 {% set library_tab = 'templates' %}
 {% set library_title = 'Distribuer ' ~ template.libraryTitle %}
 {% set ticked = plan.ticked %}
+{% set status_keys = ticked is not empty ? [{combo: 'Ctrl+Enter', verb: 'Voir le récapitulatif'}] : [] %}
 
 {% block page_head %}
     <twig:Px:PageHead title="Distribuer « {{ template.libraryTitle }} »" :trail="[
@@ -32,7 +33,7 @@
                 {{ include('library/_distribute_carry.html.twig', {how: false}) }}
                 <twig:Px:Card title="Comment" meta="{{ ticked|length }} {{ ticked|length > 1 ? 'étudiants' : 'étudiant' }} de {{ plan.schoolClass.label }}">
                     <div class="px-fieldgrid">
-                        <twig:Px:CheckGroup legend="Dossiers" name="mode" type="radio" class="px-fieldgrid__full" :options="modes|map(m => m|merge({checked: m.value == plan.mode.value}))" data-action="change->distribution-mode#sync"/>
+                        <twig:Px:CheckGroup legend="Dossiers" name="mode" type="radio" class="px-fieldgrid__full" :options="modes|map(m => m|merge({checked: m.value == plan.mode.value, autofocus: m.value == plan.mode.value}))" data-action="change->distribution-mode#sync"/>
                         <twig:Px:Field id="start" label="Date de départ des dossiers" hint="La date du modèle est {{ template.dossierDate|date_fr }}." :error="plan.fault('start')">
                             <twig:Px:DateInput id="start" :reference="template.dossierDate" :value="plan.startDate" :hint="true" :error="plan.fault('start')"/>
                         </twig:Px:Field>
@@ -62,7 +63,7 @@
 
                 <div class="px-cluster">
                     <twig:Px:Button href="{{ path('app_library_distribute', {dossier: template.id}) ~ '?' ~ ({class: plan.schoolClass.id}|merge(plan.choices.query))|url_encode }}" icon="chevron-left">Revenir aux étudiants</twig:Px:Button>
-                    <twig:Px:Button type="submit" variant="primary" icon="arrow-right" class="px-u-push">Voir le récapitulatif</twig:Px:Button>
+                    <twig:Px:Button type="submit" variant="primary" icon="arrow-right" shortcut="Ctrl+Enter" class="px-u-push">Voir le récapitulatif</twig:Px:Button>
                 </div>
             </form>
         {% endif %}

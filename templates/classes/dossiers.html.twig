@@ -2,7 +2,8 @@
  # Classe › Dossiers (design-ux.md §§ 3.3 and 4.9, gabarit L): the dossiers of the class's students
  # this year - holder, dossier, its date, its last restore point, its « État de départ » -, and,
  # once rows are ticked, « Poser un point » (one name for all) and « Remettre à l'état de départ »
- # (a récapitulatif first). Redrawn every two seconds while a dossier is going back to a point.
+ # (a récapitulatif first). Redrawn every two seconds while a dossier is going back to a point or
+ # a point is being prepared.
  #}
 {% extends 'classes/_layout.html.twig' %}
 
@@ -26,7 +27,7 @@
     {{ include('classes/_class_tabs.html.twig') }}
 
     <turbo-frame id="class-dossiers" target="_top">
-        <div hidden data-controller="live-frame" data-live-frame-frame-value="class-dossiers" data-live-frame-events-value="[]" data-live-frame-poll-value="{{ restoring ? 2000 : 0 }}"></div>
+        <div hidden data-controller="live-frame" data-live-frame-frame-value="class-dossiers" data-live-frame-events-value="[]" data-live-frame-poll-value="{{ busy ? 2000 : 0 }}"></div>
         <twig:Px:Card :flush="true" title="Dossiers de la classe" meta="{{ dossier_rows|length }} {{ dossier_rows|length > 1 ? 'dossiers' : 'dossier' }} de {{ class.schoolYear.label }}">
             {% if dossier_rows is empty %}
                 <twig:Px:Empty icon="folder-open" title="Aucun dossier" text="Les dossiers que les étudiants de la classe reçoivent cette année, par une distribution, apparaissent ici.">
@@ -41,9 +42,10 @@
                             <span class="px-lotbar__count" data-selection-target="count" aria-live="polite"></span>
                             <label class="px-u-sr-only" for="point-name">Nom du point</label>
                             <input type="text" id="point-name" name="name" value="{{ point_name }}" class="px-input px-input--sm" size="28" maxlength="80" autocomplete="off">
-                            <twig:Px:Button type="submit" size="sm" icon="history" formmethod="post" formaction="{{ path('app_teacher_class_dossiers_points', {id: class.id}) }}">Poser un point</twig:Px:Button>
+                            {# The token is the POST button's own value: a submitter's name and value travel with it
+                             # alone, so the GET of the récapitulatif never carries it in its address. #}
+                            <twig:Px:Button type="submit" size="sm" icon="history" formmethod="post" formaction="{{ path('app_teacher_class_dossiers_points', {id: class.id}) }}" name="_token" value="{{ csrf_token('class-dossiers-' ~ class.id) }}">Poser un point</twig:Px:Button>
                             <twig:Px:Button type="submit" size="sm" variant="primary" icon="undo-2" shortcut="Ctrl+Enter">Remettre à l’état de départ</twig:Px:Button>
-                            <input type="hidden" name="_token" value="{{ csrf_token('class-dossiers-' ~ class.id) }}">
                         </div>
                     {% endif %}
                     <twig:Px:Table caption="Dossiers des étudiants de {{ class.label }}" :rows="true">

@@ -79,6 +79,9 @@ final class DistributionScreensTest extends WebTestCase
         // The copies were made once the answer had left (kernel.terminate).
         $crawler = $client->followRedirect();
         self::assertSelectorTextContains('main', 'Distribution terminée · 2 dossiers prêts sur 2');
+        self::assertSelectorTextContains('.px-statusbar', 'Distribution lancée : 2 dossiers seront créés');
+        // The head is outside the live frame: its reset button is there whatever the progress.
+        self::assertCount(1, $crawler->filter('main a[href="'.$page.'/reset"]'));
         self::assertCount(2, $crawler->filter('main a.px-btn')->reduce(static fn ($link): bool => str_starts_with((string) $link->attr('href'), '/d/')));
         $lucas = $client->getContainer()->get(DossierRepository::class)->findForStudent($this->account($client, 'lucas.bernard') ?? throw new \LogicException('Signed in.'));
         self::assertCount(1, $lucas);

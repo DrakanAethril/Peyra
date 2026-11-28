@@ -2,12 +2,14 @@
  # Distribuer, step 1 « À qui » (design-ux.md § 4.2): a class of the current year - the teacher's
  # first by default -, then its students, all ticked but those who already hold a dossier made
  # from this template (said on their line, unticked by default). A GET form: the next step
- # carries the choices.
+ # carries the choices. Keyboard: the first box has the focus, Espace ticks, Tab goes on, Ctrl
+ # Entrée continues - as at every step, the primary action is the next step.
  #}
 {% extends 'library/_layout.html.twig' %}
 
 {% set library_tab = 'templates' %}
 {% set library_title = 'Distribuer ' ~ template.libraryTitle %}
+{% set status_keys = plan and plan.lines is not empty ? [{combo: 'Space', verb: 'Cocher'}, {combo: 'Ctrl+Enter', verb: 'Continuer'}] : [] %}
 
 {% block page_head %}
     <twig:Px:PageHead title="Distribuer « {{ template.libraryTitle }} »" :trail="[
@@ -48,7 +50,7 @@
                                 <tbody>
                                     {% for line in plan.lines %}
                                         <tr data-rows-target="row">
-                                            <td class="px-table__pick"><label class="px-check"><input type="checkbox" name="pick[]" value="{{ line.student.id }}"{% if line.ticked %} checked{% endif %}><span class="px-u-sr-only">{{ line.student.sortName }} reçoit le modèle</span></label></td>
+                                            <td class="px-table__pick"><label class="px-check"><input type="checkbox" name="pick[]" value="{{ line.student.id }}"{% if line.ticked %} checked{% endif %}{% if loop.first %} autofocus{% endif %}><span class="px-u-sr-only">{{ line.student.sortName }} reçoit le modèle</span></label></td>
                                             <td class="px-u-fill">{{ line.student.sortName }}</td>
                                             <td>{% if line.holds %}<twig:Px:Badge tone="warning" label="A déjà un dossier de ce modèle"/>{% else %}<span class="px-u-muted">—</span>{% endif %}</td>
                                         </tr>
@@ -60,7 +62,7 @@
                     <twig:block name="foot">
                         <span class="px-u-muted">Un étudiant qui a déjà un dossier de ce modèle n’est pas coché : le cocher lui en donne un second.</span>
                         {% if plan.lines is not empty %}
-                            <twig:Px:Button type="submit" form="distribute-who" variant="primary" icon="arrow-right" class="px-u-push">Continuer</twig:Px:Button>
+                            <twig:Px:Button type="submit" form="distribute-who" variant="primary" icon="arrow-right" shortcut="Ctrl+Enter" class="px-u-push">Continuer</twig:Px:Button>
                         {% endif %}
                     </twig:block>
                 </twig:Px:Card>

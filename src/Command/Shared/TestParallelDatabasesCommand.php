@@ -12,6 +12,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Gives each ParaTest process a database of its own: a copy of the test database, tables and rows.
@@ -21,6 +22,9 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * those copies from whichever test database the connection opens - `<database>_test` on a
  * workstation, `<database>_testci` on CI, where the migrations have just been replayed into it. Each
  * copy is dropped and written again, so running it after a schema change is the whole upgrade.
+ * Each process's file storage (`var/cache/test/storage<token>`, config/packages/flysystem.yaml) is
+ * emptied with it: the new databases number their dossiers from where the source stands, and a file
+ * an earlier run left under a dossier's id would be read as that dossier's.
  *
  * A copy rather than `doctrine:schema:update` per database: it is faster, and it carries the rows
  * the migrations insert, so the tests run on exactly what the migrations produced.
@@ -37,6 +41,8 @@ final class TestParallelDatabasesCommand extends Command
         private readonly Connection $connection,
         #[Autowire('%kernel.environment%')]
         private readonly string $environment,
+        #[Autowire('%kernel.cache_dir%')]
+        private readonly string $cacheDir,
     ) {
         parent::__construct();
     }
@@ -87,8 +93,10 @@ final class TestParallelDatabasesCommand extends Command
 
         $this->connection->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
         try {
-            foreach ($targets as $target) {
+            $filesystem = new Filesystem();
+            foreach ($targets as $token => $target) {
                 $this->copy($source, $target, $tables, $characterSet, $collation);
+                $filesystem->remove($this->cacheDir.'/storage'.($token + 1));
                 $io->writeln(\sprintf('%s → %s (%d tables)', $source, $target, \count($tables)));
             }
         } finally {
