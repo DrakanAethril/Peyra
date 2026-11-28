@@ -49,7 +49,7 @@
                             <twig:Px:Field id="reason" label="Motif" :required="true" :wide="true" :error="draft.error('reason')">
                                 <twig:Px:Select id="reason" placeholder="Choisir…" :options="reason_options" value="{{ draft.reason }}" :required="true" :error="draft.error('reason')"/>
                             </twig:Px:Field>
-                            <twig:Px:Field id="notifiedOn" label="Notifiée le" hint="Lettre de démission ou de licenciement, convention signée. Vide pour un contrat qui arrive à son terme." :error="draft.error('notifiedOn')">
+                            <twig:Px:Field id="notifiedOn" label="Notifiée le" hint="Lettre ou convention ; vide pour un terme." :error="draft.error('notifiedOn')">
                                 <twig:Px:DateInput id="notifiedOn" :reference="dossier.dossierDate" :value="draft.date('notifiedOn')" hint="1" :error="draft.error('notifiedOn')"/>
                             </twig:Px:Field>
                             <twig:Px:Field id="exitOn" label="Dernier jour du contrat" :required="true" hint="Fin du préavis, effectué ou non." :error="draft.error('exitOn')">
