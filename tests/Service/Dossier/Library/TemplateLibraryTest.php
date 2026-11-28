@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service\Dossier\Library;
 
 use App\Entity\Accounting\Entry;
+use App\Entity\Accounting\EntryTemplate;
 use App\Entity\Accounting\Journal;
 use App\Entity\Audit\AuditEvent;
 use App\Entity\Dossier\Dossier;
@@ -128,10 +129,19 @@ final class TemplateLibraryTest extends KernelTestCase
         self::assertSame('Boulangerie Ravel, création', $template->getLibraryTitle());
         self::assertSame('pcg-2026', $template->getChartCode());
         self::assertSame('2026-09-01', $template->getDossierDate()->format('Y-m-d'));
-        [$journals, $exercises] = self::getContainer()->get(DossierContext::class)->within($template, fn (): array => [
+        [$journals, $exercises, $entryTemplates] = self::getContainer()->get(DossierContext::class)->within($template, fn (): array => [
             $this->entityManager->getRepository(Journal::class)->findBy([], ['code' => 'ASC']),
             $this->entityManager->getRepository(\App\Entity\Dossier\Exercise::class)->findAll(),
+            $this->entityManager->getRepository(EntryTemplate::class)->findBy([], ['code' => 'ASC']),
         ]);
+        self::assertSame(
+            ['AFFPERTE' => 'OD', 'AFFRES' => 'OD', 'CAPAUGN' => 'OD', 'CAPFRAIS' => 'ACH', 'CAPINCR' => 'OD', 'CAPLIBN' => 'BQ', 'CAPNAT' => 'OD', 'CAPSOUS' => 'OD', 'CAPVERS' => 'OD'],
+            array_combine(
+                array_map(static fn (EntryTemplate $entryTemplate): string => $entryTemplate->getCode(), $entryTemplates),
+                array_map(static fn (EntryTemplate $entryTemplate): string => $entryTemplate->getJournal()->getCode(), $entryTemplates),
+            ),
+            'the standard entry templates, each in the journal of its type',
+        );
         self::assertSame(['ACH', 'AN', 'BQ', 'OD', 'VTE'], array_map(static fn (Journal $journal): string => $journal->getCode(), $journals));
         self::assertSame('512000', $journals[2]->getCounterpartAccount()?->getNumber());
         self::assertSame(['2026-2027'], array_map(static fn ($exercise): string => $exercise->getCode(), $exercises));

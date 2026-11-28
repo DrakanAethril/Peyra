@@ -34,6 +34,8 @@ use App\Service\Accounting\Lettering\LetteringKey;
 use App\Service\Accounting\Lettering\LetteringRefused;
 use App\Service\Accounting\Subscription\SubscriptionRun;
 use App\Service\Accounting\Subscription\SubscriptionSheet;
+use App\Service\Accounting\Template\StandardTemplates;
+use App\Service\Accounting\Template\TemplateFile;
 use App\Service\Accounting\Template\TemplateSheet;
 use App\Service\Audit\AuditTrail;
 use App\Service\Banking\Reconciliation\Pointings;
@@ -85,6 +87,7 @@ final readonly class DemoInstaller
         private DossierContext $context,
         private Ledger $ledger,
         private TemplateSheet $templateSheet,
+        private StandardTemplates $standardTemplates,
         private SubscriptionSheet $subscriptionSheet,
         private SubscriptionRun $subscriptionRun,
         private Lettering $lettering,
@@ -132,7 +135,7 @@ final readonly class DemoInstaller
         $chartFile = DemoChartFile::read($this->directory);
         $thirdPartyFile = DemoThirdPartyFile::read($this->directory.'/third_parties.yaml');
         $entryFile = DemoEntryFile::read($this->directory.'/entries.yaml');
-        $templateFile = DemoTemplateFile::read($this->directory.'/templates.yaml');
+        $templateFile = TemplateFile::read($this->directory.'/templates.yaml');
         $subscriptionFile = DemoSubscriptionFile::read($this->directory.'/subscriptions.yaml');
         $letteringFile = DemoLetteringFile::read($this->directory.'/letterings.yaml');
         $payrollFile = DemoPayrollFile::read($this->directory.'/payroll.yaml');
@@ -433,7 +436,7 @@ final readonly class DemoInstaller
     }
 
     /** Its entry templates, each checked as the fiche checks it: a fault names the code and installs nothing. */
-    private function installTemplates(Dossier $dossier, DemoTemplateFile $file, string $actor): void
+    private function installTemplates(Dossier $dossier, TemplateFile $file, string $actor): void
     {
         foreach ($file->drafts as $draft) {
             $fields = $this->templateSheet->check($draft, $dossier);
@@ -444,6 +447,8 @@ final readonly class DemoInstaller
             // Flushed one by one: the next one's code is checked against the database.
             $this->entityManager->flush();
         }
+        // Then those every dossier receives (constitution, capital, allocation of the result).
+        $this->standardTemplates->install($dossier, $actor);
     }
 
     /**
