@@ -1,0 +1,79 @@
+/*
+ * A simulated portal (design-ux.md A13; the social portal's DPAE at step 4.2b): its own sober grey
+ * frame inside the work area, a permanent band « Simulation : rien n'est transmis », so that the
+ * student feels they change systems without believing in a real deposit.
+ */
+@layer px.components {
+    .px-portal {
+        border: 1px solid var(--px-border-strong);
+        border-radius: var(--px-radius-md);
+        background: var(--px-surface-inset);
+        overflow: hidden;
+    }
+
+    .px-portal__band {
+        display: flex;
+        align-items: center;
+        gap: var(--px-space-8);
+        padding: var(--px-space-6) var(--px-space-16);
+        background: var(--px-neutral-text);
+        color: var(--px-text-on-action);
+        font-size: var(--px-fs-12);
+        font-weight: var(--px-fw-semibold);
+        letter-spacing: var(--px-track-caps);
+        text-transform: uppercase;
+    }
+
+    .px-portal__head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--px-space-12);
+        padding: var(--px-space-12) var(--px-space-16);
+        background: var(--px-surface);
+        border-bottom: 1px solid var(--px-border);
+
+        & h2 {
+            font-size: var(--px-fs-14);
+            font-weight: var(--px-fw-semibold);
+            color: var(--px-text-strong);
+        }
+
+        & small {
+            color: var(--px-text-muted);
+            font-size: var(--px-fs-12);
+        }
+    }
+
+    .px-portal__body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--px-space-12);
+        padding: var(--px-space-16);
+    }
+
+    .px-portal__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--px-space-8);
+
+        & [hidden] {
+            display: none;
+        }
+    }
+
+    .px-portal__faults {
+        margin: 0;
+        padding-left: var(--px-space-20);
+
+        & li + li {
+            margin-top: var(--px-space-6);
+        }
+
+        & small {
+            display: block;
+            color: var(--px-text-muted);
+        }
+    }
+}

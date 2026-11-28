@@ -24,18 +24,22 @@ use Brick\Math\BigDecimal;
  *   dropped;
  * - terms from a day on or after the hire: a job, a status (an apprentice is not « cadre »), the
  *   working time - full time works the establishment's collective monthly time, part time fewer
- *   hours, typed - and a base salary above zero.
+ *   hours, typed - and a base salary above zero;
+ * - an hour of hire (« 8h30 » becomes « 08:30 ») and a trial period as the contract writes it, or
+ *   nothing - unless the assistance level asks the DPAE's fields (step 4.2b): then the birth place
+ *   and the hour of hire are required.
  */
 final class EmployeeRules
 {
     /**
      * @param ?string                  $collectiveHours the establishment's monthly time (« 151.67 »), null when no establishment is set
      * @param callable(string): ?string $numberHolder    who else holds a matricule (their name), or null
+     * @param bool                      $hiringFields    the DPAE's fields are required (Assistance::requiresHiringDeclarationFields())
      */
-    public static function check(EmployeeDraft $draft, ?string $collectiveHours, callable $numberHolder): ?EmployeeFields
+    public static function check(EmployeeDraft $draft, ?string $collectiveHours, callable $numberHolder, bool $hiringFields = false): ?EmployeeFields
     {
         $draft->errors = [];
-        foreach (['lastName', 'firstName', 'birthPlace', 'nationality', 'street', 'postalCode', 'city', 'fixedTermReason', 'diploma', 'trainingCentre', 'jobTitle', 'classification'] as $field) {
+        foreach (['lastName', 'firstName', 'birthPlace', 'trialPeriod', 'nationality', 'street', 'postalCode', 'city', 'fixedTermReason', 'diploma', 'trainingCentre', 'jobTitle', 'classification'] as $field) {
             $draft->{$field} = trim((string) preg_replace('/\s+/u', ' ', (string) $draft->{$field}));
         }
         $draft->registrationNumber = mb_strtoupper((string) preg_replace('/\s+/u', '', $draft->registrationNumber));
@@ -55,7 +59,7 @@ final class EmployeeRules
             $draft->errors['sex'] = 'Choisissez le sexe du salarié.';
         }
         $birthDate = self::date($draft, 'birthDate', 'Indiquez la date de naissance.');
-        self::text($draft, 'birthPlace', 80, null);
+        self::text($draft, 'birthPlace', 80, $hiringFields ? 'La DPAE indique le lieu de naissance.' : null);
         self::text($draft, 'nationality', 40, 'Indiquez la nationalité.');
         if ('' !== $draft->nir && null !== ($fault = Nir::fault($draft->nir, $sex, $birthDate))) {
             $draft->errors['nir'] = $fault;
@@ -70,6 +74,8 @@ final class EmployeeRules
             $draft->errors['contractType'] = 'Choisissez le type de contrat.';
         }
         $hiredOn = self::date($draft, 'hiredOn', 'Indiquez la date d’entrée.');
+        $hireTime = self::hireTime($draft, $hiringFields);
+        self::text($draft, 'trialPeriod', 40, null);
         if (null !== $birthDate && null !== $hiredOn && $birthDate >= $hiredOn) {
             $draft->errors['birthDate'] = 'La date de naissance précède la date d’entrée.';
         }
@@ -138,6 +144,8 @@ final class EmployeeRules
             $withholding,
             $type,
             $hiredOn,
+            $hireTime,
+            self::orNull($draft->trialPeriod),
             $endsOn,
             self::orNull($draft->fixedTermReason),
             self::orNull($draft->diploma),
@@ -197,6 +205,27 @@ final class EmployeeRules
         $draft->monthlyHours = $text;
 
         return [$workingTime, $text];
+    }
+
+    /** « 8h », « 8h30 », « 8:30 », « 08:30 » → « 08:30 »; empty: null (required when the DPAE's fields are). */
+    private static function hireTime(EmployeeDraft $draft, bool $required): ?string
+    {
+        $typed = mb_strtolower(trim($draft->hireTime));
+        if ('' === $typed) {
+            if ($required) {
+                $draft->errors['hireTime'] = 'La DPAE indique l’heure d’embauche.';
+            }
+
+            return null;
+        }
+        if (1 !== preg_match('/^(\d{1,2})\s*[h:]\s*(\d{2})?$/', $typed, $match) || (int) $match[1] > 23 || (int) ($match[2] ?? '0') > 59) {
+            $draft->errors['hireTime'] = 'Une heure s’écrit 08:30 ou 8h30.';
+
+            return null;
+        }
+        $draft->hireTime = \sprintf('%02d:%02d', (int) $match[1], (int) ($match[2] ?? '0'));
+
+        return $draft->hireTime;
     }
 
     private static function withholding(EmployeeDraft $draft): ?string

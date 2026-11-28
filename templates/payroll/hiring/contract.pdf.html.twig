@@ -1,0 +1,75 @@
+{#
+ # The employment contract generated from an employee's fiche (lot 4, step 4.2b): the parties, the
+ # engagement, the contract's term (a fixed-term contract's ground and end, an apprenticeship's
+ # diploma), the trial period, the job, the working time and the pay of the hire, the place of work,
+ # paid leave, the pension and provident bodies, the signatures. No collective agreement: the
+ # référentiel's cases (lot 4). A teaching model: the real apprenticeship contract is the Cerfa.
+ #}
+{% extends 'doc/_document.html.twig' %}
+
+{% set hours = terms.workingTime.value == 'full_time' and collective_hours ? collective_hours : terms.monthlyHours %}
+{% block title %}Contrat de travail · {{ employee.fullName }}{% endblock %}
+
+{% block body %}
+    {% set article = 0 %}
+    <article class="px-doc">
+        <h1 class="px-doc__title">{{ employee.contractType.longLabel }}</h1>
+        <p class="px-doc__subtitle">{{ employee.contractType.value == 'apprenticeship' ? 'Modèle pédagogique : le contrat d’apprentissage se conclut sur le formulaire Cerfa FA 13.' : 'Modèle pédagogique établi par Peyra.' }}</p>
+
+        <h2 class="px-doc__section">Entre les soussignés</h2>
+        <p class="px-doc__clause"><strong>{{ company.name }}</strong>, au capital de {{ company.capital|amount_eur }}, SIRET {{ company.siret }}{% if company.nafCode %}, code APE {{ company.nafCode }}{% endif %}, dont le siège est {{ company.street }}{% if company.street2 %}, {{ company.street2 }}{% endif %}, {{ company.postalCode }} {{ company.city }}, ci-après « l’employeur »,</p>
+        <p class="px-doc__clause">et <strong>{{ employee.sex.value == 'F' ? 'Madame' : 'Monsieur' }} {{ employee.firstName }} {{ employee.lastName }}</strong>, né{{ employee.sex.value == 'F' ? 'e' : '' }} le {{ employee.birthDate|date_fr }}{% if employee.birthPlace %} à {{ employee.birthPlace }}{% endif %}, de nationalité {{ employee.nationality|lower }}{% if employee.street %}, demeurant {{ employee.street }}, {{ employee.postalCode }} {{ employee.city }}{% endif %}{% if nir %}, n° de sécurité sociale {{ nir }}{% endif %}, ci-après « le salarié »,</p>
+        <p class="px-doc__clause">il a été convenu ce qui suit.</p>
+
+        {% set article = article + 1 %}
+        <h2 class="px-doc__section">Article {{ article }} · Engagement</h2>
+        <p class="px-doc__clause">Le salarié est engagé à compter du {{ employee.hiredOn|date_fr }}{% if employee.hireTime %} à {{ employee.hireTime }}{% endif %}. La déclaration préalable à l’embauche a été effectuée auprès de l’Urssaf.</p>
+
+        {% set article = article + 1 %}
+        <h2 class="px-doc__section">Article {{ article }} · Durée du contrat</h2>
+        {% if employee.contractType.value == 'fixed_term' %}
+            <p class="px-doc__clause">Le présent contrat est conclu pour une durée déterminée, du {{ employee.hiredOn|date_fr }} au {{ employee.contractEndsOn|date_fr }}, pour le motif suivant : {{ employee.fixedTermReason }}. À son terme, le salarié perçoit une indemnité de fin de contrat, sauf dans les cas prévus par la loi, et une indemnité compensatrice des congés payés non pris.</p>
+        {% elseif employee.contractType.value == 'apprenticeship' %}
+            <p class="px-doc__clause">Le présent contrat d’apprentissage est conclu du {{ employee.hiredOn|date_fr }} au {{ employee.contractEndsOn|date_fr }}, pour préparer le diplôme : {{ employee.diploma }}{% if employee.trainingCentre %}, avec le centre de formation {{ employee.trainingCentre }}{% endif %}. Le temps de formation au centre est du temps de travail.</p>
+        {% else %}
+            <p class="px-doc__clause">Le présent contrat est conclu pour une durée indéterminée.</p>
+        {% endif %}
+
+        {% set article = article + 1 %}
+        <h2 class="px-doc__section">Article {{ article }} · Période d’essai</h2>
+        <p class="px-doc__clause">{% if employee.trialPeriod %}Le contrat ne deviendra définitif qu’à l’issue d’une période d’essai de {{ employee.trialPeriod }} de travail effectif, pendant laquelle chacune des parties peut le rompre en respectant le délai de prévenance légal.{% else %}Le contrat ne comporte pas de période d’essai.{% endif %}</p>
+
+        {% set article = article + 1 %}
+        <h2 class="px-doc__section">Article {{ article }} · Fonctions</h2>
+        <p class="px-doc__clause">Le salarié occupe l’emploi de {{ terms.jobTitle }}{% if terms.classification %}, classification {{ terms.classification }}{% endif %}, avec le statut {{ terms.statusLabel|lower }}. Aucune convention collective n’est appliquée : la classification est un niveau interne à l’entreprise.</p>
+
+        {% set article = article + 1 %}
+        <h2 class="px-doc__section">Article {{ article }} · Durée du travail</h2>
+        <p class="px-doc__clause">{% if terms.workingTime.value == 'part_time' %}Le salarié travaille à temps partiel, {{ hours|hours }} par mois ; la répartition de cette durée entre les jours de la semaine lui est communiquée par écrit, ainsi que les cas où elle peut être modifiée. Les heures complémentaires sont majorées selon la loi.{% else %}Le salarié travaille à temps plein, selon l’horaire collectif de l’établissement, {{ hours|hours }} par mois. Les heures supplémentaires demandées par l’employeur sont majorées selon la loi.{% endif %}</p>
+
+        {% set article = article + 1 %}
+        <h2 class="px-doc__section">Article {{ article }} · Rémunération</h2>
+        <p class="px-doc__clause">Le salarié perçoit un salaire de base mensuel brut de {{ terms.baseSalary|amount_eur }} pour {{ hours|hours }} de travail, versé à la fin de chaque mois, avec son bulletin de paie.</p>
+
+        {% set article = article + 1 %}
+        <h2 class="px-doc__section">Article {{ article }} · Lieu de travail</h2>
+        <p class="px-doc__clause">Le salarié exerce ses fonctions à {{ company.street }}{% if company.street2 %}, {{ company.street2 }}{% endif %}, {{ company.postalCode }} {{ company.city }}, et sur les chantiers de l’entreprise.</p>
+
+        {% set article = article + 1 %}
+        <h2 class="px-doc__section">Article {{ article }} · Congés payés et protection sociale</h2>
+        <p class="px-doc__clause">Le salarié bénéficie des congés payés légaux : deux jours et demi ouvrables par mois de travail effectif. {% if bodies is not empty %}Il est affilié {% for body in bodies %}{{ loop.first ? '' : (loop.last ? ' et ' : ', ') }}à {{ body.name }} ({{ body.kind.label|lower }}){% endfor %}.{% endif %}</p>
+
+        {% set article = article + 1 %}
+        <h2 class="px-doc__section">Article {{ article }} · Obligations</h2>
+        <p class="px-doc__clause">Le salarié s’engage à observer le règlement intérieur et les consignes de sécurité de l’entreprise. Il bénéficie d’une visite d’information et de prévention auprès du service de prévention et de santé au travail.</p>
+
+        <p class="px-doc__clause">Fait à {{ company.city }}, le {{ employee.hiredOn|date_fr }}, en deux exemplaires.</p>
+        <table class="px-doc__signatures">
+            <tr>
+                <td>Pour l’employeur<br><span class="px-doc__dim-text">Lu et approuvé, signature</span></td>
+                <td>Le salarié<br><span class="px-doc__dim-text">Lu et approuvé, signature</span></td>
+            </tr>
+        </table>
+        <p class="px-doc__legal">Document fictif établi par Peyra, PGI pédagogique, pour un dossier d’entraînement : la société et le salarié sont inventés.</p>
+    </article>
+{% endblock %}

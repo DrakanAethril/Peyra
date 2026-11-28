@@ -26,6 +26,7 @@ use App\Service\Dossier\Copy\DossierEraser;
 use App\Service\Dossier\Demo\DemoInstaller;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\DossierDates;
+use App\Service\Regulatory\RegulatorySync;
 use App\Service\Shared\Storage\DossierFiles;
 use App\Tests\Support\CanonicalDossierExport;
 use App\Tests\Support\DossierFixtures;
@@ -49,6 +50,8 @@ final class DossierCopierTest extends KernelTestCase
     {
         self::bootKernel();
         $at = new \DateTimeImmutable('2026-11-28 09:00');
+        // The demonstration's DPAE reads the regulatory delays (step 4.2b), as production syncs them before installing it.
+        self::getContainer()->get(RegulatorySync::class)->run(new \DateTimeImmutable('2026-11-28 10:00'));
         $installer = self::getContainer()->get(DemoInstaller::class);
         $installer->installTemplate('test', $at);
         $this->source = $installer->findTemplate() ?? throw new \LogicException('The demonstration is installed.');

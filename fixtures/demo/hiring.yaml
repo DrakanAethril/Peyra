@@ -1,0 +1,11 @@
+# Menuiserie Vasseur SARL - les formalités d'embauche au 31/03/2026 (lot 4, étape 4.2b).
+#
+# Seules les embauches faites depuis l'ouverture du dossier (1er janvier 2026) ont leurs formalités
+# suivies : celle de Yanis Chabert (S011, CDD du 01/04/2026). Sa DPAE a été déposée le 30/03 sur le
+# portail social simulé (elle l'affilie à l'Urssaf) ; restent à faire, dans le dossier distribué,
+# la visite d'information et de prévention et les affiliations aux autres organismes.
+#
+# Format : App\Service\Dossier\Demo\DemoHiringFile.
+
+declarations:
+  - {number: S011, on: '2026-03-30'}

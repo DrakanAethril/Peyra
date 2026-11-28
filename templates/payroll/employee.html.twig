@@ -30,6 +30,7 @@
 {% endblock %}
 
 {% block page %}
+    {% if employee %}{{ include('payroll/hiring/_employee_tabs.html.twig', {employee_current: 'fiche'}) }}{% endif %}
     {% if draft.errors is not empty %}
         <twig:Px:Alert tone="danger">Le salarié n’est pas enregistré : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
     {% endif %}
@@ -58,8 +59,8 @@
                         <twig:Px:Field id="birthDate" label="Date de naissance" :required="true" :error="draft.error('birthDate')">
                             <twig:Px:DateInput id="birthDate" :reference="dossier.dossierDate" :value="draft.date('birthDate')" :required="true" :error="draft.error('birthDate')"/>
                         </twig:Px:Field>
-                        <twig:Px:Field id="birthPlace" label="Lieu de naissance" hint="Commune et département : Montbrison (42)." :error="draft.error('birthPlace')">
-                            <twig:Px:Input id="birthPlace" value="{{ draft.birthPlace }}" hint="1" :error="draft.error('birthPlace')" maxlength="80" autocomplete="off"/>
+                        <twig:Px:Field id="birthPlace" label="Lieu de naissance" :required="hiring_fields" hint="Commune et département : Montbrison (42). La DPAE le demande." :error="draft.error('birthPlace')">
+                            <twig:Px:Input id="birthPlace" value="{{ draft.birthPlace }}" :required="hiring_fields" hint="1" :error="draft.error('birthPlace')" maxlength="80" autocomplete="off"/>
                         </twig:Px:Field>
                         <twig:Px:Field id="nationality" label="Nationalité" :required="true" :error="draft.error('nationality')">
                             <twig:Px:Input id="nationality" value="{{ draft.nationality }}" :required="true" :error="draft.error('nationality')" maxlength="40" autocomplete="off"/>
@@ -86,6 +87,12 @@
                         </twig:Px:Field>
                         <twig:Px:Field id="hiredOn" label="Date d’entrée" :required="true" :error="draft.error('hiredOn')">
                             <twig:Px:DateInput id="hiredOn" :reference="dossier.dossierDate" :value="draft.date('hiredOn')" :required="true" :error="draft.error('hiredOn')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="hireTime" label="Heure d’embauche" :required="hiring_fields" hint="Celle de la DPAE : 08:00." :error="draft.error('hireTime')">
+                            <twig:Px:Input id="hireTime" value="{{ draft.hireTime }}" :required="hiring_fields" hint="1" :error="draft.error('hireTime')" class="px-u-num" maxlength="5" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="trialPeriod" label="Période d’essai" hint="Comme le contrat l’écrit : 2 mois ; vide : aucune." :error="draft.error('trialPeriod')">
+                            <twig:Px:Input id="trialPeriod" value="{{ draft.trialPeriod }}" hint="1" :error="draft.error('trialPeriod')" maxlength="40" autocomplete="off"/>
                         </twig:Px:Field>
                         <twig:Px:Field id="contractEndsOn" label="Fin du contrat" :required="true" :error="draft.error('contractEndsOn')" data-employee-contract-target="field" data-when="contractType:fixed_term,apprenticeship">
                             <twig:Px:DateInput id="contractEndsOn" :reference="dossier.dossierDate" :value="draft.date('contractEndsOn')" :error="draft.error('contractEndsOn')"/>
@@ -155,7 +162,8 @@
                     <dt>Naissance</dt><dd>{{ employee.birthDate|date_fr }}{% if employee.birthPlace %} à {{ employee.birthPlace }}{% endif %} · {{ employee.nationality }}</dd>
                     <dt>Sécurité sociale</dt><dd class="px-u-code">{{ draft.nirShown ?: '—' }}</dd>
                     <dt>Adresse</dt><dd>{{ [employee.street, [employee.postalCode, employee.city]|filter(v => v)|join(' ')]|filter(v => v)|join(', ') ?: '—' }}</dd>
-                    <dt>Contrat</dt><dd>{{ employee.contractType.longLabel }}, entrée le {{ employee.hiredOn|date_fr }}{% if employee.contractEndsOn %}, fin le {{ employee.contractEndsOn|date_fr }}{% endif %}</dd>
+                    <dt>Contrat</dt><dd>{{ employee.contractType.longLabel }}, entrée le {{ employee.hiredOn|date_fr }}{% if employee.hireTime %} à {{ employee.hireTime }}{% endif %}{% if employee.contractEndsOn %}, fin le {{ employee.contractEndsOn|date_fr }}{% endif %}</dd>
+                    <dt>Période d’essai</dt><dd>{{ employee.trialPeriod ?: 'Aucune' }}</dd>
                     {% if employee.fixedTermReason %}<dt>Motif</dt><dd>{{ employee.fixedTermReason }}</dd>{% endif %}
                     {% if employee.diploma %}<dt>Diplôme préparé</dt><dd>{{ employee.diploma }}{% if employee.trainingCentre %} · {{ employee.trainingCentre }}{% endif %}</dd>{% endif %}
                 </dl>

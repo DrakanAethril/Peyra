@@ -27,6 +27,8 @@ final readonly class EmployeeFields
         public ?string $withholdingRate,
         public ContractType $contractType,
         public \DateTimeImmutable $hiredOn,
+        public ?string $hireTime,
+        public ?string $trialPeriod,
         public ?\DateTimeImmutable $contractEndsOn,
         public ?string $fixedTermReason,
         public ?string $diploma,

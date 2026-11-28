@@ -1,0 +1,33 @@
+{# The acknowledgement of an accepted DPAE on the simulated social portal (lot 4, step 4.2b), and its PDF. #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'employees' %}
+{% set dossier_title = 'Accusé DPAE · ' ~ employee.fullName %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Portail social · Accusé de réception" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Salariés', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: employee.registrationNumber, href: path('app_payroll_employee', {dossier: dossier.id, number: employee.registrationNumber})},
+        {label: 'Formalités', href: path('app_payroll_employee_formalities', {dossier: dossier.id, number: employee.registrationNumber})},
+        {label: 'Accusé DPAE', href: path('app_social_portal_dpae_receipt', {dossier: dossier.id, number: employee.registrationNumber})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ path('app_payroll_employee_formalities', {dossier: dossier.id, number: employee.registrationNumber}) }}" variant="quiet" icon="chevron-left">Revenir aux formalités</twig:Px:Button>
+            <twig:Px:Button href="{{ path('app_social_portal_dpae_receipt_pdf', {dossier: dossier.id, number: employee.registrationNumber}) }}" icon="printer" target="_blank" data-turbo="false">Accusé PDF</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% embed 'portal/_frame.html.twig' with {portal: 'Portail social', portal_title: 'Accusé de réception de la DPAE', portal_meta: 'N° ' ~ declaration.number} %}
+        {% block portal_body %}
+            <twig:Px:Alert tone="{{ declaration.late ? 'warning' : 'success' }}">
+                DPAE reçue le {{ declaration.declaredOn|date_fr }} et enregistrée sous le n° <span class="px-u-code">{{ declaration.number }}</span>.
+                {% if declaration.late %}Elle a été déposée après l’embauche : hors délai, l’employeur est en faute.{% endif %}
+            </twig:Px:Alert>
+            {{ include('payroll/hiring/_dpae_content.html.twig', {lines: declaration.content}) }}
+            <p class="px-u-muted">L’accusé de réception se conserve : il prouve la déclaration. La DPAE vaut aussi demande d’immatriculation du salarié à la sécurité sociale s’il ne l’est pas encore.</p>
+        {% endblock %}
+    {% endembed %}
+{% endblock %}

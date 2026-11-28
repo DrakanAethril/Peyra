@@ -1,0 +1,34 @@
+{#
+ # Paie et social › Salariés › Registre unique du personnel (lot 4, step 4.2b): every person hired,
+ # in the order of hiring, read from the fiches (PersonnelRegister); « Aperçu PDF ».
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'employees' %}
+{% set dossier_title = 'Registre unique du personnel' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Registre unique du personnel" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Salariés', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Registre unique du personnel', href: path('app_payroll_register', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ path('app_payroll_register_pdf', {dossier: dossier.id}) }}" icon="printer" target="_blank" data-turbo="false">Aperçu PDF</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('payroll/hiring/_employees_tabs.html.twig', {employees_current: 'register'}) }}
+    <twig:Px:Card :flush="true">
+        {% if register_rows is empty %}
+            <twig:Px:Empty icon="users" title="Registre vide." text="Le registre se remplit des fiches des salariés, dans l’ordre des embauches."/>
+        {% else %}
+            {{ include('payroll/hiring/_register_table.html.twig') }}
+        {% endif %}
+    </twig:Px:Card>
+    <p class="px-u-muted">Tenu dans l’établissement, dans l’ordre des embauches ; ses mentions sont conservées cinq ans après le départ du salarié.</p>
+{% endblock %}
+
+{% block facts %}<span>Inscrits · <b>{{ register_rows|length }}</b></span>{% endblock %}

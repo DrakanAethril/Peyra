@@ -38,6 +38,7 @@ use App\Service\Dossier\Restore\RestorePoints;
 use App\Service\Dossier\Restore\RestoreRunner;
 use App\Service\Identity\SchoolClasses;
 use App\Service\Payroll\Plan\PayrollPlanInstaller;
+use App\Service\Regulatory\RegulatorySync;
 use App\Service\Shared\Money;
 use App\Tests\Support\BuildsSchool;
 use App\Tests\Support\RegulatoryFixtures;
@@ -226,6 +227,7 @@ final class RoleAccessSmokeTest extends WebTestCase
         });
         $client->getContainer()->get(DossierContext::class)->within($saved, static function () use ($client, $saved): void {
             $entityManager = $client->getContainer()->get(EntityManagerInterface::class);
+            $client->getContainer()->get(RegulatorySync::class)->run(new \DateTimeImmutable('2026-11-28 10:00'));
             $entityManager->persist(new PayrollEstablishment($saved, '8.69', '2.1', null, '151.67'));
             $paul = new Employee($saved, 'S001', 'Vasseur', 'Paul', Sex::Male, new \DateTimeImmutable('1988-02-11'), ContractType::Permanent, new \DateTimeImmutable('2012-09-03'));
             $entityManager->persist($paul);
@@ -273,6 +275,8 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/payroll/bodies/'.$bodyId, '/payroll/establishment',
             '/payroll/employees', '/payroll/employees?state=present&q=vas', '/payroll/employees/new', '/payroll/employees/S001',
             '/payroll/employees/S001?from=2012-09-03',
+            '/payroll/employees/register', '/payroll/employees/register.pdf', '/payroll/employees/S001/formalities',
+            '/payroll/employees/S001/contract.pdf', '/payroll/social-portal/dpae/S001',
             '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {

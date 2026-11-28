@@ -203,6 +203,40 @@
     break-inside: avoid;
 }
 
+/* A paragraph of a letter-like document (a contract, an acknowledgement): 9.5 pt, justified. */
+.px-doc__clause {
+    margin: 1.5mm 0;
+    font-size: 9.5pt;
+    line-height: 1.45;
+    text-align: justify;
+}
+
+.px-doc .px-doc__clause {
+    margin: 1.5mm 0;
+}
+
+/* Two signature boxes side by side, at the end of a contract. */
+.px-doc__signatures {
+    width: 100%;
+    margin-top: 8mm;
+    border-collapse: collapse;
+    table-layout: fixed;
+    break-inside: avoid;
+}
+
+.px-doc__signatures td {
+    height: 30mm;
+    padding: 2mm;
+    vertical-align: top;
+    border: 0.5pt solid var(--doc-rule);
+    font-size: 9pt;
+}
+
+.px-doc__dim-text {
+    color: var(--doc-muted);
+    font-size: 7.5pt;
+}
+
 /* Legal mentions, in the foot of an invoice: 7.5 pt, muted. */
 .px-doc__legal {
     margin-top: 6mm;

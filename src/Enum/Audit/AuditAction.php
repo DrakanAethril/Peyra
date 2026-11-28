@@ -171,6 +171,12 @@ enum AuditAction: string
 
     case EmployeeDeleted = 'payroll.employee_deleted';
 
+    /** A DPAE deposited on the simulated social portal and accepted (step 4.2b). */
+    case HiringDeclared = 'payroll.hiring_declared';
+
+    /** The information and prevention visit's day or an affiliation recorded (step 4.2b). */
+    case HiringFormalitiesChanged = 'payroll.hiring_formalities_changed';
+
     public function label(): string
     {
         return match ($this) {
@@ -229,6 +235,8 @@ enum AuditAction: string
             self::PayrollItemDeleted => 'Rubrique de paie supprimée',
             self::EmployeeCreated => 'Salarié créé',
             self::EmployeeChanged => 'Salarié modifié',
+            self::HiringDeclared => 'DPAE déposée',
+            self::HiringFormalitiesChanged => 'Formalités d’embauche modifiées',
             self::EmployeeDeleted => 'Salarié supprimé',
         };
     }

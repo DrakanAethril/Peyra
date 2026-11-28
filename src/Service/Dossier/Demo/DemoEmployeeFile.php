@@ -24,7 +24,7 @@ final readonly class DemoEmployeeFile
     ];
 
     private const array CONTRACT = [
-        'type' => 'contractType', 'hired_on' => 'hiredOn', 'ends_on' => 'contractEndsOn', 'reason' => 'fixedTermReason',
+        'type' => 'contractType', 'hired_on' => 'hiredOn', 'hire_time' => 'hireTime', 'trial' => 'trialPeriod', 'ends_on' => 'contractEndsOn', 'reason' => 'fixedTermReason',
         'diploma' => 'diploma', 'training_centre' => 'trainingCentre',
     ];
 
