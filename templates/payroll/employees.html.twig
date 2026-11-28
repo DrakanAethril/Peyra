@@ -1,0 +1,81 @@
+{#
+ # Paie et social › Salariés (lot 4, step 4.2a, gabarit L): the dossier's employees by matricule,
+ # each with the terms in force at the dossier's date (a hire to come shows its first ones);
+ # filtered by where they stand that day, searched by matricule or name. Filters in GET.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'employees' %}
+{% set dossier_title = 'Salariés' %}
+{% set can_edit = is_granted('PAYROLL_ENTER', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouveau salarié'}, {combo: '/', verb: 'Rechercher'}] : [{combo: '/', verb: 'Rechercher'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Salariés" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Salariés', href: path('app_payroll_employees', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button href="{{ path('app_payroll_employee_new', {dossier: dossier.id}) }}" variant="primary" icon="plus" shortcut="N">Nouveau salarié</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if total == 0 %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="users" title="Aucun salarié dans ce dossier." text="Chaque salarié a sa fiche : état civil, contrat, emploi, statut, temps de travail et salaire de base, et l’historique de leurs changements."/>
+        </twig:Px:Card>
+    {% else %}
+        {% set keep = {state: state ? state.value : null, q: search ?: null} %}
+        <twig:Px:Card :flush="true">
+            <twig:Px:Filters action="{{ path('app_payroll_employees', {dossier: dossier.id}) }}" search="{{ search }}" searchLabel="Matricule ou nom" resetHref="{{ state or search ? path('app_payroll_employees', {dossier: dossier.id}) : null }}">
+                <twig:Px:FilterChip label="Tous" href="{{ path('app_payroll_employees', {dossier: dossier.id}|merge(keep)|merge({state: null})) }}" :count="counts['']" :current="state is null"/>
+                {% for case in states %}
+                    {% if counts[case.value] > 0 or state == case %}
+                        <twig:Px:FilterChip label="{{ case.plural }}" href="{{ path('app_payroll_employees', {dossier: dossier.id}|merge(keep)|merge({state: case.value})) }}" :count="counts[case.value]" :current="state == case"/>
+                    {% endif %}
+                {% endfor %}
+                {% if state %}<input type="hidden" name="state" value="{{ state.value }}">{% endif %}
+            </twig:Px:Filters>
+            {% if employee_rows is empty %}
+                <twig:Px:Empty icon="search" title="Aucun salarié" text="{{ search ? 'Aucun salarié de ce filtre ne correspond à « ' ~ search ~ ' ».' : 'Aucun salarié dans cet état.' }}"/>
+            {% else %}
+                <twig:Px:Table caption="Salariés de {{ dossier.name }}" :rows="true">
+                    <thead>
+                        <tr>
+                            <th scope="col">Matricule</th>
+                            <th scope="col">Nom</th>
+                            <th scope="col">Emploi</th>
+                            <th scope="col">Statut</th>
+                            <th scope="col">Contrat</th>
+                            <th scope="col" class="px-u-num">Entrée</th>
+                            <th scope="col" class="px-u-num">Horaire</th>
+                            <th scope="col" class="px-u-num">Salaire de base</th>
+                            <th scope="col">État</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for employee in employee_rows %}
+                            {% set terms = employee.termsAt(dossier.dossierDate) %}
+                            <tr data-rows-target="row">
+                                <td class="px-u-code"><a class="px-link" href="{{ path('app_payroll_employee', {dossier: dossier.id, number: employee.registrationNumber}) }}">{{ employee.registrationNumber }}</a></td>
+                                <td>{{ employee.sortName }}</td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ terms.jobTitle }}">{{ terms.jobTitle }}</td>
+                                <td>{{ terms.statusLabel }}</td>
+                                <td><twig:Px:Badge :of="employee.contractType"/>{% if terms.workingTime.value == 'part_time' %} <span class="px-u-muted">temps partiel</span>{% endif %}</td>
+                                <td class="px-u-num">{{ employee.hiredOn|date_fr }}</td>
+                                <td class="px-u-num">{{ terms.monthlyHours|hours }}</td>
+                                <td class="px-u-num">{{ terms.baseSalary|amount }}</td>
+                                <td><twig:Px:Badge :of="employee.stateAt(dossier.dossierDate)"/></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+            <twig:Px:Pager :total="shown_total" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>Salariés · <b>{{ total }}</b></span>{% endblock %}

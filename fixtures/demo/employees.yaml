@@ -1,0 +1,175 @@
+# Menuiserie Vasseur SARL - les salariés au 31/03/2026 (lot 4, étape 4.2a), d'après
+# plan/donnees/demo/salaries.yaml. Tout est fictif : les NIR ont la clé « 00 », jamais valide.
+# Aucune convention collective n'est appliquée : la classification est un niveau interne.
+#
+# Les conditions du contrat sont datées : la première ligne de « terms » commence le jour de
+# l'embauche, chaque ligne suivante à son jour. Pour les salariés présents avant 2026, la première
+# ligne porte les conditions de décembre 2025 (reprise du dossier) : l'historique antérieur n'est
+# pas reconstitué. Les salaires au SMIC passent à 1 823,03 le 01/01/2026 (12,02 € de l'heure).
+# Seules figurent les conditions connues au 31/03/2026 : la hausse de Julien Roche et les 18 ans
+# de Hugo Marchand (1er avril) sont décidées, le reste de l'année vient avec la paie (étape 4.7).
+# Élodie Masson (S012, entrée le 15/06/2026) n'est pas là : son embauche est l'objet d'une mission.
+#
+# Montants en euros (texte), horaires en heures ; un temps plein travaille l'horaire collectif de
+# l'établissement (payroll.yaml). Format : App\Service\Dossier\Demo\DemoEmployeeFile.
+
+employees:
+  - number: S001
+    last_name: Vasseur
+    first_name: Paul
+    sex: M
+    birth_date: '1988-02-11'
+    nir: '188024214705200'
+    street: 3 rue du Moulin
+    postal_code: '42600'
+    city: Montbrison
+    withholding_rate: '9.9'
+    contract: {type: permanent, hired_on: '2012-09-03'}
+    terms:
+      - {from: '2012-09-03', job: Chef d’atelier, classification: 'Cadre, position interne C1', status: executive, time: full_time, salary: '4650.00'}
+
+  - number: S002
+    last_name: Bonnet
+    first_name: Claire
+    sex: F
+    birth_date: '1979-06-30'
+    nir: '279064221803100'
+    street: 26 rue Fictive
+    postal_code: '42600'
+    city: Montbrison
+    withholding_rate: '4.1'
+    contract: {type: permanent, hired_on: '2010-01-04'}
+    terms:
+      - {from: '2010-01-04', job: Assistante de gestion, classification: 'Employée administrative qualifiée (ETAM), niveau interne E3', status: non_executive, time: full_time, salary: '2350.00'}
+
+  - number: S003
+    last_name: Lefèvre
+    first_name: Thomas
+    sex: M
+    birth_date: '1994-04-17'
+    nir: '194044214711800'
+    street: 4 allée Fictive
+    postal_code: '42600'
+    city: Savigneux
+    withholding_rate: '3.5'
+    contract: {type: permanent, hired_on: '2022-12-01'}
+    terms:
+      - {from: '2022-12-01', job: Menuisier poseur, classification: 'Ouvrier qualifié, niveau interne O3', status: non_executive, time: full_time, salary: '2400.00'}
+
+  - number: S004
+    last_name: Marchand
+    first_name: Hugo
+    sex: M
+    birth_date: '2008-03-12'
+    nir: '108034220706400'
+    street: 15 rue Fictive
+    postal_code: '42610'
+    city: Saint-Romain-le-Puy
+    contract: {type: apprenticeship, hired_on: '2025-09-01', ends_on: '2027-08-31', diploma: CAP menuisier fabricant, training_centre: CFA du bâtiment de la Loire (fictif)}
+    terms:
+      # 1re année, moins de 18 ans : 27 % du SMIC (1 801,80 en 2025, 1 823,03 en 2026) ; 18 ans le
+      # 12/03/2026, 43 % à partir du 1er du mois suivant.
+      - {from: '2025-09-01', job: Apprenti menuisier fabricant, classification: Apprenti, status: non_executive, time: full_time, salary: '486.49'}
+      - {from: '2026-01-01', job: Apprenti menuisier fabricant, classification: Apprenti, status: non_executive, time: full_time, salary: '492.22'}
+      - {from: '2026-04-01', job: Apprenti menuisier fabricant, classification: Apprenti, status: non_executive, time: full_time, salary: '783.90'}
+
+  - number: S005
+    last_name: Roche
+    first_name: Julien
+    sex: M
+    birth_date: '1990-09-05'
+    nir: '190094214723300'
+    street: 2 impasse Fictive
+    postal_code: '42600'
+    city: Montbrison
+    withholding_rate: '2.9'
+    contract: {type: permanent, hired_on: '2015-03-02'}
+    terms:
+      - {from: '2015-03-02', job: Menuisier d’atelier qualifié, classification: 'Ouvrier hautement qualifié, niveau interne O4', status: non_executive, time: full_time, salary: '2250.00'}
+      - {from: '2026-04-01', job: Pilote du centre d’usinage, classification: 'Ouvrier hautement qualifié, niveau interne O4', status: non_executive, time: full_time, salary: '2380.00'}
+
+  - number: S006
+    last_name: Brun
+    first_name: Kevin
+    sex: M
+    birth_date: '1999-11-20'
+    nir: '199114214730900'
+    street: 30 rue Fictive
+    postal_code: '42600'
+    city: Montbrison
+    withholding_rate: '0'
+    contract: {type: permanent, hired_on: '2024-03-04'}
+    terms:
+      - {from: '2024-03-04', job: Menuisier d’atelier, classification: 'Ouvrier, niveau interne O2', status: non_executive, time: full_time, salary: '1801.80'}
+      - {from: '2026-01-01', job: Menuisier d’atelier, classification: 'Ouvrier, niveau interne O2', status: non_executive, time: full_time, salary: '1823.03'}
+
+  - number: S007
+    last_name: Gauthier
+    first_name: Sandrine
+    sex: F
+    birth_date: '1972-01-08'
+    nir: '272014214707700'
+    street: 8 rue Fictive
+    postal_code: '42600'
+    city: Champdieu
+    withholding_rate: '1.3'
+    contract: {type: permanent, hired_on: '2018-05-14'}
+    terms:
+      # 24 heures par semaine (lundi, mardi, jeudi), 104 heures par mois à 14,20 € de l'heure.
+      - {from: '2018-05-14', job: Secrétaire commerciale, classification: 'Employée, niveau interne E2', status: non_executive, time: part_time, hours: '104', salary: '1476.80'}
+
+  - number: S008
+    last_name: Benali
+    first_name: Mehdi
+    sex: M
+    birth_date: '1992-07-25'
+    nir: '192076912314500'
+    street: 12 rue Fictive
+    postal_code: '42600'
+    city: Montbrison
+    withholding_rate: '5.3'
+    contract: {type: permanent, hired_on: '2019-04-01'}
+    terms:
+      - {from: '2019-04-01', job: Menuisier poseur, classification: 'Ouvrier qualifié, niveau interne O3', status: non_executive, time: full_time, salary: '2150.00'}
+
+  - number: S009
+    last_name: Fournier
+    first_name: Damien
+    sex: M
+    birth_date: '1985-12-03'
+    nir: '185124214728800'
+    street: 5 chemin Fictif
+    postal_code: '42600'
+    city: Lézigneux
+    withholding_rate: '0.5'
+    contract: {type: permanent, hired_on: '2021-10-11'}
+    terms:
+      - {from: '2021-10-11', job: Aide-menuisier, classification: 'Ouvrier, niveau interne O1', status: non_executive, time: full_time, salary: '1801.80'}
+      - {from: '2026-01-01', job: Aide-menuisier, classification: 'Ouvrier, niveau interne O1', status: non_executive, time: full_time, salary: '1823.03'}
+
+  - number: S010
+    last_name: Perrin
+    first_name: Lucie
+    sex: F
+    birth_date: '1996-02-14'
+    nir: '296024214741000'
+    street: 17 rue Fictive
+    postal_code: '42600'
+    city: Montbrison
+    withholding_rate: '6'
+    contract: {type: permanent, hired_on: '2020-09-01'}
+    terms:
+      - {from: '2020-09-01', job: Dessinatrice-métreuse (bureau d’études), classification: 'Technicienne, niveau interne T2', status: non_executive, time: full_time, salary: '2600.00'}
+
+  - number: S011
+    last_name: Chabert
+    first_name: Yanis
+    sex: M
+    birth_date: '2001-05-09'
+    nir: '101054214735600'
+    street: 40 rue Fictive
+    postal_code: '42110'
+    city: Feurs
+    contract: {type: fixed_term, hired_on: '2026-04-01', ends_on: '2026-09-30', reason: Accroissement temporaire d’activité (chantier Promotion Gier-Pilat)}
+    terms:
+      - {from: '2026-04-01', job: Menuisier poseur, classification: 'Ouvrier qualifié, niveau interne O3', status: non_executive, time: full_time, salary: '1950.00'}

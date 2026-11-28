@@ -13,7 +13,7 @@
 
 {% block page_head %}
     <twig:Px:PageHead title="Établissement" :trail="[
-        {label: 'Paie et social', href: path('app_payroll_items', {dossier: dossier.id})},
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
         {label: 'Paramètres de paie', href: path('app_payroll_items', {dossier: dossier.id})},
         {label: 'Établissement', href: path('app_payroll_establishment', {dossier: dossier.id})},
     ]">
