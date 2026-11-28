@@ -1163,7 +1163,7 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   `persist`**, inside a plain connection transaction - `wrapInTransaction()` closes the EntityManager on a refusal.
 - `BigDecimal` in Twig: write `x.isZero()` / `x.isPositive()`, never `x.zero` - Twig calls the static `zero()`.
 
-## Bank and reconciliation (built at step 2.6a)
+## Bank, reconciliation and payments (built at steps 2.6a and 2.6b)
 
 - **A statement is imported whole** (`BankStatement` + lines, amounts signed as the company reads them: positive = money in) by
   `BankStatements::import()` from CSV (`StatementCsv`: débit/crédit columns or one signed montant; the export writes
@@ -1173,6 +1173,11 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   **entries, not lines** (`BankPointing`: a draft rewrites its lines, its id stays); a group whose two sides no longer meet is read
   as broken (`ReconciliationRules`, pure: état, refusal, proposals). The à-nouveaux are never pointed.
 - Rules (`BankRule`, `BankRuleMatch`) are proposed at G and B only; what each level does is `Assistance` (`proposesBankPointing`…).
+- **Payments (step 2.6b): `Payments` is the one door** (record, delete, letter, remit cheques, remit a bill): a `Payment` names the
+  invoices it settles by their **entry** (`PaymentAllocation`, with the VAT on receipts it moved 445800 → 445710, `PaymentRules`
+  pure) and asks the gateway for its entry (module Banking, accounts in `PaymentEntries`: cheque received on 511200 until a
+  `ChequeDeposit`, bill on 413000). Lettering goes through `Lettering`, once the entries are validated. The teacher's
+  `StatementGenerator` writes a CSV from the books and hands it to `BankStatements::import()`, never a statement of its own.
 
 ## Référentiel and assistance levels (built at step 2.8)
 

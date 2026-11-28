@@ -1,0 +1,99 @@
+{#
+ # Ventes › Règlements › Remise de chèques (step 2.6b; design-ux.md § 2.5, « remises en banque »): the
+ # cheques received into a bank journal and not yet remitted, all ticked; « Remettre en banque »
+ # writes the slip (REM-0008) and its entry - the bank debited of the total, 511200 credited cheque
+ # by cheque - through the gateway. The slips already made are listed below.
+ #}
+{% extends payment_layout %}
+
+{% set sales_tab = 'payments' %}
+{% set dossier_title = 'Remise de chèques' %}
+{% set status_keys = can_enter and cheques is not empty ? [{combo: 'Ctrl+Enter', verb: 'Remettre en banque'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Remise de chèques" :trail="[
+        {label: 'Ventes', href: path('app_payments', {dossier: dossier.id, direction: 'receipts'})},
+        {label: 'Règlements', href: path('app_payments', {dossier: dossier.id, direction: 'receipts'})},
+        {label: 'Remise de chèques', href: path('app_payment_deposit', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_enter and cheques is not empty %}<twig:Px:Button type="submit" variant="primary" form="deposit-form" icon="landmark" shortcut="Ctrl+Enter">Remettre en banque</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if journals is empty %}
+        <twig:Px:Empty icon="landmark" title="Aucun journal de banque" text="Des chèques se remettent dans un journal de banque relié à son compte 512 : créez-le dans Comptabilité › Paramètres comptables › Journaux." :page="true"/>
+    {% else %}
+        <form method="post" action="{{ path('app_payment_deposit', {dossier: dossier.id}) }}" id="deposit-form" data-turbo="false" novalidate data-controller="focus-error">
+            <input type="hidden" name="_token" value="{{ csrf_token('payment-' ~ dossier.id) }}">
+            <input type="hidden" name="journal" value="{{ journal.code }}">
+            <twig:Px:Card title="Remise">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="journal-chips" label="Banque" :error="errors.journal ?? null">
+                        <span class="px-cluster" id="journal-chips">
+                            {% for one in journals %}
+                                <twig:Px:FilterChip label="{{ one.code }} · {{ one.counterpartAccount.number }}" title="{{ one.label }}" href="{{ path('app_payment_deposit', {dossier: dossier.id, journal: one.code}) }}" :current="one.id == journal.id"/>
+                            {% endfor %}
+                        </span>
+                    </twig:Px:Field>
+                    {% if cheques is not empty %}
+                        <twig:Px:Field id="date" label="Date de la remise" :required="true" :error="errors.date ?? null">
+                            <twig:Px:DateInput id="date" :value="date" :reference="dossier.dossierDate" :required="true" :error="errors.date ?? null"/>
+                        </twig:Px:Field>
+                    {% endif %}
+                </div>
+            </twig:Px:Card>
+            <twig:Px:Card :flush="true" title="Chèques à remettre" meta="{{ cheques|length }}">
+                {% if errors.cheques is defined %}<twig:Px:Alert tone="danger">{{ errors.cheques }}</twig:Px:Alert>{% endif %}
+                {% if cheques is empty %}
+                    <twig:Px:Empty icon="landmark" title="Aucun chèque à remettre" text="Un chèque reçu attend ici, au compte 511200, jusqu’à sa remise en banque."/>
+                {% else %}
+                    <twig:Px:Table caption="Chèques reçus au journal {{ journal.code }} et non remis">
+                        <thead><tr>
+                            <th scope="col"><span class="px-u-sr-only">Remis</span></th>
+                            <th scope="col" class="px-u-num">Reçu le</th>
+                            <th scope="col">Chèque</th>
+                            <th scope="col">Client</th>
+                            <th scope="col" class="px-u-right">Montant</th>
+                        </tr></thead>
+                        <tbody>
+                            {% for cheque in cheques %}
+                                <tr>
+                                    <td><input type="checkbox" name="cheques[]" value="{{ cheque.id }}" id="cheque-{{ cheque.id }}" aria-label="Remettre le chèque {{ cheque.reference }}"{% if chosen is null or cheque.id in chosen %} checked{% endif %}></td>
+                                    <td class="px-u-num">{{ cheque.paidOn|date('d/m/Y') }}</td>
+                                    <td class="px-u-code"><label for="cheque-{{ cheque.id }}">{{ cheque.reference }}</label></td>
+                                    <td class="px-u-fill">{{ cheque.thirdParty.name }}</td>
+                                    <td class="px-u-num">{{ cheque.amount|amount }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                {% endif %}
+            </twig:Px:Card>
+        </form>
+
+        <twig:Px:Card :flush="true" title="Remises faites" meta="{{ deposits|length }}">
+            {% if deposits is empty %}
+                <twig:Px:Empty icon="history" title="Aucune remise" text="Les bordereaux de remise apparaîtront ici."/>
+            {% else %}
+                <twig:Px:Table caption="Remises de chèques">
+                    <thead><tr>
+                        <th scope="col">Bordereau</th><th scope="col" class="px-u-num">Date</th><th scope="col">Journal</th><th scope="col">Écriture</th>
+                    </tr></thead>
+                    <tbody>
+                        {% for one in deposits %}
+                            <tr>
+                                <td class="px-u-code">{{ one.reference }}</td>
+                                <td class="px-u-num">{{ one.depositedOn|date('d/m/Y') }}</td>
+                                <td class="px-u-code">{{ one.journal.code }}</td>
+                                <td>{{ one.entry ? (one.entry.numberLabel ?? 'Brouillard') : 'À saisir' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}

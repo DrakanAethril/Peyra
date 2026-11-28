@@ -1,0 +1,137 @@
+{#
+ # Pièces › Générateur › Relevés (step 2.6b; design-ux.md § 2.4): the template to complete, then a
+ # bank journal and the statement's days (the next statement's by default, « Afficher » rereads the
+ # books), the account's movements the books hold for them - ticked, the teacher unticks what the
+ # bank has not seen yet -, the bank's own lines (fees and agios on the last day, unexpected
+ # transfers). « Générer le relevé » (F10) imports it into the template, where every copy finds it.
+ #}
+{% extends 'teacher/_layout.html.twig' %}
+
+{% set rail_current = 'pieces' %}
+{% set status_keys = dossier and journal ? [{combo: 'F10', verb: 'Générer le relevé'}] : [] %}
+
+{% block title %}Générateur de relevés · Peyra{% endblock %}
+
+{% block module_tabs %}
+    <twig:Px:ModuleTabs label="Pièces" :tabs="[{label: 'Factures', href: path('app_generator'), current: false}, {label: 'Relevés', href: path('app_statement_generator'), current: true}]"/>
+{% endblock %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Générateur de relevés" :trail="[
+        {label: 'Pièces', href: path('app_generator')},
+        {label: 'Relevés', href: dossier ? path('app_statement_generator_dossier', {dossier: dossier.id}) : path('app_statement_generator')},
+    ]">
+        <twig:block name="actions">
+            {% if dossier and journal %}
+                <twig:Px:Button type="submit" variant="primary" form="statement-generator" shortcut="F10 Ctrl+S" icon="files" formmethod="post" formaction="{{ path('app_statement_generator_dossier', {dossier: dossier.id}) }}" name="_token" value="{{ csrf_token('statement-generator-' ~ dossier.id) }}">Générer le relevé</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if template_options is empty %}
+        <twig:Px:Empty title="Aucun dossier modèle à compléter" text="Le générateur dépose ses relevés dans un dossier modèle que vous pouvez modifier : créez-en un dans la bibliothèque." icon="book-copy" :page="true"/>
+    {% else %}
+        <form method="get" action="{{ path('app_statement_generator') }}" class="px-cluster">
+            <twig:Px:Field id="template" label="Dossier modèle">
+                <twig:Px:Select id="template" name="dossier" placeholder="Choisir un dossier modèle…" :options="template_options" value="{{ dossier ? dossier.id : '' }}" :autofocus="dossier is null"/>
+            </twig:Px:Field>
+            <twig:Px:Button type="submit" icon="arrow-right">Ouvrir</twig:Px:Button>
+        </form>
+
+        {% if dossier and journal is null %}
+            <twig:Px:Empty icon="landmark" title="Aucun journal de banque" text="Ce modèle n’a pas de journal de banque relié à son compte 512." :page="true"/>
+        {% elseif dossier %}
+            {% if errors is not empty %}
+                <twig:Px:Alert tone="danger" title="Le relevé n’est pas généré">{{ errors.form ?? errors|first }}</twig:Px:Alert>
+            {% endif %}
+            <form method="get" action="{{ path('app_statement_generator_dossier', {dossier: dossier.id}) }}" id="statement-generator" novalidate data-turbo="false" data-controller="focus-error">
+                <twig:Px:Card title="Relevé">
+                    <twig:block name="actions"><twig:Px:Button type="submit" size="sm" icon="refresh-cw">Afficher</twig:Px:Button></twig:block>
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="journal" label="Journal de banque">
+                            <twig:Px:Select id="journal" :options="journals|map(j => {value: j.code, label: j.code ~ ' · ' ~ j.label ~ ' (' ~ j.counterpartAccount.number ~ ')'})" value="{{ journal.code }}"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="from" label="Du" :error="errors.from ?? null">
+                            <twig:Px:DateInput id="from" :value="from" :reference="dossier.dossierDate" :error="errors.from ?? null"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="to" label="Au" :error="errors.to ?? null">
+                            <twig:Px:DateInput id="to" :value="to" :reference="dossier.dossierDate" :error="errors.to ?? null"/>
+                        </twig:Px:Field>
+                    </div>
+                </twig:Px:Card>
+
+                <twig:Px:Card :flush="true" title="Opérations des comptes" meta="{{ statement_rows|length }}">
+                    {% if errors.keep is defined %}<twig:Px:Alert tone="danger">{{ errors.keep }}</twig:Px:Alert>{% endif %}
+                    {% if statement_rows is empty %}
+                        <twig:Px:Empty icon="landmark" title="Aucune opération sur ces jours" text="Le compte ne bouge pas dans les livres : le relevé ne portera que les lignes de la banque ci-dessous."/>
+                    {% else %}
+                        <twig:Px:Table caption="Mouvements du compte {{ journal.counterpartAccount.number }} que le relevé reprend">
+                            <thead><tr>
+                                <th scope="col"><span class="px-u-sr-only">Sur le relevé</span></th>
+                                <th scope="col" class="px-u-num">Date</th>
+                                <th scope="col">Libellé de la banque</th>
+                                <th scope="col">Dans les livres</th>
+                                <th scope="col" class="px-u-right">Débit</th>
+                                <th scope="col" class="px-u-right">Crédit</th>
+                            </tr></thead>
+                            <tbody>
+                                {% for row in statement_rows %}
+                                    <tr>
+                                        <td><input type="checkbox" name="keep[]" value="{{ row.key }}" id="keep-{{ row.key }}" aria-label="Sur le relevé : {{ row.label }}"{% if row.key in form.keep %} checked{% endif %}></td>
+                                        <td class="px-u-num">{{ row.date|date('d/m/Y') }}</td>
+                                        <td class="px-u-fill"><label for="keep-{{ row.key }}">{{ row.label }}</label></td>
+                                        <td class="px-u-code px-u-nowrap">{{ row.origin }}</td>
+                                        <td class="px-u-num">{{ row.amount.negative ? row.amount.negated|amount : '' }}</td>
+                                        <td class="px-u-num">{{ row.amount.positive ? row.amount|amount : '' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </twig:Px:Table>
+                    {% endif %}
+                    <twig:block name="foot"><p class="px-field__hint">Décochez une opération que la banque n’a pas encore passée (un chèque émis non débité) : l’étudiant la retrouve dans son état de rapprochement.</p></twig:block>
+                </twig:Px:Card>
+
+                <twig:Px:Card title="Lignes de la banque">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="fees" label="Frais de tenue de compte" :error="errors.fees ?? null" hint="Débités le dernier jour.">
+                            <twig:Px:AmountInput id="fees" :value="form.fees" hint="1" :error="errors.fees ?? null"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="interest" label="Agios" :error="errors.interest ?? null" hint="Débités le dernier jour.">
+                            <twig:Px:AmountInput id="interest" :value="form.interest" hint="1" :error="errors.interest ?? null"/>
+                        </twig:Px:Field>
+                    </div>
+                    <twig:Px:Table caption="Virements inattendus">
+                        <thead><tr>
+                            <th scope="col">Date</th><th scope="col">Libellé</th><th scope="col">Montant (crédit +, débit −)</th>
+                        </tr></thead>
+                        <tbody>
+                            {% for i in 0..(extra_rows - 1) %}
+                                {% set extra = form.extras[i] %}
+                                <tr>
+                                    <td>
+                                        <twig:Px:DateInput id="extra-{{ i }}-date" name="extra[{{ i }}][date]" :value="extra.date" :reference="from ?? dossier.dossierDate" :error="errors['extra.' ~ i ~ '.date'] ?? null" aria-label="Date du virement {{ i + 1 }}"/>
+                                        {% if errors['extra.' ~ i ~ '.date'] is defined %}<p class="px-field__error" id="extra-{{ i }}-date_error">{{ errors['extra.' ~ i ~ '.date'] }}</p>{% endif %}
+                                    </td>
+                                    <td>
+                                        <twig:Px:Input id="extra-{{ i }}-label" name="extra[{{ i }}][label]" value="{{ extra.label }}" size="sm" maxlength="60" placeholder="VIR SEPA …" :error="errors['extra.' ~ i ~ '.label'] ?? null" aria-label="Libellé du virement {{ i + 1 }}"/>
+                                        {% if errors['extra.' ~ i ~ '.label'] is defined %}<p class="px-field__error" id="extra-{{ i }}-label_error">{{ errors['extra.' ~ i ~ '.label'] }}</p>{% endif %}
+                                    </td>
+                                    <td>
+                                        <twig:Px:AmountInput id="extra-{{ i }}-amount" name="extra[{{ i }}][amount]" :value="extra.amount" :error="errors['extra.' ~ i ~ '.amount'] ?? null" aria-label="Montant du virement {{ i + 1 }}"/>
+                                        {% if errors['extra.' ~ i ~ '.amount'] is defined %}<p class="px-field__error" id="extra-{{ i }}-amount_error">{{ errors['extra.' ~ i ~ '.amount'] }}</p>{% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                </twig:Px:Card>
+            </form>
+        {% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block status %}
+    {%- for message in app.flashes('status') %}<span>{{ message }}</span>{% else %}{% if dossier %}<span>Dossier modèle · <b>{{ dossier.libraryTitle }}</b></span><span>Date du dossier · <b>{{ dossier.dossierDate|date_fr }}</b></span>{% endif %}{% endfor -%}
+{% endblock %}
