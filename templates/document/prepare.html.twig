@@ -1,0 +1,135 @@
+{#
+ # A pièce in « mode préparation » (design-ux.md § 3.5; lot 2, step 2.2b): the pièce on the left; on
+ # the right the read data and the proposed entry as they really are, each value an error may fall
+ # on a link (Entrée) that opens the panel « Glisser une erreur » at the top of the column, a wrong
+ # value struck through in amber beside the right one; then « Erreurs à repérer », each with
+ # « Retirer l'erreur », and the doublon. « Voir comme l'étudiant » opens the pièce's own sheet.
+ # The shell's `view` is taken: the screen's model is `prep`.
+ #}
+{% extends 'document/_layout.html.twig' %}
+
+{% set label = document.type.label ~ (document.number ? ' ' ~ document.number : '') %}
+{% set dossier_title = 'Préparation · ' ~ label %}
+{% set here = path('app_document_prepare', {dossier: dossier.id, id: document.id}) %}
+{% set file_href = path('app_document_file', {dossier: dossier.id, id: document.id}) %}
+{% set status_keys = panel ? [{combo: 'Ctrl+Enter', verb: 'Glisser'}, {combo: 'Escape', verb: 'Annuler'}] : [{combo: 'Enter', verb: 'glisser une erreur'}, {combo: 'F7', verb: 'Pièce en grand'}] %}
+{% set token = csrf_token('prepare-' ~ document.id) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Préparer la pièce" :trail="[
+        {label: 'Pièces', href: path('app_documents', {dossier: dossier.id})},
+        {label: 'Boîte de réception', href: path('app_documents', {dossier: dossier.id})},
+        {label: document.number ?? document.fileName, href: path('app_document', {dossier: dossier.id, id: document.id})},
+        {label: 'Préparation', href: here},
+    ]">
+        <twig:block name="badge"> <twig:Px:Badge tone="{{ prep.count > 0 ? 'warning' : 'neutral' }}">Erreurs à repérer · {{ prep.count }}</twig:Px:Badge></twig:block>
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ path('app_document', {dossier: dossier.id, id: document.id}) }}" icon="eye">Voir comme l’étudiant</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if prep.duplicateOf %}
+        <twig:Px:Alert tone="info" actionLabel="Préparer la première arrivée" actionHref="{{ path('app_document_prepare', {dossier: dossier.id, id: prep.duplicateOf.id}) }}">Cette pièce est la seconde arrivée de {{ prep.duplicateOf.number ?? prep.duplicateOf.fileName }} : un doublon à repérer.</twig:Px:Alert>
+    {% endif %}
+    <div class="px-split px-split--doc">
+        <div class="px-document__viewer">
+            {% if document.pdf %}
+                <twig:Px:Viewer src="{{ file_href }}" kind="pdf" name="{{ document.fileName }}" download="{{ path('app_document_file', {dossier: dossier.id, id: document.id, download: 1}) }}"/>
+            {% else %}
+                <twig:Px:Viewer src="{{ file_href }}" kind="image" name="{{ document.fileName }}" alt="{{ label }}" download="{{ path('app_document_file', {dossier: dossier.id, id: document.id, download: 1}) }}"/>
+            {% endif %}
+        </div>
+
+        <div class="px-stack">
+            {% if panel %}
+                {{ include('document/_slip_panel.html.twig') }}
+            {% endif %}
+
+            <twig:Px:Card title="Données lues" meta="Valeurs justes · une valeur soulignée reçoit une erreur">
+                <dl class="px-facts px-slip">
+                    {% for row in prep.reading %}
+                        <dt>{{ row.label }}</dt>
+                        <dd{% if row.label in ['Taux de TVA', 'Base HT · TVA', 'Total HT', 'Total TVA', 'Total TTC'] %} class="px-u-num"{% endif %}>
+                            {% if row.target and not row.wrong %}<a class="px-slip__value" href="{{ here }}?slip={{ row.target }}">{{ row.value }}</a>{% else %}{{ row.value }}{% endif %}
+                            {% if row.wrong %} <s class="px-slip__wrong">{{ row.wrong }}</s> <small class="px-slip__place">{{ row.place }}</small>{% endif %}
+                        </dd>
+                    {% endfor %}
+                </dl>
+            </twig:Px:Card>
+
+            <twig:Px:Card title="Écriture proposée" meta="{{ prep.lines is empty ? 'Aucune : la pièce n’a pas les données lues qu’il faut' : 'Écriture juste · un compte ou un montant souligné reçoit une erreur' }}" :flush="true">
+                {% if prep.lines is not empty %}
+                    <table class="px-table px-tlines px-slip" data-density="compact">
+                        <caption class="px-u-sr-only">Lignes de l’écriture proposée</caption>
+                        <thead><tr>
+                            <th scope="col">Compte</th><th scope="col">Intitulé</th>
+                            <th scope="col" class="px-u-right">Débit</th><th scope="col" class="px-u-right">Crédit</th>
+                        </tr></thead>
+                        <tbody>
+                            {% for line in prep.lines %}
+                                <tr>
+                                    <td class="px-u-code">
+                                        {% if line.wrongAccount %}{{ line.account }} <s class="px-slip__wrong">{{ line.wrongAccount }}</s>
+                                        {% else %}<a class="px-slip__value" href="{{ here }}?slip={{ line.accountTarget }}">{{ line.account is empty ? 'Compte à choisir' : line.account }}</a>{% endif %}
+                                    </td>
+                                    <td class="px-u-truncate px-u-fill" title="{{ line.accountLabel }}">{{ line.accountLabel }}</td>
+                                    {% for side in ['debit', 'credit'] %}
+                                        <td class="px-u-num">
+                                            {% if line[side] %}
+                                                {% if line.wrongAmount %}{{ line[side]|amount }} <s class="px-slip__wrong">{{ line.wrongAmount }}</s>
+                                                {% elseif line.amountTarget %}<a class="px-slip__value" href="{{ here }}?slip={{ line.amountTarget }}">{{ line[side]|amount }}</a>
+                                                {% else %}{{ line[side]|amount }}{% endif %}
+                                            {% endif %}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot><tr>
+                            <th scope="row" colspan="2">Totaux</th>
+                            <td class="px-u-num">{{ prep.debit|amount }}</td>
+                            <td class="px-u-num">{{ prep.credit|amount }}</td>
+                        </tr></tfoot>
+                    </table>
+                {% endif %}
+            </twig:Px:Card>
+
+            <twig:Px:Card title="Erreurs à repérer · {{ prep.count }}" meta="L’étudiant ne voit ni ces lignes ni leur nombre">
+                {% if prep.errors is empty and prep.duplicates is empty %}
+                    <p class="px-u-muted">Aucune erreur glissée : la pièce arrive telle qu’elle est.</p>
+                {% endif %}
+                <ul class="px-slip__errors">
+                    {% for error in prep.errors %}
+                        <li>
+                            <span><b>{{ error.label }}</b>{% if not (error.label starts with error.nature) %} · {{ error.nature }}{% endif %} · {{ error.place|lower }}<br><span class="px-u-num">{{ error.right }}</span> <s class="px-slip__wrong">{{ error.wrong }}</s></span>
+                            <form method="post" action="{{ here }}">
+                                <input type="hidden" name="_token" value="{{ token }}">
+                                <input type="hidden" name="target" value="{{ error.target }}">
+                                <twig:Px:Button type="submit" size="sm" variant="quiet" name="_action" value="remove">Retirer l’erreur</twig:Px:Button>
+                            </form>
+                        </li>
+                    {% endfor %}
+                    {% if prep.duplicates is not empty %}
+                        <li>
+                            <span><b>Doublon</b> · la pièce arrive deux fois dans la boîte de réception</span>
+                            <form method="post" action="{{ here }}">
+                                <input type="hidden" name="_token" value="{{ token }}">
+                                <twig:Px:Button type="submit" size="sm" variant="quiet" name="_action" value="unduplicate">Retirer le doublon</twig:Px:Button>
+                            </form>
+                        </li>
+                    {% endif %}
+                </ul>
+                {% if prep.duplicates is empty and not prep.duplicateOf %}
+                    <form method="post" action="{{ here }}" class="px-slip__duplicate">
+                        <input type="hidden" name="_token" value="{{ token }}">
+                        <twig:Px:Button type="submit" size="sm" icon="files" name="_action" value="duplicate">Faire arriver la pièce deux fois (doublon)</twig:Px:Button>
+                    </form>
+                {% endif %}
+            </twig:Px:Card>
+        </div>
+    </div>
+{% endblock %}
+
+{% block facts %}<span>Préparation · <b>{{ label }}</b></span><span>Erreurs à repérer · <b>{{ prep.count }}</b></span>{% endblock %}

@@ -317,6 +317,17 @@ final class RoleAccessSmokeTest extends WebTestCase
         }
         self::assertSame(['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302], $actual, '/accounting/entry/guided');
 
+        // « Mode préparation » belongs to a template: on a student's pièce it is nobody's.
+        $actual = [];
+        foreach (self::ACCOUNTS as $role => $login) {
+            self::ensureKernelShutdown();
+            $client = static::createClient();
+            $this->submitLogin($client, $login);
+            $client->request('GET', '/d/'.$dossier.'/documents/'.$documentId.'/prepare');
+            $actual[$role] = $client->getResponse()->getStatusCode();
+        }
+        self::assertSame(['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302], $actual, '/documents/{id}/prepare');
+
         // The waiting page sends on to the dashboard when no return is running.
         $actual = [];
         foreach (self::ACCOUNTS as $role => $login) {
@@ -340,7 +351,17 @@ final class RoleAccessSmokeTest extends WebTestCase
         $this->submitLogin($client, self::ACCOUNTS['teacher']);
         $durand = $this->account($client, self::ACCOUNTS['teacher']);
         \assert($durand instanceof User);
-        $own = (int) $this->savedDossier(DossierKind::Template, $durand)->getId();
+        $ownTemplate = $this->savedDossier(DossierKind::Template, $durand);
+        $own = (int) $ownTemplate->getId();
+        $piece = $client->getContainer()->get(DossierContext::class)->within($ownTemplate, static function () use ($client, $ownTemplate, $durand): ?int {
+            $path = tempnam(sys_get_temp_dir(), 'piece');
+            \assert(\is_string($path));
+            file_put_contents($path, "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n");
+            $document = $client->getContainer()->get(Documents::class)->deposit($ownTemplate, new UploadedFile($path, 'FA-2603-0187.pdf', null, null, true), DocumentType::PurchaseInvoice, $durand);
+            $client->getContainer()->get(EntityManagerInterface::class)->flush();
+
+            return $document->getId();
+        });
         $common = (int) $this->savedDossier(DossierKind::Template, null)->getId();
         $this->signOut($client);
         $this->submitLogin($client, self::ACCOUNTS['admin']);
@@ -362,6 +383,8 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/teacher/library/'.$common.'/distribute' => ['student' => 404, 'teacher' => 200, 'admin' => 200, 'refused' => 302],
             '/teacher/library/'.$student.'/distribute' => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
             '/teacher/documents/generator/'.$own => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/d/'.$own.'/documents/'.$piece.'/prepare' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/d/'.$own.'/documents/'.$piece.'/prepare?slip=line.0.account' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
             '/teacher/documents/generator/'.$common => ['student' => 404, 'teacher' => 404, 'admin' => 200, 'refused' => 302],
             '/teacher/documents/generator/'.$student => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
         ];

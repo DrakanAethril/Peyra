@@ -1,0 +1,50 @@
+{#
+ # The panel opened on one value in « mode préparation » (design-ux.md § 3.5): « Glisser une
+ # erreur » - the right value, three plausible wrong ones or another typed, where it shows (both by
+ # default when the entry follows the value) - and, on an account of the right proposal while no
+ # error shows in the entry, « Compte juste ». Échap or « Annuler » closes it (`here`).
+ #}
+{% set free_option = {value: '', label: 'Autre valeur'} %}
+<twig:Px:Card title="{{ panel.nature ? 'Glisser une erreur' : 'Compte juste' }}" meta="{{ panel.label }} · valeur juste : {{ panel.right }}" class="px-slip__panel">
+    {% if panel_error %}<twig:Px:Alert tone="danger">{{ panel_error }}</twig:Px:Alert>{% endif %}
+    {% if panel.nature %}
+        <form method="post" action="{{ here }}" id="slip-form" class="px-stack" novalidate>
+            <input type="hidden" name="_token" value="{{ token }}">
+            <input type="hidden" name="target" value="{{ panel.target }}">
+            <p class="px-u-muted">Nature : <b>{{ panel.nature.label }}</b></p>
+            <twig:Px:CheckGroup legend="Valeur fausse" name="wrong" type="radio" :options="(panel.suggestions|map((s, i) => s|merge({checked: i == 0, autofocus: i == 0})))|merge([free_option|merge({checked: panel.suggestions is empty, autofocus: panel.suggestions is empty})])"/>
+            {% if panel.nature.value == 'amount' %}
+                <twig:Px:Field id="free_amount" label="Autre montant">
+                    <twig:Px:AmountInput id="free_amount" unit="€"/>
+                </twig:Px:Field>
+            {% elseif panel.nature.value == 'third_party' %}
+                <twig:Px:Field id="free_party" label="Autre tiers">
+                    <twig:Px:Select id="free_party" placeholder="Choisir un tiers…" :options="panel.parties"/>
+                </twig:Px:Field>
+            {% else %}
+                <twig:Px:Field id="free" label="{{ panel.nature.value == 'vat_rate' ? 'Autre taux (%)' : 'Autre compte' }}">
+                    <twig:Px:Input id="free" class="{{ panel.nature.value == 'vat_rate' ? 'px-u-num' : 'px-u-code' }}" maxlength="17" autocomplete="off" spellcheck="false"/>
+                </twig:Px:Field>
+            {% endif %}
+            <twig:Px:Segmented legend="Où l’erreur apparaît" name="place" :options="panel.places|map(p => {value: p.value, label: p.label})" value="{{ panel.places|first.value }}" hint="{{ panel.places|length > 1 ? 'Par défaut dans les deux : l’écriture proposée suit la valeur lue.' : '' }}"/>
+            <div class="px-cluster px-slip__actions">
+                <twig:Px:Button href="{{ here }}" variant="quiet" shortcut="Escape">Annuler</twig:Px:Button>
+                <twig:Px:Button type="submit" variant="primary" name="_action" value="slip" shortcut="Ctrl+Enter">Glisser l’erreur</twig:Px:Button>
+            </div>
+        </form>
+    {% endif %}
+    {% if panel.line is not null %}
+        <form method="post" action="{{ here }}" class="px-stack px-slip__fix" novalidate>
+            <input type="hidden" name="_token" value="{{ token }}">
+            <input type="hidden" name="line" value="{{ panel.line }}">
+            {% if panel.nature %}<h3 class="px-document__section">Compte juste</h3>{% endif %}
+            <twig:Px:Field id="account" label="Compte de la ligne {{ panel.line + 1 }}" hint="Ce que l’étudiant devrait trouver : un compte du plan, ou le code auxiliaire d’un tiers.">
+                <twig:Px:AccountPicker id="account" name="account" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" value="{{ panel.account }}" listLabel="Comptes et tiers"/>
+            </twig:Px:Field>
+            <div class="px-cluster px-slip__actions">
+                {% if not panel.nature %}<twig:Px:Button href="{{ here }}" variant="quiet" shortcut="Escape">Annuler</twig:Px:Button>{% endif %}
+                <twig:Px:Button type="submit" name="_action" value="account" variant="{{ panel.nature ? 'secondary' : 'primary' }}">Enregistrer le compte juste</twig:Px:Button>
+            </div>
+        </form>
+    {% endif %}
+</twig:Px:Card>

@@ -5,6 +5,10 @@
  * and the credit, the bin. A proposed line not yet gone through carries an amber edge
  * (design-ux.md § 3.5). The banner offering to take the entry again from the read data sits
  * between the two cards.
+ *
+ * « Mode préparation » (step 2.2b, design-ux.md § 3.5): a value an error may fall on is a link
+ * underlined in dots; a wrong value slipped in sits beside the right one, struck through in amber,
+ * with where it shows; the panel « Glisser une erreur » opens at the top of the column.
  */
 @layer px.components {
     .px-piece__head {
@@ -76,5 +80,60 @@
         margin: 0;
         padding: 0;
         list-style: none;
+    }
+
+    .px-slip__value {
+        color: var(--px-action);
+        text-decoration: underline dotted;
+        text-underline-offset: 3px;
+
+        &:hover,
+        &:focus-visible {
+            text-decoration-style: solid;
+        }
+    }
+
+    .px-slip__wrong {
+        padding: 0 var(--px-space-4);
+        border-radius: var(--px-radius-xs);
+        background: var(--px-warning-tint);
+        color: var(--px-warning-text);
+        text-decoration: line-through;
+        text-decoration-color: var(--px-warning-text);
+    }
+
+    .px-slip__place {
+        color: var(--px-text-muted);
+        font-family: var(--px-font-ui);
+        font-size: var(--px-fs-12);
+    }
+
+    .px-slip__errors {
+        display: grid;
+        gap: var(--px-space-8);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+
+        & > li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--px-space-12);
+            padding-bottom: var(--px-space-8);
+            border-bottom: 1px solid var(--px-border-row);
+        }
+    }
+
+    .px-slip__duplicate {
+        margin-top: var(--px-space-12);
+    }
+
+    .px-slip__actions {
+        justify-content: flex-end;
+    }
+
+    .px-slip__fix {
+        margin-top: var(--px-space-12);
     }
 }

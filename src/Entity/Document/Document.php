@@ -136,6 +136,26 @@ class Document implements DossierOwned
     #[ORM\Column(type: Types::JSON)]
     private array $anomalies = [];
 
+    /**
+     * The errors the teacher slipped in (step 2.2b, AnswerKey::toArray()): the right read data and
+     * the right proposal - third parties by their code, never an id, so that a copy of the dossier
+     * keeps them true - and each error, its place and its wrong value. The read data and the
+     * proposal above are the wrong ones, what the student receives. Null while it carries none.
+     * Part of the answer key: no student screen shows it.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $answerKey = null;
+
+    /**
+     * The pièce this one is the second arrival of (a « doublon », step 2.2b); null for a first
+     * arrival. Part of the answer key: no student screen shows it.
+     */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?Document $duplicateOf = null;
+
     public function __construct(Dossier $dossier, DocumentType $type, string $fileKey, string $fileName, string $mediaType, \DateTimeImmutable $receivedOn, ?User $depositedBy)
     {
         $this->dossier = $dossier;
@@ -342,6 +362,32 @@ class Document implements DossierOwned
         }
 
         return null;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function getAnswerKey(): ?array
+    {
+        return $this->answerKey;
+    }
+
+    /** @param array<string, mixed>|null $answerKey null once it carries no error */
+    public function keepAnswerKey(?array $answerKey): void
+    {
+        $this->answerKey = $answerKey;
+    }
+
+    public function getDuplicateOf(): ?self
+    {
+        return $this->duplicateOf;
+    }
+
+    /** It arrives a second time: the first arrival it duplicates. */
+    public function markDuplicateOf(self $first): void
+    {
+        if ($first === $this || null !== $first->duplicateOf) {
+            throw new \LogicException('A pièce duplicates a first arrival, never itself nor a duplicate.');
+        }
+        $this->duplicateOf = $first;
     }
 
     /** An anomaly was reported with « Comptabiliser avec réserve »: its controls no longer stop it. */
