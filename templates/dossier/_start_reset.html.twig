@@ -23,7 +23,7 @@
                 {% set row = line.row %}
                 <tr>
                     <td>{{ row.holderLabel }}</td>
-                    <td>{{ row.dossier.name }}</td>
+                    <td class="px-u-nowrap">{{ row.dossier.name }}</td>
                     {% if line.summary %}
                         <td class="px-u-nowrap"><span class="px-u-code">{{ row.start.createdAt|date('d/m/Y') }}</span> <span class="px-u-muted">· date du dossier {{ row.start.dossierDate|date('d/m/Y') }}</span></td>
                         <td class="px-u-num">{{ line.summary.gestures }}</td>

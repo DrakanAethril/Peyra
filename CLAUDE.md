@@ -1018,6 +1018,18 @@ Lot 1, step 1.8c (design-ux.md § 4.2), held by code in `src/Service/Dossier/Dis
   dossier through `DossierEraser::deleteDossier()` (the copies detached first: the unit of work must not
   hold a dossier it deletes), after the title is typed.
 
+## Classe › Dossiers and the reset (built at step 1.8d)
+
+- **`/teacher/classes/{id}/dossiers`** (`ClassDossiersController`, tab of a class next to « Étudiants »,
+  `classes/_class_tabs.html.twig`): `ClassDossiers::rows()` - the class year's dossiers of its enrolled
+  students, groups included, a fixed number of queries -, each line filtered by `DossierVoter::VIEW`, ticked
+  where `RestorePointVoter::POSE` allows. **`RestoreBatches`** is the gesture on several dossiers through the
+  one-dossier doors: `pose()` (one name, a full dossier counted) and `resetToStart()` (`Restorations::returnTo()`
+  to the ready `RestorePointOrigin::Start` point, `RestorePointRepository::findStart()`; the safety point only
+  where ten points leave room); a refusal never stops the others (`RestoreBatchOutcome`). The récapitulatif is
+  `dossier/_start_reset.html.twig`, shared with the distribution's « Remettre à l'état de départ »
+  (`/teacher/library/distributions/{id}/reset`, its ready dossiers the author may EDIT).
+
 ## FEC (built at step 1.9a)
 
 Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by code in
