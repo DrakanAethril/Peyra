@@ -39,7 +39,7 @@
                         {{ include('library/_distribute_carry.html.twig') }}
                         <twig:Px:Button href="{{ path(plan.fault('students') ? 'app_library_distribute' : 'app_library_distribute_how', {dossier: template.id}) ~ query }}" icon="chevron-left">{{ plan.fault('students') ? 'Revenir aux étudiants' : 'Revenir aux choix' }}</twig:Px:Button>
                         {% if plan.valid %}
-                            <twig:Px:Button type="submit" variant="primary" icon="send" shortcut="Ctrl+Enter" class="px-u-push">Distribuer</twig:Px:Button>
+                            <twig:Px:Button type="submit" variant="primary" icon="send" shortcut="Ctrl+Enter" class="px-u-push" autofocus>Distribuer</twig:Px:Button>
                         {% endif %}
                     </form>
                 </twig:block>
@@ -54,7 +54,7 @@
                                 {% for group in plan.groups %}
                                     <tr>
                                         <td class="px-u-nowrap">{{ group.name }}</td>
-                                        <td class="px-u-fill">{% for member in group.members %}{{ member[0].displayName }}{% if member[1] %} <span class="px-u-muted">· {{ member[1].label }}</span>{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+                                        <td class="px-u-fill">{% for member in group.members %}{{ member[0].sortName }}{% if member[1] %} <span class="px-u-muted">· {{ member[1].label }}</span>{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>
