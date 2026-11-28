@@ -18,7 +18,7 @@ use Symfony\Component\Yaml\Yaml;
 final readonly class DemoPayrollFile
 {
     /**
-     * @param list<array{kind: PayrollBodyKind, name: string, reference: string}> $bodies
+     * @param list<array{kind: PayrollBodyKind, name: string, reference: string, account: ?string}> $bodies
      * @param list<array{draft: PayrollItemDraft, body: ?PayrollBodyKind}>         $items
      */
     private function __construct(public PayrollEstablishmentDraft $establishment, public array $bodies, public array $items)
@@ -50,7 +50,11 @@ final readonly class DemoPayrollFile
             if (null === $kind || !\is_string($name) || !\is_string($reference)) {
                 throw new \InvalidArgumentException('payroll.yaml : bodies['.$index.'] : {kind, name, reference} est attendu.');
             }
-            $bodies[] = ['kind' => $kind, 'name' => $name, 'reference' => $reference];
+            $account = $body['account'] ?? null;
+            if (null !== $account && !\is_string($account)) {
+                throw new \InvalidArgumentException('payroll.yaml : bodies['.$index.'].account : un numéro de compte entre guillemets est attendu.');
+            }
+            $bodies[] = ['kind' => $kind, 'name' => $name, 'reference' => $reference, 'account' => $account];
         }
 
         return new self($establishment, $bodies, PayrollPlanFile::items($data['items'], 'payroll.yaml'));

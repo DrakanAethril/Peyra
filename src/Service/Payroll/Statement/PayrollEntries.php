@@ -61,7 +61,6 @@ final class PayrollEntries
         }
         ksort($debits, \SORT_STRING);
         ksort($credits, \SORT_STRING);
-        $credits[PayrollAccounts::NET_PAY] = ($credits[PayrollAccounts::NET_PAY] ?? Money::zero())->plus($net);
         $lines = [];
         foreach ($debits as $account => $amount) {
             $lines[] = self::line((string) $account, $amount, true);
@@ -69,6 +68,7 @@ final class PayrollEntries
         foreach ($credits as $account => $amount) {
             $lines[] = self::line((string) $account, $amount, false);
         }
+        $lines[] = self::line(PayrollAccounts::NET_PAY, $net, false);
         $month = $statements->month;
 
         return new PieceProposal($journal, $month->modify('last day of this month')->format('Y-m-d'), self::monthDocument($month), 'Paie '.FrenchFormat::ofPeriod($month), array_values(array_filter($lines)));

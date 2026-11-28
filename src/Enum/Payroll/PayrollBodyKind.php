@@ -24,16 +24,12 @@ enum PayrollBodyKind: string
 
     /**
      * The account its contributions are owed on (step 4.5) when the body names none: 431000 « Sécurité
-     * sociale » for the Urssaf, the 437 accounts of « Autres organismes sociaux » for the others.
+     * sociale » for the Urssaf, 437000 « Autres organismes sociaux » for the others (a dossier that keeps
+     * one sub-account per body names it on the body).
      */
     public function defaultAccount(): string
     {
-        return match ($this) {
-            self::Urssaf => '431000',
-            self::Retirement => '437100',
-            self::Health => '437200',
-            self::Provident => '437300',
-        };
+        return self::Urssaf === $this ? '431000' : '437000';
     }
 
     /** The charge account of its employer's contributions (step 4.5) when the body names none: 645 by kind of body. */

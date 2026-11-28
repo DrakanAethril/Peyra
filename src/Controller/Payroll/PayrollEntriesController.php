@@ -117,8 +117,6 @@ final class PayrollEntriesController extends AbstractController
     /**
      * Each payment of the month: what it settles, its pièce, its entries, and its proposal in the bank journal chosen.
      *
-     * @param list<Journal> $banks
-     *
      * @return list<array<string, mixed>>
      */
     private function payments(Dossier $dossier, PayrollMonthStatements $statements, PayrollPosting $posting, AccountingBehaviour $behaviour, ?Journal $bank): array

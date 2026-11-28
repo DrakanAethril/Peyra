@@ -53,6 +53,7 @@
                     {% elseif entry.check.errors is not empty %}
                         <twig:Px:Alert tone="danger">{{ behaviour.value == 'post' ? 'L’écriture n’a pas pu être passée à la clôture : ' : 'L’écriture ne peut pas être passée : ' }}{{ entry.check.errors|join(' ') }}</twig:Px:Alert>
                     {% endif %}
+                    {% if entry.check %}{% for control in entry.check.controls %}<twig:Px:Alert tone="{{ control.blocking ? 'danger' : 'warning' }}">{{ control.message }}</twig:Px:Alert>{% endfor %}{% endif %}
                 {% endif %}
             </div>
             {% if entry.standing is empty and entry.proposal and not let_enter %}
@@ -84,8 +85,8 @@
                         {% if payment.standing is empty %}
                             {% if let_enter %}
                                 <p class="px-u-muted">À vous de le saisir dans un journal de banque, pièce <span class="px-u-code">{{ payment.document }}</span>.</p>
-                            {% elseif payment.check and payment.check.errors is not empty %}
-                                <twig:Px:Alert tone="danger">Le règlement ne peut pas être passé : {{ payment.check.errors|join(' ') }}</twig:Px:Alert>
+                            {% elseif payment.check and not payment.check.writable %}
+                                <twig:Px:Alert tone="danger">Le règlement ne peut pas être passé : {{ (payment.check.errors|merge(payment.check.controls|filter(c => c.blocking)|map(c => c.message)))|join(' ') }}</twig:Px:Alert>
                             {% elseif payment.proposal and can_post %}
                                 <form method="post" action="{{ path('app_payroll_entries_pay', {dossier: dossier.id}) }}">
                                     <input type="hidden" name="month" value="{{ month|date('Y-m') }}">

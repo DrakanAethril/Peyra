@@ -3,7 +3,6 @@
  # a body or a line of the clarified payslip sums, each one's shares, each opening the payslip's PDF.
  #}
 {% extends 'payroll/_layout.html.twig' %}
-{% import 'payroll/edition/_macros.html.twig' as m %}
 
 {% set payroll_tab = 'editions' %}
 {% set dossier_title = detail_title %}
@@ -39,7 +38,7 @@
                         <tr>
                             <td class="px-u-code"><a class="px-link" href="{{ path('app_payroll_employee_payslip_pdf', {dossier: dossier.id, number: row.key, month: month|date('Y-m')}) }}" target="_blank" data-turbo="false">{{ row.key }}</a></td>
                             <td>{{ row.label }}</td>
-                            <td class="px-u-num">{{ m.base(row) }}</td>
+                            <td class="px-u-num">{% if row.base is not null %}{{ row.baseUnit ? row.baseUnit.format(row.base) : row.base }}{% endif %}</td>
                             <td class="px-u-num">{{ row.employee|amount_cell }}</td>
                             <td class="px-u-num">{{ row.employer|amount_cell }}</td>
                             <td class="px-u-num">{{ row.total|amount }}</td>

@@ -172,7 +172,7 @@ final readonly class DemoInstaller
         $fields = PayrollEstablishmentRules::check($file->establishment) ?? throw new \InvalidArgumentException('payroll.yaml : establishment : '.implode(' ', $file->establishment->errors));
         $this->entityManager->persist(new PayrollEstablishment($dossier, $fields->headcount, $fields->workAccidentRate, $fields->mobilityRate, $fields->monthlyHours));
         foreach ($file->bodies as $body) {
-            $this->entityManager->persist(new PayrollBody($dossier, $body['kind'], $body['name'], $body['reference']));
+            $this->entityManager->persist(new PayrollBody($dossier, $body['kind'], $body['name'], $body['reference'], $body['account']));
         }
         $this->entityManager->flush();
         $this->payrollPlan->installStandard($dossier, $actor);

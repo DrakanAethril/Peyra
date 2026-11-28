@@ -53,7 +53,8 @@ final readonly class PayrollMonthStatements
      */
     public function totals(): array
     {
-        $sum = static fn (callable $figure): Money => Money::sum(array_map(static fn (PayrollMonthPayslip $p): Money => $figure($p), $this->payslips));
+        $payslips = $this->payslips;
+        $sum = static fn (callable $figure): Money => Money::sum(array_map(static fn (PayrollMonthPayslip $p): Money => $figure($p), $payslips));
 
         return [
             'gross' => $sum(static fn (PayrollMonthPayslip $p): Money => $p->payslip->gross),
