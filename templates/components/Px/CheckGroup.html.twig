@@ -1,6 +1,6 @@
 {#
  # Px:CheckGroup - a fieldset of checkboxes or radios, never a <select multiple> (design-ui.md § 4.5).
- # `options`: list of {value, label, checked?, disabled?}. `inline` for four short choices at most.
+ # `options`: list of {value, label, checked?, disabled?, autofocus?}. `inline` for four short choices at most.
  #}
 {% props legend, name, options, type = 'checkbox', inline = false, error = null %}
 <fieldset{{ attributes.defaults({class: 'px-checkgroup' ~ (inline ? ' px-checkgroup--inline' : '')}) }}{% if error %} aria-describedby="{{ name }}_error"{% endif %}>
@@ -8,7 +8,7 @@
     <div class="px-checkgroup__options">
         {% for option in options %}
             <label class="px-check">
-                <input type="{{ type }}" name="{{ name }}{{ type == 'checkbox' ? '[]' : '' }}" value="{{ option.value }}"{% if option.checked ?? false %} checked{% endif %}{% if option.disabled ?? false %} disabled{% endif %}{% if error %} aria-invalid="true"{% endif %}>
+                <input type="{{ type }}" name="{{ name }}{{ type == 'checkbox' ? '[]' : '' }}" value="{{ option.value }}"{% if option.checked ?? false %} checked{% endif %}{% if option.disabled ?? false %} disabled{% endif %}{% if option.autofocus ?? false %} autofocus{% endif %}{% if error %} aria-invalid="true"{% endif %}>
                 <span>{{ option.label }}</span>
             </label>
         {% endfor %}

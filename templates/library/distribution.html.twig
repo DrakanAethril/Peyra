@@ -18,7 +18,9 @@
         {label: distribution.title, href: page_url},
     ]">
         <twig:block name="actions">
-            {% if progress.ready > 0 %}<twig:Px:Button href="{{ path('app_library_distribution_reset', {id: distribution.id}) }}" icon="undo-2">Remettre à l’état de départ</twig:Px:Button>{% endif %}
+            {# Always drawn: the head is outside the live frame, so a button that waited for the first
+             # ready copy never appeared without a reload; the récapitulatif says when none is ready. #}
+            <twig:Px:Button href="{{ path('app_library_distribution_reset', {id: distribution.id}) }}" icon="undo-2">Remettre à l’état de départ</twig:Px:Button>
             <twig:Px:Button variant="quiet" href="{{ path('app_library_distribution_withdraw', {id: distribution.id}) }}" icon="trash-2">Retirer la distribution</twig:Px:Button>
         </twig:block>
     </twig:Px:PageHead>
@@ -48,7 +50,7 @@
                         <tr data-rows-target="row">
                             <td class="px-u-fill">
                                 {% if copy.student %}{{ copy.student.sortName }}{% else %}
-                                    {{ copy.groupName }} <span class="px-u-muted">· {% for member in copy.members %}{{ members[member.student] is defined ? members[member.student].displayName : '?' }}{% if member.profile %} ({{ member.profile.label|lower }}){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+                                    {{ copy.groupName }} <span class="px-u-muted">· {% for member in copy.members %}{{ members[member.student] is defined ? members[member.student].sortName : '?' }}{% if member.profile %} ({{ member.profile.label|lower }}){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</span>
                                 {% endif %}
                             </td>
                             <td>{% if copy.state.value == 'failed' %}<twig:Px:Badge :of="copy.state" full="En échec : {{ copy.failure }}"/>{% else %}<twig:Px:Badge :of="copy.state"/>{% endif %}</td>

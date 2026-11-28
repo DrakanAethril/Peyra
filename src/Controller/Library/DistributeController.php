@@ -93,7 +93,7 @@ final class DistributeController extends AbstractController
                 'error' => $refused->getMessage(),
             ], new Response(status: Response::HTTP_UNPROCESSABLE_ENTITY));
         }
-        $this->addFlash('status', $plan->sentence().' Les copies se font en arrière-plan.');
+        $this->addFlash('status', 'Distribution lancée : '.lcfirst($plan->sentence()).' Les copies se font en arrière-plan.');
 
         return $this->redirectToRoute('app_library_distribution', ['id' => $distribution->getId()], Response::HTTP_SEE_OTHER);
     }

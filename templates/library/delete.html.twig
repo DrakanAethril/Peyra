@@ -46,7 +46,7 @@
         <input type="hidden" name="_token" value="{{ csrf_token('library-delete-' ~ dossier.id) }}">
         <twig:Px:Card title="Confirmer">
             <twig:Px:Field id="confirmTitle" label="Tapez « {{ dossier.libraryTitle }} » pour supprimer ce modèle" :required="true" :error="error">
-                <twig:Px:Input id="confirmTitle" value="{{ typed }}" :required="true" :error="error" autocomplete="off" spellcheck="false"/>
+                <twig:Px:Input id="confirmTitle" value="{{ typed }}" :required="true" :error="error" autocomplete="off" spellcheck="false" :autofocus="true"/>
             </twig:Px:Field>
         </twig:Px:Card>
     </form>

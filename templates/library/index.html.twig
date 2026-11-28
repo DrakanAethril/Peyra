@@ -33,6 +33,12 @@
                 <twig:Px:Empty :page="true" icon="book-copy" title="Aucun dossier modèle pour l’instant" text="Un dossier modèle se prépare une fois et se distribue à toute une classe. Partez d’un dossier vide ou de la copie d’un modèle.">
                     <twig:block name="action"><twig:Px:Button variant="primary" href="{{ path('app_library_new') }}" icon="plus">Nouveau dossier modèle</twig:Px:Button></twig:block>
                 </twig:Px:Empty>
+            {% elseif not search and shelf and shelf.value == 'mine' %}
+                <twig:Px:Empty icon="book-copy" title="Vous n’avez pas encore de modèle" text="Partez d’un dossier vide, de la copie d’un modèle ou d’un FEC ; « Dupliquer » sur un modèle fourni en fait aussi le vôtre.">
+                    <twig:block name="action"><twig:Px:Button variant="primary" href="{{ path('app_library_new') }}" icon="plus">Nouveau dossier modèle</twig:Px:Button></twig:block>
+                </twig:Px:Empty>
+            {% elseif not search and shelf and shelf.value == 'shared' %}
+                <twig:Px:Empty icon="users" title="Aucun modèle partagé avec vous" text="Un collègue qui partage un de ses modèles avec vous le fait apparaître ici, en lecture ou en modification."/>
             {% else %}
                 <twig:Px:Empty icon="search" title="Aucun modèle ne correspond" text="Changez de filtre ou de mots cherchés."/>
             {% endif %}
