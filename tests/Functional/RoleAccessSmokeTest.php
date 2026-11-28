@@ -15,6 +15,7 @@ use App\Entity\Payroll\EmploymentTerms;
 use App\Entity\Payroll\PayrollEstablishment;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\JournalType;
+use App\Enum\Banking\PaymentDirection;
 use App\Enum\Document\DocumentType;
 use App\Enum\Dossier\DistributionMode;
 use App\Enum\Dossier\DossierKind;
@@ -22,6 +23,7 @@ use App\Enum\Payroll\ContractType;
 use App\Enum\Payroll\Sex;
 use App\Enum\Payroll\WorkingTime;
 use App\Enum\Sales\SalesDocumentType;
+use App\Enum\ThirdParty\PaymentMethod;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntrySubscriptionRepository;
@@ -36,6 +38,8 @@ use App\Service\Accounting\Subscription\SubscriptionSheet;
 use App\Service\Accounting\Template\TemplateDraft;
 use App\Service\Accounting\Template\TemplateLineDraft;
 use App\Service\Accounting\Template\TemplateSheet;
+use App\Service\Banking\Payment\PaymentRequest;
+use App\Service\Banking\Payment\Payments;
 use App\Service\Banking\Rule\BankRules;
 use App\Service\Banking\Statement\BankStatements;
 use App\Service\Document\Documents;
@@ -118,6 +122,7 @@ final class RoleAccessSmokeTest extends WebTestCase
         yield 'Nouveau dossier modèle vide' => ['/teacher/library/new/empty', $teachers];
         yield 'Nouveau dossier modèle depuis un FEC' => ['/teacher/library/new/fec', $teachers];
         yield 'Pièces › Générateur' => ['/teacher/documents/generator', $teachers];
+        yield 'Pièces › Générateur › Relevés' => ['/teacher/documents/statements', $teachers];
     }
 
     /** The sheet of a regulatory value and « Nouvelle valeur datée », on a value written for the test. */
@@ -310,6 +315,7 @@ final class RoleAccessSmokeTest extends WebTestCase
 
             return [$statement->getId(), $statement->getLines()[1]->getId(), $rule->getId()];
         });
+        $paymentId = $client->getContainer()->get(DossierContext::class)->within($saved, static fn (): ?int => $client->getContainer()->get(Payments::class)->record($saved, new PaymentRequest(PaymentDirection::Receipt, PaymentMethod::Cheque, 'C0019', 'BQ1', $saved->getDossierDate(), '1234567', Money::cents(12_000)), 'test')->getId());
         $dossier = (int) $saved->getId();
         $point = $client->getContainer()->get(RestorePoints::class)->pose($saved, 'Avant validation', $ines, new \DateTimeImmutable('2026-11-28 10:00'));
         $pointId = (int) $point->getId();
@@ -368,6 +374,8 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/bank/statements', '/bank/statements?journal=BQ1', '/bank/statements/import', '/bank/statements/import?journal=BQ1', '/bank/statements/'.$statementId.'/export.csv',
             '/bank/reconciliation/'.$statementId, '/bank/reconciliation/'.$statementId.'?line='.$statementLineId, '/bank/reconciliation/'.$statementId.'/state.pdf',
             '/bank/rules', '/bank/rules/new?pattern=FRAIS', '/bank/rules/'.$ruleId,
+            '/payments/receipts', '/payments/receipts?method=cheque', '/payments/receipts/new', '/payments/receipts/new?party=C0019',
+            '/payments/receipts/deposit', '/payments/receipts/'.$paymentId, '/payments/disbursements', '/payments/disbursements/new?party=F0001',
             '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
@@ -470,6 +478,9 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/teacher/library/'.$common.'/distribute' => ['student' => 404, 'teacher' => 200, 'admin' => 200, 'refused' => 302],
             '/teacher/library/'.$student.'/distribute' => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
             '/teacher/documents/generator/'.$own => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/teacher/documents/statements/'.$own => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/teacher/documents/statements/'.$common => ['student' => 404, 'teacher' => 404, 'admin' => 200, 'refused' => 302],
+            '/teacher/documents/statements/'.$student => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
             '/d/'.$own.'/documents/'.$piece.'/prepare' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
             '/d/'.$own.'/documents/'.$piece.'/prepare?slip=line.0.account' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
             '/teacher/documents/generator/'.$common => ['student' => 404, 'teacher' => 404, 'admin' => 200, 'refused' => 302],

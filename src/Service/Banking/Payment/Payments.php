@@ -68,7 +68,14 @@ final readonly class Payments
      */
     public static function methods(PaymentDirection $direction): array
     {
-        return array_values(array_filter(PaymentMethod::cases(), static fn (PaymentMethod $method): bool => PaymentMethod::Bill !== $method || PaymentDirection::Receipt === $direction));
+        $methods = [];
+        foreach (PaymentMethod::cases() as $method) {
+            if (PaymentMethod::Bill !== $method || PaymentDirection::Receipt === $direction) {
+                $methods[] = $method;
+            }
+        }
+
+        return $methods;
     }
 
     /**
@@ -372,7 +379,7 @@ final readonly class Payments
                 }
             }
         }
-        if ([] !== $errors || null === $on) {
+        if ([] !== $errors) {
             throw new BankingRefused((string) reset($errors), $errors);
         }
         $number = max($this->deposits->lastNumber($dossier), $this->lastSlipInBooks($dossier)) + 1;
@@ -487,14 +494,20 @@ final readonly class Payments
         return $vat->isPositive() ? $vat : Money::zero();
     }
 
-    /** @return list<int> the payment's lines on the party's account and the unlettered ones of its invoices there */
+    /** @return list<int> the payment's unlettered lines on the party's account, and its invoices' there not lettered whole */
     private function letteringLines(Payment $payment): array
     {
         $entry = $payment->getEntry() ?? throw new \LogicException('A payment lettered has its entry.');
-        $ids = array_map(static fn (EntryLine $line): int => (int) $line->getId(), $this->partyLines($payment, $entry));
+        $ids = [];
+        foreach ($this->partyLines($payment, $entry) as $line) {
+            if (!$line->isLettered()) {
+                $ids[] = (int) $line->getId();
+            }
+        }
+        // An invoice another payment already lettered in part: its group is completed.
         foreach ($payment->getAllocations() as $allocation) {
             foreach ($this->partyLines($payment, $allocation->getInvoice()) as $line) {
-                if (!$line->isLettered()) {
+                if (!$line->isLettered() || $line->isPartiallyLettered()) {
                     $ids[] = (int) $line->getId();
                 }
             }

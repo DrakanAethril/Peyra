@@ -20,22 +20,18 @@
     ]">
         <twig:block name="actions">
             {% if can_enter and lettering_refusal is null %}
-                <form method="post" action="{{ path('app_payment_letter', {dossier: dossier.id, direction: slug, id: payment.id}) }}">
-                    <input type="hidden" name="_token" value="{{ csrf_token('payment-' ~ dossier.id) }}">
-                    <twig:Px:Button type="submit" variant="primary" icon="link-2">Lettrer avec {{ payment.allocations|length > 1 ? 'les factures' : 'la facture' }}</twig:Px:Button>
-                </form>
+                <twig:Px:Button type="submit" form="letter-form" variant="primary" icon="link-2">Lettrer avec {{ payment.allocations|length > 1 ? 'les factures' : 'la facture' }}</twig:Px:Button>
             {% endif %}
             {% if can_enter and payment.deposit is null and payment.remittance is null and not (payment.entry and payment.entry.validated) %}
-                <form method="post" action="{{ path('app_payment_delete', {dossier: dossier.id, direction: slug, id: payment.id}) }}">
-                    <input type="hidden" name="_token" value="{{ csrf_token('payment-' ~ dossier.id) }}">
-                    <twig:Px:ConfirmButton label="Supprimer" confirmLabel="Supprimer le règlement et son écriture" icon="trash-2"/>
-                </form>
+                <twig:Px:ConfirmButton label="Supprimer" confirmLabel="Supprimer le règlement et son écriture" icon="trash-2" form="delete-form"/>
             {% endif %}
         </twig:block>
     </twig:Px:PageHead>
 {% endblock %}
 
 {% block page %}
+    <form method="post" action="{{ path('app_payment_letter', {dossier: dossier.id, direction: slug, id: payment.id}) }}" id="letter-form" hidden><input type="hidden" name="_token" value="{{ csrf_token('payment-' ~ dossier.id) }}"></form>
+    <form method="post" action="{{ path('app_payment_delete', {dossier: dossier.id, direction: slug, id: payment.id}) }}" id="delete-form" hidden><input type="hidden" name="_token" value="{{ csrf_token('payment-' ~ dossier.id) }}"></form>
     {% for message in app.flashes('payment_fault') %}<twig:Px:Alert tone="danger">{{ message }}</twig:Px:Alert>{% endfor %}
     <div class="px-split">
         <div class="px-stack">

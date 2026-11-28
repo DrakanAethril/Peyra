@@ -56,7 +56,7 @@
                             <td class="px-u-num">{{ one.paidOn|date('d/m/Y') }}</td>
                             <td><a class="px-link px-u-code" href="{{ path('app_payment', {dossier: dossier.id, direction: slug, id: one.id}) }}">{{ one.reference }}</a></td>
                             <td class="px-u-fill">{{ one.thirdParty.name }}</td>
-                            <td>{{ one.method.label }}</td>
+                            <td class="px-u-nowrap">{{ one.method.label }}</td>
                             <td class="px-u-code">{{ one.journal.code }}</td>
                             <td class="px-u-code">{{ one.allocations|map(a => a.invoice.document)|join(', ') ?: '—' }}</td>
                             <td class="px-u-num">{{ one.amount|amount }}</td>

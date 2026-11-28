@@ -29,18 +29,23 @@
         <form method="post" action="{{ path('app_payment_deposit', {dossier: dossier.id}) }}" id="deposit-form" data-turbo="false" novalidate data-controller="focus-error">
             <input type="hidden" name="_token" value="{{ csrf_token('payment-' ~ dossier.id) }}">
             <input type="hidden" name="journal" value="{{ journal.code }}">
-            <twig:Px:Card :flush="true" title="Chèques à remettre" meta="{{ cheques|length }}">
-                <twig:Px:Filters action="{{ path('app_payment_deposit', {dossier: dossier.id}) }}">
-                    <span class="px-filters__label">Banque</span>
-                    {% for one in journals %}
-                        <twig:Px:FilterChip label="{{ one.code }} · {{ one.counterpartAccount.number }}" title="{{ one.label }}" href="{{ path('app_payment_deposit', {dossier: dossier.id, journal: one.code}) }}" :current="one.id == journal.id"/>
-                    {% endfor %}
+            <twig:Px:Card title="Remise">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="journal-chips" label="Banque" :error="errors.journal ?? null">
+                        <span class="px-cluster" id="journal-chips">
+                            {% for one in journals %}
+                                <twig:Px:FilterChip label="{{ one.code }} · {{ one.counterpartAccount.number }}" title="{{ one.label }}" href="{{ path('app_payment_deposit', {dossier: dossier.id, journal: one.code}) }}" :current="one.id == journal.id"/>
+                            {% endfor %}
+                        </span>
+                    </twig:Px:Field>
                     {% if cheques is not empty %}
-                        <twig:Px:Field id="date" label="Date de la remise" :error="errors.date ?? null">
+                        <twig:Px:Field id="date" label="Date de la remise" :required="true" :error="errors.date ?? null">
                             <twig:Px:DateInput id="date" :value="date" :reference="dossier.dossierDate" :required="true" :error="errors.date ?? null"/>
                         </twig:Px:Field>
                     {% endif %}
-                </twig:Px:Filters>
+                </div>
+            </twig:Px:Card>
+            <twig:Px:Card :flush="true" title="Chèques à remettre" meta="{{ cheques|length }}">
                 {% if errors.cheques is defined %}<twig:Px:Alert tone="danger">{{ errors.cheques }}</twig:Px:Alert>{% endif %}
                 {% if cheques is empty %}
                     <twig:Px:Empty icon="landmark" title="Aucun chèque à remettre" text="Un chèque reçu attend ici, au compte 511200, jusqu’à sa remise en banque."/>
