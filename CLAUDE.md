@@ -1221,6 +1221,12 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   due ÷ whole-month salary. **Absences are recognised by their base, never their code**: the salary is
   `contract_hours`, an absence `entry_exit_days` or subtracting `entered_hours` at the hourly rate, the
   sick pay `sick_pay` (hours as quantity, daily allowances as amount, on the same code).
+- **The apprentice and the end of a contract** (step 4.3e): `PayslipApprentice` (regime by the contract's
+  start, `social.apprentice.exemption`) shrinks the employee's base of the rubriques with a regulatory employee
+  rate - `PayslipRow::$employeeBase`, the employer's base unchanged - and the CSG base; `PayslipNet` exempts the
+  net taxable within the annual SMIC (`PayslipYearToDate::$apprenticeExempt`). The fixed-term indemnity (1500)
+  and the compensatory leave (1320) are computed after the month's gross; `PayslipSeverance` is the one reading
+  of a dismissal or conventional termination indemnity and **refuses** one partly subject to contributions.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 
