@@ -86,7 +86,7 @@ final class MissionAnswerKeyTest extends WebTestCase
         self::assertSame([[['601000', '607000']], 3], [$answerKey->getEquivalentAccounts(), $answerKey->getDateWindowDays()]);
         self::assertSame([false, true, false], array_column($answerKey->getEntries()[1]['lines'], 'optional'));
         $crawler = $client->request('GET', $base);
-        self::assertSame(1, $crawler->filter('input[name="optional[]"][checked]')->count());
+        self::assertCount(1, $crawler->filter('input[name="optional[]"][checked]'));
 
         $copyId = (int) $copy->getId();
         $this->signOut($client);
