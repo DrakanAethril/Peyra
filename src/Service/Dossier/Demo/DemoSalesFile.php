@@ -15,11 +15,12 @@ use Symfony\Component\Yaml\Yaml;
  * `fixtures/demo/sales.yaml` read and checked for its shape (step 2.3): the articles (ArticleDraft,
  * checked by ArticleRules at the install), the numbering already used by the books, and the
  * commercial documents - a draft for SalesDocumentRules, its lines' designation and unit taken from
- * the article they name, or a document made from an earlier one (`made_from`, its rank). Amounts
- * are euros as text, read exactly.
+ * the article they name, or a document made from an earlier one (`made_from`, its rank; `date`
+ * dates it otherwise than the dossier's date - a receipt on its day, step 2.4). Amounts are euros as
+ * text, read exactly; a line's price may be left out on a price request, which asks for it.
  *
  * @phpstan-type Numbering array{type: SalesDocumentType, year: int, last: int, date: \DateTimeImmutable}
- * @phpstan-type DemoDocument array{type: SalesDocumentType, draft: ?SalesDocumentDraft, madeFrom: ?int, validate: bool}
+ * @phpstan-type DemoDocument array{type: SalesDocumentType, draft: ?SalesDocumentDraft, madeFrom: ?int, validate: bool, date?: \DateTimeImmutable}
  */
 final readonly class DemoSalesFile
 {
@@ -49,6 +50,8 @@ final readonly class DemoSalesFile
             $draft->unit = self::text($entry, 'unit', $where);
             $price = self::optional($entry, 'price', $where);
             $draft->salePrice = null === $price ? '' : FrenchFormat::amount(self::euros($price, $where.'.price'));
+            $purchase = self::optional($entry, 'purchase_price', $where);
+            $draft->purchasePrice = null === $purchase ? '' : FrenchFormat::amount(self::euros($purchase, $where.'.purchase_price'));
             $draft->vatRate = self::optional($entry, 'rate', $where) ?? '';
             $draft->revenueAccount = self::optional($entry, 'account', $where) ?? '';
             $stock = $entry['stock'] ?? null;
@@ -85,7 +88,11 @@ final readonly class DemoSalesFile
                 if (!\is_int($madeFrom) || $madeFrom < 0 || $madeFrom >= $index) {
                     throw new \InvalidArgumentException($where.'.made_from : le rang d’un document plus haut est attendu.');
                 }
-                $documents[] = ['type' => $type, 'draft' => null, 'madeFrom' => $madeFrom, 'validate' => $validate];
+                $document = ['type' => $type, 'draft' => null, 'madeFrom' => $madeFrom, 'validate' => $validate];
+                if (isset($entry['date'])) {
+                    $document['date'] = self::date($entry, $where);
+                }
+                $documents[] = $document;
                 continue;
             }
             $draft = new SalesDocumentDraft();
@@ -102,7 +109,7 @@ final readonly class DemoSalesFile
                     'designation' => $article->designation,
                     'unit' => $article->unit,
                     'quantity' => str_replace('.', ',', self::text($line, 'quantity', $at)),
-                    'unitPrice' => FrenchFormat::amount(self::euros(self::text($line, 'price', $at), $at.'.price')),
+                    'unitPrice' => null === self::optional($line, 'price', $at) ? '' : FrenchFormat::amount(self::euros(self::text($line, 'price', $at), $at.'.price')),
                     'discount' => self::optional($line, 'discount', $at) ?? '',
                     'rate' => self::text($line, 'rate', $at),
                 ];

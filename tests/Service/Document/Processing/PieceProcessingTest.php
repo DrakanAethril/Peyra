@@ -34,6 +34,7 @@ use App\Service\Document\Processing\PieceProcessing;
 use App\Service\Document\Processing\PieceProposal;
 use App\Service\Document\Processing\ProposedEntryCheck;
 use App\Service\Document\VatLine;
+use App\Service\Purchasing\PurchaseMatching;
 use App\Service\Shared\Money;
 use App\Tests\Support\BuildsLedger;
 use Doctrine\ORM\EntityManagerInterface;
@@ -230,6 +231,7 @@ final class PieceProcessingTest extends KernelTestCase
             $container->get(ProposedEntryCheck::class),
             $container->get(AssistanceLevels::class),
             $container->get(AuditTrail::class),
+            $container->get(PurchaseMatching::class),
         );
     }
 }

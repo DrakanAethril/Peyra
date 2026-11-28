@@ -36,6 +36,7 @@
                             <th scope="col">Référence</th>
                             <th scope="col">Désignation</th>
                             <th scope="col">Unité</th>
+                            <th scope="col" class="px-u-num">Prix d’achat HT</th>
                             <th scope="col" class="px-u-num">Prix de vente HT</th>
                             <th scope="col" class="px-u-num">TVA</th>
                             <th scope="col">Compte</th>
@@ -48,6 +49,7 @@
                                 <td class="px-u-code"><a class="px-link" href="{{ path('app_inventory_article', {dossier: dossier.id, code: item.code}) }}">{{ item.code }}</a></td>
                                 <td class="px-u-fill" title="{{ item.designation }}">{{ item.designation }}</td>
                                 <td>{{ item.unit }}</td>
+                                <td class="px-u-num">{{ item.purchasePrice ? item.purchasePrice|amount : '' }}</td>
                                 <td class="px-u-num">{{ item.salePrice ? item.salePrice|amount : '' }}</td>
                                 <td class="px-u-num">{{ item.vatRate is not null ? item.vatRate|percent : '' }}</td>
                                 <td class="px-u-code">{{ item.revenueAccount }}</td>

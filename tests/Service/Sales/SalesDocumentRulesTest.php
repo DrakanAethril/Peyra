@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Service\Sales;
 
+use App\Enum\Sales\SalesDocumentType;
+use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Service\Sales\SalesDocumentDraft;
 use App\Service\Sales\SalesDocumentRules;
 use PHPUnit\Framework\TestCase;
@@ -56,6 +58,27 @@ final class SalesDocumentRulesTest extends TestCase
         self::assertSame(['customer', 'date'], array_keys($draft->errors));
     }
 
+    /** Step 2.4: a purchasing document names a supplier; a price request may leave its prices empty; a receipt line keeps its order line. */
+    public function testThePurchasingSideAsksASupplier(): void
+    {
+        $row = ['article' => '', 'designation' => 'Chêne avivé 27 mm', 'unit' => 'm³', 'quantity' => '1,8', 'unitPrice' => '', 'discount' => '', 'rate' => '20', 'source' => '0'];
+        $draft = self::draft([$row]);
+        self::assertNull(self::check($draft, SalesDocumentType::PurchaseOrder));
+        self::assertSame('Le tiers C0026 n’est pas un fournisseur.', $draft->error('customer'));
+        self::assertSame('Un prix unitaire est attendu.', $draft->error('line.0.unitPrice'));
+
+        $draft = self::draft([$row]);
+        $draft->customer = 'F0001';
+        $fields = self::check($draft, SalesDocumentType::PriceRequest);
+        self::assertNotNull($fields, implode(' ', $draft->errors));
+        self::assertSame([0, 0], [$fields->lines[0]->unitPrice->cents, $fields->lines[0]->sourceLine]);
+
+        $draft = self::draft([['source' => 'x'] + $row]);
+        $draft->customer = '';
+        self::assertNull(self::check($draft, SalesDocumentType::Receipt));
+        self::assertSame('Choisissez le fournisseur.', $draft->error('customer'));
+    }
+
     public function testWhatAValidationAdds(): void
     {
         $dossierDate = new \DateTimeImmutable('2026-03-31');
@@ -76,11 +99,12 @@ final class SalesDocumentRulesTest extends TestCase
         return $draft;
     }
 
-    private static function check(SalesDocumentDraft $draft): ?\App\Service\Sales\SalesDocumentFields
+    private static function check(SalesDocumentDraft $draft, SalesDocumentType $type = SalesDocumentType::Invoice): ?\App\Service\Sales\SalesDocumentFields
     {
         return SalesDocumentRules::check(
+            $type,
             $draft,
-            static fn (string $code): ?bool => ['C0026' => true, 'F0001' => false][$code] ?? null,
+            static fn (string $code): ?ThirdPartyKind => ['C0026' => ThirdPartyKind::Customer, 'F0001' => ThirdPartyKind::Supplier][$code] ?? null,
             static fn (string $code): bool => 'PF001' === $code,
         );
     }

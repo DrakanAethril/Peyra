@@ -30,7 +30,9 @@ use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
  * - PAYROLL_ENTER: enter the payroll - the employees (step 4.2a);
  * - SALES_READ (a dossier): open Ventes - closed to a profile that does not read the sales;
  * - SALES_ENTER: write the commercial documents' drafts (step 2.3);
- * - SALES_VALIDATE: validate, transform and send them.
+ * - SALES_VALIDATE: validate, transform and send them;
+ * - PURCHASES_READ, PURCHASES_ENTER, PURCHASES_VALIDATE: the same for the purchasing documents - price
+ *   requests, supplier orders, receipts (step 2.4), on the area Achats.
  *
  * The doors hold the same rules (Ledger, Lettering refuse a gesture the profile does not allow);
  * a refusal of a screen reads as a 404.
@@ -49,6 +51,9 @@ final class DossierRightVoter extends Voter
     public const string SALES_READ = 'SALES_READ';
     public const string SALES_ENTER = 'SALES_ENTER';
     public const string SALES_VALIDATE = 'SALES_VALIDATE';
+    public const string PURCHASES_READ = 'PURCHASES_READ';
+    public const string PURCHASES_ENTER = 'PURCHASES_ENTER';
+    public const string PURCHASES_VALIDATE = 'PURCHASES_VALIDATE';
 
     public function __construct(private readonly DossierVoter $dossiers, private readonly DossierRights $rights)
     {
@@ -56,7 +61,7 @@ final class DossierRightVoter extends Voter
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        return (\in_array($attribute, [self::SETTINGS, self::PAYROLL_READ, self::PAYROLL_SETTINGS, self::PAYROLL_ENTER, self::SALES_READ, self::SALES_ENTER, self::SALES_VALIDATE], true) && $subject instanceof Dossier)
+        return (\in_array($attribute, [self::SETTINGS, self::PAYROLL_READ, self::PAYROLL_SETTINGS, self::PAYROLL_ENTER, self::SALES_READ, self::SALES_ENTER, self::SALES_VALIDATE, self::PURCHASES_READ, self::PURCHASES_ENTER, self::PURCHASES_VALIDATE], true) && $subject instanceof Dossier)
             || (\in_array($attribute, [self::JOURNAL_READ, self::JOURNAL_ENTER, self::JOURNAL_VALIDATE], true) && $subject instanceof Journal);
     }
 
@@ -74,6 +79,9 @@ final class DossierRightVoter extends Voter
             self::SALES_READ => [DossierArea::Sales, AccessLevel::Read],
             self::SALES_ENTER => [DossierArea::Sales, AccessLevel::Enter],
             self::SALES_VALIDATE => [DossierArea::Sales, AccessLevel::Validate],
+            self::PURCHASES_READ => [DossierArea::Purchases, AccessLevel::Read],
+            self::PURCHASES_ENTER => [DossierArea::Purchases, AccessLevel::Enter],
+            self::PURCHASES_VALIDATE => [DossierArea::Purchases, AccessLevel::Validate],
             self::JOURNAL_READ => [null, AccessLevel::Read],
             self::JOURNAL_ENTER => [null, AccessLevel::Enter],
             default => [null, AccessLevel::Validate],

@@ -1133,6 +1133,17 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   document goes to the books through `SalesPosting` alone (entry built by the pure `SalesEntries`: 665000, 419100,
   445800 when `vatOnReceipts`); `linkEntry()` is the one write a validated document takes.
 
+## Purchases (built at step 2.4)
+
+- **The purchasing chain is the sales' document**: `SalesDocumentType` price request (DP-), supplier order
+  (CF-), receipt (BR-), `side()` `purchases`; `customer` holds the supplier (`getThirdParty()`). Routes are
+  `/d/{dossier}/{side}/…` (names unchanged: pass `side` to every `app_sales_document*` path), rights
+  `PURCHASES_*` (area Achats). A receipt is only made from its order, on what is left (`SalesLine::$sourceLine`,
+  pure `ReceiptProgress`, `Receipts`), one draft at a time. `Article::$purchasePrice` fills a purchasing line.
+- **A supplier's invoice is a pièce**, matched by its read order reference (`PurchaseMatching`, pure
+  `InvoiceMatch`): its lines join `PieceProcessing::controls()` before the mentions. Stock entries at the
+  receipt wait for 2.5.
+
 ## Référentiel and assistance levels (built at step 2.8)
 
 - **The référentiel is versioned data**, `config/referential/bts-cg.yaml` (edition 2014: four exams,
