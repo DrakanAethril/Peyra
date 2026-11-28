@@ -51,6 +51,16 @@ final class PayslipControlsTest extends TestCase
         self::assertSame('2 contrôles du bulletin sont en défaut : revoyez-les avant de valider.', $controls->refusal());
     }
 
+    public function testTheMonthlySmicIsNotUnderTheSmic(): void
+    {
+        // Kevin Brun, April 2026: 1 823,03 € (the SMIC of the month, 35 hours) ÷ 151,67 h = 12,0197 €, 12,02 € to the
+        // cent - the SMIC itself; 1 822,20 € gives 12,0142 €, 12,01 € to the cent: under it.
+        $at = static fn (string $salary, string $rate): string => PayslipControls::of(BigDecimal::of($rate), Money::euros($salary), BigDecimal::of('12.02'), null, Money::euros($salary), BigDecimal::of('4005'), null, 0)->items[0]['tone'];
+
+        self::assertSame('passed', $at('1823.03', '12.0197'));
+        self::assertSame('fault', $at('1822.20', '12.0142'));
+    }
+
     public function testTheMinimumOfAnApprentice(): void
     {
         // Hugo Marchand, born 12/03/2008, apprentice from 01/09/2025: first year, 17 until his birthday,

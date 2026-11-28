@@ -31,10 +31,10 @@
                     <tr>
                         <th scope="col">Matricule</th>
                         <th scope="col">Salarié</th>
-                        <th scope="col" class="px-u-num">Brut de la période</th>
-                        <th scope="col" class="px-u-num">Congés à payer</th>
-                        <th scope="col" class="px-u-num">Taux de charges</th>
-                        <th scope="col" class="px-u-num">Charges sociales</th>
+                        <th scope="col" class="px-u-right">Brut de la période</th>
+                        <th scope="col" class="px-u-right">Congés à payer</th>
+                        <th scope="col" class="px-u-right">Taux de charges</th>
+                        <th scope="col" class="px-u-right">Charges sociales</th>
                         <th scope="col">Calcul</th>
                     </tr>
                 </thead>
@@ -42,10 +42,10 @@
                     {% for line in provision.lines %}
                         <tr>
                             <td class="px-u-code">{{ line.number }}</td>
-                            <td>{{ line.name }}</td>
+                            <td class="px-u-nowrap">{{ line.name }}</td>
                             <td class="px-u-num">{{ line.gross|amount }}</td>
                             <td class="px-u-num">{{ line.provision|amount }}</td>
-                            <td class="px-u-num">{{ line.rate|percent }}</td>
+                            <td class="px-u-num">{{ line.rate|quantity }} %</td>
                             <td class="px-u-num">{{ line.charges|amount }}</td>
                             <td class="px-u-muted">{{ line.explanation }}</td>
                         </tr>

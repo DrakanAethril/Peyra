@@ -124,6 +124,15 @@ final class PayslipAdjustmentsTest extends TestCase
         self::assertSame([], $adjustments->withRemoved('1000')->forced);
     }
 
+    public function testARubriqueAddedThenTakenOffIsNoLongerAdjusted(): void
+    {
+        $adjustments = (new PayslipAdjustments())->withAdded('1100')->withRemoved('1100');
+
+        self::assertSame([], $adjustments->removed);
+        self::assertSame([], $adjustments->added);
+        self::assertTrue($adjustments->isEmpty());
+    }
+
     private function payslip(PayslipAdjustments $adjustments): Payslip
     {
         $employee = new PayslipEmployee('Thomas Lefèvre', false, ContractType::Permanent, '151.67', Money::euros('2400.00'), BigDecimal::of('3.5'));

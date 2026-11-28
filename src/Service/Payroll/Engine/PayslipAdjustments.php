@@ -59,6 +59,11 @@ final readonly class PayslipAdjustments
     {
         $forced = $this->forced;
         unset($forced[$code]);
+        if ($this->adds($code)) {
+            // A rubrique added by hand and taken off again: the addition is undone, nothing is removed - an
+            // element of the month entered later still brings the line back.
+            return new self($this->removed, array_values(array_diff($this->added, [$code])), $forced);
+        }
 
         return new self(array_values(array_unique([...$this->removed, $code])), array_values(array_diff($this->added, [$code])), $forced);
     }

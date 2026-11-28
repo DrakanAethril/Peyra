@@ -29,6 +29,7 @@ use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\Pdf\PdfRenderer;
 use App\Service\Shared\PostValue;
+use App\Service\Shared\QueryValue;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -154,8 +155,10 @@ final class PayslipsController extends AbstractController
                     $book->record($employee, $month, $read['elements'], $adjustments);
                     $entityManager->flush();
                     $this->addFlash('status', \sprintf('Bulletin de %s calculé.', $employee->getFullName()));
+                    // A rubrique just added (Inser) is the line typed next: the page opens with its first cell in focus.
+                    $added = PostValue::trimmed($request, 'add');
 
-                    return $this->redirectToRoute('app_payroll_payslip', ['dossier' => $dossier->getId(), 'number' => $number], Response::HTTP_SEE_OTHER);
+                    return $this->redirectToRoute('app_payroll_payslip', ['dossier' => $dossier->getId(), 'number' => $number] + ('' === $added ? [] : ['line' => $added]), Response::HTTP_SEE_OTHER);
                 }
                 $errors['calculation'] = $calculation['refusal'];
             }
@@ -202,6 +205,7 @@ final class PayslipsController extends AbstractController
             'controls' => $controls,
             'assistance' => $assistance,
             'cell_texts' => $texts,
+            'focus_line' => QueryValue::trimmed($request, 'line'),
             'addable' => null === $current['payslip'] ? [] : array_values(array_filter($plan, static fn (PayrollItemSpec $spec): bool => !\in_array($spec->code, $shown, true))),
         ], new Response(null, [] === $errors ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY));
     }

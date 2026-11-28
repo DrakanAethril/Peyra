@@ -2,6 +2,7 @@
 {% import 'payroll/edition/_macros.html.twig' as m %}
 {% set pdf = pdf|default(false) %}
 {% set num = pdf ? 'px-doc__num' : 'px-u-num' %}
+{% set num_head = pdf ? 'px-doc__num' : 'px-u-right' %}
 {% set sub = pdf ? 'px-doc__subtotal' : 'px-table__subtotal' %}
 {% set headings = {gross: 'Éléments de brut', contribution: 'Cotisations et contributions', not_subject: 'Éléments non soumis', deduction: 'Retenues sur le net'} %}
 {% set cells %}
@@ -9,10 +10,10 @@
         <tr>
             <th scope="col">Rubrique</th>
             <th scope="col">Intitulé</th>
-            <th scope="col" class="{{ num }}">Base</th>
-            <th scope="col" class="{{ num }}">Part salariale</th>
-            <th scope="col" class="{{ num }}">Part patronale</th>
-            <th scope="col" class="{{ num }}">Bulletins</th>
+            <th scope="col" class="{{ num_head }}">Base</th>
+            <th scope="col" class="{{ num_head }}">Part salariale</th>
+            <th scope="col" class="{{ num_head }}">Part patronale</th>
+            <th scope="col" class="{{ num_head }}">Bulletins</th>
         </tr>
     </thead>
     <tbody>

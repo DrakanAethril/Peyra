@@ -40,6 +40,29 @@ enum PayslipUnit: string
         };
     }
 
+    /**
+     * The same figure in a cell of the payslip on screen (maquette 4): hours, days and percents keep their
+     * unit, euros do not - the column says them, as « 2 400,00 » and « 15,8238 » do on the mock-up.
+     */
+    public function cellText(BigDecimal $value): string
+    {
+        return match ($this) {
+            self::Euros, self::EurosPerHour, self::EurosPerUnit => FrenchFormat::quantity($value, max(2, $value->strippedOfTrailingZeros()->getScale())),
+            default => $this->format($value),
+        };
+    }
+
+    /** The unit an open cell of the payslip shows after what is typed in it, when the figure has one. */
+    public function suffix(): ?string
+    {
+        return match ($this) {
+            self::Hours => 'h',
+            self::Days => 'j',
+            self::Percent => '%',
+            default => null,
+        };
+    }
+
     /** The amount of a line: base × rate, a percent divided by a hundred, rounded half up to the cent. */
     public function times(BigDecimal $base, BigDecimal $rate): BigDecimal
     {
