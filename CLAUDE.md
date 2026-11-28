@@ -100,7 +100,7 @@ empty, and `PeyraScheduleTest` pins that list, so adding a task is a decision th
 | `app:regulatory:sync [--dry-run]` | Installs the millésime files `config/regulatory/<année>.yaml`; only ever adds rows, never over an administrator's value. **Every deploy runs it** |
 | `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
-| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, January's purchases and Banque Populaire with two drafts in each, seven entry templates; date 31/01/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
+| `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, January's purchases and Banque Populaire with two drafts in each, seven entry templates, two subscriptions, three suppliers lettered; date 31/01/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
 | `app:dev:dossiers` | **Development and test only**, until the distribution of step 1.8: gives each student enrolled this year their own Menuiserie Vasseur, built from the fixtures (the template installed first if missing). Sign the students in first: their first sign-in places them |
 | `app:test:parallel-databases` | **Test only.** Copies the migrated `peyra_test` into `peyra_test1`… for ParaTest (tests/README.md) |
 
@@ -813,6 +813,52 @@ Lot 1, step 1.5c (design-ux.md §§ 2.1 and 4.4, design-ui.md § 4.6), held by c
   (`app_accounting_entry:ACH` for a journal's grid), what `RecentScreensListener` records on a whole
   page (GET, 200, HTML, not a Turbo Frame) of a catalogue route. Pictograms named in PHP are checked by
   `GlobalSearchTest`, not `IconNamesTest`.
+
+## Lettering and opening balance (built at step 1.6)
+
+Lot 1, step 1.6 (design-ux.md §§ 3.1 gabarit X, 3.2, 5.3, 6.3), held by code in
+`src/Service/Accounting/Lettering/`, `src/Service/Accounting/Opening/`, `LetteringController`,
+`OpeningController` and `lettering_controller.js`:
+
+- **A line is lettered by its letter and its date** (`EntryLine::$letter`, `$letteredOn` = the
+  dossier's date, the FEC's EcritureLet/DateLet), both in `MUTABLE_WHEN_VALIDATED`. **Only a
+  validated entry's line is lettered**: `LedgerGuard` refuses a letter on a draft's line (a draft is
+  rewritten whole). **`Lettering` is the one door** (`LetteringDoorTest`: nothing else calls
+  `letteringSet()`/`letteringClear()`): `letter()`, `unletter()`, `proposals()` and
+  `letterProposals()`, each under a pessimistic lock on the account's row, the account's lines read
+  again under it (`EntryLineRepository::findOnAccount(…, refresh: true)` - it never fetch-joins the
+  entries then: refreshing an entry drops the lines it holds), the audit trail written
+  (`LinesLettered`, `LinesUnlettered`), flushed in one transaction; a refusal is `LetteringRefused`.
+- **A lettering belongs to a `LetteringKey`**: a lettrable general account whole, or a third party on
+  a collective (401SCIE on 401000; Girard on 419100 is another key, `?on=419100` on the screen).
+  Never across two keys, nor in a closed exercise.
+- **Letters** (`LetterSequence`, pure): A…Z, AA… up to four, the next after the highest in use on the
+  key; capitals for a group that balances, small letters for a partial one (Sage). Compare with
+  `LetterSequence::same()` - MariaDB's collation ignores the case anyway, so never ask SQL to tell
+  « a » from « A ».
+- **`LetteringRules::decide()`** (pure): a total letter refuses the line, a partial one brings its
+  whole group (completed under its letter, the smallest when two merge), debits and credits both,
+  balanced or partial - partial only where `AssistanceLevel::blocks()` is false (A, 0).
+  **`LetteringProposals`** (pure): by amount (equal amounts, oldest with oldest) and by document
+  (same pièce, balanced). Délettrer refuses a group with a line in a closed period.
+- **Screens**: Comptabilité › Consultation › Lettrage (`/d/{dossier}/accounting/lettering`): without
+  an account, the keys with open lines (`LetteringBoard::rows()`); with `?account=401SCIE`, the
+  face-à-face (`LetteringBoard::view()`, the template's variable is `face`: **the dossier shell
+  already holds a `view`**), `all=1` shows the lettered lines, `auto=amount|document` previews the
+  automatic lettering (`none` closes it; by amount by default at level G), `last=A` offers Ctrl Z.
+  Espace ticks (rows_controller.js), Tab changes side (boxes and buttons are `tabindex="-1"`),
+  Suppr délettre, Ctrl Entrée letters; the selection's sum is the browser's, the server checks all.
+  POST `…/letter`, `…/unletter`, `…/auto` (CSRF `lettering-<dossier>`, EDIT). The consultation
+  offers « Lettrer ». An account whose lines carry letters stays lettrable (`AccountSheet`,
+  `ChartImport`).
+- **À-nouveaux**: an entry of the opening journal is dated the first day of its exercise
+  (`EntryRules`). The opening balance is typed in that journal's grid; Comptabilité › Saisie ›
+  À-nouveaux (`/d/{dossier}/accounting/opening[?exercise=2026]`, `OpeningBalance::of()`) reads it by
+  account and checks it: balanced - the new groups of the journal's pending work in the exercise's
+  first month included, the one place it can be unbalanced -, validated, classes 1 to 5 only. Saisie
+  always draws its tabs now (Par journal, Guidée when open, À-nouveaux).
+- `fixtures/demo/letterings.yaml` (`DemoLetteringFile`): automatic letterings by amount, installed
+  after the subscriptions (F0001, F0009, F0018). The copier (1.8) copies `letter` and `letteredOn`.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

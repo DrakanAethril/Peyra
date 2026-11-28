@@ -10,12 +10,14 @@ use App\Entity\Dossier\Dossier;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\EntryState;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\Query;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
  * The lines of the dossier's entries, read inside its context (the `dossier` filter). The
  * readings of balances are App\Service\Accounting\Ledger\LedgerReader's; this repository answers
- * the guards of the plan's fiches: does an account, a third party carry lines?
+ * the guards of the plan's fiches (does an account, a third party carry lines?) and the lettering's
+ * readings (the lines of an account or of a third party on its collective).
  *
  * @extends ServiceEntityRepository<EntryLine>
  */
@@ -88,5 +90,133 @@ final class EntryLineRepository extends ServiceEntityRepository
         }
 
         return $counts;
+    }
+
+    /** How many lines of the account carry a lettering letter. */
+    public function countLetteredOnAccount(Account $account): int
+    {
+        return (int) $this->createQueryBuilder('l')
+            ->select('COUNT(l.id)')
+            ->andWhere('l.account = :account')
+            ->andWhere('l.letter IS NOT NULL')
+            ->setParameter('account', $account)
+            ->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * The lines of an account - narrowed to a third party's when one is given -, in date order,
+     * then entry and position. `validated` keeps the validated entries' only;
+     * `refresh` reads the rows again over what the request already holds (under the lettering's
+     * lock).
+     *
+     * @return list<EntryLine>
+     */
+    public function findOnAccount(Account $account, ?ThirdParty $thirdParty, bool $validated, bool $refresh = false): array
+    {
+        $query = $this->createQueryBuilder('l')
+            ->join('l.entry', 'e')
+            ->andWhere('l.account = :account')
+            ->setParameter('account', $account)
+            ->orderBy('e.entryDate')
+            ->addOrderBy('e.id')
+            ->addOrderBy('l.position');
+        if (null !== $thirdParty) {
+            $query->andWhere('l.thirdParty = :thirdParty')->setParameter('thirdParty', $thirdParty);
+        }
+        if ($validated) {
+            $query->andWhere('e.state = :validated')->setParameter('validated', EntryState::Validated);
+        }
+        // The entries come with their lines, unless the lines are read again: refreshing an entry
+        // would drop the lines it already holds.
+        if (!$refresh) {
+            $query->addSelect('e');
+        }
+        $result = $query->getQuery();
+        if ($refresh) {
+            $result->setHint(Query::HINT_REFRESH, true);
+        }
+
+        /* @var list<EntryLine> */
+        return $result->getResult();
+    }
+
+    /**
+     * Lines of the dossier by id, with their entries; an id that names none is left out.
+     *
+     * @param list<int> $ids
+     *
+     * @return list<EntryLine>
+     */
+    public function findByIds(array $ids): array
+    {
+        if ([] === $ids) {
+            return [];
+        }
+
+        /* @var list<EntryLine> */
+        return $this->createQueryBuilder('l')
+            ->addSelect('e')
+            ->join('l.entry', 'e')
+            ->andWhere('l.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->orderBy('l.id')
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * The validated lines of every lettrable account, with their account and third party: what the
+     * lettering's list adds up per account and third party.
+     *
+     * @return list<EntryLine>
+     */
+    public function findValidatedOnLettrableAccounts(): array
+    {
+        /* @var list<EntryLine> */
+        return $this->createQueryBuilder('l')
+            ->addSelect('a', 't')
+            ->join('l.entry', 'e')
+            ->join('l.account', 'a')
+            ->leftJoin('l.thirdParty', 't')
+            ->andWhere('e.state = :validated')
+            ->andWhere('a.lettrable = true')
+            ->setParameter('validated', EntryState::Validated)
+            ->orderBy('a.number')
+            ->addOrderBy('t.code')
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * How many lines of the brouillard sit on an account (narrowed to a third party's): they are
+     * lettered once validated.
+     */
+    public function countDraftsOnAccount(Account $account, ?ThirdParty $thirdParty): int
+    {
+        $query = $this->createQueryBuilder('l')
+            ->select('COUNT(l.id)')
+            ->join('l.entry', 'e')
+            ->andWhere('l.account = :account')
+            ->andWhere('e.state = :draft')
+            ->setParameter('account', $account)
+            ->setParameter('draft', EntryState::Draft);
+        if (null !== $thirdParty) {
+            $query->andWhere('l.thirdParty = :thirdParty')->setParameter('thirdParty', $thirdParty);
+        }
+
+        return (int) $query->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * The lettrable collective accounts the third party's validated lines sit on, by number.
+     *
+     * @return list<Account>
+     */
+    public function lettrableAccountsOf(ThirdParty $thirdParty): array
+    {
+        /* @var list<Account> */
+        return $this->getEntityManager()->createQuery(
+            'SELECT a FROM '.Account::class.' a WHERE a.lettrable = true AND a.collective = true AND EXISTS ('
+            .'SELECT l.id FROM '.EntryLine::class.' l JOIN l.entry e WHERE l.account = a AND l.thirdParty = :thirdParty AND e.state = :validated'
+            .') ORDER BY a.number',
+        )->setParameter('thirdParty', $thirdParty)->setParameter('validated', EntryState::Validated)->getResult();
     }
 }

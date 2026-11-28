@@ -11,8 +11,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 /**
  * The screens and actions of a dossier the global search offers (Ctrl K, design-ux.md § 2.1): the
  * catalogue of what exists today - the dashboard, Comptabilité's screens (Saisie, one line per
- * journal, the guided entry when it is open to the person, Brouillard, Consultation, Recherche
- * d'écritures, the five editions, the five views of the settings), Système d'information ›
+ * journal, the guided entry when it is open to the person, À-nouveaux, Brouillard, Consultation,
+ * Lettrage, Recherche d'écritures, the five editions, the five views of the settings), Système d'information ›
  * Société - and, for whoever may change the dossier, the actions that create (« Nouvelle
  * écriture », « Nouveau compte »…). The search never offers a module a mission closes: the
  * missions (step 2.9) narrow this catalogue. Read inside the dossier's context.
@@ -24,8 +24,8 @@ final readonly class SearchScreens
 {
     /** The routes of the catalogue's screens: those a visit records among the recent ones. */
     public const array SCREEN_ROUTES = [
-        'app_dossier_dashboard', 'app_accounting_entry', 'app_accounting_guided', 'app_accounting_brouillard',
-        'app_accounting_consultation', 'app_accounting_entries', 'app_accounting_edition_journals',
+        'app_dossier_dashboard', 'app_accounting_entry', 'app_accounting_guided', 'app_accounting_opening', 'app_accounting_brouillard',
+        'app_accounting_consultation', 'app_accounting_lettering', 'app_accounting_entries', 'app_accounting_edition_journals',
         'app_accounting_edition_general_ledger', 'app_accounting_edition_trial_balance',
         'app_accounting_edition_third_party_balance', 'app_accounting_edition_aged_balance',
         'app_accounting_accounts', 'app_accounting_journals', 'app_third_parties', 'app_accounting_templates',
@@ -97,11 +97,13 @@ final readonly class SearchScreens
         if ($canEdit && $guidedOpen) {
             $items[] = $screen('app_accounting_guided', 'Saisie guidée', self::ENTRY, 'book-text', 'modele');
         }
+        $items[] = $screen('app_accounting_opening', 'À-nouveaux', self::ENTRY, 'book-text', 'a nouveaux balance ouverture exercice an');
 
         return [
             ...$items,
             $screen('app_accounting_brouillard', 'Brouillard', 'Comptabilité', 'book-text', 'valider ecritures'),
             $screen('app_accounting_consultation', 'Consultation d’un compte ou d’un tiers', self::CONSULTATION, 'search', 'interroger extrait'),
+            $screen('app_accounting_lettering', 'Lettrage', self::CONSULTATION, 'link-2', 'lettrer delettrer factures reglements rapprocher'),
             $screen('app_accounting_entries', 'Recherche d’écritures', self::CONSULTATION, 'search', 'interroger journal piece'),
             $screen('app_accounting_edition_journals', 'Journaux', self::EDITIONS, 'printer', 'edition imprimer'),
             $screen('app_accounting_edition_general_ledger', 'Grand livre', self::EDITIONS, 'printer', 'edition imprimer'),

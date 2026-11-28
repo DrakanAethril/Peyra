@@ -15,11 +15,15 @@ use App\Enum\Audit\AuditAction;
 use App\Enum\Dossier\DossierKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Dossier\DossierRepository;
+use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Accounting\Chart\AccountNumber;
 use App\Service\Accounting\Chart\ChartInstaller;
 use App\Service\Accounting\Chart\ReferenceCharts;
 use App\Service\Accounting\Ledger\EntryRefused;
 use App\Service\Accounting\Ledger\Ledger;
+use App\Service\Accounting\Lettering\Lettering;
+use App\Service\Accounting\Lettering\LetteringKey;
+use App\Service\Accounting\Lettering\LetteringRefused;
 use App\Service\Accounting\Subscription\SubscriptionRun;
 use App\Service\Accounting\Subscription\SubscriptionSheet;
 use App\Service\Accounting\Template\TemplateSheet;
@@ -55,6 +59,8 @@ final readonly class DemoInstaller
         private TemplateSheet $templateSheet,
         private SubscriptionSheet $subscriptionSheet,
         private SubscriptionRun $subscriptionRun,
+        private Lettering $lettering,
+        private ThirdPartyRepository $thirdParties,
         #[Autowire('%kernel.project_dir%/fixtures/demo')]
         private string $directory,
     ) {
@@ -89,6 +95,7 @@ final readonly class DemoInstaller
         $entryFile = DemoEntryFile::read($this->directory.'/entries.yaml');
         $templateFile = DemoTemplateFile::read($this->directory.'/templates.yaml');
         $subscriptionFile = DemoSubscriptionFile::read($this->directory.'/subscriptions.yaml');
+        $letteringFile = DemoLetteringFile::read($this->directory.'/letterings.yaml');
         $dossier = new Dossier($kind, $file->company, $file->dossierDate, $owner, $year, $at, null);
         $dossier->comesFrom($template, null);
         $this->entityManager->persist($dossier);
@@ -111,6 +118,7 @@ final readonly class DemoInstaller
         $this->context->within($dossier, fn () => $this->installEntries($dossier, $entryFile, $actor));
         $this->context->within($dossier, fn () => $this->installTemplates($dossier, $templateFile, $actor));
         $this->context->within($dossier, fn () => $this->installSubscriptions($dossier, $subscriptionFile, $actor, $at));
+        $this->context->within($dossier, fn () => $this->installLetterings($dossier, $letteringFile, $actor));
         $this->auditTrail->record(
             AuditAction::DossierCreated,
             $actor,
@@ -122,6 +130,21 @@ final readonly class DemoInstaller
         $this->entityManager->flush();
 
         return $dossier;
+    }
+
+    /** Its letterings, each an automatic lettering of one account: one that finds nothing installs nothing more. */
+    private function installLetterings(Dossier $dossier, DemoLetteringFile $file, string $actor): void
+    {
+        foreach ($file->letterings as $index => $lettering) {
+            $where = 'letterings.yaml : letterings['.$index.']';
+            $account = $this->accounts->findOneByNumber($dossier, $lettering['account']) ?? throw new \InvalidArgumentException($where.' : le compte '.$lettering['account'].' n’est pas dans le plan.');
+            $thirdParty = null === $lettering['thirdParty'] ? null : ($this->thirdParties->findOneByCode($dossier, $lettering['thirdParty']) ?? throw new \InvalidArgumentException($where.' : le tiers '.$lettering['thirdParty'].' n’existe pas.'));
+            try {
+                $this->lettering->letterProposals($dossier, LetteringKey::of($account, $thirdParty), $lettering['mode'], $actor);
+            } catch (LetteringRefused $refused) {
+                throw new \InvalidArgumentException($where.' : '.$refused->getMessage(), previous: $refused);
+            }
+        }
     }
 
     /** Its third parties, each checked as the form checks it: a fault names the code and installs nothing. */

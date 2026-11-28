@@ -95,6 +95,10 @@ final readonly class ChartImport
                 $lines[] = new ChartImportLine($row['line'], $number, $row['label'], $row['lettrable'], $collective, ChartImportLine::REFUSED, AccountSheet::entriesCollectiveRefusal($account->isCollective()));
                 continue;
             }
+            if ($updateExisting && false === $row['lettrable'] && $account->isLettrable() && $this->entryLines->countLetteredOnAccount($account) > 0) {
+                $lines[] = new ChartImportLine($row['line'], $number, $row['label'], $row['lettrable'], $collective, ChartImportLine::REFUSED, AccountSheet::LETTERED_REFUSAL);
+                continue;
+            }
             $changes = $updateExisting && (
                 $account->getLabel() !== $row['label']
                 || (null !== $row['lettrable'] && $account->isLettrable() !== $row['lettrable'])

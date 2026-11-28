@@ -1,0 +1,288 @@
+{#
+ # Comptabilité › Consultation › Lettrage (design-ux.md § 3.2, gabarit X; § 5.3). Without an
+ # account: the accounts and third parties that still have lines to letter. With one: the
+ # face-à-face - its validated debits on the left, its credits on the right (the open ones, or all
+ # of them) -, the selection's balance below, « Lettrer » (Ctrl Entrée), a group délettré by its
+ # letter, the last lettering undone by Ctrl Z; the automatic lettering by amount or by document,
+ # previewed in a card and marked « Proposé A » in the tables (by amount by default at level G).
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set module_current = 'consultation' %}
+{% set consultation_current = 'lettering' %}
+{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set dossier_title = key ? 'Lettrage · ' ~ key.code : 'Lettrage' %}
+{% set status_keys = face and can_edit
+    ? [{combo: 'Space', verb: 'Choisir la ligne'}, {combo: 'Tab', verb: 'Autre côté'}, {combo: 'Ctrl+Enter', verb: 'Lettrer'}]
+        |merge((all and face.letteredGroups > 0) or face.partialGroups > 0 ? [{combo: 'Delete', verb: 'Délettrer'}] : [])
+        |merge(last and face.holdsLetter(last) ? [{combo: 'Ctrl+Z', verb: 'Défaire le dernier lettrage'}] : [])
+    : [{combo: 'F4', verb: 'Liste des comptes'}, {combo: 'Enter', verb: 'Ouvrir'}] %}
+{% set keep = {account: key ? key.code : (typed ?: null), on: key ? key.otherAccount : null} %}
+{% set partial_allowed = not level.blocks %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ key ? 'Lettrage · ' ~ key.describe ~ ' · ' ~ key.label : 'Lettrage' }}" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_entry', {dossier: dossier.id})},
+        {label: 'Consultation', href: path('app_accounting_consultation', {dossier: dossier.id})},
+        {label: 'Lettrage', href: path('app_accounting_lettering', {dossier: dossier.id})},
+    ]|merge(key ? [{label: key.code, href: path('app_accounting_lettering', {dossier: dossier.id}|merge(keep))}] : [])">
+        <twig:block name="badge"> <twig:Px:Badge tone="neutral" label="{{ level.label }}"/></twig:block>
+        <twig:block name="actions">
+            {% if return_path %}<twig:Px:Button href="{{ return_path }}" variant="quiet" icon="chevron-left">Revenir</twig:Px:Button>{% endif %}
+            {% if key %}
+                <twig:Px:Button href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: key.code, return: here}) }}" icon="book-text">Consulter</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_consultation_tabs.html.twig') }}
+
+    {% if error %}<twig:Px:Alert tone="danger">{{ error }}</twig:Px:Alert>{% endif %}
+    {% for fault in app.flashes('lettering_fault') %}<twig:Px:Alert tone="danger" title="Lettrage refusé">{{ fault }}</twig:Px:Alert>{% endfor %}
+
+    {% if face is null %}
+        {{ block('accounts_to_letter') }}
+    {% else %}
+        {{ block('face_to_face') }}
+    {% endif %}
+{% endblock %}
+
+{% block accounts_to_letter %}
+    {% if collective %}
+        <twig:Px:Alert tone="info">Le compte {{ collective.number }} est collectif : on lettre les lignes de chacun de ses tiers. Choisissez-en un.</twig:Px:Alert>
+    {% endif %}
+    <twig:Px:Card :flush="true">
+        <twig:Px:Filters action="{{ path('app_accounting_lettering', {dossier: dossier.id}) }}" resetHref="{{ collective ? path('app_accounting_lettering', {dossier: dossier.id}) : null }}">
+            <span class="px-filters__field">
+                <label for="lettering-account">Compte ou tiers</label>
+                <twig:Px:AccountPicker id="lettering-account" name="account" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" value="{{ typed }}" accountLabel="{{ collective ? collective.label : '' }}" :error="error ? 'Introuvable' : null" data-account-picker-submit-value="true" autofocus/>
+            </span>
+            <twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button>
+        </twig:Px:Filters>
+        {% if lettering_rows is empty %}
+            <twig:Px:Empty icon="link-2" title="Rien à lettrer" text="{{ collective ? 'Aucune ligne validée de ' ~ collective.number ~ ' n’attend son lettrage.' : 'Aucune ligne validée d’un compte lettrable n’attend son lettrage. Un compte de tiers se lettre une fois ses écritures validées.' }}"/>
+        {% else %}
+            <twig:Px:Table caption="Comptes et tiers à lettrer" :rows="true">
+                <thead><tr>
+                    <th scope="col">Compte</th>
+                    <th scope="col">Tiers</th>
+                    <th scope="col">Intitulé ou nom</th>
+                    <th scope="col" class="px-u-right">Lignes à lettrer</th>
+                    <th scope="col" class="px-u-right">Débit</th>
+                    <th scope="col" class="px-u-right">Crédit</th>
+                    <th scope="col" class="px-u-right">Reste</th>
+                </tr></thead>
+                <tbody>
+                    {% for row in lettering_rows %}
+                        {% set row_key = row.key %}
+                        {% set row_href = path('app_accounting_lettering', {dossier: dossier.id, account: row_key.code, on: row_key.otherAccount}) %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-code">{{ row_key.account.number }}</td>
+                            <td class="px-u-code"><a class="px-link" href="{{ row_href }}">{{ row_key.thirdParty ? row_key.code : '—' }}</a></td>
+                            <td class="px-u-truncate px-u-fill" title="{{ row_key.label }}">{% if not row_key.thirdParty %}<a class="px-link" href="{{ row_href }}">{{ row_key.label }}</a>{% else %}{{ row_key.label }}{% endif %}</td>
+                            <td class="px-u-num">{{ row.openLines }}{% if row.partialGroups %} <span class="px-u-muted">· {{ row.partialGroups }} partiel{{ row.partialGroups > 1 ? 's' : '' }}</span>{% endif %}</td>
+                            <td class="px-u-num">{{ row.openDebit|amount_cell }}</td>
+                            <td class="px-u-num">{{ row.openCredit|amount_cell }}</td>
+                            <td class="px-u-num">{{ row.openBalance|balance }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block face_to_face %}
+    <div class="px-kpis">
+        <twig:Px:Kpi label="Solde du compte" value="{{ face.balance|balance }}" note="{{ face.drafts ? 'écritures validées ; ' ~ face.drafts ~ ' ligne' ~ (face.drafts > 1 ? 's' : '') ~ ' au brouillard' : 'écritures validées' }}"/>
+        <twig:Px:Kpi label="Reste à lettrer" value="{{ face.openBalance|balance }}" note="{{ face.openLines }} ligne{{ face.openLines > 1 ? 's' : '' }} non lettrée{{ face.openLines > 1 ? 's' : '' }}" :state="face.openLines == 0 ? 'ok' : null"/>
+        <twig:Px:Kpi label="Lettrages" value="{{ face.letteredGroups + face.partialGroups }}" note="{{ face.partialGroups ? 'dont ' ~ face.partialGroups ~ ' partiel' ~ (face.partialGroups > 1 ? 's' : '') : 'groupes soldés' }}"/>
+        <div class="px-kpi" data-lettering-kpi>
+            <span class="px-kpi__label">Sélection</span>
+            <b class="px-kpi__value" data-lettering-kpi-value>—</b>
+            <small class="px-kpi__note" data-lettering-kpi-note>Aucune ligne choisie</small>
+        </div>
+    </div>
+
+    <twig:Px:Card :flush="true">
+        <twig:Px:Filters action="{{ path('app_accounting_lettering', {dossier: dossier.id}) }}">
+            <span class="px-filters__field">
+                <label for="lettering-account">Compte ou tiers</label>
+                <twig:Px:AccountPicker id="lettering-account" name="account" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" value="{{ key.code }}" accountLabel="{{ key.label }}" data-account-picker-submit-value="true"/>
+            </span>
+            <twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button>
+            {% if face.accounts|length > 1 %}
+                <span class="px-filters__sep" aria-hidden="true"></span>
+                {% for account in face.accounts %}
+                    <twig:Px:FilterChip label="{{ account.number }}" title="{{ account.label }}" href="{{ path('app_accounting_lettering', {dossier: dossier.id, account: key.code, on: account.id == key.thirdParty.account.id ? null : account.number, all: all ? '1' : null}) }}" :current="account.id == key.account.id"/>
+                {% endfor %}
+            {% endif %}
+            <span class="px-filters__sep" aria-hidden="true"></span>
+            <twig:Px:Button size="sm" variant="quiet" icon="{{ all ? 'eye-off' : 'eye' }}" :pressed="all" href="{{ path('app_accounting_lettering', {dossier: dossier.id}|merge(keep)|merge({all: all ? null : '1'})) }}">Afficher les lettrées</twig:Px:Button>
+            {% if can_edit %}
+                <span class="px-filters__sep" aria-hidden="true"></span>
+                <span class="px-filters__label">Lettrage automatique</span>
+                {% for mode in ['amount', 'document'] %}
+                    <twig:Px:FilterChip label="{{ mode == 'amount' ? 'par montant' : 'par pièce' }}" href="{{ path('app_accounting_lettering', {dossier: dossier.id}|merge(keep)|merge({all: all ? '1' : null, auto: auto and auto.value == mode ? 'none' : mode})) }}" :current="auto and auto.value == mode"/>
+                {% endfor %}
+            {% endif %}
+        </twig:Px:Filters>
+    </twig:Px:Card>
+
+    {% if auto and can_edit %}
+        <twig:Px:Card title="Lettrage automatique {{ auto.phrase }}" meta="{{ proposals is empty ? 'rien à proposer' : proposals|length ~ ' groupe' ~ (proposals|length > 1 ? 's' : '') ~ ' proposé' ~ (proposals|length > 1 ? 's' : '') }}" :flush="proposals is not empty">
+            <twig:block name="actions">
+                {% if proposals is not empty %}
+                    <form method="post" action="{{ path('app_accounting_lettering_auto', {dossier: dossier.id}) }}" class="px-cluster">
+                        <input type="hidden" name="_token" value="{{ csrf_token('lettering-' ~ dossier.id) }}">
+                        <input type="hidden" name="account" value="{{ key.code }}">
+                        {% if keep.on %}<input type="hidden" name="on" value="{{ keep.on }}">{% endif %}
+                        {% if all %}<input type="hidden" name="all" value="1">{% endif %}
+                        <input type="hidden" name="mode" value="{{ auto.value }}">
+                        <twig:Px:Button size="sm" type="submit" variant="primary" icon="link-2">Lettrer {{ proposals|length > 1 ? 'les ' ~ proposals|length ~ ' groupes' : 'ce groupe' }}</twig:Px:Button>
+                    </form>
+                {% endif %}
+                <twig:Px:Button size="sm" variant="quiet" href="{{ path('app_accounting_lettering', {dossier: dossier.id}|merge(keep)|merge({all: all ? '1' : null, auto: 'none'})) }}">Fermer</twig:Px:Button>
+            </twig:block>
+            <twig:block name="content">
+                {% if proposals is empty %}
+                    <p class="px-u-muted">{{ auto.value == 'amount'
+                        ? 'Aucun débit non lettré n’a son crédit du même montant sur ' ~ key.describe ~ '.'
+                        : 'Aucune pièce ne réunit, sur ' ~ key.describe ~ ', des débits et des crédits non lettrés qui se soldent.' }}</p>
+                {% else %}
+                    <twig:Px:Table caption="Groupes proposés par le lettrage automatique" density="compact">
+                        <thead><tr>
+                            <th scope="col">Lettre</th>
+                            <th scope="col">Date</th>
+                            <th scope="col">Pièce</th>
+                            <th scope="col">Libellé</th>
+                            <th scope="col" class="px-u-right">Débit</th>
+                            <th scope="col" class="px-u-right">Crédit</th>
+                        </tr></thead>
+                        <tbody>
+                            {% for group in proposals %}
+                                {% for line in group.lines %}
+                                    <tr{% if loop.first and not loop.parent.loop.first %} class="px-table__groupstart"{% endif %}>
+                                        <td>{% if loop.first %}<twig:Px:Badge tone="warning" label="Proposé {{ group.letter }}"/>{% endif %}</td>
+                                        <td class="px-u-code">{{ line.entry.entryDate|date('d/m/Y') }}</td>
+                                        <td class="px-u-code">{{ line.entry.document }}</td>
+                                        <td class="px-u-truncate px-u-fill" title="{{ line.label ?: line.entry.label }}">{{ line.label ?: line.entry.label }}</td>
+                                        <td class="px-u-num">{{ line.debit|amount_cell }}</td>
+                                        <td class="px-u-num">{{ line.credit|amount_cell }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                {% endif %}
+            </twig:block>
+        </twig:Px:Card>
+    {% endif %}
+
+    <form method="post" action="{{ path('app_accounting_lettering_letter', {dossier: dossier.id}) }}" class="px-stack px-lettering"
+          data-controller="lettering" data-lettering-partial-value="{{ partial_allowed ? 'true' : 'false' }}"
+          data-action="change->lettering#refresh keydown->lettering#keydown">
+        <input type="hidden" name="_token" value="{{ csrf_token('lettering-' ~ dossier.id) }}">
+        <input type="hidden" name="account" value="{{ key.code }}">
+        {% if keep.on %}<input type="hidden" name="on" value="{{ keep.on }}">{% endif %}
+        {% if all %}<input type="hidden" name="all" value="1">{% endif %}
+        <div class="px-split px-split--even">
+            {% for side in ['debit', 'credit'] %}
+                {% set side_lines = side == 'debit' ? face.debits : face.credits %}
+                {% set side_title = side == 'debit' ? 'Débits' : 'Crédits' %}
+                <twig:Px:Card title="{{ side_title }}" meta="{{ side_lines|length }} ligne{{ side_lines|length > 1 ? 's' : '' }}{{ all ? '' : ' à lettrer' }}" :flush="true">
+                    <twig:block name="content">
+                        {% if side_lines is empty %}
+                            <twig:Px:Empty icon="circle-check" title="{{ all ? 'Aucune ligne' : 'Tout est lettré' }}" text="{{ all ? 'Aucune ligne validée au ' ~ (side == 'debit' ? 'débit' : 'crédit') ~ ' de ' ~ key.describe ~ '.' : 'Aucune ligne au ' ~ (side == 'debit' ? 'débit' : 'crédit') ~ ' n’attend son lettrage.' }}"/>
+                        {% else %}
+                            <twig:Px:Table caption="{{ side_title }} de {{ key.describe }}" :rows="true" data-lettering-target="side">
+                                <thead><tr>
+                                    {% if can_edit %}<th scope="col" class="px-table__pick"><span class="px-u-sr-only">Choisir</span></th>{% endif %}
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Pièce</th>
+                                    <th scope="col">Libellé</th>
+                                    <th scope="col" class="px-u-right">Montant</th>
+                                    <th scope="col" title="Lettrage">Let.</th>
+                                </tr></thead>
+                                <tbody>
+                                    {% set unletter_lines = face.unletterLines %}
+                                    {% for line in side_lines %}
+                                        {% set entry = line.entry %}
+                                        {% set letter = line.letter %}
+                                        {% set full = letter and not line.partiallyLettered %}
+                                        {% set amount = side == 'debit' ? line.debit : line.credit %}
+                                        {% set text = line.label ?: entry.label %}
+                                        <tr data-rows-target="row"{% if full %} class="is-dim"{% elseif proposed[line.id] is defined %} class="is-todo"{% endif %}>
+                                            {% if can_edit %}
+                                                <td class="px-table__pick">
+                                                    {% if not full %}
+                                                        <label class="px-check"><input type="checkbox" name="lines[]" value="{{ line.id }}" tabindex="-1"
+                                                            data-lettering-target="box" data-cents="{{ side == 'debit' ? amount.cents : -amount.cents }}"{% if letter %} data-group="{{ letter }}"{% endif %}><span class="px-u-sr-only">Choisir {{ entry.document }}, {{ amount|amount }} au {{ side == 'debit' ? 'débit' : 'crédit' }}</span></label>
+                                                    {% endif %}
+                                                </td>
+                                            {% endif %}
+                                            <td class="px-u-code">{{ entry.entryDate|date('d/m/Y') }}</td>
+                                            <td class="px-u-code"><a class="px-link" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id, return: here}) }}" tabindex="-1">{{ entry.document }}</a></td>
+                                            <td class="px-u-truncate px-u-fill" title="{{ text }}{{ line.dueDate ? ' · échéance ' ~ line.dueDate|date('d/m/Y') : '' }}">{{ text }}</td>
+                                            <td class="px-u-num">{{ amount|amount }}</td>
+                                            <td class="px-lettering__letter">
+                                                {% if full %}
+                                                    <twig:Px:Badge tone="success" label="{{ letter }}" full="Lettré {{ letter }}"/>
+                                                    {% if can_edit and unletter_lines[line.id] is defined %}
+                                                        <twig:Px:IconButton icon="unlink-2" label="Délettrer {{ letter }}" size="sm" type="submit" formaction="{{ path('app_accounting_lettering_unletter', {dossier: dossier.id}) }}" name="letter" value="{{ letter }}" tabindex="-1" data-lettering-unletter/>
+                                                    {% endif %}
+                                                {% elseif letter %}
+                                                    <twig:Px:Badge tone="info" label="{{ letter }}" full="Lettrage partiel {{ letter }}"/>
+                                                    {% if can_edit and unletter_lines[line.id] is defined %}
+                                                        <twig:Px:IconButton icon="unlink-2" label="Délettrer {{ letter }}" size="sm" type="submit" formaction="{{ path('app_accounting_lettering_unletter', {dossier: dossier.id}) }}" name="letter" value="{{ letter }}" tabindex="-1" data-lettering-unletter/>
+                                                    {% endif %}
+                                                {% elseif proposed[line.id] is defined %}
+                                                    <twig:Px:Badge tone="warning" label="Proposé {{ proposed[line.id] }}"/>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot><tr class="px-table__total">
+                                    <th scope="row" colspan="{{ can_edit ? 4 : 3 }}">Total {{ all ? 'affiché' : 'à lettrer' }}</th>
+                                    <td class="px-u-num">{{ (side == 'debit' ? face.debitTotal : face.creditTotal)|amount }}</td>
+                                    <td></td>
+                                </tr></tfoot>
+                            </twig:Px:Table>
+                        {% endif %}
+                    </twig:block>
+                </twig:Px:Card>
+            {% endfor %}
+        </div>
+
+        {% if can_edit %}
+            <twig:Px:Card>
+                <div class="px-lettering__selection">
+                    <p class="px-lettering__summary" aria-live="polite">
+                        <span data-lettering-target="summary">Choisissez au moins un débit et un crédit : Espace sur une ligne, Tab pour changer de côté.</span>
+                        <span data-lettering-target="state"></span>
+                    </p>
+                    <p class="px-u-sr-only" id="lettering-reason" data-lettering-target="reason"></p>
+                    <div class="px-cluster px-u-push">
+                        {% if last and face.holdsLetter(last) %}
+                            <twig:Px:Button size="sm" variant="quiet" icon="undo-2" type="submit" shortcut="Ctrl+Z" formaction="{{ path('app_accounting_lettering_unletter', {dossier: dossier.id}) }}" name="letter" value="{{ last }}">Défaire le lettrage {{ last }}</twig:Px:Button>
+                        {% endif %}
+                        <twig:Px:Button size="sm" variant="quiet" data-action="lettering#clear" data-lettering-target="clear" :disabled="true">Tout désélectionner</twig:Px:Button>
+                        <twig:Px:Button size="sm" variant="primary" icon="link-2" type="submit" shortcut="Ctrl+Enter" data-lettering-target="submit" :disabled="true" aria-describedby="lettering-reason">Lettrer</twig:Px:Button>
+                    </div>
+                </div>
+            </twig:Px:Card>
+        {% endif %}
+    </form>
+{% endblock %}
+
+{% block facts %}
+    {% if face %}
+        <span>{{ key.describe }} · reste à lettrer <b>{{ face.openBalance|balance }}</b></span>
+        <span>Niveau d’assistance · <b>{{ level.label }}</b>{{ level.blocks ? ', sélection soldée exigée' : ', lettrage partiel permis' }}</span>
+    {% else %}
+        <span>{{ lettering_rows|length }} compte{{ lettering_rows|length > 1 ? 's' : '' }} à lettrer</span>
+    {% endif %}
+{% endblock %}
