@@ -1,0 +1,5 @@
+{# The views of an employee (steps 4.2a, 4.2b): the fiche, the hiring formalities. #}
+<twig:Px:Tabs label="{{ employee.fullName }}" :tabs="[
+    {label: 'Fiche', href: path('app_payroll_employee', {dossier: dossier.id, number: employee.registrationNumber}), current: employee_current == 'fiche'},
+    {label: 'Formalités', href: path('app_payroll_employee_formalities', {dossier: dossier.id, number: employee.registrationNumber}), current: employee_current == 'formalities'},
+]"/>

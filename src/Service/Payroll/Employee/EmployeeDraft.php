@@ -31,6 +31,9 @@ final class EmployeeDraft
     public string $withholdingRate = '';
     public string $contractType = '';
     public string $hiredOn = '';
+    /** « 08:00 », or as typed (« 8h30 »). */
+    public string $hireTime = '';
+    public string $trialPeriod = '';
     public string $contractEndsOn = '';
     public string $fixedTermReason = '';
     public string $diploma = '';
@@ -67,6 +70,8 @@ final class EmployeeDraft
         $draft->withholdingRate = $employee->getWithholdingRate() ?? '';
         $draft->contractType = $employee->getContractType()->value;
         $draft->hiredOn = $employee->getHiredOn()->format('Y-m-d');
+        $draft->hireTime = $employee->getHireTime() ?? '';
+        $draft->trialPeriod = $employee->getTrialPeriod() ?? '';
         $draft->contractEndsOn = $employee->getContractEndsOn()?->format('Y-m-d') ?? '';
         $draft->fixedTermReason = $employee->getFixedTermReason() ?? '';
         $draft->diploma = $employee->getDiploma() ?? '';

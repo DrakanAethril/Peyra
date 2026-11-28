@@ -1,0 +1,121 @@
+{#
+ # An employee's hiring formalities (lot 4, step 4.2b; design-ux.md § 3.2 « Formalités »,
+ # gabarit E): the DPAE (to deposit on the simulated social portal, or its acknowledgement), the
+ # contract generated from the fiche, then the information and prevention visit and the
+ # affiliations, saved together with F10. An employee hired before the dossier's first exercise
+ # shows their formalities as « Avant le dossier ».
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'employees' %}
+{% set can_edit = is_granted('PAYROLL_ENTER', dossier) %}
+{% set dossier_title = employee.fullName ~ ' · Formalités' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ employee.registrationNumber }} · {{ employee.fullName }}" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Salariés', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: employee.registrationNumber, href: path('app_payroll_employee', {dossier: dossier.id, number: employee.registrationNumber})},
+        {label: 'Formalités', href: path('app_payroll_employee_formalities', {dossier: dossier.id, number: employee.registrationNumber})},
+    ]">
+        <twig:block name="badge"> <twig:Px:Badge :of="employee.contractType"/> <twig:Px:Badge :of="employee.stateAt(dossier.dossierDate)"/></twig:block>
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button type="submit" variant="primary" form="formalities-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('payroll/hiring/_employee_tabs.html.twig', {employee_current: 'formalities'}) }}
+    {% if not checklist.followed %}
+        <twig:Px:Alert tone="info">Embauche du {{ employee.hiredOn|date_fr }}, antérieure à l’ouverture du dossier : ses formalités ont été faites avant lui et ne sont pas suivies ici.</twig:Px:Alert>
+    {% endif %}
+
+    <div class="px-split px-split--even">
+        <twig:Px:Card title="Déclaration préalable à l’embauche (DPAE)">
+            <twig:block name="actions"><twig:Px:Badge :of="checklist.dpae"/></twig:block>
+            <twig:block name="content">
+                {% if declaration %}
+                    <p>Déposée le {{ declaration.declaredOn|date_fr }} sur le portail social, accusé n° <span class="px-u-code">{{ declaration.number }}</span>.{% if declaration.late %} Déposée après l’embauche du {{ employee.hiredOn|date_fr }} : hors délai.{% endif %}</p>
+                    <p class="px-cluster">
+                        <twig:Px:Button href="{{ path('app_social_portal_dpae_receipt', {dossier: dossier.id, number: employee.registrationNumber}) }}" icon="file-text">Voir l’accusé de réception</twig:Px:Button>
+                        <twig:Px:Button href="{{ path('app_social_portal_dpae_receipt_pdf', {dossier: dossier.id, number: employee.registrationNumber}) }}" icon="printer" target="_blank" data-turbo="false">Accusé PDF</twig:Px:Button>
+                    </p>
+                {% elseif checklist.followed %}
+                    <p>À déposer avant la prise de poste, le {{ employee.hiredOn|date_fr }}{% if employee.hireTime %} à {{ employee.hireTime }}{% endif %}, et au plus tôt le {{ checklist.dpaeOpensOn|date_fr }}.</p>
+                    <p><twig:Px:Button href="{{ path('app_social_portal_dpae', {dossier: dossier.id, number: employee.registrationNumber}) }}" variant="{{ can_edit ? 'primary' : 'secondary' }}" icon="send">Déclarer sur le portail social</twig:Px:Button></p>
+                {% else %}
+                    <p class="px-u-muted">Aucune DPAE dans le dossier.</p>
+                {% endif %}
+            </twig:block>
+        </twig:Px:Card>
+
+        <twig:Px:Card title="Contrat de travail">
+            <twig:block name="content">
+                <p>{{ employee.contractType.longLabel }}, établi depuis la fiche du salarié : emploi, classification, statut, durée du travail et salaire de l’embauche{% if employee.contractType.hasEnd %}, terme{% endif %}, période d’essai.</p>
+                <p><twig:Px:Button href="{{ path('app_payroll_employee_contract', {dossier: dossier.id, number: employee.registrationNumber}) }}" icon="printer" target="_blank" data-turbo="false">Générer le contrat (PDF)</twig:Px:Button></p>
+            </twig:block>
+        </twig:Px:Card>
+    </div>
+
+    <form method="post" action="{{ path('app_payroll_employee_formalities', {dossier: dossier.id, number: employee.registrationNumber}) }}" id="formalities-form" novalidate>
+        <input type="hidden" name="_token" value="{{ csrf_token('formalities-' ~ employee.id) }}">
+        <div class="px-stack">
+            <twig:Px:Card title="Visite d’information et de prévention">
+                <twig:block name="actions"><twig:Px:Badge :of="checklist.visit"/></twig:block>
+                <twig:block name="content">
+                    <p>{% if checklist.visitBeforePost %}Salarié mineur à l’embauche : la visite a lieu avant l’affectation au poste, le {{ checklist.visitDeadline|date_fr }} au plus tard.{% else %}À organiser auprès du service de prévention et de santé au travail au plus tard le {{ checklist.visitDeadline|date_fr }} ({{ employee.contractType.value == 'apprenticeship' ? 'apprenti majeur' : 'cas général' }}).{% endif %}</p>
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="visitOn" label="Visite prévue ou passée le" hint="Vide : pas encore organisée.">
+                            {% if can_edit %}
+                                <twig:Px:DateInput id="visitOn" :reference="dossier.dossierDate" :value="employee.informationVisitOn" hint="1"/>
+                            {% else %}
+                                <span>{{ employee.informationVisitOn ? employee.informationVisitOn|date_fr : '—' }}</span>
+                            {% endif %}
+                        </twig:Px:Field>
+                    </div>
+                </twig:block>
+            </twig:Px:Card>
+
+            <twig:Px:Card title="Affiliations" meta="{{ bodies|length }} {{ bodies|length > 1 ? 'organismes' : 'organisme' }}" :flush="true">
+                <twig:block name="content">
+                    {% if bodies is empty %}
+                        <twig:Px:Empty icon="landmark" title="Aucun organisme dans le dossier." text="Les organismes se déclarent dans Paramètres de paie › Organismes."/>
+                    {% else %}
+                        <twig:Px:Table caption="Affiliations de {{ employee.fullName }}">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Organisme</th>
+                                    <th scope="col">Nature</th>
+                                    <th scope="col">Référence</th>
+                                    <th scope="col">Affilié le</th>
+                                    <th scope="col">État</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for body in bodies %}
+                                    {% set day = affiliation_days[body.id] ?? null %}
+                                    <tr>
+                                        <td>{{ body.name }}</td>
+                                        <td>{{ body.kind.label }}</td>
+                                        <td class="px-u-code">{{ body.reference ?: '—' }}</td>
+                                        <td>
+                                            {% if can_edit %}
+                                                <twig:Px:DateInput id="affiliation_{{ body.id }}" name="affiliation[{{ body.id }}]" :reference="dossier.dossierDate" :value="day" aria-label="Affiliation à {{ body.name }}"/>
+                                            {% else %}
+                                                {{ day ? day|date_fr : '—' }}
+                                            {% endif %}
+                                        </td>
+                                        <td>{% if not checklist.followed %}<span class="px-u-muted">—</span>{% elseif day %}<twig:Px:Badge tone="success" label="Affilié"/>{% else %}<twig:Px:Badge tone="warning" label="À faire"/>{% endif %}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </twig:Px:Table>
+                    {% endif %}
+                </twig:block>
+            </twig:Px:Card>
+            {% if bodies is not empty %}<p class="px-u-muted">L’affiliation à l’Urssaf suit le dépôt de la DPAE ; les autres se déclarent auprès de chaque organisme.</p>{% endif %}
+        </div>
+    </form>
+{% endblock %}

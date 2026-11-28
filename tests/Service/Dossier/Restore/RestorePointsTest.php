@@ -31,6 +31,7 @@ use App\Service\Dossier\Restore\RestorePoints;
 use App\Service\Dossier\Restore\RestoreQueue;
 use App\Service\Dossier\Restore\RestoreRefused;
 use App\Service\Dossier\Restore\RestoreRunner;
+use App\Service\Regulatory\RegulatorySync;
 use App\Service\Shared\Storage\DossierFiles;
 use App\Tests\Support\CanonicalDossierExport;
 use Doctrine\DBAL\Connection;
@@ -54,6 +55,8 @@ final class RestorePointsTest extends KernelTestCase
     protected function setUp(): void
     {
         self::bootKernel();
+        // The demonstration's DPAE reads the regulatory delays (step 4.2b), as production syncs them before installing it.
+        self::getContainer()->get(RegulatorySync::class)->run(new \DateTimeImmutable('2026-11-28 10:00'));
         $installer = self::getContainer()->get(DemoInstaller::class);
         $installer->installTemplate('test', new \DateTimeImmutable(self::AT));
         $this->dossier = $installer->findTemplate() ?? throw new \LogicException('The demonstration is installed.');

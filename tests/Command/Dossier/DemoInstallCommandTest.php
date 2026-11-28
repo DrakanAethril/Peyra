@@ -15,6 +15,7 @@ use App\Enum\Dossier\DossierKind;
 use App\Enum\Dossier\TemplateLevel;
 use App\Enum\Payroll\ContractType;
 use App\Enum\Payroll\EmployeeState;
+use App\Enum\Payroll\FormalityState;
 use App\Enum\Payroll\WorkingTime;
 use App\Enum\Shared\BtsProcess;
 use App\Enum\ThirdParty\PaymentMethod;
@@ -35,6 +36,8 @@ use App\Service\Accounting\Subscription\SubscriptionRun;
 use App\Service\Accounting\Subscription\SubscriptionSchedule;
 use App\Service\Accounting\Template\TemplateCall;
 use App\Service\Dossier\DossierContext;
+use App\Service\Payroll\Hiring\HiringFormalities;
+use App\Service\Regulatory\RegulatorySync;
 use App\Service\Shared\Money;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -47,6 +50,8 @@ final class DemoInstallCommandTest extends KernelTestCase
     public function testInstallsTheTemplateOnceWithItsExercises(): void
     {
         $tester = new CommandTester(new Application(self::bootKernel())->find('app:demo:install'));
+        // As production syncs the millésimes before installing it: the DPAE reads the regulatory delays (step 4.2b).
+        self::getContainer()->get(RegulatorySync::class)->run(new \DateTimeImmutable('2026-11-28 10:00'));
 
         self::assertSame(0, $tester->execute([]));
         self::assertStringContainsString('Menuiserie Vasseur SARL installé dans la bibliothèque commune', $tester->getDisplay());
@@ -272,6 +277,15 @@ final class DemoInstallCommandTest extends KernelTestCase
             self::assertSame([225_000, 238_000], [$julien->termsAt($today)->getBaseSalary()->cents, $julien->termsAt(new \DateTimeImmutable('2026-04-01'))->getBaseSalary()->cents]);
             self::assertSame([WorkingTime::PartTime, '104', 147_680], [$sandrine->termsAt($today)->getWorkingTime(), $sandrine->termsAt($today)->getMonthlyHours(), $sandrine->termsAt($today)->getBaseSalary()->cents]);
             self::assertSame([ContractType::FixedTerm, '2026-09-30', EmployeeState::Upcoming], [$yanis->getContractType(), $yanis->getContractEndsOn()?->format('Y-m-d'), $yanis->stateAt($today)]);
+
+            // His formalities (step 4.2b, hiring.yaml): the DPAE of 30/03 and the Urssaf affiliation
+            // with it; the visit and the three other affiliations left to do. The older hires are
+            // before the dossier.
+            $formalities = self::getContainer()->get(HiringFormalities::class);
+            self::assertSame(['DPAE-2026-000001', '2026-03-30', false], [$formalities->declaration($yanis)?->getNumber(), $formalities->declaration($yanis)?->getDeclaredOn()->format('Y-m-d'), $formalities->declaration($yanis)?->isLate()]);
+            $list = $formalities->checklist($yanis, $today);
+            self::assertSame([FormalityState::Done, FormalityState::ToDo, '2026-07-01', 3], [$list->dpae, $list->visit, $list->visitDeadline->format('Y-m-d'), $list->affiliationsMissing]);
+            self::assertFalse($formalities->checklist($paul, $today)->followed);
         });
     }
 }

@@ -1,0 +1,6 @@
+{# What a DPAE declares, label and value (HiringFormalities::content(), or a declaration's frozen copy). #}
+<dl class="px-facts">
+    {% for line in lines %}
+        <dt>{{ line[0] }}</dt><dd>{{ line[1] }}</dd>
+    {% endfor %}
+</dl>

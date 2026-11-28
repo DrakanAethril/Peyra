@@ -170,6 +170,7 @@ employees:
     street: 40 rue Fictive
     postal_code: '42110'
     city: Feurs
-    contract: {type: fixed_term, hired_on: '2026-04-01', ends_on: '2026-09-30', reason: Accroissement temporaire d’activité (chantier Promotion Gier-Pilat)}
+    birth_place: Feurs (42)
+    contract: {type: fixed_term, hired_on: '2026-04-01', hire_time: '07:30', trial: 14 jours, ends_on: '2026-09-30', reason: Accroissement temporaire d’activité (chantier Promotion Gier-Pilat)}
     terms:
       - {from: '2026-04-01', job: Menuisier poseur, classification: 'Ouvrier qualifié, niveau interne O3', status: non_executive, time: full_time, salary: '1950.00'}

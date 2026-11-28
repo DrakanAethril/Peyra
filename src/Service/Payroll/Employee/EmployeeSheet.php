@@ -53,7 +53,8 @@ final readonly class EmployeeSheet
     }
 
     /** What may be saved, or null with the draft's errors filled. A new employee's terms start on the day of hire. */
-    public function check(EmployeeDraft $draft, Dossier $dossier, ?Employee $employee = null): ?EmployeeFields
+    /** With $hiringFields, the DPAE's fields are required (the assistance level, Assistance::requiresHiringDeclarationFields()). */
+    public function check(EmployeeDraft $draft, Dossier $dossier, ?Employee $employee = null, bool $hiringFields = false): ?EmployeeFields
     {
         $first = null === $employee ? null : $employee->getTerms()[0];
         if (null === $employee || ($first?->getEffectiveFrom()->format('Y-m-d') === $draft->termsFrom)) {
@@ -68,6 +69,7 @@ final readonly class EmployeeSheet
 
                 return null === $holder || $holder === $employee ? null : $holder->getFullName();
             },
+            $hiringFields,
         );
         if (null === $fields || null === $employee) {
             return $fields;
@@ -175,7 +177,7 @@ final readonly class EmployeeSheet
         $employee->identify($fields->registrationNumber, $fields->lastName, $fields->firstName, $fields->sex, $fields->birthDate, $fields->birthPlace, $fields->nationality, $fields->nir);
         $employee->locate($fields->street, $fields->postalCode, $fields->city);
         $employee->withhold($fields->withholdingRate);
-        $employee->contract($fields->contractType, $fields->hiredOn, $fields->contractEndsOn, $fields->fixedTermReason, $fields->diploma, $fields->trainingCentre);
+        $employee->contract($fields->contractType, $fields->hiredOn, $fields->hireTime, $fields->trialPeriod, $fields->contractEndsOn, $fields->fixedTermReason, $fields->diploma, $fields->trainingCentre);
     }
 
     private static function termsDiffer(EmploymentTerms $terms, EmployeeFields $fields): bool
@@ -197,6 +199,7 @@ final readonly class EmployeeSheet
             'nationality' => $employee->getNationality(), 'nir' => (string) $employee->getNir(), 'street' => (string) $employee->getStreet(),
             'postalCode' => (string) $employee->getPostalCode(), 'city' => (string) $employee->getCity(), 'withholdingRate' => (string) $employee->getWithholdingRate(),
             'contractType' => $employee->getContractType()->value, 'hiredOn' => $employee->getHiredOn()->format('Y-m-d'),
+            'hireTime' => (string) $employee->getHireTime(), 'trialPeriod' => (string) $employee->getTrialPeriod(),
             'contractEndsOn' => (string) $employee->getContractEndsOn()?->format('Y-m-d'), 'fixedTermReason' => (string) $employee->getFixedTermReason(),
             'diploma' => (string) $employee->getDiploma(), 'trainingCentre' => (string) $employee->getTrainingCentre(),
         ];

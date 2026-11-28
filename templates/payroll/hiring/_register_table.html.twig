@@ -1,0 +1,42 @@
+{# The registre unique du personnel's rows (PersonnelRegister), on screen (Px:Table) and on paper (`pdf`). #}
+{% set cells %}
+    <thead>
+        <tr>
+            <th scope="col" class="{{ pdf|default(false) ? 'px-doc__num' : 'px-u-num' }}">N°</th>
+            <th scope="col">Nom et prénoms</th>
+            <th scope="col">Nationalité</th>
+            <th scope="col" class="{{ pdf|default(false) ? 'px-doc__num' : 'px-u-num' }}">Naissance</th>
+            <th scope="col">Sexe</th>
+            <th scope="col">Emploi</th>
+            <th scope="col">Qualification</th>
+            <th scope="col">Contrat</th>
+            <th scope="col" class="{{ pdf|default(false) ? 'px-doc__num' : 'px-u-num' }}">Entrée</th>
+            <th scope="col" class="{{ pdf|default(false) ? 'px-doc__num' : 'px-u-num' }}">Sortie</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in register_rows %}
+            {% set num = pdf|default(false) ? 'px-doc__num' : 'px-u-num' %}
+            <tr>
+                <td class="{{ num }}">{{ row.rank }}</td>
+                <td>{% if pdf|default(false) %}{{ row.employee.sortName }}{% else %}<a class="px-link" href="{{ path('app_payroll_employee', {dossier: dossier.id, number: row.employee.registrationNumber}) }}">{{ row.employee.sortName }}</a>{% endif %}</td>
+                <td>{{ row.employee.nationality }}</td>
+                <td class="{{ num }}">{{ row.employee.birthDate|date_fr }}</td>
+                <td>{{ row.employee.sex.label }}</td>
+                <td>{{ row.job }}</td>
+                <td>{{ row.qualification }}</td>
+                <td>{{ row.contract }}</td>
+                <td class="{{ num }}">{{ row.employee.hiredOn|date_fr }}</td>
+                <td class="{{ num }}">—</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+{% endset %}
+{% if pdf|default(false) %}
+    <table class="px-doc__table">
+        <colgroup><col style="width: 4%"><col style="width: 14%"><col style="width: 8%"><col style="width: 8%"><col style="width: 6%"><col style="width: 16%"><col style="width: 20%"><col style="width: 10%"><col style="width: 7%"><col style="width: 7%"></colgroup>
+        {{ cells }}
+    </table>
+{% else %}
+    <twig:Px:Table caption="Registre unique du personnel de {{ dossier.name }}">{{ cells }}</twig:Px:Table>
+{% endif %}

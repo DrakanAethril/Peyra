@@ -1,0 +1,13 @@
+{#
+ # The frame of a simulated portal (design-ux.md A13), to `embed`: the permanent band, a head
+ # (`portal` names the portal, `portal_title` the page, `portal_meta` on the right) and the block
+ # `portal_body`. Grey and sober: the student changes systems, and nothing leaves Peyra.
+ #}
+<section class="px-portal" aria-labelledby="px-portal-title">
+    <p class="px-portal__band"><twig:ux:icon name="wifi-off" aria-hidden="true"/> Simulation : rien n’est transmis · {{ portal }}</p>
+    <header class="px-portal__head">
+        <h2 id="px-portal-title">{{ portal_title }}</h2>
+        {% if portal_meta is defined and portal_meta %}<small>{{ portal_meta }}</small>{% endif %}
+    </header>
+    <div class="px-portal__body">{% block portal_body %}{% endblock %}</div>
+</section>

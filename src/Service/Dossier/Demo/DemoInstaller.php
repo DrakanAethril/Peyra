@@ -16,6 +16,7 @@ use App\Enum\Dossier\DossierKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntryRepository;
 use App\Repository\Dossier\DossierRepository;
+use App\Repository\Payroll\EmployeeRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Accounting\Chart\AccountNumber;
 use App\Service\Accounting\Chart\ChartInstaller;
@@ -32,8 +33,10 @@ use App\Service\Audit\AuditTrail;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Exercises;
 use App\Service\Payroll\Employee\EmployeeSheet;
+use App\Service\Payroll\Hiring\HiringFormalities;
 use App\Service\Payroll\Plan\PayrollPlanInstaller;
 use App\Service\Payroll\Settings\PayrollEstablishmentRules;
+use App\Service\Shared\Portal\PortalFault;
 use App\Service\ThirdParty\ThirdPartyRules;
 use App\Service\ThirdParty\ThirdPartySheet;
 use Doctrine\ORM\EntityManagerInterface;
@@ -74,6 +77,8 @@ final readonly class DemoInstaller
         private ThirdPartyRepository $thirdParties,
         private PayrollPlanInstaller $payrollPlan,
         private EmployeeSheet $employees,
+        private EmployeeRepository $employeeRepository,
+        private HiringFormalities $hiring,
         private EntryRepository $entries,
         #[Autowire('%kernel.project_dir%/fixtures/demo')]
         private string $directory,
@@ -109,6 +114,7 @@ final readonly class DemoInstaller
         $letteringFile = DemoLetteringFile::read($this->directory.'/letterings.yaml');
         $payrollFile = DemoPayrollFile::read($this->directory.'/payroll.yaml');
         $employeeFile = DemoEmployeeFile::read($this->directory.'/employees.yaml');
+        $hiringFile = DemoHiringFile::read($this->directory.'/hiring.yaml');
         $dossier = new Dossier(DossierKind::Template, $file->company, $file->dossierDate, null, null, $at, null);
         $dossier->describeInLibrary($file->library['title'], $file->library['description'], $file->library['level'], $file->library['processes']);
         $this->entityManager->persist($dossier);
@@ -136,6 +142,7 @@ final readonly class DemoInstaller
         $this->context->within($dossier, fn () => $this->installLetterings($dossier, $letteringFile, $actor));
         $this->context->within($dossier, fn () => $this->installPayroll($dossier, $payrollFile, $actor));
         $this->context->within($dossier, fn () => $this->installEmployees($dossier, $employeeFile, $actor));
+        $this->context->within($dossier, fn () => $this->installHiring($dossier, $hiringFile, $actor));
         $this->auditTrail->inDossier(
             $dossier,
             AuditAction::DossierCreated,
@@ -184,6 +191,19 @@ final readonly class DemoInstaller
                 }
                 $this->entityManager->flush();
             }
+        }
+    }
+
+    /** Its DPAE (step 4.2b), deposited on the simulated social portal on their day: a rejection installs nothing more. */
+    private function installHiring(Dossier $dossier, DemoHiringFile $file, string $actor): void
+    {
+        foreach ($file->declarations as $declaration) {
+            $employee = $this->employeeRepository->findOneByNumber($dossier, $declaration['number']) ?? throw new \InvalidArgumentException('hiring.yaml : le salarié '.$declaration['number'].' n’existe pas.');
+            $outcome = $this->hiring->declare($employee, $declaration['on'], $actor);
+            if (\is_array($outcome)) {
+                throw new \InvalidArgumentException(\sprintf('hiring.yaml : %s : %s', $declaration['number'], implode(' ', array_map(static fn (PortalFault $fault): string => $fault->motive, $outcome))));
+            }
+            $this->entityManager->flush();
         }
     }
 

@@ -1,0 +1,58 @@
+{#
+ # The DPAE on the simulated social portal (lot 4, step 4.2b; design-ux.md A13 and § 6.2): what the
+ # portal receives, read from the fiche (correcting it means correcting the fiche), then « Déposer
+ # la DPAE » - Ctrl Entrée after the confirmation bar. A rejection lists the portal's motives,
+ # explained at level G; nothing is kept. An accepted deposit goes to its acknowledgement.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'employees' %}
+{% set can_edit = is_granted('PAYROLL_ENTER', dossier) %}
+{% set dossier_title = 'DPAE · ' ~ employee.fullName %}
+{% set status_keys = can_edit ? [{combo: 'Ctrl+Enter', verb: 'Déposer'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Portail social · DPAE de {{ employee.fullName }}" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Salariés', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: employee.registrationNumber, href: path('app_payroll_employee', {dossier: dossier.id, number: employee.registrationNumber})},
+        {label: 'Formalités', href: path('app_payroll_employee_formalities', {dossier: dossier.id, number: employee.registrationNumber})},
+        {label: 'DPAE', href: path('app_social_portal_dpae', {dossier: dossier.id, number: employee.registrationNumber})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ path('app_payroll_employee_formalities', {dossier: dossier.id, number: employee.registrationNumber}) }}" variant="quiet" icon="chevron-left">Revenir aux formalités</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% embed 'portal/_frame.html.twig' with {portal: 'Portail social', portal_title: 'Déclaration préalable à l’embauche', portal_meta: 'Dépôt au ' ~ dossier.dossierDate|date_fr} %}
+        {% block portal_body %}
+            {% if faults is not empty %}
+                <twig:Px:Alert tone="danger">
+                    <strong>DPAE rejetée</strong> : {{ faults|length > 1 ? faults|length ~ ' motifs' : 'un motif' }}. Rien n’a été enregistré.
+                    <ul class="px-portal__faults">
+                        {% for fault in faults %}
+                            <li><span class="px-u-code">{{ fault.code }}</span> {{ fault.motive }}{% if explained %}<small>{{ fault.explanation }}</small>{% endif %}</li>
+                        {% endfor %}
+                    </ul>
+                </twig:Px:Alert>
+            {% endif %}
+            {{ include('payroll/hiring/_dpae_content.html.twig', {lines: content}) }}
+            <p class="px-u-muted">Ces informations viennent de la fiche du salarié et de la fiche société. Une DPAE se dépose au plus tôt le {{ opens_on|date_fr }}, et au plus tard avant la prise de poste.</p>
+            {% if can_edit %}
+                <div class="px-portal__actions" data-controller="confirm-bar">
+                    <div class="px-portal__actions" data-confirm-bar-target="actions">
+                        <twig:Px:Button variant="primary" icon="send" shortcut="Ctrl+Enter" data-action="confirm-bar#open">Déposer la DPAE</twig:Px:Button>
+                    </div>
+                    <form class="px-confirmbar" method="post" action="{{ path('app_social_portal_dpae', {dossier: dossier.id, number: employee.registrationNumber}) }}" role="alertdialog" aria-labelledby="dpae-confirm-text" hidden data-confirm-bar-target="bar" data-action="keydown->confirm-bar#keydown">
+                        <input type="hidden" name="_token" value="{{ csrf_token('dpae-' ~ employee.id) }}">
+                        <p id="dpae-confirm-text">Déposer la DPAE de {{ employee.fullName }} ? Une DPAE déposée ne se reprend pas.</p>
+                        <twig:Px:Button variant="quiet" data-action="confirm-bar#close">Annuler</twig:Px:Button>
+                        <twig:Px:Button type="submit" variant="primary" data-confirm-bar-target="confirm">Déposer</twig:Px:Button>
+                    </form>
+                </div>
+            {% endif %}
+        {% endblock %}
+    {% endembed %}
+{% endblock %}

@@ -1,0 +1,7 @@
+{# The registre unique du personnel on paper (lot 4, step 4.2b): A4 landscape, a state's header. #}
+{% extends 'doc/_report.html.twig' %}
+
+{% block content %}
+    {{ include('payroll/hiring/_register_table.html.twig') }}
+    <p class="px-doc__legal">Document fictif établi par Peyra, PGI pédagogique : la société et les salariés sont inventés.</p>
+{% endblock %}

@@ -14,9 +14,11 @@ use App\Enum\Payroll\WorkingTime;
 use App\Repository\Payroll\EmployeeRepository;
 use App\Repository\Payroll\PayrollEstablishmentRepository;
 use App\Security\Voter\DossierRightVoter;
+use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Payroll\Employee\EmployeeDraft;
 use App\Service\Payroll\Employee\EmployeeSheet;
 use App\Service\Payroll\Employee\EmploymentHistory;
+use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\DateValue;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\PostValue;
@@ -42,16 +44,17 @@ final class EmployeeController extends AbstractController
     private const string NUMBER = '[A-Z0-9]{1,10}';
 
     #[Route('/new', name: 'app_payroll_employee_new', methods: ['GET', 'POST'])]
-    public function create(Dossier $dossier, Request $request, EmployeeSheet $sheet, PayrollEstablishmentRepository $establishments, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
+    public function create(Dossier $dossier, Request $request, EmployeeSheet $sheet, PayrollEstablishmentRepository $establishments, AssistanceLevels $levels, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         if (!$this->isGranted(DossierRightVoter::PAYROLL_ENTER, $dossier)) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $draft = $sheet->blank($dossier);
+        $hiringFields = Assistance::at($levels->for($dossier))->requiresHiringDeclarationFields();
         $status = Response::HTTP_OK;
         if ($request->isMethod('POST')) {
             $this->read($request, $draft, 'employee-new-'.$dossier->getId());
-            $fields = $sheet->check($draft, $dossier);
+            $fields = $sheet->check($draft, $dossier, null, $hiringFields);
             if (null !== $fields) {
                 $employee = $sheet->create($dossier, $fields, $me);
                 $entityManager->flush();
@@ -62,23 +65,24 @@ final class EmployeeController extends AbstractController
             $status = Response::HTTP_UNPROCESSABLE_ENTITY;
         }
 
-        return $this->render('payroll/employee.html.twig', $this->view($dossier, $draft, null, null, $establishments), new Response(status: $status));
+        return $this->render('payroll/employee.html.twig', $this->view($dossier, $draft, null, null, $establishments, $hiringFields), new Response(status: $status));
     }
 
     #[Route('/{number}', name: 'app_payroll_employee', requirements: ['number' => self::NUMBER], methods: ['GET', 'POST'])]
-    public function edit(Dossier $dossier, string $number, Request $request, EmployeeRepository $employees, EmployeeSheet $sheet, PayrollEstablishmentRepository $establishments, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
+    public function edit(Dossier $dossier, string $number, Request $request, EmployeeRepository $employees, EmployeeSheet $sheet, PayrollEstablishmentRepository $establishments, AssistanceLevels $levels, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $employee = $this->employee($dossier, $number, $employees);
         $from = DateValue::parse(QueryValue::trimmed($request, 'from'));
         $shown = (null === $from ? null : $employee->termsStartingOn($from)) ?? $employee->termsAt($dossier->getDossierDate());
         $draft = EmployeeDraft::of($employee, $shown);
+        $hiringFields = Assistance::at($levels->for($dossier))->requiresHiringDeclarationFields();
         $status = Response::HTTP_OK;
         if ($request->isMethod('POST')) {
             if (!$this->isGranted(DossierRightVoter::PAYROLL_ENTER, $dossier)) {
                 throw new NotFoundHttpException('Not yours to change.');
             }
             $this->read($request, $draft, 'employee-'.$employee->getId());
-            $fields = $sheet->check($draft, $dossier, $employee);
+            $fields = $sheet->check($draft, $dossier, $employee, $hiringFields);
             if (null !== $fields) {
                 $changed = $sheet->update($employee, $fields, $me);
                 $entityManager->flush();
@@ -89,7 +93,7 @@ final class EmployeeController extends AbstractController
             $status = Response::HTTP_UNPROCESSABLE_ENTITY;
         }
 
-        return $this->render('payroll/employee.html.twig', $this->view($dossier, $draft, $employee, $shown, $establishments), new Response(status: $status));
+        return $this->render('payroll/employee.html.twig', $this->view($dossier, $draft, $employee, $shown, $establishments, $hiringFields), new Response(status: $status));
     }
 
     #[Route('/{number}/terms/{from}/delete', name: 'app_payroll_employee_terms_delete', requirements: ['number' => self::NUMBER, 'from' => '\d{4}-\d{2}-\d{2}'], methods: ['POST'])]
@@ -141,7 +145,7 @@ final class EmployeeController extends AbstractController
             throw new NotFoundHttpException('Not yours to change.');
         }
         foreach (['registrationNumber', 'lastName', 'firstName', 'sex', 'birthDate', 'birthPlace', 'nationality', 'nir', 'street', 'postalCode', 'city',
-            'withholdingRate', 'contractType', 'hiredOn', 'contractEndsOn', 'fixedTermReason', 'diploma', 'trainingCentre', 'termsFrom',
+            'withholdingRate', 'contractType', 'hiredOn', 'hireTime', 'trialPeriod', 'contractEndsOn', 'fixedTermReason', 'diploma', 'trainingCentre', 'termsFrom',
             'jobTitle', 'classification', 'status', 'workingTime', 'monthlyHours'] as $field) {
             $draft->{$field} = PostValue::trimmed($request, $field);
         }
@@ -149,7 +153,7 @@ final class EmployeeController extends AbstractController
     }
 
     /** @return array<string, mixed> */
-    private function view(Dossier $dossier, EmployeeDraft $draft, ?Employee $employee, ?EmploymentTerms $shown, PayrollEstablishmentRepository $establishments): array
+    private function view(Dossier $dossier, EmployeeDraft $draft, ?Employee $employee, ?EmploymentTerms $shown, PayrollEstablishmentRepository $establishments, bool $hiringFields): array
     {
         $today = $dossier->getDossierDate();
 
@@ -158,6 +162,7 @@ final class EmployeeController extends AbstractController
             'draft' => $draft,
             'employee' => $employee,
             'shown_terms' => $shown,
+            'hiring_fields' => $hiringFields,
             'current_terms' => $employee?->termsAt($today),
             'history' => null === $employee ? [] : EmploymentHistory::of($employee, $today),
             'collective_hours' => $establishments->findOfDossier($dossier)?->getMonthlyHours(),
