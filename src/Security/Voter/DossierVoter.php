@@ -61,7 +61,8 @@ final class DossierVoter extends Voter
 
     private function template(string $attribute, Dossier $template, User $user): bool
     {
-        if (!$user->isTeacher()) {
+        // A template a FEC is still being written into is nobody's to open (step 1.10b).
+        if (!$user->isTeacher() || $template->isImporting()) {
             return false;
         }
         $author = $template->getOwner();

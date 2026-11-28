@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Architecture;
 
+use App\Entity\Accounting\FecImportJob;
 use App\Entity\Audit\AuditEvent;
 use App\Entity\Dossier\Distribution;
 use App\Entity\Dossier\DistributionCopy;
@@ -52,6 +53,8 @@ final class DossierOwnedEntitiesTest extends KernelTestCase
         // Where dossiers came from: a template handed out to a class, and each dossier it makes
         // (step 1.8c). Never a dossier's content.
         Distribution::class, DistributionCopy::class,
+        // A FEC being written into a new template (step 1.10b): a teacher's gesture on the library.
+        FecImportJob::class,
     ];
 
     public function testEveryEntityIsDossierOwnedOrNamedGlobal(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Entity\Accounting\Entry;
+use App\Entity\Accounting\FecImportJob;
 use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Distribution;
 use App\Entity\Identity\SchoolClass;
@@ -345,6 +346,41 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/teacher/library/'.$own.'/distribute' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
             '/teacher/library/'.$common.'/distribute' => ['student' => 404, 'teacher' => 200, 'admin' => 200, 'refused' => 302],
             '/teacher/library/'.$student.'/distribute' => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
+        ];
+        foreach ($table as $url => $expected) {
+            $actual = [];
+            foreach (self::ACCOUNTS as $role => $login) {
+                self::ensureKernelShutdown();
+                $client = static::createClient();
+                $this->submitLogin($client, $login);
+                $client->request('GET', $url);
+                $actual[$role] = $client->getResponse()->getStatusCode();
+            }
+            self::assertSame($expected, $actual, $url);
+        }
+    }
+
+    /**
+     * A FEC import's progress page (step 1.10b): prof.durand's, whose template is still being
+     * written - his alone; prof.martin, an administrator, gets a 404, and nobody opens the template.
+     */
+    public function testTheProgressPageOfAFecImport(): void
+    {
+        $client = static::createClient();
+        $client->disableReboot();
+        $this->submitLogin($client, self::ACCOUNTS['teacher']);
+        $durand = $this->account($client, self::ACCOUNTS['teacher']);
+        \assert($durand instanceof User);
+        $template = $this->savedDossier(DossierKind::Template, $durand);
+        $template->markImporting();
+        $job = new FecImportJob($durand, $template, 'FEC.txt', "JournalCode\n", new \DateTimeImmutable('2026-01-01'), 120, 5, 12, 3, 0, 0, new \DateTimeImmutable('2026-11-28'));
+        $entityManager = $client->getContainer()->get(EntityManagerInterface::class);
+        $entityManager->persist($job);
+        $entityManager->flush();
+
+        $table = [
+            '/teacher/library/imports/'.$job->getId() => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/d/'.$template->getId() => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
         ];
         foreach ($table as $url => $expected) {
             $actual = [];

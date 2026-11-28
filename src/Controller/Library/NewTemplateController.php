@@ -11,6 +11,7 @@ use App\Service\Accounting\Chart\ReferenceChart;
 use App\Service\Accounting\Chart\ReferenceCharts;
 use App\Service\Accounting\Fec\Import\FecImport;
 use App\Service\Accounting\Fec\Import\FecImportDraft;
+use App\Service\Accounting\Fec\Import\FecImportQueue;
 use App\Service\Dossier\Library\EmptyTemplateDraft;
 use App\Service\Dossier\Library\TemplateCard;
 use App\Service\Dossier\Library\TemplateDuplicator;
@@ -92,10 +93,11 @@ final class NewTemplateController extends AbstractController
 
     /**
      * « Depuis un FEC »: the fields of an empty template and the file. A refused file writes
-     * nothing and its anomalies are listed line by line; an accepted one opens the new template.
+     * nothing and its anomalies are listed line by line; an accepted one is written in the background
+     * (step 1.10b), and the teacher follows it on its progress page.
      */
     #[Route('/teacher/library/new/fec', name: 'app_library_new_fec', methods: ['GET', 'POST'])]
-    public function fromFec(Request $request, FecImport $import, ReferenceCharts $charts, ClockInterface $clock, #[CurrentUser] User $me): Response
+    public function fromFec(Request $request, FecImport $import, FecImportQueue $queue, ReferenceCharts $charts, ClockInterface $clock, #[CurrentUser] User $me): Response
     {
         $now = $clock->now();
         $policy = self::fecPolicy();
@@ -115,21 +117,11 @@ final class NewTemplateController extends AbstractController
                     $draft->bytes = (string) file_get_contents($file->getPathname());
                 }
             }
-            $result = $import->import($draft, $me, $now);
-            if (null !== $result) {
-                $count = static fn (int $n, string $one, string $many): string => $n.' '.($n > 1 ? $many : $one);
-                $this->addFlash('status', \sprintf(
-                    'Modèle « %s » créé depuis %s : %s, %s, %s, %s, %s.',
-                    $result->template->getLibraryTitle(),
-                    $draft->fileName,
-                    $count($result->entries, 'écriture validée', 'écritures validées'),
-                    $count($result->journals, 'journal', 'journaux'),
-                    $count($result->thirdParties, 'tiers', 'tiers'),
-                    $count($result->accountsCreated, 'compte ajouté au plan', 'comptes ajoutés au plan'),
-                    $count($result->letterings, 'lettrage', 'lettrages'),
-                ));
+            $job = $import->launch($draft, $me, $now);
+            if (null !== $job) {
+                $queue->add($job);
 
-                return $this->redirectToRoute('app_library_template', ['dossier' => $result->template->getId()], Response::HTTP_SEE_OTHER);
+                return $this->redirectToRoute('app_library_fec_import', ['id' => $job->getId()], Response::HTTP_SEE_OTHER);
             }
             $status = Response::HTTP_UNPROCESSABLE_ENTITY;
         }

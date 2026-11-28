@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Twig;
 
+use App\Entity\Accounting\FecImportJob;
 use App\Entity\Dossier\Distribution;
 use App\Entity\Dossier\Dossier;
+use App\Service\Accounting\Fec\Import\FecImportLive;
 use App\Service\Dossier\Distribution\DistributionLive;
 use App\Service\Dossier\DossierLive;
 use Psr\Log\LoggerInterface;
@@ -48,6 +50,15 @@ final readonly class DossierLiveExtension
         $id = $distribution->getId();
 
         return null === $id ? null : $this->subscribe(DistributionLive::topic($id), 'distribution', $id);
+    }
+
+    /** A FEC import's progress page (step 1.10b), drawn for its author only (FecImportVoter). */
+    #[AsTwigFunction('fec_import_live_url')]
+    public function fecImportUrl(FecImportJob $job): ?string
+    {
+        $id = $job->getId();
+
+        return null === $id ? null : $this->subscribe(FecImportLive::topic($id), 'FEC import', $id);
     }
 
     private function subscribe(string $topic, string $what, int $id): ?string

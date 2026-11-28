@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Tests\Service\Accounting\Fec\Import;
 
+use App\Entity\Accounting\FecImportJob;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
+use App\Enum\Accounting\FecImportStage;
+use App\Enum\Accounting\FecImportState;
 use App\Enum\Accounting\JournalType;
 use App\Enum\Dossier\DossierKind;
 use App\Enum\Identity\AccountKind;
 use App\Enum\Identity\EntryBasis;
 use App\Repository\Accounting\AccountRepository;
+use App\Repository\Accounting\FecImportJobRepository;
 use App\Repository\Accounting\JournalRepository;
 use App\Repository\Dossier\DossierRepository;
 use App\Repository\Dossier\ExerciseRepository;
@@ -28,9 +32,10 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * The import of a FEC into a new template (step 1.9b), on the demonstration's: its FEC imported
- * then exported again gives back the very same lines - accounts, third parties, journals, entries
- * in Peyra's numbering, lettering -; a file with an anomaly writes nothing.
+ * The import of a FEC into a new template (steps 1.9b and 1.10b), on the demonstration's: launched,
+ * then written pass after pass, its FEC exported again gives back the very same lines - accounts,
+ * third parties, journals, entries in Peyra's numbering, lettering -, the template hidden until the
+ * last pass; a file with an anomaly, even one only a door finds, writes nothing.
  */
 final class FecImportTest extends KernelTestCase
 {
@@ -59,17 +64,43 @@ final class FecImportTest extends KernelTestCase
         self::assertTrue($fec->report->isConform());
 
         $draft = $this->draft($fec->content, $fec->name);
-        $result = self::getContainer()->get(FecImport::class)->import($draft, $this->teacher, new \DateTimeImmutable('2026-11-28 10:00'));
+        $import = self::getContainer()->get(FecImport::class);
+        $job = $import->launch($draft, $this->teacher, new \DateTimeImmutable('2026-11-28 10:00'));
 
         self::assertSame([], $draft->findings);
-        self::assertNotNull($result);
-        $template = $result->template;
+        self::assertNotNull($job);
+        $jobId = (int) $job->getId();
+        $template = $job->getTemplate();
+        self::assertNotNull($template);
+        $templateId = (int) $template->getId();
+        self::assertTrue($template->isImporting());
+        self::assertSame(FecImportStage::Setup, $job->getStage());
+        self::assertSame($fec->entries, $job->getEntries());
+        self::assertSame(0, $job->getZeroLines());
+        self::assertSame(0, $job->getLettersLeft());
+        self::assertSame(9, $job->getLetterings(), 'The Scierie A to E, SCI Vasseur and Loire Bail A and B.');
+        self::assertNotContains($templateId, $this->templatesOfTheTeacher(), 'Hidden from the library while it fills.');
+
+        // Forty entries a pass: one pass to set up, then as many to draft as to validate, one to letter.
+        $passes = 1;
+        while ($import->pass($jobId, new \DateTimeImmutable('2026-11-28 10:01'), 40)) {
+            ++$passes;
+            $job = self::getContainer()->get(FecImportJobRepository::class)->find($jobId);
+            self::assertTrue($job?->getTemplate()?->isImporting());
+        }
+        self::assertSame(1 + 2 * (int) ceil($fec->entries / 40) + 1, $passes);
+        self::assertGreaterThan(200, $fec->entries);
+
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $job = $entityManager->find(FecImportJob::class, $jobId) ?? throw new \LogicException('The import.');
+        self::assertSame(FecImportState::Done, $job->getState());
+        self::assertSame(100, $job->percent());
+        $template = $job->getTemplate() ?? throw new \LogicException('Its template.');
+        self::assertFalse($template->isImporting());
         self::assertSame(DossierKind::Template, $template->getKind());
         self::assertSame('Vasseur, depuis son FEC', $template->getLibraryTitle());
-        self::assertSame($fec->entries, $result->entries);
-        self::assertSame(0, $result->zeroLines);
-        self::assertSame(0, $result->lettersLeft);
-        self::assertSame(9, $result->letterings, 'The Scierie A to E, SCI Vasseur and Loire Bail A and B.');
+        self::assertContains($templateId, $this->templatesOfTheTeacher());
+        self::assertFalse($import->pass($jobId, new \DateTimeImmutable('2026-11-28 10:02')), 'A finished import has no pass left.');
 
         $again = $this->fecOf($template);
         self::assertTrue($again->report->isConform());
@@ -103,7 +134,7 @@ final class FecImportTest extends KernelTestCase
         ])."\r\n";
 
         $draft = $this->draft($bytes, 'FEC.txt');
-        self::assertNull(self::getContainer()->get(FecImport::class)->import($draft, $this->teacher, new \DateTimeImmutable('2026-11-28 10:00')));
+        self::assertNull(self::getContainer()->get(FecImport::class)->launch($draft, $this->teacher, new \DateTimeImmutable('2026-11-28 10:00')));
 
         self::assertCount(1, $draft->findings);
         self::assertSame(5, $draft->findings[0]->line);
@@ -114,16 +145,39 @@ final class FecImportTest extends KernelTestCase
     public function testAFileIsAskedForAndAFileOutsideTheExerciseIsRefused(): void
     {
         $draft = $this->draft(null, null);
-        self::assertNull(self::getContainer()->get(FecImport::class)->import($draft, $this->teacher, new \DateTimeImmutable('2026-11-28 10:00')));
+        self::assertNull(self::getContainer()->get(FecImport::class)->launch($draft, $this->teacher, new \DateTimeImmutable('2026-11-28 10:00')));
         self::assertSame('Choisissez le fichier FEC à importer.', $draft->fileError);
 
         $header = "JournalCode\tJournalLib\tEcritureNum\tEcritureDate\tCompteNum\tCompteLib\tCompAuxNum\tCompAuxLib\tPieceRef\tPieceDate\tEcritureLib\tDebit\tCredit\tEcritureLet\tDateLet\tValidDate\tMontantdevise\tIdevise";
         $draft = $this->draft($header."\nOD\tOD\t1\t20250105\t512000\tBanque\t\t\tX\t20250105\tVirement\t10,00\t0,00\t\t\t20250105\t\t\nOD\tOD\t1\t20250105\t580000\tVirements\t\t\tX\t20250105\tVirement\t0,00\t10,00\t\t\t20250105\t\t\n", 'FEC.txt');
-        self::assertNull(self::getContainer()->get(FecImport::class)->import($draft, $this->teacher, new \DateTimeImmutable('2026-11-28 10:00')));
+        self::assertNull(self::getContainer()->get(FecImport::class)->launch($draft, $this->teacher, new \DateTimeImmutable('2026-11-28 10:00')));
         self::assertSame(['EcritureDate', 'EcritureDate'], array_map(static fn ($finding): ?string => $finding->zone, $draft->findings));
     }
 
-    public function testAFecOfMoreThanAThousandEntriesIsRefusedWhole(): void
+    public function testWhatOnlyTheDoorsRefuseIsRefusedBeforeAnythingIsWritten(): void
+    {
+        $dossiers = self::getContainer()->get(DossierRepository::class);
+        $before = \count($dossiers->findAll());
+        $header = "JournalCode\tJournalLib\tEcritureNum\tEcritureDate\tCompteNum\tCompteLib\tCompAuxNum\tCompAuxLib\tPieceRef\tPieceDate\tEcritureLib\tDebit\tCredit\tEcritureLet\tDateLet\tValidDate\tMontantdevise\tIdevise";
+        // A third party kept on a depreciation account (491): read as one of « other » kind, which
+        // ThirdPartyRules refuses there.
+        $bytes = implode("\r\n", [
+            $header,
+            "OD\tOD\t1\t20260131\t681740\tDotations\t\t\tDEP1\t20260131\tDépréciation\t80,00\t0,00\t\t\t20260131\t\t",
+            "OD\tOD\t1\t20260131\t491000\tDépréciations\tDOUT\tClient douteux\tDEP1\t20260131\tDépréciation\t0,00\t80,00\t\t\t20260131\t\t",
+        ])."\r\n";
+
+        $draft = $this->draft($bytes, 'FEC.txt');
+        self::assertNull(self::getContainer()->get(FecImport::class)->launch($draft, $this->teacher, new \DateTimeImmutable('2026-11-28 10:00')));
+
+        self::assertCount(1, $draft->findings, implode(' | ', array_map(static fn ($f): string => $f->line.' '.$f->zone.' '.$f->message, $draft->findings)));
+        self::assertSame(3, $draft->findings[0]->line);
+        self::assertSame('CompAuxNum', $draft->findings[0]->zone);
+        self::assertCount($before, $dossiers->findAll());
+        self::assertSame([], self::getContainer()->get(FecImportJobRepository::class)->findAll());
+    }
+
+    public function testAFecOfMoreThanTenThousandEntriesIsRefusedWhole(): void
     {
         $lines = ["JournalCode\tJournalLib\tEcritureNum\tEcritureDate\tCompteNum\tCompteLib\tCompAuxNum\tCompAuxLib\tPieceRef\tPieceDate\tEcritureLib\tDebit\tCredit\tEcritureLet\tDateLet\tValidDate\tMontantdevise\tIdevise"];
         for ($i = 1; $i <= FecImport::MAX_ENTRIES + 1; ++$i) {
@@ -132,9 +186,17 @@ final class FecImportTest extends KernelTestCase
         }
         $draft = $this->draft(implode("\n", $lines), 'FEC.txt');
 
-        self::assertNull(self::getContainer()->get(FecImport::class)->import($draft, $this->teacher, new \DateTimeImmutable('2026-11-28 10:00')));
+        self::assertNull(self::getContainer()->get(FecImport::class)->launch($draft, $this->teacher, new \DateTimeImmutable('2026-11-28 10:00')));
         self::assertCount(1, $draft->findings);
-        self::assertStringContainsString('celui-ci en compte 1'."\u{202F}".'001', $draft->findings[0]->message);
+        self::assertStringContainsString('celui-ci en compte 10'."\u{202F}".'001', $draft->findings[0]->message);
+    }
+
+    /** @return list<int> */
+    private function templatesOfTheTeacher(): array
+    {
+        $teacher = self::getContainer()->get(EntityManagerInterface::class)->find(User::class, $this->teacher->getId()) ?? throw new \LogicException('Teacher.');
+
+        return array_map(static fn (Dossier $dossier): int => (int) $dossier->getId(), self::getContainer()->get(DossierRepository::class)->findTemplatesOf($teacher));
     }
 
     private function fecOf(Dossier $dossier): FecFile
