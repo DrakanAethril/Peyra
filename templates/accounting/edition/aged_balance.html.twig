@@ -1,0 +1,72 @@
+{#
+ # Comptabilité › Éditions › Balance âgée (lot 1, step 1.5b, prepared for lot 2's follow-up;
+ # design-ux.md § 3.2 « tranches d'ancienneté à la date du dossier »): at a day, what each customer
+ # owes - or each supplier is owed - and how old it is, by due date: not yet due, then 1 to 30,
+ # 31 to 60, 61 to 90 and more than 90 days late. A third party and its amounts open its
+ # consultation.
+ #}
+{% extends 'accounting/edition/_edition.html.twig' %}
+
+{% set edition_current = 'aged_balance' %}
+{% set edition_route = 'app_accounting_edition_aged_balance' %}
+{% set edition_title = 'Balance âgée' %}
+{% set status_keys = [{combo: 'Enter', verb: 'Consulter le tiers'}] %}
+
+{% block edition_filters %}
+    <twig:Px:Filters action="{{ path(edition_route, {dossier: dossier.id}) }}" resetHref="{{ window.to != dossier.dossierDate or kind.value != 'customer' or scope.value == 'validated' ? path(edition_route, {dossier: dossier.id}) : null }}">
+        {% for case in kinds %}
+            <twig:Px:FilterChip label="{{ case.plural }}" href="{{ path(edition_route, {dossier: dossier.id}|merge(keep)|merge({kind: case.value == 'customer' ? null : case.value})|filter(v => v is not null)) }}" :current="kind == case"/>
+        {% endfor %}
+        {% if kind.value != 'customer' %}<input type="hidden" name="kind" value="{{ kind.value }}">{% endif %}
+        <span class="px-filters__sep" aria-hidden="true"></span>
+        <span class="px-filters__field">
+            <label for="edition-at">Au</label>
+            <twig:Px:DateInput id="edition-at" name="at" :value="window.to" :reference="dossier.dossierDate"/>
+        </span>
+        <twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button>
+        {{ include('accounting/edition/_scope_chips.html.twig') }}
+    </twig:Px:Filters>
+{% endblock %}
+
+{% block edition_body %}
+    {% if report.isEmpty %}
+        <twig:Px:Empty icon="clock" title="Rien d’échu ni à échoir" text="Aucun {{ kind.label|lower }} n’a de solde au {{ window.to|date_fr }}{{ scope.value == 'validated' ? ' parmi les écritures validées' : '' }}."/>
+    {% else %}
+        <twig:Px:Table caption="Balance âgée des {{ kind.plural|lower }} au {{ window.to|date_fr }}" :rows="true">
+            <thead><tr>
+                <th scope="col">Tiers</th>
+                <th scope="col">Nom</th>
+                <th scope="col" class="px-u-right">Solde</th>
+                {% for band in bands %}<th scope="col" class="px-u-right">{{ band.label }}</th>{% endfor %}
+            </tr></thead>
+            <tbody>
+                {% for row in report.rows %}
+                    {% set party = row.thirdParty %}
+                    {% set code = party.auxiliaryCode ?? party.code %}
+                    <tr data-rows-target="row">
+                        <td class="px-u-code"><a class="px-link" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: code, from: window.exerciseStart|date('Y-m-d'), to: window.to|date('Y-m-d'), scope: scope.value == 'validated' ? 'validated' : null, return: here}|filter(v => v is not null)) }}">{{ code }}</a></td>
+                        <td class="px-u-truncate px-u-fill" title="{{ party.name }}">{{ party.name }}</td>
+                        <td class="px-u-num">{{ include('accounting/edition/_drill.html.twig', {amount: row.total, subject: code, from: window.exerciseStart, to: window.to}) }}</td>
+                        {% for band in bands %}<td class="px-u-num">{{ include('accounting/edition/_drill.html.twig', {amount: row.band(band), subject: code, from: window.exerciseStart, to: window.to}) }}</td>{% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="px-table__total">
+                    <th scope="row" colspan="2">Total · {{ report.rows|length }} {{ report.rows|length > 1 ? kind.plural|lower : kind.label|lower }}</th>
+                    <td class="px-u-num">{{ report.total.total|amount }}</td>
+                    {% for band in bands %}<td class="px-u-num">{{ report.total.band(band)|amount }}</td>{% endfor %}
+                </tr>
+            </tfoot>
+        </twig:Px:Table>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}
+    {% if report.isEmpty %}
+        {{ parent() }}
+    {% else %}
+        <span>Échu au {{ window.to|date('d/m/Y') }} · <b>{{ report.total.overdue|amount }}</b> sur {{ report.total.total|amount }}</span>
+    {% endif %}
+    <span>{{ scope.value == 'validated' ? 'Écritures validées' : 'Brouillard inclus' }}</span>
+{% endblock %}

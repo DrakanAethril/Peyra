@@ -5,22 +5,24 @@
     the foot, the fictitious-document mention, the student and the dossier's date, « page / pages ».
     Margin boxes cannot read the document, so their texts are written here, escaped for CSS.
 
-    Context: report.company, report.title, report.fiscalYear, report.period (optional),
-    report.dossierDate (a date), report.student (optional).
+    Context: report_header.company, report_header.title, report_header.fiscalYear, report_header.period (optional),
+    report_header.dossierDate (a date), report_header.student (optional).
 #}
 {% extends 'doc/_document.html.twig' %}
 
-{% block title %}{{ report.title }} · {{ report.company }}{% endblock %}
+{% block title %}{{ report_header.title }} · {{ report_header.company }}{% endblock %}
 
 {% block page_style %}
-    {% set right = report.fiscalYear ~ (report.period is defined and report.period ? ' · ' ~ report.period : '') ~ ' · date du dossier ' ~ report.dossierDate|date_fr %}
-    {% set centre = (report.student is defined and report.student ? report.student ~ ' · ' : '') ~ report.dossierDate|date_fr %}
+    {# Two lines on the right: the exercise and the dossier's date, then the period and what the state reads. #}
+    {% set right = report_header.fiscalYear ~ ' · date du dossier ' ~ report_header.dossierDate|date_fr %}
+    {% set period = report_header.period is defined and report_header.period ? report_header.period : '' %}
+    {% set centre = (report_header.student is defined and report_header.student ? report_header.student ~ ' · ' : '') ~ report_header.dossierDate|date_fr %}
     <style>
         @page {
             margin-top: 20mm;
-            @top-left { content: "{{ report.company|e('css') }}"; font: 600 10pt "Inter", sans-serif; color: #0f1b2a; vertical-align: bottom; padding-bottom: 2.5mm; border-bottom: 0.5pt solid #7d8b9c; }
-            @top-center { content: "{{ report.title|e('css') }}"; font: 600 12pt "Spectral", serif; color: #0f1b2a; vertical-align: bottom; padding-bottom: 2mm; border-bottom: 0.5pt solid #7d8b9c; }
-            @top-right { content: "{{ right|e('css') }}"; font: 8pt "Inter", sans-serif; color: #0f1b2a; vertical-align: bottom; padding-bottom: 2.5mm; border-bottom: 0.5pt solid #7d8b9c; text-align: right; }
+            @top-left { content: "{{ report_header.company|e('css') }}"; width: 30%; font: 600 10pt "Inter", sans-serif; color: #0f1b2a; vertical-align: bottom; padding-bottom: 2.5mm; border-bottom: 0.5pt solid #7d8b9c; }
+            @top-center { content: "{{ report_header.title|e('css') }}"; width: 34%; font: 600 12pt "Spectral", serif; color: #0f1b2a; white-space: nowrap; vertical-align: bottom; padding-bottom: 2mm; border-bottom: 0.5pt solid #7d8b9c; }
+            @top-right { content: "{{ right|e('css') }}"{% if period %} "\A" "{{ period|e('css') }}"{% endif %}; width: 36%; font: 8pt "Inter", sans-serif; color: #0f1b2a; white-space: pre-wrap; vertical-align: bottom; padding-bottom: 2.5mm; border-bottom: 0.5pt solid #7d8b9c; text-align: right; }
             @bottom-center { content: "{{ centre|e('css') }}"; font: 7pt "Inter", sans-serif; color: #5b6b7c; vertical-align: top; padding-top: 3mm; }
         }
     </style>
@@ -29,9 +31,9 @@
 {% block body %}
     {# On screen only: in the PDF, the margin boxes above carry the same three texts on every page. #}
     <header class="px-doc__running">
-        <span class="px-doc__running-company">{{ report.company }}</span>
-        <h1 class="px-doc__title">{{ report.title }}</h1>
-        <span>{{ report.fiscalYear }}{% if report.period is defined and report.period %} · {{ report.period }}{% endif %} · date du dossier {{ report.dossierDate|date_fr }}</span>
+        <span class="px-doc__running-company">{{ report_header.company }}</span>
+        <h1 class="px-doc__title">{{ report_header.title }}</h1>
+        <span>{{ report_header.fiscalYear }}{% if report_header.period is defined and report_header.period %} · {{ report_header.period }}{% endif %} · date du dossier {{ report_header.dossierDate|date_fr }}</span>
     </header>
     <article class="px-doc px-doc--report">
         {% block content %}{% endblock %}

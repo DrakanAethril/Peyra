@@ -1,0 +1,7 @@
+{#- The figures of a balance line (BalanceLine): the eve's balance when the state has one, the movements, the closing balance split debit / credit; each leads to the consultation of `subject` (empty for a total). -#}
+{%- set drill = subject ?? null -%}
+{% if report.hasOpening %}<td class="px-u-num">{% if drill %}{{ include('accounting/edition/_drill.html.twig', {amount: line.opening, subject: drill, from: window.exerciseStart, to: window.eve, signed: true}) }}{% else %}{{ line.opening|balance }}{% endif %}</td>{% endif %}
+<td class="px-u-num">{% if drill %}{{ include('accounting/edition/_drill.html.twig', {amount: line.movements.debit, subject: drill, from: window.from, to: window.to}) }}{% else %}{{ line.movements.debit|amount }}{% endif %}</td>
+<td class="px-u-num">{% if drill %}{{ include('accounting/edition/_drill.html.twig', {amount: line.movements.credit, subject: drill, from: window.from, to: window.to}) }}{% else %}{{ line.movements.credit|amount }}{% endif %}</td>
+<td class="px-u-num">{% if drill %}{{ include('accounting/edition/_drill.html.twig', {amount: line.closingDebit, subject: drill, from: window.exerciseStart, to: window.to}) }}{% else %}{{ line.closingDebit|amount }}{% endif %}</td>
+<td class="px-u-num">{% if drill %}{{ include('accounting/edition/_drill.html.twig', {amount: line.closingCredit, subject: drill, from: window.exerciseStart, to: window.to}) }}{% else %}{{ line.closingCredit|amount }}{% endif %}</td>

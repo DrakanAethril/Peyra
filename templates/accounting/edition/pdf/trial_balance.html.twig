@@ -1,0 +1,30 @@
+{# Comptabilité › Éditions › Balance as a PDF (lot 1, step 1.5b; design-ui.md § 3.6, A4 landscape): the screen's state without its links, the figure columns grouped under their heads. #}
+{% extends 'doc/_report.html.twig' %}
+
+{% block content %}
+    {% if report.isEmpty %}
+        <p>Aucun compte n’a de mouvement du {{ window.exerciseStart|date_fr }} au {{ window.to|date_fr }}.</p>
+    {% else %}
+        <table class="px-doc__table">
+            <colgroup><col style="width: 20mm"><col>{% if report.hasOpening %}<col style="width: 32mm">{% endif %}<col style="width: 30mm"><col style="width: 30mm"><col style="width: 30mm"><col style="width: 30mm"></colgroup>
+            {{ include('accounting/edition/pdf/_balance_head.html.twig', {lead: ['Compte', 'Intitulé']}) }}
+            {% set columns = report.hasOpening ? 7 : 6 %}
+            {% for group in report.groups %}
+                <tbody>
+                    <tr class="px-doc__group"><th colspan="{{ columns }}" scope="rowgroup">{{ group.title }}</th></tr>
+                    {% for line in group.lines %}
+                        <tr>
+                            <td class="px-doc__code">{{ line.account.number }}</td>
+                            <td class="px-doc__cell-cut">{{ line.account.label }}</td>
+                            {{ include('accounting/edition/pdf/_balance_cells.html.twig') }}
+                        </tr>
+                    {% endfor %}
+                    <tr class="px-doc__subtotal"><th scope="row" colspan="2">Total {{ group.title|split(' · ')|first|lower }}</th>{{ include('accounting/edition/pdf/_balance_cells.html.twig', {line: group.subtotal, total: true}) }}</tr>
+                </tbody>
+            {% endfor %}
+            <tfoot>
+                <tr><td colspan="2">Total général · {{ report.lineCount }} compte{{ report.lineCount > 1 ? 's' : '' }}</td>{{ include('accounting/edition/pdf/_balance_cells.html.twig', {line: report.total, total: true}) }}</tr>
+            </tfoot>
+        </table>
+    {% endif %}
+{% endblock %}

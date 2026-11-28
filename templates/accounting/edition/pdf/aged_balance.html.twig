@@ -1,0 +1,28 @@
+{# Comptabilité › Éditions › Balance âgée as a PDF (lot 1, step 1.5b; design-ui.md § 3.6, A4 landscape): the screen's state without its links. #}
+{% extends 'doc/_report.html.twig' %}
+
+{% block content %}
+    {% if report.isEmpty %}
+        <p>Aucun {{ kind.label|lower }} n’a de solde au {{ window.to|date_fr }}.</p>
+    {% else %}
+        <table class="px-doc__table">
+            <colgroup><col style="width: 22mm"><col><col style="width: 29mm">{% for band in bands %}<col style="width: 28mm">{% endfor %}</colgroup>
+            <thead>
+                <tr><th scope="col">Tiers</th><th scope="col">Nom</th><th scope="col" class="px-doc__num">Solde</th>{% for band in bands %}<th scope="col" class="px-doc__num">{{ band.label }}</th>{% endfor %}</tr>
+            </thead>
+            <tbody>
+                {% for row in report.rows %}
+                    <tr>
+                        <td class="px-doc__code">{{ row.thirdParty.auxiliaryCode ?? row.thirdParty.code }}</td>
+                        <td class="px-doc__cell-cut">{{ row.thirdParty.name }}</td>
+                        <td class="px-doc__num">{{ row.total|amount }}</td>
+                        {% for band in bands %}<td class="px-doc__num">{{ row.band(band)|amount_cell }}</td>{% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr><td colspan="2">Total · {{ report.rows|length }} {{ report.rows|length > 1 ? kind.plural|lower : kind.label|lower }}</td><td class="px-doc__num">{{ report.total.total|amount }}</td>{% for band in bands %}<td class="px-doc__num">{{ report.total.band(band)|amount }}</td>{% endfor %}</tr>
+            </tfoot>
+        </table>
+    {% endif %}
+{% endblock %}

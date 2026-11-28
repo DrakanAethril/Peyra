@@ -101,6 +101,22 @@ final readonly class LedgerReader
     }
 
     /**
+     * Every line naming a third party in the window, by third party, each list in date order then
+     * as entered (the aged balance, step 1.5b).
+     *
+     * @return array<int, list<EntryLine>> by third party id
+     */
+    public function linesByThirdParty(Dossier $dossier, ?\DateTimeImmutable $from, \DateTimeImmutable $to, EntryScope $scope): array
+    {
+        $byThirdParty = [];
+        foreach ($this->lines($dossier, $from, $to, $scope)->andWhere('l.thirdParty IS NOT NULL')->getQuery()->getResult() as $line) {
+            $byThirdParty[(int) $line->getThirdParty()?->getId()][] = $line;
+        }
+
+        return $byThirdParty;
+    }
+
+    /**
      * The trial balance (« balance générale ») of the window: every account that carries lines in
      * it, in number order, with its totals.
      *
