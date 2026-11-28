@@ -1,0 +1,42 @@
+{# The état des charges sociales (step 4.5): the contributions by line of the clarified payslip, employee's and employer's shares, and their total. #}
+{% import 'payroll/edition/_macros.html.twig' as m %}
+{% set pdf = pdf|default(false) %}
+{% set num = pdf ? 'px-doc__num' : 'px-u-num' %}
+{% set totals = statements.totals %}
+{% set cells %}
+    <thead>
+        <tr>
+            <th scope="col">Nature</th>
+            <th scope="col" class="{{ num }}">Part salariale</th>
+            <th scope="col" class="{{ num }}">Part patronale</th>
+            <th scope="col" class="{{ num }}">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in statements.charges %}
+            {% set params = {dossier: dossier.id, month: statements.month|date('Y-m'), line: row.key, from: 'charges'} %}
+            <tr>
+                <td>{{ row.label }}</td>
+                <td class="{{ num }}">{{ m.drill(row.employee, params, pdf) }}</td>
+                <td class="{{ num }}">{{ m.drill(row.employer, params, pdf) }}</td>
+                <td class="{{ num }}">{{ row.total|amount }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <th scope="row">Total des charges sociales</th>
+            <td class="{{ num }}">{{ totals.employee|amount }}</td>
+            <td class="{{ num }}">{{ totals.employer|amount }}</td>
+            <td class="{{ num }}">{{ totals.employee.plus(totals.employer)|amount }}</td>
+        </tr>
+    </tfoot>
+{% endset %}
+{% if pdf %}
+    <table class="px-doc__table">
+        <colgroup><col><col style="width: 18%"><col style="width: 18%"><col style="width: 18%"></colgroup>
+        {{ cells }}
+    </table>
+{% else %}
+    <twig:Px:Table caption="État des charges sociales {{ statements.month|of_period }}" density="compact">{{ cells }}</twig:Px:Table>
+{% endif %}

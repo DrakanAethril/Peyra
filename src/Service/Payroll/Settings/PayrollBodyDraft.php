@@ -12,6 +12,10 @@ final class PayrollBodyDraft
     public string $kind = '';
     public string $name = '';
     public string $reference = '';
+    /** The account its contributions are owed on (step 4.5); empty: its kind's. */
+    public string $account = '';
+    /** The charge account of the employer's contributions (step 4.5); empty: its kind's. */
+    public string $chargeAccount = '';
 
     /** @var array<string, string> by field */
     public array $errors = [];
@@ -22,6 +26,8 @@ final class PayrollBodyDraft
         $draft->kind = $body->getKind()->value;
         $draft->name = $body->getName();
         $draft->reference = $body->getReference();
+        $draft->account = $body->getAccount() ?? '';
+        $draft->chargeAccount = $body->getChargeAccount() ?? '';
 
         return $draft;
     }

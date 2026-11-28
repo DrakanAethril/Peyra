@@ -1,0 +1,9 @@
+{# The views of Paie et social › Éditions (step 4.5; design-ux.md § 2.5): the four states of a month, then the provision for paid leave. Keeps the month shown. #}
+{% set month_query = month is defined and month ? {month: month|date('Y-m')} : {} %}
+<twig:Px:Tabs label="Éditions de la paie" :tabs="[
+    {label: 'Journal de paie', href: path('app_payroll_edition_journal', {dossier: dossier.id}|merge(month_query)), current: edition_current == 'journal'},
+    {label: 'Livre de paie', href: path('app_payroll_edition_book', {dossier: dossier.id}|merge(month_query)), current: edition_current == 'book'},
+    {label: 'Cotisations par organisme', href: path('app_payroll_edition_bodies', {dossier: dossier.id}|merge(month_query)), current: edition_current == 'bodies'},
+    {label: 'État des charges', href: path('app_payroll_edition_charges', {dossier: dossier.id}|merge(month_query)), current: edition_current == 'charges'},
+    {label: 'Provision pour congés payés', href: path('app_payroll_edition_provision', {dossier: dossier.id}), current: edition_current == 'provision'},
+]"/>

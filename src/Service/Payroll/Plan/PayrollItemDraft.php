@@ -36,6 +36,8 @@ final class PayrollItemDraft
     /** The body's id, empty for none. */
     public string $body = '';
     public string $line = '';
+    /** Its account in the payroll's entry (step 4.5); empty: the default. */
+    public string $account = '';
 
     /** @var array<string, string> by field */
     public array $errors = [];
@@ -58,6 +60,7 @@ final class PayrollItemDraft
         $draft->salary = $item->getSalaryCondition()->value;
         $draft->body = (string) $item->getBody()?->getId();
         $draft->line = $item->getPayslipLine()->value ?? '';
+        $draft->account = $item->getAccount() ?? '';
 
         return $draft;
     }

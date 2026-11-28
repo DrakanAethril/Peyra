@@ -1,0 +1,66 @@
+{#
+ # Paie et social › Éditions › Provision pour congés payés (step 4.5): at the dossier's date, the leave
+ # acquired since the reference period began and not yet taken, valued at the tenth of the gross pay of
+ # its validated payslips, and the employer's contributions on it at each employee's average rate -
+ # each line explained. What the inventory of lot 3 reads.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'editions' %}
+{% set dossier_title = 'Provision pour congés payés' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Provision pour congés payés au {{ dossier.dossierDate|date_fr }}" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Éditions', href: path('app_payroll_edition_journal', {dossier: dossier.id})},
+        {label: 'Provision pour congés payés', href: path('app_payroll_edition_provision', {dossier: dossier.id})},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    {{ include('payroll/edition/_tabs.html.twig') }}
+    {% if missing %}
+        <twig:Px:Alert tone="warning">La provision ne se calcule pas : une valeur réglementaire du jour manque ({{ missing }}).</twig:Px:Alert>
+    {% elseif provision.lines is empty %}
+        <twig:Px:Empty icon="file-text" title="Aucun congé acquis à provisionner." text="Aucun bulletin validé depuis le {{ provision.start|date_fr }}, début de la période de référence des congés payés."/>
+    {% else %}
+        <twig:Px:Alert tone="info">Les congés acquis depuis le {{ provision.start|date_fr }} (début de la période de référence) se prennent à partir de la période suivante : au {{ provision.day|date_fr }}, ils restent dus. Ils valent le dixième du brut des bulletins validés de la période, et les charges patronales s’y ajoutent au taux moyen de chaque salarié. Les congés de la période précédente non encore pris ne sont pas comptés : Peyra ne tient pas le compte des jours pris.</twig:Px:Alert>
+        <twig:Px:Card :flush="true">
+            <twig:Px:Table caption="Provision pour congés payés au {{ provision.day|date_fr }}" density="compact">
+                <thead>
+                    <tr>
+                        <th scope="col">Matricule</th>
+                        <th scope="col">Salarié</th>
+                        <th scope="col" class="px-u-num">Brut de la période</th>
+                        <th scope="col" class="px-u-num">Congés à payer</th>
+                        <th scope="col" class="px-u-num">Taux de charges</th>
+                        <th scope="col" class="px-u-num">Charges sociales</th>
+                        <th scope="col">Calcul</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in provision.lines %}
+                        <tr>
+                            <td class="px-u-code">{{ line.number }}</td>
+                            <td>{{ line.name }}</td>
+                            <td class="px-u-num">{{ line.gross|amount }}</td>
+                            <td class="px-u-num">{{ line.provision|amount }}</td>
+                            <td class="px-u-num">{{ line.rate|percent }}</td>
+                            <td class="px-u-num">{{ line.charges|amount }}</td>
+                            <td class="px-u-muted">{{ line.explanation }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th scope="row" colspan="3">Total</th>
+                        <td class="px-u-num">{{ provision.provision|amount }}</td>
+                        <td></td>
+                        <td class="px-u-num">{{ provision.charges|amount }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </twig:Px:Table>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}

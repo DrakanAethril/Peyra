@@ -12,6 +12,10 @@
 # millésime et son imputation, l'assiette de la CSG, le taux effectif de la réduction salariale sur
 # les heures supplémentaires.
 #
+# Le compte de chaque rubrique dans l'écriture de paie (étape 4.5) : sans « account », celui que donne
+# App\Service\Payroll\Statement\PayrollAccounts (641100 pour le brut, 641400 pour un avantage en nature,
+# 425000, 442100 ou 649000 pour une retenue, le compte de charges de l'organisme pour une cotisation).
+#
 # Aucune convention collective (périmètre accepté par les référents).
 
 bodies:
@@ -32,12 +36,12 @@ items:
   - {code: '1210', label: Absence maladie, kind: gross, subtracts: true, base: entered_hours, employee: {source: hourly_rate}}
   - {code: '1220', label: Maintien de salaire maladie, kind: gross, base: sick_pay, employee: {source: regulatory, key: social.sick_pay.employer_complement, path: first_period_rate}}
   - {code: '1230', label: Absence entrée ou sortie en cours de mois, kind: gross, subtracts: true, base: entry_exit_days}
-  - {code: '1300', label: Absence congés payés, kind: gross, subtracts: true, base: paid_leave_hours, employee: {source: hourly_rate}}
-  - {code: '1310', label: Indemnité de congés payés, kind: gross, base: paid_leave_pay, employee: {source: regulatory, key: social.paid_leave.pay, path: tenth_of_reference_pay}}
-  - {code: '1320', label: Indemnité compensatrice de congés payés, kind: gross, base: leave_compensation, employee: {source: regulatory, key: social.paid_leave.pay, path: tenth_of_reference_pay}}
+  - {code: '1300', label: Absence congés payés, kind: gross, subtracts: true, base: paid_leave_hours, employee: {source: hourly_rate}, account: '641200'}
+  - {code: '1310', label: Indemnité de congés payés, kind: gross, base: paid_leave_pay, employee: {source: regulatory, key: social.paid_leave.pay, path: tenth_of_reference_pay}, account: '641200'}
+  - {code: '1320', label: Indemnité compensatrice de congés payés, kind: gross, base: leave_compensation, employee: {source: regulatory, key: social.paid_leave.pay, path: tenth_of_reference_pay}, account: '641200'}
   - {code: '1400', label: Avantage en nature véhicule, kind: gross, benefit_in_kind: true, base: entered_amount}
   - {code: '1410', label: Avantage en nature nourriture, kind: gross, benefit_in_kind: true, base: entered_count, employee: {source: regulatory, key: social.benefit_in_kind.meal, path: per_meal}}
-  - {code: '1500', label: Indemnité de fin de contrat (CDD), kind: gross, base: fixed_term_end, employee: {source: regulatory, key: social.end_of_contract.fixed_term_indemnity, path: rate}}
+  - {code: '1500', label: Indemnité de fin de contrat (CDD), kind: gross, base: fixed_term_end, employee: {source: regulatory, key: social.end_of_contract.fixed_term_indemnity, path: rate}, account: '641400'}
 
   # --- Cotisations : santé ------------------------------------------------------------------------
   - {code: '2000', label: 'Maladie, maternité, invalidité, décès', kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.health, path: employer_rate}, body: urssaf, line: social_security_health}
@@ -72,10 +76,10 @@ items:
   - {code: '2610', label: FNAL (moins de 50 salariés), kind: contribution, base: gross, ceiling: tranche_1, employer: {source: regulatory, key: social.contrib.fnal, path: 0.employer_rate}, headcount: below_50, body: urssaf, line: other_employer_contributions}
   - {code: '2620', label: FNAL (50 salariés et plus), kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.fnal, path: 1.employer_rate}, headcount: from_50, body: urssaf, line: other_employer_contributions}
   - {code: '2630', label: Contribution au dialogue social, kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.social_dialogue, path: employer_rate}, body: urssaf, line: other_employer_contributions}
-  - {code: '2640', label: Formation professionnelle (moins de 11 salariés), kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.vocational_training, path: 0.employer_rate}, headcount: below_11, body: urssaf, line: other_employer_contributions}
-  - {code: '2650', label: Formation professionnelle (11 salariés et plus), kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.vocational_training, path: 1.employer_rate}, headcount: from_11, body: urssaf, line: other_employer_contributions}
-  - {code: '2660', label: Taxe d’apprentissage, kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.apprenticeship_tax, path: total}, body: urssaf, line: other_employer_contributions}
-  - {code: '2670', label: Versement mobilité, kind: contribution, base: gross, employer: {source: mobility}, headcount: from_11, body: urssaf, line: other_employer_contributions}
+  - {code: '2640', label: Formation professionnelle (moins de 11 salariés), kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.vocational_training, path: 0.employer_rate}, headcount: below_11, body: urssaf, line: other_employer_contributions, account: '633300'}
+  - {code: '2650', label: Formation professionnelle (11 salariés et plus), kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.vocational_training, path: 1.employer_rate}, headcount: from_11, body: urssaf, line: other_employer_contributions, account: '633300'}
+  - {code: '2660', label: Taxe d’apprentissage, kind: contribution, base: gross, employer: {source: regulatory, key: social.contrib.apprenticeship_tax, path: total}, body: urssaf, line: other_employer_contributions, account: '633300'}
+  - {code: '2670', label: Versement mobilité, kind: contribution, base: gross, employer: {source: mobility}, headcount: from_11, body: urssaf, line: other_employer_contributions, account: '633100'}
   - {code: '2700', label: Forfait social sur la prévoyance, kind: contribution, base: provident_employer, employer: {source: regulatory, key: social.contrib.forfait_social_prevoyance, path: 1.rate}, headcount: from_11, body: urssaf, line: other_employer_contributions}
   - {code: '2710', label: Contribution patronale sur l’indemnité de rupture conventionnelle, kind: contribution, base: conventional_exempt, employer: {source: regulatory, key: social.contrib.conventional_termination, path: employer_rate}, body: urssaf, line: other_employer_contributions}
 
@@ -95,10 +99,10 @@ items:
   - {code: '2930', label: Déduction patronale sur heures supplémentaires (20 salariés et plus), kind: contribution, subtracts: true, base: overtime_hours, employer: {source: regulatory, key: social.overtime.employer_flat_deduction, path: 1.amount_per_hour}, headcount: from_20, body: urssaf, line: reductions}
 
   # --- Non soumis -----------------------------------------------------------------------------------
-  - {code: '3000', label: Indemnité de repas (déplacement), kind: not_subject, base: entered_count, employee: {source: regulatory, key: social.expenses.meal_allowances, path: meal_on_travel_not_restaurant}}
-  - {code: '3010', label: Remboursement de frais professionnels, kind: not_subject, base: entered_amount}
-  - {code: '3100', label: Indemnité légale de licenciement, kind: not_subject, base: dismissal}
-  - {code: '3110', label: Indemnité spécifique de rupture conventionnelle, kind: not_subject, base: conventional_break}
+  - {code: '3000', label: Indemnité de repas (déplacement), kind: not_subject, base: entered_count, employee: {source: regulatory, key: social.expenses.meal_allowances, path: meal_on_travel_not_restaurant}, account: '625100'}
+  - {code: '3010', label: Remboursement de frais professionnels, kind: not_subject, base: entered_amount, account: '625100'}
+  - {code: '3100', label: Indemnité légale de licenciement, kind: not_subject, base: dismissal, account: '641400'}
+  - {code: '3110', label: Indemnité spécifique de rupture conventionnelle, kind: not_subject, base: conventional_break, account: '641400'}
 
   # --- Retenues sur le net --------------------------------------------------------------------------
   - {code: '4000', label: Avantages en nature (déduction), kind: deduction, base: benefits_in_kind}

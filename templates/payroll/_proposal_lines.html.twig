@@ -1,0 +1,21 @@
+{# The lines of an entry the payroll proposes (step 4.5), with their totals. Takes `proposal` and `caption`. #}
+<twig:Px:Table caption="{{ caption }}" density="compact">
+    <thead><tr>
+        <th scope="col">Compte</th>
+        <th scope="col" class="px-u-right">Débit</th><th scope="col" class="px-u-right">Crédit</th>
+    </tr></thead>
+    <tbody>
+        {% for line in proposal.lines %}
+            <tr>
+                <td class="px-u-code">{{ line.account }}</td>
+                <td class="px-u-num">{{ line.debit|amount_cell }}</td>
+                <td class="px-u-num">{{ line.credit|amount_cell }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot><tr>
+        <th scope="row">Totaux</th>
+        <td class="px-u-num">{{ proposal.totalDebit|amount }}</td>
+        <td class="px-u-num">{{ proposal.totalCredit|amount }}</td>
+    </tr></tfoot>
+</twig:Px:Table>

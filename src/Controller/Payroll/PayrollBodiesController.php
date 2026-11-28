@@ -47,7 +47,7 @@ final class PayrollBodiesController extends AbstractController
         $status = Response::HTTP_OK;
         if ($request->isMethod('POST')) {
             $this->read($request, $draft, 'payroll-body-new-'.$dossier->getId());
-            $kind = $sheet->check($draft);
+            $kind = $sheet->check($draft, null, $dossier);
             if (null !== $kind) {
                 $sheet->create($dossier, $draft, $kind, $me);
                 $entityManager->flush();
@@ -124,6 +124,7 @@ final class PayrollBodiesController extends AbstractController
             'body' => $body,
             'kind_options' => array_map(static fn (PayrollBodyKind $kind): array => ['value' => $kind->value, 'label' => $kind->label()], PayrollBodyKind::cases()),
             'deletion_refusal' => $deletionRefusal,
+            'default_accounts' => ['account' => $body?->getKind()->defaultAccount() ?? 'celui du type', 'charge' => $body?->getKind()->defaultChargeAccount() ?? 'celui du type'],
         ];
     }
 
@@ -135,5 +136,7 @@ final class PayrollBodiesController extends AbstractController
         $draft->kind = PostValue::trimmed($request, 'kind');
         $draft->name = PostValue::trimmed($request, 'name');
         $draft->reference = PostValue::trimmed($request, 'reference');
+        $draft->account = PostValue::trimmed($request, 'account');
+        $draft->chargeAccount = PostValue::trimmed($request, 'chargeAccount');
     }
 }

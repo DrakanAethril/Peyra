@@ -97,6 +97,13 @@
                     </twig:Px:Field>
                 </div>
             </twig:Px:Card>
+            <twig:Px:Card title="Comptabilisation" meta="Écriture de paie">
+                <div class="px-fieldgrid">
+                    <twig:Px:Field id="account" label="Compte" hint="Le brut, le non soumis et la part patronale y sont imputés ; une retenue y est créditée. Vide : {{ default_account ?? 'le compte par défaut de la famille' }}." :error="draft.error('account')">
+                        <twig:Px:Input id="account" value="{{ draft.account }}" hint="1" :error="draft.error('account')" class="px-u-code" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="{{ default_account ?? '' }}"/>
+                    </twig:Px:Field>
+                </div>
+            </twig:Px:Card>
         </form>
         {% if item %}
             <form method="post" action="{{ path('app_payroll_item_delete', {dossier: dossier.id, code: item.code}) }}" id="payroll-item-delete" hidden>
@@ -113,6 +120,7 @@
                     <dt>Assiette</dt><dd>{{ item.base.label }}{% if item.ceiling.short %} · {{ item.ceiling.label }}{% endif %}</dd>
                     <dt>Conditions</dt><dd>{{ item.statusCondition.label }} · {{ item.headcountCondition.label }} · {{ item.salaryCondition.label }}</dd>
                     {% if item.body %}<dt>Organisme</dt><dd>{{ item.body.name }}</dd><dt>Ligne du bulletin</dt><dd>{{ item.payslipLine.section.label }} › {{ item.payslipLine.label }}</dd>{% endif %}
+                    <dt>Compte</dt><dd class="px-u-code">{{ item.account ?? default_account }}</dd>
                 </dl>
             </twig:Px:Card>
             <twig:Px:Card title="Taux au {{ dossier.dossierDate|date_fr }}">
