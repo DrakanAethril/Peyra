@@ -175,6 +175,13 @@ class PayrollItem implements DossierOwned
         return $this->payslipLine;
     }
 
+    /** The rubrique as the payslip engine reads it (step 4.4a). */
+    public function spec(): PayrollItemSpec
+    {
+        return new PayrollItemSpec($this->code, $this->label, $this->kind, $this->sortOrder, $this->subtracts, $this->base, $this->ceiling, $this->employeeRate, $this->employerRate,
+            $this->statusCondition, $this->headcountCondition, $this->salaryCondition, $this->body, $this->payslipLine, $this->benefitInKind);
+    }
+
     /** PayrollItemSheet and PayrollPlanInstaller are the callers: the spec has passed PayrollItemRules. */
     public function describe(PayrollItemSpec $spec): void
     {

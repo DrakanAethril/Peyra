@@ -1,0 +1,57 @@
+{#
+ # Paie et social › Bulletins (step 4.4a, gabarit L; design-ux.md § 4.7): the month paid - the
+ # dossier's date's -, one payslip per employee under contract that month and where it stands.
+ # Entrée opens the first one « À faire »; a line opens its payslip.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'payslips' %}
+{% set dossier_title = 'Bulletins' %}
+{% set status_keys = first_to_do ? [{combo: 'Enter', verb: 'ouvrir le bulletin'}, {combo: 'ArrowUp', verb: 'ligne précédente'}, {combo: 'ArrowDown', verb: 'ligne suivante'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Bulletins de {{ month|period }}" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Bulletins', href: path('app_payroll_payslips', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if first_to_do %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: first_to_do.registrationNumber}) }}" variant="primary">Ouvrir le bulletin</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card :flush="true">
+        {% if employee_rows is empty %}
+            <twig:Px:Empty icon="users" title="Aucun salarié dans ce dossier." text="Aucun contrat ne couvre {{ month|period }} : le bulletin d’un salarié se prépare dès que sa fiche le met sous contrat dans le mois."/>
+        {% else %}
+            <twig:Px:Table caption="Bulletins de {{ month|period }}" :rows="true">
+                <thead>
+                    <tr>
+                        <th scope="col">Matricule</th>
+                        <th scope="col">Salarié</th>
+                        <th scope="col">Emploi</th>
+                        <th scope="col">Statut</th>
+                        <th scope="col" class="px-u-num">Salaire de base</th>
+                        <th scope="col">Bulletin</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for employee in employee_rows %}
+                        {% set terms = employee.termsAt(month|date_modify('last day of this month')) %}
+                        <tr data-rows-target="row"{% if first_to_do and employee.id == first_to_do.id %} class="is-current" autofocus{% endif %}>
+                            <td class="px-u-code"><a class="px-link" href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: employee.registrationNumber}) }}">{{ employee.registrationNumber }}</a></td>
+                            <td>{{ employee.sortName }}</td>
+                            <td class="px-u-truncate px-u-truncate-short" title="{{ terms.jobTitle }}">{{ terms.jobTitle }}</td>
+                            <td>{{ terms.statusLabel }}</td>
+                            <td class="px-u-num">{{ terms.baseSalary|amount }}</td>
+                            <td><twig:Px:Badge :of="statuses[employee.id]"/></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>Mois de paie · <b>{{ month|period }}</b></span><span>Bulletins · <b>{{ employee_rows|length }}</b></span>{% endblock %}

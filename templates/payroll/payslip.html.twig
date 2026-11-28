@@ -1,0 +1,151 @@
+{#
+ # Paie et social › Bulletins › an employee (step 4.4a, gabarit X, maquette 4; design-ux.md § 4.7):
+ # the employees of the month on the left (↑ ↓ in the list), the « Éléments du mois » card under it
+ # (saved and calculated at once, F10 or F9), the payslip in the middle - one row per rubrique under
+ # the sections of the clarified model, a click or F5 shows its calculation in the drawer - and the
+ # four figures under it. Ctrl ↑ / Ctrl ↓: previous, next employee; held while the elements are changed
+ # and not saved. The calculation is the engine's alone; the screen calculates nothing.
+ #}
+{% extends 'payroll/_layout.html.twig' %}
+
+{% set payroll_tab = 'payslips' %}
+{% set dossier_title = 'Bulletin de ' ~ employee.fullName %}
+{% set can_edit = is_granted('PAYROLL_ENTER', dossier) %}
+{% set status_keys = [{combo: 'F5', verb: 'détail du calcul'}]|merge(can_edit ? [{combo: 'F9', verb: 'calculer'}] : [])|merge([{combo: 'Ctrl+ArrowUp', verb: 'salarié précédent'}, {combo: 'Ctrl+ArrowDown', verb: 'salarié suivant'}]) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ employee.fullName }}" :trail="[
+        {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+        {label: 'Bulletins', href: path('app_payroll_payslips', {dossier: dossier.id})},
+        {label: month|period|capitalize, href: path('app_payroll_payslips', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Badge :of="status"/>
+            {% if previous %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: previous.registrationNumber}) }}" icon="chevron-up" shortcut="Ctrl+ArrowUp" data-payslip-leave="">Précédent</twig:Px:Button>{% endif %}
+            {% if next %}<twig:Px:Button href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: next.registrationNumber}) }}" icon="chevron-down" shortcut="Ctrl+ArrowDown" data-payslip-leave="">Suivant</twig:Px:Button>{% endif %}
+            {% if payslip_view %}<twig:Px:Button shortcut="F5" data-payslip-explain="">Détail d’une rubrique</twig:Px:Button>{% endif %}
+            {% if can_edit %}<twig:Px:Button type="submit" form="payslip-elements" variant="primary" shortcut="F9 F10">{{ status.value == 'todo' ? 'Calculer le bulletin' : 'Recalculer' }}</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <div data-controller="payslip">
+        <div data-payslip-target="unsaved" tabindex="-1" hidden>
+            <twig:Px:Alert tone="warning">Les éléments du mois ont changé : enregistrez d’abord le bulletin (F10) avant de passer à un autre salarié.</twig:Px:Alert>
+        </div>
+        {% if errors.calculation is defined %}
+            <twig:Px:Alert tone="danger" title="Le bulletin ne se calcule pas">{{ errors.calculation }}</twig:Px:Alert>
+        {% elseif errors is not empty %}
+            <twig:Px:Alert tone="danger">Le bulletin n’est pas calculé : {{ errors|length > 1 ? errors|length ~ ' éléments sont à corriger' : 'un élément est à corriger' }}.</twig:Px:Alert>
+        {% endif %}
+        {% if not has_establishment %}
+            <twig:Px:Alert tone="warning" actionLabel="Renseigner l’établissement" actionHref="{{ path('app_payroll_establishment', {dossier: dossier.id}) }}">L’établissement n’est pas renseigné : son effectif et ses taux décident des cotisations.</twig:Px:Alert>
+        {% endif %}
+        {% if employee.withholdingRate is null %}
+            <twig:Px:Alert tone="info">Le taux de prélèvement à la source de {{ employee.fullName }} n’est pas renseigné. Le taux neutre s’applique.</twig:Px:Alert>
+        {% endif %}
+        <div class="px-split px-split--payslip">
+            <div class="px-stack">
+                <twig:Px:Card title="Salariés" meta="{{ employee_rows|length }} bulletin{{ employee_rows|length > 1 ? 's' : '' }}" :flush="true">
+                    <twig:Px:Table caption="Salariés de {{ month|period }}" density="compact" :rows="true">
+                        <tbody>
+                            {% for other in employee_rows %}
+                                {% set other_terms = other.termsAt(pay_day) %}
+                                <tr data-rows-target="row"{% if other.id == employee.id %} class="is-current" aria-current="page"{% endif %}>
+                                    <td><a class="px-link" href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: other.registrationNumber}) }}" data-payslip-leave="">{% if other.id == employee.id %}<b>{{ other.sortName }}</b>{% else %}{{ other.sortName }}{% endif %}</a><br><small class="px-u-muted">{{ other_terms.jobTitle }} · {{ other_terms.statusLabel|lower }}</small></td>
+                                    <td class="px-u-num"><twig:Px:Badge :of="statuses[other.id]"/></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                </twig:Px:Card>
+                <twig:Px:Card title="Éléments du mois" :flush="true">
+                    <form method="post" id="payslip-elements" action="{{ path('app_payroll_payslip', {dossier: dossier.id, number: employee.registrationNumber}) }}" novalidate data-controller="focus-error" data-action="input->payslip#changed submit->payslip#saving">
+                        <input type="hidden" name="_token" value="{{ csrf_token('payslip-' ~ employee.id) }}">
+                        <twig:Px:Table caption="Éléments du mois de {{ employee.fullName }}" density="compact">
+                            <tbody>
+                                <tr><th scope="row">Horaire mensuel</th><td class="px-u-num">{{ terms.monthlyHours|hours }}</td></tr>
+                                <tr><th scope="row">Salaire de base</th><td class="px-u-num">{{ terms.baseSalary|amount }}</td></tr>
+                                <tr><th scope="row">Taux du prélèvement à la source</th><td class="px-u-num">{{ employee.withholdingRate is null ? 'taux neutre' : employee.withholdingRate|percent }}</td></tr>
+                                {% for field in fields %}
+                                    {% set field_id = 'el-' ~ field.kind ~ '-' ~ field.code %}
+                                    {% set field_error = errors[field.key] ?? null %}
+                                    <tr>
+                                        <th scope="row"><label for="{{ field_id }}">{{ field.label }}</label>{% if field_error %}<p class="px-field__error" id="{{ field_id }}_error">{{ field_error }}</p>{% endif %}</th>
+                                        <td class="px-u-num"><twig:Px:Input id="{{ field_id }}" name="{{ field.kind }}[{{ field.code }}]" value="{{ typed[field.key] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" :disabled="not can_edit" placeholder="{{ field.unit }}" :autofocus="loop.first and can_edit"/></td>
+                                    </tr>
+                                {% endfor %}
+                                {% if takes_paid_leave %}
+                                    {% for part, part_label in {hours: 'Congés payés pris : heures', daysTaken: 'Congés payés : jours pris', daysAcquired: 'Congés payés : jours acquis', referenceGross: 'Congés payés : brut de la période de référence'} %}
+                                        {% set field_error = errors['paidLeave.' ~ part] ?? (loop.first ? errors['paidLeave'] ?? null : null) %}
+                                        <tr>
+                                            <th scope="row"><label for="el-leave-{{ part }}">{{ part_label }}</label>{% if field_error %}<p class="px-field__error">{{ field_error }}</p>{% endif %}</th>
+                                            <td class="px-u-num"><twig:Px:Input id="el-leave-{{ part }}" name="paidLeave[{{ part }}]" value="{{ typed['paidLeave.' ~ part] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" :disabled="not can_edit" placeholder="{{ part == 'referenceGross' ? '€' : (part == 'hours' ? 'h' : 'j') }}"/></td>
+                                        </tr>
+                                    {% endfor %}
+                                {% endif %}
+                                {% set field_error = errors['unpaidDays'] ?? null %}
+                                <tr>
+                                    <th scope="row"><label for="el-unpaid">Jours entiers d’absence sans aucun versement</label>{% if field_error %}<p class="px-field__error">{{ field_error }}</p>{% endif %}</th>
+                                    <td class="px-u-num"><twig:Px:Input id="el-unpaid" name="unpaidDays" value="{{ typed['unpaidDays'] }}" size="sm" :error="field_error is not null" class="px-u-num" autocomplete="off" :disabled="not can_edit" placeholder="j"/></td>
+                                </tr>
+                            </tbody>
+                        </twig:Px:Table>
+                    </form>
+                </twig:Px:Card>
+            </div>
+            <div class="px-stack">
+                <twig:Px:Card title="Bulletin de paie" meta="du 1er au {{ pay_day|date('j') }} {{ month|period }} · paiement le {{ pay_day|day_month(pay_day|date('Y')) }} par virement" :flush="true">
+                    {% if payslip_view is null %}
+                        {% if refusal %}
+                            <twig:Px:Empty icon="triangle-alert" title="Le bulletin ne se calcule pas" text="{{ refusal }}"/>
+                        {% else %}
+                            <twig:Px:Empty icon="percent" title="Bulletin à calculer" text="Saisissez les éléments du mois de {{ employee.fullName }}, puis calculez le bulletin (F9) : le calcul de chaque ligne s’affiche d’un clic."/>
+                        {% endif %}
+                    {% else %}
+                        <twig:Px:Table caption="Bulletin de {{ employee.fullName }}, {{ month|period }}" density="compact">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Rubrique</th>
+                                    <th scope="col" class="px-u-num">Base</th>
+                                    <th scope="col" class="px-u-num">Taux salarié</th>
+                                    <th scope="col" class="px-u-num">Part salarié</th>
+                                    <th scope="col" class="px-u-num">Taux employeur</th>
+                                    <th scope="col" class="px-u-num">Part employeur</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in payslip_view.gross %}{{ include('payroll/_payslip_row.html.twig') }}{% endfor %}
+                                <tr class="px-table__subtotal"><th scope="row">Salaire brut</th><td></td><td></td><td class="px-u-num">{{ result.gross|amount }}</td><td></td><td></td></tr>
+                                {% for block in payslip_view.contributions %}
+                                    <tr class="px-table__section"><th scope="rowgroup" colspan="6">{{ block.heading }}</th></tr>
+                                    {% for row in block.rows %}{{ include('payroll/_payslip_row.html.twig') }}{% endfor %}
+                                {% endfor %}
+                                <tr class="px-table__subtotal"><th scope="row">Total des cotisations et contributions</th><td></td><td></td><td class="px-u-num">{{ result.totals.employeeContributions|amount }}</td><td></td><td class="px-u-num">{{ result.totals.employerContributions|amount }}</td></tr>
+                                {% for block in payslip_view.after %}
+                                    <tr class="px-table__section"><th scope="rowgroup" colspan="6">{{ block.heading }}</th></tr>
+                                    {% for row in block.rows %}{{ include('payroll/_payslip_row.html.twig') }}{% endfor %}
+                                {% endfor %}
+                            </tbody>
+                        </twig:Px:Table>
+                    {% endif %}
+                </twig:Px:Card>
+                {% if payslip_view %}
+                    {% set totals = result.totals %}
+                    <div class="px-kpis">
+                        <twig:Px:Kpi label="Montant net social" value="{{ totals.netSocial|amount }}" note="à déclarer pour les prestations"/>
+                        <twig:Px:Kpi label="Net à payer avant impôt" value="{{ totals.netBeforeTax|amount }}" note="net imposable {{ totals.netTaxable|amount }}"/>
+                        <twig:Px:Kpi label="Impôt prélevé à la source" value="{{ totals.withholdingTax|amount }}" note="{{ totals.withholdingRate|percent }} du net imposable{{ totals.neutralRate ? ', taux neutre' : '' }}"/>
+                        <twig:Px:Kpi label="Net à payer" value="{{ totals.netPay|amount }}" note="coût employeur {{ totals.employerCost|amount }}"/>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        <twig:Px:Drawer id="payslip-detail" title="Détail du calcul" data-payslip-target="drawer">
+            <twig:block name="content"><div data-payslip-target="detail"></div></twig:block>
+        </twig:Px:Drawer>
+    </div>
+{% endblock %}
+
+{% block facts %}<span>Mois de paie · <b>{{ month|period }}</b></span><span>Jour de paie · <b>{{ pay_day|date_fr }}</b></span>{% if result %}<span>Brut · <b>{{ result.gross|amount }}</b></span>{% endif %}{% endblock %}

@@ -1,0 +1,27 @@
+{#
+ # One rubrique of the calculated payslip (step 4.4a): base, rates and shares as the engine gave them,
+ # an apprentice's employee base under the employer's; its explanation travels in a <template> that a
+ # click, Entrée or F5 shows in the drawer (payslip_controller.js).
+ #}
+{% set row_base = row.base is null ? '' : (row.baseUnit ? row.baseUnit.format(row.base) : row.base) %}
+<tr tabindex="0" data-payslip-target="line" data-action="click->payslip#explain focus->payslip#focusLine keydown->payslip#lineKey" title="Détail du calcul (F5)">
+    <th scope="row"><span class="px-u-code px-u-muted">{{ row.code }}</span> {{ row.label }}</th>
+    <td class="px-u-num">{{ row_base }}{% if row.employeeBase is not null and row.base is not null and row.employeeBase != row.base %}<br><small class="px-u-muted">salarié : {{ row.baseUnit ? row.baseUnit.format(row.employeeBase) : row.employeeBase }}</small>{% endif %}</td>
+    <td class="px-u-num">{{ row.employeeRate is null ? '' : (row.employeeRateUnit ? row.employeeRateUnit.format(row.employeeRate) : row.employeeRate) }}</td>
+    <td class="px-u-num">{{ row.employeeAmount.isZero and row.employerAmount is not null ? '' : row.employeeAmount|amount }}</td>
+    <td class="px-u-num">{{ row.employerRate is null ? '' : (row.employerRateUnit ? row.employerRateUnit.format(row.employerRate) : row.employerRate) }}</td>
+    <td class="px-u-num">{{ row.employerAmount is null ? '' : row.employerAmount|amount }}</td>
+    <template>
+        <h3 class="px-u-strong">{{ row.code }} · {{ row.label }}</h3>
+        <dl class="px-facts">
+            <dt>Calcul</dt><dd>{{ row.explanation.formula }}</dd>
+            <dt>Base</dt><dd>{{ row.explanation.base }}</dd>
+            <dt>Taux</dt><dd>{{ row.explanation.rate }}</dd>
+            {% if row.explanation.source %}
+                {% set source = row.explanation.source %}
+                <dt>Valeur réglementaire</dt><dd>{{ source.label }} · en vigueur au {{ source.effectiveFrom|date_fr }}{% if not source.verified %} · <twig:Px:Badge tone="warning" label="à vérifier"/>{% endif %}{% if source.url %} · <a class="px-link" href="{{ source.url }}" target="_blank" rel="noopener">source</a>{% endif %}</dd>
+            {% endif %}
+            {% for note in row.explanation.notes %}<dt>{{ loop.first ? 'À savoir' : '' }}</dt><dd>{{ note }}</dd>{% endfor %}
+        </dl>
+    </template>
+</tr>

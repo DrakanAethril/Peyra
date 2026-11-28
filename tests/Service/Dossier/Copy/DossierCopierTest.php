@@ -17,6 +17,7 @@ use App\Enum\Identity\EntryBasis;
 use App\Repository\Accounting\EntryRepository;
 use App\Repository\Accounting\JournalRepository;
 use App\Repository\Dossier\PeriodRepository;
+use App\Repository\Payroll\EmployeeRepository;
 use App\Service\Accounting\Entry\GridGroup;
 use App\Service\Accounting\Entry\GridLine;
 use App\Service\Accounting\Entry\PendingEntries;
@@ -28,10 +29,13 @@ use App\Service\Dossier\Copy\DossierEraser;
 use App\Service\Dossier\Demo\DemoInstaller;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\DossierDates;
+use App\Service\Payroll\Payslip\PayslipBook;
+use App\Service\Payroll\Payslip\PayslipElements;
 use App\Service\Regulatory\RegulatorySync;
 use App\Service\Shared\Storage\DossierFiles;
 use App\Tests\Support\CanonicalDossierExport;
 use App\Tests\Support\DossierFixtures;
+use Brick\Math\BigDecimal;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -80,6 +84,10 @@ final class DossierCopierTest extends KernelTestCase
             // A reversal: an entry pointing at another of its table.
             $validated = array_values(array_filter($entries->findInJournalPeriod($purchases, $march), static fn (Entry $entry): bool => EntryState::Validated === $entry->getState()))[0];
             self::getContainer()->get(Ledger::class)->reverse($validated, new \DateTimeImmutable('2026-03-31'), $this->teacher);
+            // A payslip of the month with its elements (step 4.4a).
+            $lefevre = self::getContainer()->get(EmployeeRepository::class)->findOneByNumber($this->source, 'S003') ?? throw new \LogicException('The demonstration has S003.');
+            self::getContainer()->get(PayslipBook::class)->record($lefevre, new \DateTimeImmutable('2026-03-01'), new PayslipElements(rates: ['1010' => BigDecimal::of('3')]));
+            $entityManager->flush();
         });
         self::getContainer()->get(DossierDates::class)->move($this->source, new \DateTimeImmutable('2026-02-28'), $this->teacher, $at);
         $entityManager->flush();
