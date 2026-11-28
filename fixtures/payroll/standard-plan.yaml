@@ -7,8 +7,8 @@
 # ici : chaque taux nomme sa valeur réglementaire (config/regulatory/<année>.yaml), lue à la date
 # de la paie. Ce qui est propre à l'entreprise (complémentaire santé, contrat de prévoyance
 # au-delà du minimum, taux d'accident du travail et de versement mobilité) est au dossier.
-# Le moteur de bulletin (étape 4.3) applique ce que les rubriques ne disent pas : la régularisation
-# des plafonds, les taux réduits de 2025, l'exonération des apprentis, la réduction générale du
+# Le moteur de bulletin (étape 4.3) applique ce que les rubriques ne disent pas : la proratisation du
+# plafond et du SMIC de référence d'un mois incomplet, la régularisation des plafonds, les taux réduits de 2025, l'exonération des apprentis, la réduction générale du
 # millésime et son imputation, l'assiette de la CSG, le taux effectif de la réduction salariale sur
 # les heures supplémentaires.
 #
@@ -30,7 +30,8 @@ items:
   - {code: '1130', label: Heures complémentaires à 25 %, kind: gross, base: entered_hours, employee: {source: hourly_rate_premium, key: social.overtime.complementary_premium, path: beyond_one_tenth}}
   - {code: '1200', label: Absence non rémunérée, kind: gross, subtracts: true, base: entered_hours, employee: {source: hourly_rate}}
   - {code: '1210', label: Absence maladie, kind: gross, subtracts: true, base: entered_hours, employee: {source: hourly_rate}}
-  - {code: '1220', label: Maintien de salaire maladie, kind: gross, base: entered_amount}
+  - {code: '1220', label: Maintien de salaire maladie, kind: gross, base: sick_pay, employee: {source: regulatory, key: social.sick_pay.employer_complement, path: first_period_rate}}
+  - {code: '1230', label: Absence entrée ou sortie en cours de mois, kind: gross, subtracts: true, base: entry_exit_days}
   - {code: '1300', label: Absence congés payés, kind: gross, subtracts: true, base: paid_leave_hours, employee: {source: hourly_rate}}
   - {code: '1310', label: Indemnité de congés payés, kind: gross, base: paid_leave_pay, employee: {source: regulatory, key: social.paid_leave.pay, path: tenth_of_reference_pay}}
   - {code: '1400', label: Avantage en nature véhicule, kind: gross, benefit_in_kind: true, base: entered_amount}

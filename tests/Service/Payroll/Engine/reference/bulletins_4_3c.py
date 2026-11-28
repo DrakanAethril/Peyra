@@ -5,7 +5,18 @@ données préparées (plan/donnees/reglementaire/social-2025.yaml et social-2026
 est base × taux arrondi au centime au demi supérieur, rubrique par rubrique (DECISIONS 4.3b).
 
 Lancer : python3 -I tests/Service/Payroll/Engine/reference/bulletins_4_3c.py
-Les montants attendus de PayslipNetTest et PayslipYearToDateTest sont ceux que ce script imprime.
+Les montants attendus de PayslipNetTest et PayslipYearToDateTest sont ceux que ce script imprime ; ceux de
+PayslipMonthTest (étape 4.3d : entrée et sortie en cours de mois, absences, maintien maladie) aussi, cas
+« 4.3d » en fin de fichier.
+
+Règles de 4.3d, reprises des sources et non du moteur :
+- salaire d'un mois incomplet : jours hors contrat × (salaire ÷ jours du mois, 4 décimales), arrondi au centime ;
+- absences plafonnées au salaire du contrat ;
+- plafond du mois = PMSS × (jours calendaires de la période d'emploi − journées entières d'absence sans aucun
+  versement) ÷ jours du mois, arrondi au centime (R242-2 CSS ; fiche consigne DSN 2713, net-entreprises) ;
+- SMIC de référence corrigé selon le rapport salaire dû ÷ salaire dû si présent tout le mois, sur les seuls
+  éléments affectés par l'absence (salaire, absences, sorties, maintien), arrondi une fois (D241-7 IV) ;
+- maintien de salaire : heures maintenues × (taux horaire × 90 %, 4 décimales), arrondi, moins les IJSS saisies.
 """
 from decimal import Decimal as D, ROUND_HALF_UP, getcontext
 
@@ -46,6 +57,9 @@ GRID_JAN_2026 = [(0, '0'), (1620, '0.5'), (1683, '1.3'), (1791, '2.1'), (1911, '
                  (2294, '5.3'), (2714, '7.5'), (3107, '9.9'), (3539, '11.9'), (3983, '13.8'), (4648, '15.8'),
                  (5574, '17.9'), (6974, '20'), (8711, '24'), (12091, '28'), (16376, '33'), (25706, '38'), (55062, '43')]
 
+# Grille de janvier à avril 2025 (données préparées, social-2025.yaml), premières tranches seulement.
+GRID_2025 = [(0, '0'), (1591, '0.5'), (1653, '1.3'), (1759, '2.1'), (1877, '2.9'), (2006, '3.5'), (2113, '4.1')]
+
 
 def neutral(grid, base):
     rate = D(0)
@@ -61,7 +75,9 @@ def bracket(gross, ceiling, lo, hi):
 
 
 def payslip(case):
-    Y = YEARS[case['year']]
+    Y = dict(YEARS[case['year']])
+    if case['year'] == 2025 and case.get('month', 12) < 5:   # avant le 1er mai 2025 : chômage 4,05 %, T 0,3194
+        Y.update(unemployment='4.05', T='0.3194')
     pss = Y['pss']
     salary = D(case['salary'])
     hours = D(case.get('hours', '151.67'))
@@ -79,7 +95,31 @@ def payslip(case):
         ot_hours += D(case['ot25'])
     if 'car' in case:
         gross_rows['1400'] = D(case['car'])
+    # 4.3d : absences au taux horaire, entrée ou sortie en jours calendaires, plafonnées au salaire.
+    days = D(case.get('days_in_month', '30'))
+    left = salary
+    deductions = []
+    if 'unpaid_hours' in case:
+        deductions.append(('1200', r2(D(case['unpaid_hours']) * hourly)))
+    if 'sick_hours' in case:
+        deductions.append(('1210', r2(D(case['sick_hours']) * hourly)))
+    if 'outside_days' in case:
+        daily = r4(salary / days)
+        deductions.append(('1230', r2(D(case['outside_days']) * daily)))
+    affected = salary
+    for code, amount in deductions:
+        amount = min(amount, left)
+        left -= amount
+        gross_rows[code] = -amount
+        affected -= amount
+    if 'maintained_hours' in case:
+        maintained = r2(D(case['maintained_hours']) * r4(hourly * D('0.90'))) - D(case.get('ijss', '0'))
+        gross_rows['1220'] = max(D(0), maintained)
+        affected += gross_rows['1220']
     gross = sum(gross_rows.values(), D(0))
+    pss = pss if 'present_days' not in case and 'unpaid_days' not in case else \
+        r2(pss * (D(case.get('present_days', days)) - D(case.get('unpaid_days', '0'))) / days)
+    presence = min(D(1), max(D(0), affected / salary))
     # Cumuls de l'année avant ce bulletin, puis avec lui.
     before = case.get('before', {})
     g0, c0 = D(before.get('gross', '0')), D(before.get('ceiling', '0'))
@@ -98,11 +138,13 @@ def payslip(case):
 
     health, family = Y['health'], Y['family']
     if case['year'] == 2025:   # taux réduits de 2025 : brut ≤ 2,25 (3,3) SMIC de référence du mois
-        smic_ref = r2(Y['smic'] * hours / D('151.67')) + r2(Y['smic_h'] * ot_hours)
+        smic_ref = r2(Y['smic'] * hours * affected / (D('151.67') * salary)) + r2(Y['smic_h'] * ot_hours)
         health = '7' if gross <= D('2.25') * smic_ref else '13'
         family = '3.45' if gross <= D('3.3') * smic_ref else '5.25'
     add('2000', gross, None, health)
-    rows['2010'] = (None, None, D('28.00'), None, D('28.00'))   # complémentaire santé de la démonstration
+    health_flat = D('28.00') if case.get('health_flat', True) else D(0)
+    if health_flat:
+        rows['2010'] = (None, None, health_flat, None, health_flat)   # complémentaire santé de la démonstration
     if executive:
         add('2050', t1, None, '1.50')
     add('2100', gross, None, '2.10')
@@ -126,7 +168,7 @@ def payslip(case):
     add('2660', gross, None, '0.68')
     # CSG : 98,25 % du brut dans la limite de 4 plafonds du mois + parts patronales santé et prévoyance.
     abated = min(gross, 4 * pss)
-    employer_provident = D('28.00') + (rows['2050'][4] if '2050' in rows else D(0))
+    employer_provident = health_flat + (rows['2050'][4] if '2050' in rows else D(0))
     csg_base = r2(abated * D('0.9825')) + (gross - abated) + employer_provident
     add('2800', csg_base, '6.80', None)
     add('2810', csg_base, '2.40', None)
@@ -139,11 +181,13 @@ def payslip(case):
         rows['2910'] = (ot, rate, -pct(ot, rate), None, None)
         rows['2920'] = (ot_hours, None, D(0), '1.50', -r2(ot_hours * D('1.50')))
     # Réduction générale, régularisation progressive : coefficient sur les cumuls.
-    smic_month = r2(Y['smic'] * hours / D('151.67')) + r2(Y['smic_h'] * ot_hours)
+    smic_month = r2(Y['smic'] * hours * affected / (D('151.67') * salary)) + r2(Y['smic_h'] * ot_hours)
     s0 = D(before.get('smic', '0'))
     s1 = s0 + smic_month
     red0 = D(before.get('reduction', '0'))
-    if Y['regime'] == 'rgdu':
+    if g1 <= 0 or s1 <= 0:
+        C, T = D(0), D('0.3981') if Y['regime'] == 'rgdu' else D(Y.get('T', '0.3193'))
+    elif Y['regime'] == 'rgdu':
         if g1 < 3 * s1:
             x = (3 * s1 / g1 - 1) / 2
             C = min(r4(D('0.02') + D('0.3781') * power(x, D('1.75'))), D('0.3981'))
@@ -151,7 +195,7 @@ def payslip(case):
             C = D(0)
         T = D('0.3981')
     else:
-        T = D('0.3193')
+        T = D(Y.get('T', '0.3193'))
         C = min(r4(T / D('0.6') * (D('1.6') * s1 / g1 - 1)), T) if g1 < D('1.6') * s1 else D(0)
     red1 = r2(C * g1)
     month_red = red1 - red0
@@ -161,7 +205,7 @@ def payslip(case):
     employee = sum((r[2] for r in rows.values()), D(0))
     employer = sum((r[4] or D(0) for r in rows.values()), D(0))
     # Net imposable : + CSG/CRDS non déductibles + part patronale santé (pas la prévoyance) − HS exonérées.
-    nd = rows['2810'][2] + rows['2820'][2]
+    nd = sum((rows[c][2] for c in ('2810', '2820') if c in rows), D(0))
     exempt = D(0)
     if ot:
         others = sum((rows[c][0] * D(rows[c][1]) for c in rows if c not in ('2800', '2810', '2820', '2910') and rows[c][0] is not None and rows[c][1] and c != '2920'), D(0))
@@ -171,7 +215,7 @@ def payslip(case):
         exempt = max(D(0), ot - on_ot - csg_ot)
         left = D('7500') - D(before.get('exempt', '0'))
         exempt = min(exempt, max(D(0), left))
-    net_taxable = gross - employee + nd + D('28.00') - exempt
+    net_taxable = gross - employee + nd + health_flat - exempt
     net_social = gross - employee
     car = gross_rows.get('1400', D(0))
     meals = r2(D(case.get('meals', '0')) * D(case.get('meal_price', '0')))
@@ -183,7 +227,7 @@ def payslip(case):
     else:
         rate = neutral(case['grid'], net_taxable)
     tax = pct(net_taxable, rate)
-    return dict(gross=gross, rows=rows, t1=t1, t2=t2, C=C, smic=smic_month, red_month=month_red, red_cum=red1,
+    return dict(gross=gross, rows={**{c: (None, None, a, None, None) for c, a in gross_rows.items()}, **rows}, t1=t1, t2=t2, C=C, smic=smic_month, pss=pss, red_month=month_red, red_cum=red1,
                 urssaf=urssaf, retirement=month_red - urssaf, employee=employee, employer=employer,
                 net_social=net_social, net_taxable=net_taxable, exempt=exempt, before_tax=before_tax,
                 pas_rate=rate, pas=tax, net=before_tax - tax, cost=gross + employer,
@@ -196,7 +240,7 @@ def show(name, case, codes=()):
     print('==', name)
     for c in codes:
         print('  ', c, p['rows'].get(c))
-    for k in ('gross', 'employee', 'employer', 'C', 'smic', 'red_month', 'red_cum', 'urssaf', 'retirement', 'net_social',
+    for k in ('gross', 'pss', 'employee', 'employer', 'C', 'smic', 'red_month', 'red_cum', 'urssaf', 'retirement', 'net_social',
               'net_taxable', 'exempt', 'before_tax', 'pas_rate', 'pas', 'net', 'cost', 't1', 't2'):
         print('   %-12s %s' % (k, p[k]))
     print('   cum', {k: str(v) for k, v in p['cum'].items()})
@@ -244,3 +288,32 @@ if __name__ == '__main__':
     may = payslip(dict(year=2025, salary='2350.00', seniority='10', pas='4.1'))
     show('Bonnet juin 2025', dict(year=2025, salary='2350.00', seniority='10', pas='4.1', before=dict(
         gross=str(may['gross']), ceiling='3925', smic=str(may['smic']), reduction=str(-may['rows']['2900'][4]))), ['2000', '2400', '2900'])
+
+    # --- 4.3d : entrée et sortie en cours de mois, absences, maintien maladie ----------------------------
+    # 7. Élodie Masson, juin 2026 : entrée le 15/06 (16 jours sur 30, 14 hors contrat), 2 500,00, PAS 3,8 %.
+    show('Masson juin 2026, entrée le 15', dict(year=2026, salary='2500.00', pas='3.8', days_in_month='30',
+                                                 outside_days='14', present_days='16'), ['1230', '2200', '2900'])
+    # 8. Sortie le 20/05/2026 (20 jours sur 31, 11 hors contrat), 2 600,00 + 5 %, PAS 6 %, après quatre mois pleins.
+    full = payslip(dict(year=2026, salary='2600.00', seniority='5', pas='6.0'))
+    show('Sortie le 20 mai 2026 après quatre mois', dict(year=2026, salary='2600.00', seniority='5', pas='6.0', days_in_month='31',
+                                                          outside_days='11', present_days='20', before=dict(
+        gross=str(4 * full['gross']), ceiling=str(4 * D('4005')), smic=str(4 * full['smic']),
+        reduction=str(-4 * full['rows']['2900'][4]), net_taxable=str(4 * full['net_taxable']))), ['1230', '2200', '2900'])
+    # 9. Damien Fournier, octobre 2026 : SMIC 1 867,02 + 5 %, arrêt maladie 56 h, 21 h maintenues à 90 %,
+    #    IJSS des jours maintenus 95,76, 7 jours entiers sans aucun versement de l'employeur ; PAS 0,5 %.
+    show('Fournier octobre 2026, maladie', dict(year=2026, salary='1867.02', seniority='5', pas='0.5', days_in_month='31',
+                                                 sick_hours='56', maintained_hours='21', ijss='95.76', unpaid_days='7'),
+         ['1210', '1220', '2200', '2900'])
+    # 10. Sandrine Gauthier, janvier 2026 : temps partiel 104 h, 1 476,80 + 7 %, une journée de 8 h sans solde
+    #     (un lundi entier : le plafond perd un jour) ; PAS 1,3 %.
+    show('Gauthier janvier 2026, absence non rémunérée', dict(year=2026, salary='1476.80', hours='104.00', seniority='7', pas='1.3',
+                                                              days_in_month='31', unpaid_hours='8', unpaid_days='1'), ['1200', '2200', '2900'])
+    # 11. Juin 2026, plan standard sans complémentaire santé : 2 000,00, absence non rémunérée de 160 h (plus que le
+    #     salaire : plafonnée à 2 000,00), tout le mois sans versement (30 jours) : brut, plafond et SMIC nuls.
+    show('Mois entier sans solde', dict(year=2026, salary='2000.00', pas='0', days_in_month='30', unpaid_hours='160',
+                                        unpaid_days='30', health_flat=False), ['1200'])
+    # 12. Mars 2025 : entrée le 10/03 (22 jours sur 31, 9 hors contrat), 2 100,00, taux neutre (grille 2025,
+    #     non proratisée pour un mois incomplet), taux réduits et RGCP sur le SMIC corrigé ; avant mai 2025,
+    #     T = 0,3194 et chômage 4,05 %.
+    show('Entrée le 10 mars 2025', dict(year=2025, month=3, salary='2100.00', grid=GRID_2025, days_in_month='31',
+                                        outside_days='9', present_days='22'), ['1230', '2000', '2400', '2900'])

@@ -32,11 +32,11 @@ final class StandardPayrollPlanTest extends TestCase
     {
         $specs = $this->specs();
 
-        self::assertCount(49, $specs);
+        self::assertCount(50, $specs);
         $codes = array_map(static fn (PayrollItemSpec $spec): string => $spec->code, $specs);
         self::assertSame($codes, array_values(array_unique($codes)), 'Each code once.');
         $families = array_count_values(array_map(static fn (PayrollItemSpec $spec): string => $spec->kind->value, $specs));
-        self::assertSame(['gross' => 14, 'contribution' => 30, 'not_subject' => 2, 'deduction' => 3], $families);
+        self::assertSame(['gross' => 15, 'contribution' => 30, 'not_subject' => 2, 'deduction' => 3], $families);
         // The benefits in kind the deduction 4000 takes back off the net.
         self::assertSame(['1400', '1410'], array_values(array_map(static fn (PayrollItemSpec $spec): string => $spec->code, array_filter($specs, static fn (PayrollItemSpec $spec): bool => $spec->benefitInKind))));
     }
@@ -86,6 +86,8 @@ final class StandardPayrollPlanTest extends TestCase
         self::assertSame(['25', '50', '10', '25'], [$read('2026-01-15', '1100', 'employee'), $read('2026-01-15', '1110', 'employee'), $read('2026-01-15', '1120', 'employee'), $read('2025-06-15', '1130', 'employee')]);
         // Meal allowance on travel 10,40 €, benefit in kind 5,50 € a meal; flat deduction 1,50 € an hour below 20.
         self::assertSame(['10.4', '5.5', '1.5'], [$read('2026-01-15', '3000', 'employee'), $read('2026-01-15', '1410', 'employee'), $read('2026-01-15', '2920', 'employer')]);
+        // Sick pay: 90 % of the salary the employee would have earned (service-public F175), both years.
+        self::assertSame(['90', '90'], [$read('2025-06-15', '1220', 'employee'), $read('2026-07-15', '1220', 'employee')]);
     }
 
     /** @return list<PayrollItemSpec> */
