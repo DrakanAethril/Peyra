@@ -42,6 +42,8 @@ final class PayrollItemRules
 
     /**
      * @param PayrollBody|null $body the body the draft names, found by the caller (null when it names none)
+     *
+     * @phpstan-impure it writes the draft's errors
      */
     public static function check(PayrollItemDraft $draft, ?PayrollBody $body): ?PayrollItemSpec
     {
@@ -107,17 +109,18 @@ final class PayrollItemRules
         }
 
         $line = '' === $draft->line ? null : PayslipLine::tryFrom($draft->line);
-        if ('' !== $draft->line && null === $line) {
+        $unknownLine = '' !== $draft->line && null === $line;
+        if ($unknownLine) {
             $draft->errors['line'] = 'Choisissez la ligne du bulletin.';
         }
         if (null !== $kind && $kind->isContribution()) {
             if (null !== $employee && null !== $employer && $employee->isNone() && $employer->isNone()) {
                 $draft->errors['employeeSource'] = 'Une cotisation a un taux salarial, un taux patronal ou les deux.';
             }
-            if (null === $body && !isset($draft->errors['body'])) {
+            if (null === $body) {
                 $draft->errors['body'] = 'Indiquez l’organisme à qui la cotisation est versée.';
             }
-            if (null === $line && !isset($draft->errors['line'])) {
+            if (null === $line && !$unknownLine) {
                 $draft->errors['line'] = 'Indiquez la ligne du bulletin clarifié qui regroupe la cotisation.';
             }
         } elseif (null !== $kind) {

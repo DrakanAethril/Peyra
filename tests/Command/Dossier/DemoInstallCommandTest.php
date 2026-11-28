@@ -21,6 +21,9 @@ use App\Repository\Accounting\EntryRepository;
 use App\Repository\Accounting\EntrySubscriptionRepository;
 use App\Repository\Accounting\EntryTemplateRepository;
 use App\Repository\Dossier\DossierRepository;
+use App\Repository\Payroll\PayrollBodyRepository;
+use App\Repository\Payroll\PayrollEstablishmentRepository;
+use App\Repository\Payroll\PayrollItemRepository;
 use App\Service\Accounting\Ledger\EntryScope;
 use App\Service\Accounting\Ledger\LedgerReader;
 use App\Service\Accounting\Lettering\LetteringBoard;
@@ -197,6 +200,20 @@ final class DemoInstallCommandTest extends KernelTestCase
             self::assertSame(384_000, $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LOY-2026-02'])?->totalDebit()->cents);
             self::assertSame(49_440, $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LBE-2026-03'])?->totalDebit()->cents);
             self::assertSame('2026-03-05', $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LBE-2026-03'])?->getEntryDate()->format('Y-m-d'));
+        });
+
+        // Its payroll settings (step 4.1, payroll.yaml): the establishment, four fictitious bodies,
+        // the standard plan paid to them and its own health insurance, 28,00 € on each side.
+        $context->within($vasseur, static function () use ($vasseur): void {
+            $establishment = self::getContainer()->get(PayrollEstablishmentRepository::class)->findOfDossier($vasseur);
+            self::assertSame(['8.69', '2.1', null, '151.67'], [$establishment?->getHeadcount(), $establishment?->getWorkAccidentRate(), $establishment?->getMobilityRate(), $establishment?->getMonthlyHours()]);
+            $bodies = self::getContainer()->get(PayrollBodyRepository::class)->findByDossier($vasseur);
+            self::assertSame(['Urssaf Rhône-Alpes (simulée)', 'Caisse de retraite Loire-Forez (fictive)', 'Prévoyance Forez Mutuelle (fictive)', 'Mutuelle des Monts du Forez (fictive)'], array_map(static fn ($body): string => $body->getName(), $bodies));
+            $items = self::getContainer()->get(PayrollItemRepository::class);
+            self::assertCount(49, $items->findPlan($vasseur));
+            self::assertSame('Urssaf Rhône-Alpes (simulée)', $items->findOneByCode($vasseur, '2200')?->getBody()?->getName());
+            $health = $items->findOneByCode($vasseur, '2010');
+            self::assertSame([2800, 2800, 'Mutuelle des Monts du Forez (fictive)'], [$health?->getEmployeeRate()->getAmount()?->cents, $health?->getEmployerRate()->getAmount()?->cents, $health?->getBody()?->getName()]);
         });
     }
 }

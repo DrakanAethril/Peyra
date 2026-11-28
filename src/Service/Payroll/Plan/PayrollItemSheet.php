@@ -37,6 +37,7 @@ final readonly class PayrollItemSheet
     ) {
     }
 
+    /** @phpstan-impure it writes the draft's errors */
     public function check(PayrollItemDraft $draft, Dossier $dossier, ?PayrollItem $item = null): ?PayrollItemSpec
     {
         $body = null;
