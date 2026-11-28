@@ -238,6 +238,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/accounting/lettering', '/accounting/lettering?account=401SCIE', '/accounting/lettering?account=401SCIE&all=1&auto=amount',
             '/accounting/lettering?account=401000', '/accounting/opening', '/accounting/opening?exercise=2026',
             '/users', '/audit', '/audit?role=teacher&action=accounting.entry_validated&q=ACH', '/audit/export.csv', '/audit/export.xlsx',
+            '/closing/fec', '/closing/fec?exercise=2026', '/closing/fec/download',
             '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
