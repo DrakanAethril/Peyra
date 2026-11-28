@@ -333,7 +333,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/sales/customers', '/sales/customers?q=gir', '/sales/quote', '/sales/order', '/sales/invoice', '/sales/credit_note', '/sales/deposit',
             '/sales/quote/new', '/sales/invoice/new', '/sales/documents/'.$salesId, '/sales/documents/'.$salesId.'.pdf',
             '/purchases/suppliers', '/purchases/suppliers?q=scie', '/purchases/price_request', '/purchases/purchase_order', '/purchases/receipt',
-            '/purchases/purchase_order/new', '/purchases/documents/'.$orderId, '/purchases/documents/'.$receiptId, '/purchases/documents/'.$orderId.'.pdf',
+            '/purchases/purchase_order/new', '/purchases/invoices', '/purchases/invoices?view=uninvoiced', '/purchases/documents/'.$orderId, '/purchases/documents/'.$receiptId, '/purchases/documents/'.$orderId.'.pdf',
             '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {

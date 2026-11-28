@@ -38,6 +38,7 @@ use App\Service\Payroll\Employee\EmployeeSheet;
 use App\Service\Payroll\Hiring\HiringFormalities;
 use App\Service\Payroll\Plan\PayrollPlanInstaller;
 use App\Service\Payroll\Settings\PayrollEstablishmentRules;
+use App\Service\Sales\SalesDocumentDraft;
 use App\Service\Sales\SalesDocuments;
 use App\Service\Shared\Portal\PortalFault;
 use App\Service\ThirdParty\ThirdPartyRules;
@@ -237,6 +238,11 @@ final readonly class DemoInstaller
                 $document = $this->salesDocuments->create($dossier, $entry['type'], $fields, $actor);
             } else {
                 $document = $this->salesDocuments->transform($made[$entry['madeFrom'] ?? 0], $entry['type'], $actor);
+                if (isset($entry['date'])) {
+                    $draft = SalesDocumentDraft::of($document);
+                    $draft->date = $entry['date']->format('Y-m-d');
+                    $this->salesDocuments->update($document, $this->salesDocuments->check($draft, $dossier, $entry['type']) ?? throw new \InvalidArgumentException(\sprintf('sales.yaml : documents[%d] : %s', $index, implode(' ', $draft->errors))), $actor);
+                }
             }
             $this->entityManager->flush();
             if ($entry['validate']) {

@@ -19,6 +19,8 @@ use App\Service\Accounting\Ledger\EntryRefused;
 use App\Service\Audit\AuditTrail;
 use App\Service\Document\DocumentReading;
 use App\Service\Document\PieceAnomaly;
+use App\Service\Purchasing\PurchaseMatching;
+use App\Service\Shared\Assistance\Assistance;
 
 /**
  * The one door of a pièce's processing (step 2.2a; design-ux.md §§ 3.5 and 4.3): the entry proposed
@@ -39,6 +41,7 @@ final readonly class PieceProcessing
         private ProposedEntryCheck $entryCheck,
         private AssistanceLevels $levels,
         private AuditTrail $trail,
+        private PurchaseMatching $matching,
     ) {
     }
 
@@ -115,7 +118,9 @@ final readonly class PieceProcessing
 
     /**
      * The controls of its read data (the card « Contrôles avant validation »), at the level the
-     * dossier is worked at; none for a nature that calls for no entry.
+     * dossier is worked at; none for a nature that calls for no entry. A supplier's pièce that
+     * reads an order reference adds its three-way match (step 2.4, PurchaseMatching) before the
+     * mandatory mentions.
      *
      * @return list<PieceControl>
      */
@@ -124,15 +129,22 @@ final readonly class PieceProcessing
         if (null === PieceProposals::side($document->getType(), $document->getThirdParty()?->getKind())) {
             return [];
         }
-
-        return PieceControls::check(
+        $level = $this->levels->for($document->getDossier());
+        $controls = PieceControls::check(
             $document->getVatLines(),
             $document->getTotalExcludingTax(),
             $document->getTotalVat(),
             $document->getTotalIncludingTax(),
-            $this->levels->for($document->getDossier()),
+            $level,
             $document->isPostedWithReserve(),
         );
+        $matching = $this->matching->controls($document, Assistance::at($level), $document->isPostedWithReserve());
+        if ([] === $matching) {
+            return $controls;
+        }
+        $last = array_pop($controls);
+
+        return null === $last ? $matching : [...$controls, ...$matching, $last];
     }
 
     /** The entry as the screen holds it, checked as F10 would: in its journal, in the month of its date. */

@@ -1,0 +1,95 @@
+{#
+ # Achats et stocks › Factures et avoirs reçus (step 2.4, gabarit L): the suppliers' pièces with their
+ # three-way match status - each opens its processing screen -, and « Réceptions non facturées »: the
+ # orders received and not yet invoiced at the order's prices (the invoices not yet arrived).
+ #}
+{% extends 'inventory/_layout.html.twig' %}
+
+{% set inventory_tab = 'invoices' %}
+{% set dossier_title = 'Factures et avoirs reçus' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Factures et avoirs reçus" :trail="[
+        {label: 'Achats et stocks', href: path('app_sales_documents', {dossier: dossier.id, side: 'purchases', type: 'purchase_order'})},
+        {label: 'Factures et avoirs reçus', href: path('app_purchase_invoices', {dossier: dossier.id})},
+    ]"/>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card :flush="true">
+        <twig:Px:Filters action="{{ path('app_purchase_invoices', {dossier: dossier.id}) }}">
+            <twig:Px:FilterChip label="Factures et avoirs" href="{{ path('app_purchase_invoices', {dossier: dossier.id}) }}" :count="pieces_total" :current="view == 'pieces'"/>
+            <twig:Px:FilterChip label="Réceptions non facturées" href="{{ path('app_purchase_invoices', {dossier: dossier.id, view: 'uninvoiced'}) }}" :count="uninvoiced_total" :current="view == 'uninvoiced'"/>
+        </twig:Px:Filters>
+        {% if view == 'pieces' %}
+            {% if piece_rows is empty %}
+                <twig:Px:Empty icon="inbox" title="Aucune facture reçue" text="Les factures et avoirs des fournisseurs arrivent dans la boîte de réception des pièces ; la référence de commande lue les rapproche de la commande et de ses réceptions."/>
+            {% else %}
+                <twig:Px:Table caption="Factures et avoirs des fournisseurs de {{ dossier.name }}" :rows="true">
+                    <thead>
+                        <tr>
+                            <th scope="col">Pièce</th>
+                            <th scope="col">Fournisseur</th>
+                            <th scope="col">Date</th>
+                            <th scope="col">Commande</th>
+                            <th scope="col" class="px-u-num">Total HT</th>
+                            <th scope="col" class="px-u-num">Total TTC</th>
+                            <th scope="col">État</th>
+                            <th scope="col">Rapprochement</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for piece in piece_rows %}
+                            <tr data-rows-target="row">
+                                <td class="px-u-truncate px-u-fill"><a class="px-link" href="{{ path('app_document', {dossier: dossier.id, id: piece.id}) }}">{{ piece.type.label }} {{ piece.number ?? piece.fileName }}</a></td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ piece.thirdParty ? piece.thirdParty.name : '' }}">{{ piece.thirdParty ? piece.thirdParty.name : '—' }}</td>
+                                <td class="px-u-num">{{ piece.documentDate ? piece.documentDate|date_fr : '—' }}</td>
+                                <td class="px-u-code">{{ piece.orderReference }}</td>
+                                <td class="px-u-num">{{ piece.totalExcludingTax ? piece.totalExcludingTax|amount : '' }}</td>
+                                <td class="px-u-num">{{ piece.totalIncludingTax ? piece.totalIncludingTax|amount : '' }}</td>
+                                <td><twig:Px:Badge :of="piece.state"/></td>
+                                <td><twig:Px:Badge :of="statuses[piece.id]"/></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+            <twig:Px:Pager :total="pieces_total" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+        {% else %}
+            {% if uninvoiced_rows is empty %}
+                <twig:Px:Empty icon="package" title="Aucune réception à facturer" text="Toutes les marchandises reçues ont leur facture."/>
+            {% else %}
+                <twig:Px:Table caption="Réceptions non facturées au {{ dossier.dossierDate|date_fr }}" :rows="true">
+                    <thead>
+                        <tr>
+                            <th scope="col">Commande</th>
+                            <th scope="col">Fournisseur</th>
+                            <th scope="col">Réceptions</th>
+                            <th scope="col" class="px-u-num">Reçu HT</th>
+                            <th scope="col" class="px-u-num">Facturé HT</th>
+                            <th scope="col" class="px-u-num">Reste à facturer HT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for line in uninvoiced_rows %}
+                            <tr data-rows-target="row">
+                                <td class="px-u-code"><a class="px-link" href="{{ path('app_sales_document', {dossier: dossier.id, side: 'purchases', id: line.order.id}) }}">{{ line.order.number }}</a></td>
+                                <td class="px-u-truncate px-u-fill" title="{{ line.order.thirdParty.name }}">{{ line.order.thirdParty.name }}</td>
+                                <td class="px-u-nowrap">{% for receipt in line.receipts %}<a class="px-link px-u-code" href="{{ path('app_sales_document', {dossier: dossier.id, side: 'purchases', id: receipt.id}) }}">{{ receipt.number }}</a> du {{ receipt.date|date_fr }}{{ loop.last ? '' : ', ' }}{% endfor %}</td>
+                                <td class="px-u-num">{{ line.received|amount }}</td>
+                                <td class="px-u-num">{{ line.invoiced|amount }}</td>
+                                <td class="px-u-num">{{ line.toInvoice|amount }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="5">Total des factures non parvenues</td><td class="px-u-num"><b>{{ uninvoiced_sum|amount }}</b></td></tr>
+                    </tfoot>
+                </twig:Px:Table>
+            {% endif %}
+            <twig:Px:Pager :total="uninvoiced_total" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>Factures et avoirs · <b>{{ pieces_total }}</b></span><span>Réceptions non facturées · <b>{{ uninvoiced_sum|amount }}</b></span>{% endblock %}

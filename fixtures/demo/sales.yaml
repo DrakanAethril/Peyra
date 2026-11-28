@@ -1,14 +1,21 @@
-# Menuiserie Vasseur SARL - its sales (step 2.3): the 58 articles of the prepared data, the
-# numbering its books already used, and a quote of March turned into an order still in draft.
+# Menuiserie Vasseur SARL - its sales (step 2.3) and its purchases (step 2.4): the 58 articles of
+# the prepared data, the numbering its books already used, a quote of March turned into an order
+# still in draft, and the purchasing documents of the end of March.
 #
 # - `articles`: design/validated/plan/donnees/demo/articles.yaml read into this shape - raw
 #   materials and consumables have no selling price; the services carry 20 %, the rate of a
 #   professional customer (10 % is chosen on the line for works in an old dwelling, as in the
-#   books of January). Prices are euros as text, read exactly. Checked by ArticleRules.
+#   books of January). Prices are euros as text, read exactly. Checked by ArticleRules. Raw
+#   materials and consumables carry their purchase price and its rate (`prix_achat_ht`, `tva_achat`).
 # - `numbering`: the last number of each type the entries carry (FV-2026-0046 of 31/03,
-#   AV-2026-001 of 30/01): the next invoice validated in the dossier is FV-2026-0047.
+#   AV-2026-001 of 30/01): the next invoice validated in the dossier is FV-2026-0047. The supplier
+#   orders and receipts of January to the 20th of March (some nine a month, operations-2026.md § 1)
+#   are counted, not written: the next order is CF-2026-0027, the next receipt BR-2026-0029.
 # - `documents`: in order, each through SalesDocuments like the fiche; `validate` numbers it,
-#   `made_from` is the rank of the document it was transformed from.
+#   `made_from` is the rank of the document it was transformed from, `date` its own date. The
+#   purchases: a price request to Panneaux Rhône-Loire; an order of glazing to the Miroiterie
+#   Stéphanoise (the new tariff of January), received on the 26th and not invoiced yet - the
+#   invoice not yet arrived of « Réceptions non facturées »; an order of oak to the Scierie, waiting.
 articles:
   - { code: "MP001", designation: "Chêne avivé 27 mm", unit: "m³", purchase_price: "1150.00", rate: "20", stock: true }
   - { code: "MP002", designation: "Chêne avivé 41 mm", unit: "m³", purchase_price: "1180.00", rate: "20", stock: true }
@@ -72,6 +79,8 @@ articles:
 numbering:
   - { type: invoice, year: 2026, last: 46, date: '2026-03-31' }
   - { type: credit_note, year: 2026, last: 1, date: '2026-01-30' }
+  - { type: purchase_order, year: 2026, last: 26, date: '2026-03-20' }
+  - { type: receipt, year: 2026, last: 28, date: '2026-03-20' }
 
 documents:
   - type: quote
@@ -86,3 +95,29 @@ documents:
   - type: order
     made_from: 0
     validate: false
+  - type: price_request
+    customer: F0003
+    date: '2026-03-23'
+    reference: "Panneaux pour les placards du chantier Peyrard"
+    validate: true
+    lines:
+      - { article: MP010, quantity: '12', rate: '20' }
+      - { article: MP012, quantity: '6', rate: '20' }
+  - type: purchase_order
+    customer: F0004
+    date: '2026-03-24'
+    validate: true
+    lines:
+      - { article: MP014, quantity: '18.4', price: '63.50', rate: '20' }
+      - { article: MP015, quantity: '4.8', price: '98.00', rate: '20' }
+  - type: receipt
+    made_from: 3
+    date: '2026-03-26'
+    validate: true
+  - type: purchase_order
+    customer: F0001
+    date: '2026-03-27'
+    reference: "Devis SHF du 25/03"
+    validate: true
+    lines:
+      - { article: MP001, quantity: '2.4', price: '1150.00', discount: '5', rate: '20' }
