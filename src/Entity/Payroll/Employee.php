@@ -260,10 +260,10 @@ class Employee implements DossierOwned
     /** @return list<EmploymentTerms> from the first, on the day of hire, to the latest */
     public function getTerms(): array
     {
-        $terms = $this->terms->toArray();
+        $terms = array_values($this->terms->toArray());
         usort($terms, static fn (EmploymentTerms $a, EmploymentTerms $b): int => $a->getEffectiveFrom() <=> $b->getEffectiveFrom());
 
-        return array_values($terms);
+        return $terms;
     }
 
     public function addTerms(EmploymentTerms $terms): void

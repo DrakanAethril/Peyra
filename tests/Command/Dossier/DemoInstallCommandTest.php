@@ -13,6 +13,9 @@ use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Accounting\EntryOrigin;
 use App\Enum\Dossier\DossierKind;
 use App\Enum\Dossier\TemplateLevel;
+use App\Enum\Payroll\ContractType;
+use App\Enum\Payroll\EmployeeState;
+use App\Enum\Payroll\WorkingTime;
 use App\Enum\Shared\BtsProcess;
 use App\Enum\ThirdParty\PaymentMethod;
 use App\Enum\ThirdParty\ThirdPartyKind;
@@ -21,6 +24,7 @@ use App\Repository\Accounting\EntryRepository;
 use App\Repository\Accounting\EntrySubscriptionRepository;
 use App\Repository\Accounting\EntryTemplateRepository;
 use App\Repository\Dossier\DossierRepository;
+use App\Repository\Payroll\EmployeeRepository;
 use App\Repository\Payroll\PayrollBodyRepository;
 use App\Repository\Payroll\PayrollEstablishmentRepository;
 use App\Repository\Payroll\PayrollItemRepository;
@@ -249,6 +253,25 @@ final class DemoInstallCommandTest extends KernelTestCase
             self::assertSame('Urssaf Rhône-Alpes (simulée)', $items->findOneByCode($vasseur, '2200')?->getBody()?->getName());
             $health = $items->findOneByCode($vasseur, '2010');
             self::assertSame([2800, 2800, 'Mutuelle des Monts du Forez (fictive)'], [$health?->getEmployeeRate()->getAmount()?->cents, $health?->getEmployerRate()->getAmount()?->cents, $health?->getBody()?->getName()]);
+        });
+
+        // Its employees (step 4.2a, employees.yaml): S001 to S011, Yanis Chabert's CDD to come on
+        // 01/04; Hugo Marchand's apprenticeship at 27 % then 43 % of the minimum wage, Julien Roche's
+        // raise from 01/04, Sandrine Gauthier's part time.
+        $context->within($vasseur, static function () use ($vasseur): void {
+            $employees = self::getContainer()->get(EmployeeRepository::class)->findByDossier($vasseur);
+            self::assertSame(['S001', 'S002', 'S003', 'S004', 'S005', 'S006', 'S007', 'S008', 'S009', 'S010', 'S011'], array_map(static fn ($e): string => $e->getRegistrationNumber(), $employees));
+            $today = $vasseur->getDossierDate();
+            self::assertSame(10, \count(array_filter($employees, static fn ($e): bool => EmployeeState::Present === $e->stateAt($today))));
+            [$paul, , $thomas, $hugo, $julien, , $sandrine, , , , $yanis] = $employees;
+            self::assertTrue($paul->termsAt($today)->isExecutive());
+            self::assertSame([240_000, '151.67'], [$thomas->termsAt($today)->getBaseSalary()->cents, $thomas->termsAt($today)->getMonthlyHours()]);
+            self::assertSame([48_649, 49_222, 78_390], array_map(static fn ($t): int => $t->getBaseSalary()->cents, $hugo->getTerms()));
+            self::assertSame(ContractType::Apprenticeship, $hugo->getContractType());
+            self::assertNull($hugo->getWithholdingRate());
+            self::assertSame([225_000, 238_000], [$julien->termsAt($today)->getBaseSalary()->cents, $julien->termsAt(new \DateTimeImmutable('2026-04-01'))->getBaseSalary()->cents]);
+            self::assertSame([WorkingTime::PartTime, '104', 147_680], [$sandrine->termsAt($today)->getWorkingTime(), $sandrine->termsAt($today)->getMonthlyHours(), $sandrine->termsAt($today)->getBaseSalary()->cents]);
+            self::assertSame([ContractType::FixedTerm, '2026-09-30', EmployeeState::Upcoming], [$yanis->getContractType(), $yanis->getContractEndsOn()?->format('Y-m-d'), $yanis->stateAt($today)]);
         });
     }
 }
