@@ -34,6 +34,7 @@ use App\Service\Audit\AuditTrail;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Exercises;
 use App\Service\Inventory\ArticleSheet;
+use App\Service\Inventory\Stock\StockMovements;
 use App\Service\Payroll\Employee\EmployeeSheet;
 use App\Service\Payroll\Hiring\HiringFormalities;
 use App\Service\Payroll\Plan\PayrollPlanInstaller;
@@ -86,6 +87,7 @@ final readonly class DemoInstaller
         private EntryRepository $entries,
         private ArticleSheet $articleSheet,
         private SalesDocuments $salesDocuments,
+        private StockMovements $stockMovements,
         #[Autowire('%kernel.project_dir%/fixtures/demo')]
         private string $directory,
     ) {
@@ -122,6 +124,7 @@ final readonly class DemoInstaller
         $employeeFile = DemoEmployeeFile::read($this->directory.'/employees.yaml');
         $hiringFile = DemoHiringFile::read($this->directory.'/hiring.yaml');
         $salesFile = DemoSalesFile::read($this->directory.'/sales.yaml');
+        $stockFile = DemoStockFile::read($this->directory.'/stock.yaml');
         $dossier = new Dossier(DossierKind::Template, $file->company, $file->dossierDate, null, null, $at, null);
         $dossier->describeInLibrary($file->library['title'], $file->library['description'], $file->library['level'], $file->library['processes']);
         $this->entityManager->persist($dossier);
@@ -151,6 +154,7 @@ final readonly class DemoInstaller
         $this->context->within($dossier, fn () => $this->installEmployees($dossier, $employeeFile, $actor));
         $this->context->within($dossier, fn () => $this->installHiring($dossier, $hiringFile, $actor));
         $this->context->within($dossier, fn () => $this->installSales($dossier, $salesFile, $actor));
+        $this->context->within($dossier, fn () => $this->installStock($dossier, $stockFile, $actor));
         $this->auditTrail->inDossier(
             $dossier,
             AuditAction::DossierCreated,
@@ -257,6 +261,15 @@ final readonly class DemoInstaller
     }
 
     /** Its letterings, each an automatic lettering of one account: one that finds nothing installs nothing more. */
+    /** Its stock (step 2.5): each movement checked and recorded by StockMovements, the screen's door. */
+    private function installStock(Dossier $dossier, DemoStockFile $file, string $actor): void
+    {
+        foreach ($file->movements as $index => $draft) {
+            $fields = $this->stockMovements->check($draft, $dossier) ?? throw new \InvalidArgumentException(\sprintf('stock.yaml : movements[%d] : %s', $index, implode(' ', $draft->errors)));
+            $this->stockMovements->record($dossier, $fields, $actor);
+        }
+    }
+
     private function installLetterings(Dossier $dossier, DemoLetteringFile $file, string $actor): void
     {
         foreach ($file->letterings as $index => $lettering) {

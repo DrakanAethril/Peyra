@@ -18,6 +18,7 @@ use App\Repository\Sales\SalesSequenceRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Accounting\Template\VatRate;
 use App\Service\Audit\AuditTrail;
+use App\Service\Inventory\Stock\StockMovements;
 use App\Service\Purchasing\ReceiptProgress;
 use App\Service\Purchasing\Receipts;
 use App\Service\Regulatory\MissingRegulatoryValue;
@@ -44,6 +45,9 @@ use Doctrine\ORM\EntityManagerInterface;
  * receipts. An order is received in as many receipts as it takes, each one opened on what is left
  * (Receipts), one draft at a time.
  *
+ * Step 2.5: a delivery note takes its followed articles out of the stock when validated - refused
+ * while the stock does not hold them -, a receipt brings them in (StockMovements).
+ *
  * @phpstan-import-type CustomerPrint from SalesDocument
  */
 final readonly class SalesDocuments
@@ -61,6 +65,7 @@ final readonly class SalesDocuments
         private RegulatoryReader $regulatory,
         private SalesPosting $posting,
         private Receipts $receipts,
+        private StockMovements $stock,
     ) {
     }
 
@@ -225,7 +230,7 @@ final readonly class SalesDocuments
             }
         }
 
-        return $refusals;
+        return [...$refusals, ...$this->stock->documentRefusals($document)];
     }
 
     /**
@@ -258,6 +263,7 @@ final readonly class SalesDocuments
             $document->markValidated($number, self::print($customer), $dueDate, $this->deposits($document));
             $document->recordHistory('validated', $dossier->getDossierDate(), self::name($by), \sprintf('Validation sous le numéro %s', $number));
             $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentValidated, $by, \sprintf('Validation de %s %s', mb_strtolower($type->label()), $number), ['document' => $document->getId(), 'number' => $number]);
+            $this->stock->recordDocument($document, $by);
             $this->entityManager->flush();
         });
         $this->posting->validated($document, $by);

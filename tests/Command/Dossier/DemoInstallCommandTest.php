@@ -36,6 +36,7 @@ use App\Service\Accounting\Subscription\SubscriptionRun;
 use App\Service\Accounting\Subscription\SubscriptionSchedule;
 use App\Service\Accounting\Template\TemplateCall;
 use App\Service\Dossier\DossierContext;
+use App\Service\Inventory\Stock\StockReader;
 use App\Service\Payroll\Hiring\HiringFormalities;
 use App\Service\Regulatory\RegulatorySync;
 use App\Service\Shared\Money;
@@ -244,6 +245,26 @@ final class DemoInstallCommandTest extends KernelTestCase
             self::assertSame(384_000, $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LOY-2026-04'])?->totalDebit()->cents);
             self::assertSame(49_440, $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LBE-2026-04'])?->totalDebit()->cents);
             self::assertSame('2026-04-05', $entries->findOneBy(['dossier' => $vasseur, 'document' => 'LBE-2026-04'])?->getEntryDate()->format('Y-m-d'));
+        });
+
+        // Its stock (step 2.5, stock.yaml): the stock at 31/12/2025 of the prepared data, 41 352,18 + 4 953,10 + 7 847,80
+        // = 54 153,08; at 31/03, + the receipt BR-2026-0029 (18,40 m² × 63,50 = 1 168,40 and 4,80 × 98,00 = 470,40) + the
+        // production of PF001 (2 × 768,00) − MP016 (the lot of 2,40 at 115,00 = 276,00) − MC003 (1 roll at 36,00) − MP014
+        // (14,30 for 869,44 + 5,70 × 62,00 = 1 222,84) = 55 793,04. MP016 falls below its minimum (4 < 5), as MP027 already is.
+        $context->within($vasseur, static function () use ($vasseur): void {
+            $reader = self::getContainer()->get(StockReader::class);
+            $value = static fn (array $lines): int => array_sum(array_map(static fn ($line): int => $line->position->value->cents, $lines));
+            self::assertSame(5_415_308, $value($reader->state($vasseur, new \DateTimeImmutable('2026-01-01'))));
+            $march = $reader->state($vasseur, new \DateTimeImmutable('2026-03-31'));
+            self::assertSame(5_579_304, $value($march));
+            $byCode = [];
+            foreach ($march as $line) {
+                $byCode[$line->article->getCode()] = [(string) $line->position->quantity->strippedOfTrailingZeros(), $line->position->value->cents, $line->isBelowMinimum()];
+            }
+            self::assertSame(['36.9', 231_540, false], $byCode['MP014']);
+            self::assertSame(['4', 47_200, true], $byCode['MP016']);
+            self::assertSame(['4', 304_080, false], $byCode['PF001'], '(1 504,80 + 1 536,00) / 4 = 760,20.');
+            self::assertSame(['MP016', 'MP027'], array_keys(array_filter($byCode, static fn (array $row): bool => $row[2])), 'MP027 opens the year below its minimum: 22 m for 50.');
         });
 
         // Its payroll settings (step 4.1, payroll.yaml): the establishment, four fictitious bodies,
