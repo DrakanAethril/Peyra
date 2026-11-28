@@ -42,10 +42,10 @@ enum DossierArea: string
     {
         return match ($this) {
             self::Purchases => 'journaux d’achats, lettrage des fournisseurs',
-            self::Sales => 'journaux de ventes, lettrage des clients',
+            self::Sales => 'documents commerciaux, journaux de ventes, lettrage des clients',
             self::Treasury => 'journaux de banque et de caisse',
             self::General => 'opérations diverses, à-nouveaux, lettrage des autres comptes',
-            self::Settings => 'société, plan de comptes, journaux, tiers, modèles, abonnements',
+            self::Settings => 'société, plan de comptes, journaux, tiers, articles, modèles, abonnements',
             self::Payroll => 'paramètres de paie : établissement, organismes, plan de paie',
         };
     }

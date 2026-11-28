@@ -16,7 +16,10 @@ use App\Repository\Inventory\ArticleRepository;
 use App\Repository\Sales\SalesDocumentRepository;
 use App\Repository\Sales\SalesSequenceRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
+use App\Service\Accounting\Template\VatRate;
 use App\Service\Audit\AuditTrail;
+use App\Service\Regulatory\MissingRegulatoryValue;
+use App\Service\Regulatory\RegulatoryReader;
 use App\Service\Shared\FrenchFormat;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -32,6 +35,9 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 final readonly class SalesDocuments
 {
+    /** The rates of fiscal.vat.rates, in the order offered. */
+    private const array RATES = ['normal', 'intermediate', 'reduced', 'super_reduced'];
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private SalesDocumentRepository $documents,
@@ -39,7 +45,58 @@ final readonly class SalesDocuments
         private ThirdPartyRepository $thirdParties,
         private ArticleRepository $articles,
         private AuditTrail $auditTrail,
+        private RegulatoryReader $regulatory,
     ) {
+    }
+
+    /** @return list<string> the VAT rates in force at the dossier's date (« 20 », « 5.5 »), offered on the lines; none when none is installed */
+    public function ratesInForce(Dossier $dossier): array
+    {
+        $snapshot = $this->regulatory->at($dossier->getDossierDate());
+        if (!$snapshot->has('fiscal.vat.rates')) {
+            return [];
+        }
+        $rates = [];
+        foreach (self::RATES as $name) {
+            try {
+                $rates[] = VatRate::canonical($snapshot->decimal('fiscal.vat.rates', $name));
+            } catch (MissingRegulatoryValue) {
+                continue;
+            }
+        }
+
+        return $rates;
+    }
+
+    /**
+     * The chain a document belongs to, from its first document to its last: the documents it was
+     * made from, itself, then those made from it (a credit note ends a branch).
+     *
+     * @return list<SalesDocument>
+     */
+    public function chain(SalesDocument $document): array
+    {
+        $before = [];
+        for ($source = $document->getSource(); null !== $source; $source = $source->getSource()) {
+            array_unshift($before, $source);
+        }
+        $after = [];
+        $current = $document;
+        while (true) {
+            $next = null;
+            foreach ($this->documents->findMadeFrom($current) as $made) {
+                $after[] = $made;
+                if (SalesDocumentType::CreditNote !== $made->getType()) {
+                    $next = $made;
+                }
+            }
+            if (null === $next) {
+                break;
+            }
+            $current = $next;
+        }
+
+        return [...$before, $document, ...$after];
     }
 
     /** A new document's draft: dated the dossier's date. */

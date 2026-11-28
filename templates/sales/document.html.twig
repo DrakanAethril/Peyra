@@ -1,0 +1,196 @@
+{#
+ # The fiche of a commercial document (step 2.3, gabarit F; design-ux.md § 3.2): the chain at its
+ # head, the customer and the dates, the lines in a grid (an article's reference fills the line:
+ # sales_lines_controller.js), the HT / TVA / TTC foot read from the saved lines, the history. A draft
+ # is saved with F10 and validated with Ctrl Entrée after the confirmation bar; validated, it never
+ # changes - « Transformer en… », « Créer un avoir », « Envoyer » and the PDF remain.
+ #}
+{% extends 'sales/_layout.html.twig' %}
+
+{% set sales_tab = type.invoicing ? 'invoices' : 'orders' %}
+{% set dossier_title = document ? document.title : 'Nouveau : ' ~ type.label|lower %}
+{% set can_validate = document and document.draft and is_granted('SALES_VALIDATE', dossier) %}
+{% set can_send = document and not document.draft and is_granted('SALES_VALIDATE', dossier) %}
+{% set can_transform = document and not document.draft and is_granted('SALES_ENTER', dossier) %}
+{% set status_keys = (editable ? [{combo: 'F10', verb: 'Enregistrer'}] : [])|merge(can_validate ? [{combo: 'Ctrl+Enter', verb: 'Valider'}] : []) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ document ? type.label ~ ' ' ~ (document.number ?? '(brouillon)') : 'Nouveau : ' ~ type.label|lower }}" :trail="[
+        {label: 'Ventes', href: path('app_sales_documents', {dossier: dossier.id, type: 'quote'})},
+        {label: type.plural, href: path('app_sales_documents', {dossier: dossier.id, type: type.value})},
+        {label: document ? (document.number ?? 'Brouillon') : 'Nouveau', href: document ? path('app_sales_document', {dossier: dossier.id, id: document.id}) : path('app_sales_document_new', {dossier: dossier.id, type: type.value})},
+    ]">
+        <twig:block name="badge">{% if document %} <twig:Px:Badge :of="document.state"/>{% if document.sentOn %} <twig:Px:Badge tone="info" label="Envoyé le {{ document.sentOn|date_fr }}"/>{% endif %}{% endif %}</twig:block>
+        <twig:block name="actions">
+            {% if document %}
+                <div class="px-entry-confirmable" data-controller="confirm-bar">
+                <div class="px-entry-actions" data-confirm-bar-target="actions">
+                    <twig:Px:Button href="{{ path('app_sales_document_pdf', {dossier: dossier.id, id: document.id}) }}" icon="printer" target="_blank" data-turbo="false">Aperçu PDF</twig:Px:Button>
+                    {% if can_send %}
+                        <form method="post" action="{{ path('app_sales_document_send', {dossier: dossier.id, id: document.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('sales-send-' ~ document.id) }}">
+                            <twig:Px:Button type="submit" icon="send">{{ document.sentOn ? 'Envoyer de nouveau' : 'Envoyer' }}</twig:Px:Button>
+                        </form>
+                    {% endif %}
+                    {% if can_transform %}
+                        {% for into in transforms %}
+                            <form method="post" action="{{ path('app_sales_document_transform', {dossier: dossier.id, id: document.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('sales-transform-' ~ document.id) }}">
+                                <twig:Px:Button type="submit" name="into" value="{{ into.value }}" icon="arrow-right" variant="{{ loop.first ? 'primary' : 'secondary' }}">{{ into.value == 'credit_note' ? 'Créer un avoir' : 'Transformer en ' ~ into.label|lower }}</twig:Px:Button>
+                            </form>
+                        {% endfor %}
+                    {% endif %}
+                    {% if editable %}
+                        <twig:Px:ConfirmButton label="Supprimer le brouillon" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="sales-delete"/>
+                        <twig:Px:Button type="submit" form="sales-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+                    {% endif %}
+                    {% if can_validate %}<twig:Px:Button variant="primary" shortcut="Ctrl+Enter" data-action="confirm-bar#open">Valider</twig:Px:Button>{% endif %}
+                </div>
+                {% if can_validate %}
+                    <form class="px-confirmbar" method="post" action="{{ path('app_sales_document_validate', {dossier: dossier.id, id: document.id}) }}" role="alertdialog" aria-labelledby="sales-validate-text" hidden data-confirm-bar-target="bar" data-action="keydown->confirm-bar#keydown">
+                        <input type="hidden" name="_token" value="{{ csrf_token('sales-validate-' ~ document.id) }}">
+                        <p id="sales-validate-text">Valider {{ type.withArticle }} ? {{ type.value == 'invoice' ? 'Elle prend le numéro suivant et ne pourra plus être modifiée : un avoir la corrigera.' : 'Il prend le numéro suivant et ne pourra plus être modifié.' }} Les modifications non enregistrées sont perdues.</p>
+                        <twig:Px:Button variant="quiet" data-action="confirm-bar#close">Annuler</twig:Px:Button>
+                        <twig:Px:Button type="submit" variant="primary" data-confirm-bar-target="confirm">Valider</twig:Px:Button>
+                    </form>
+                {% endif %}
+                </div>
+            {% elseif editable %}
+                <twig:Px:Button type="submit" variant="primary" form="sales-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if chain_steps is not empty %}<twig:Px:Stepper :steps="chain_steps" label="Chaîne du document"/>{% endif %}
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">Le document n’est pas enregistré : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% elseif document and document.draft and refusals is not empty %}
+        <twig:Px:Alert tone="info">Avant de valider : {{ refusals|join(' ') }}</twig:Px:Alert>
+    {% endif %}
+
+    {% if editable %}
+        <form method="post" action="{{ document ? path('app_sales_document', {dossier: dossier.id, id: document.id}) : path('app_sales_document_new', {dossier: dossier.id, type: type.value}) }}" id="sales-form" novalidate data-controller="focus-error sales-lines" data-action="keydown->sales-lines#keydown" data-sales-lines-next-value="{{ draft.lines|length }}" data-sales-lines-catalogue-value="{{ catalogue|json_encode }}">
+            <input type="hidden" name="_token" value="{{ csrf_token(document ? 'sales-' ~ document.id : 'sales-new-' ~ dossier.id) }}">
+            <div class="px-stack">
+                <twig:Px:Card title="{{ type.label }}">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="customer" label="Client" :required="true" :wide="true" :error="draft.error('customer')">
+                            <twig:Px:Select id="customer" placeholder="Choisir le client…" :options="customer_options" value="{{ draft.customer }}" :required="true" :error="draft.error('customer')" autofocus/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="date" label="Date" :required="true" :error="draft.error('date')">
+                            <twig:Px:DateInput id="date" :reference="dossier.dossierDate" :value="draft.date('date')" :required="true" :error="draft.error('date')"/>
+                        </twig:Px:Field>
+                        {% if type.value == 'invoice' %}
+                            <twig:Px:Field id="dueDate" label="Échéance" hint="Vide : les conditions du client, lues à la validation." :error="draft.error('dueDate')">
+                                <twig:Px:DateInput id="dueDate" :reference="dossier.dossierDate" :value="draft.date('dueDate')" hint="1" :error="draft.error('dueDate')"/>
+                            </twig:Px:Field>
+                        {% endif %}
+                        <twig:Px:Field id="reference" label="Référence" hint="Celle du client ou l’objet : Chantier Rambaud." :wide="true" :error="draft.error('reference')">
+                            <twig:Px:Input id="reference" value="{{ draft.reference }}" hint="1" :error="draft.error('reference')" maxlength="80" autocomplete="off"/>
+                        </twig:Px:Field>
+                    </div>
+                </twig:Px:Card>
+
+                <twig:Px:Card title="Lignes" meta="Une référence d’article remplit la ligne ; le port est une ligne (DV001)." :flush="true">
+                    <datalist id="sales-rates">{% for rate in rates %}<option value="{{ rate|replace({'.': ','}) }}"></option>{% endfor %}</datalist>
+                    <table class="px-table px-sales-lines">
+                        <caption class="px-u-sr-only">Lignes du document</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Article</th>
+                                <th scope="col">Désignation</th>
+                                <th scope="col">Unité</th>
+                                <th scope="col" class="px-u-num">Quantité</th>
+                                <th scope="col" class="px-u-num">Prix unitaire HT</th>
+                                <th scope="col" class="px-u-num">Remise %</th>
+                                <th scope="col" class="px-u-num">TVA %</th>
+                                <th scope="col"><span class="px-u-sr-only">Retirer</span></th>
+                            </tr>
+                        </thead>
+                        <tbody data-sales-lines-target="body">
+                            {% for line in draft.lines %}
+                                {{ include('sales/_line_row.html.twig', {index: loop.index0, line: line, errors: draft}) }}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <template data-sales-lines-target="template">{{ include('sales/_line_row.html.twig', {index: '__INDEX__', line: blank_line, errors: null}) }}</template>
+                    <div class="px-sales-lines__foot">
+                        <twig:Px:Button icon="plus" data-action="sales-lines#add">Ajouter une ligne</twig:Px:Button>
+                        {% for key, message in draft.errors %}{% if key starts with 'line.' %}<p class="px-field__error"><twig:ux:icon name="circle-alert" aria-hidden="true"/>Ligne {{ key|split('.')[1] + 1 }} : {{ message }}</p>{% endif %}{% endfor %}
+                    </div>
+                </twig:Px:Card>
+            </div>
+        </form>
+        {% if document %}
+            <form method="post" action="{{ path('app_sales_document_delete', {dossier: dossier.id, id: document.id}) }}" id="sales-delete" hidden>
+                <input type="hidden" name="_token" value="{{ csrf_token('sales-delete-' ~ document.id) }}">
+            </form>
+        {% endif %}
+    {% else %}
+        <twig:Px:Card title="{{ type.label }} {{ document.number ?? '(brouillon)' }}">
+            <dl class="px-facts">
+                <dt>Client</dt><dd><a class="px-link" href="{{ path('app_third_party', {dossier: dossier.id, code: document.customer.code}) }}">{{ document.customer.code }}</a> {{ (document.customerPrint ?? {name: document.customer.name}).name }}</dd>
+                <dt>Date</dt><dd>{{ document.date|date_fr }}</dd>
+                {% if document.dueDate %}<dt>Échéance</dt><dd>{{ document.dueDate|date_fr }}</dd>{% endif %}
+                {% if document.reference %}<dt>Référence</dt><dd>{{ document.reference }}</dd>{% endif %}
+            </dl>
+        </twig:Px:Card>
+        <twig:Px:Card title="Lignes" :flush="true">
+            <twig:Px:Table caption="Lignes du document">
+                <thead>
+                    <tr>
+                        <th scope="col">Article</th>
+                        <th scope="col">Désignation</th>
+                        <th scope="col">Unité</th>
+                        <th scope="col" class="px-u-num">Quantité</th>
+                        <th scope="col" class="px-u-num">Prix unitaire HT</th>
+                        <th scope="col" class="px-u-num">Remise</th>
+                        <th scope="col" class="px-u-num">TVA</th>
+                        <th scope="col" class="px-u-num">Montant HT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set amounts = document.totals.lineAmounts %}
+                    {% for line in document.lines %}
+                        <tr>
+                            <td class="px-u-code">{{ line.article }}</td>
+                            <td>{{ line.designation }}</td>
+                            <td>{{ line.unit }}</td>
+                            <td class="px-u-num">{{ line.quantity|quantity(line.quantity.strippedOfTrailingZeros.scale > 2 ? 3 : 2) }}</td>
+                            <td class="px-u-num">{{ line.unitPrice|amount }}</td>
+                            <td class="px-u-num">{{ line.discount is not null ? line.discount|percent : '' }}</td>
+                            <td class="px-u-num">{{ line.rate|percent }}</td>
+                            <td class="px-u-num">{{ amounts[loop.index0]|amount }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+    {% endif %}
+
+    {% if document %}
+        {% set totals = document.totals %}
+        <div class="px-split px-split--even">
+            <twig:Px:Card title="Totaux" meta="{{ editable ? 'Lignes enregistrées (F10)' : '' }}">
+                <dl class="px-facts">
+                    {% if not totals.discounts.isZero %}<dt>Remises</dt><dd class="px-u-num">{{ totals.discounts.negated|amount }}</dd>{% endif %}
+                    <dt>Total HT</dt><dd class="px-u-num">{{ totals.excludingTax|amount_eur }}</dd>
+                    {% for vat in totals.vatLines %}<dt>TVA {{ vat.rate|percent }} sur {{ vat.base|amount }}</dt><dd class="px-u-num">{{ vat.vat|amount }}</dd>{% endfor %}
+                    <dt>Total TTC</dt><dd class="px-u-num"><b>{{ totals.includingTax|amount_eur }}</b></dd>
+                </dl>
+            </twig:Px:Card>
+            <twig:Px:Card title="Historique" :flush="true">
+                <twig:Px:Table caption="Historique du document">
+                    <thead><tr><th scope="col" class="px-u-num">Date</th><th scope="col">Événement</th><th scope="col">Par</th></tr></thead>
+                    <tbody>
+                        {% for event in document.history|reverse %}
+                            <tr><td class="px-u-num">{{ event.on|date_fr }}</td><td>{{ event.detail }}</td><td>{{ event.by }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            </twig:Px:Card>
+        </div>
+    {% endif %}
+{% endblock %}

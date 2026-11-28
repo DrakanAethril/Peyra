@@ -1,0 +1,65 @@
+{#
+ # Ventes › Clients (step 2.3, gabarit L): the customers of the dossier with their terms and their
+ # outstanding amount at the dossier's date; a customer opens its third party's fiche.
+ #}
+{% extends 'sales/_layout.html.twig' %}
+
+{% set sales_tab = 'customers' %}
+{% set dossier_title = 'Clients' %}
+{% set can_edit = is_granted('DOSSIER_SETTINGS', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouveau client'}, {combo: '/', verb: 'Rechercher'}] : [{combo: '/', verb: 'Rechercher'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Clients" :trail="[
+        {label: 'Ventes', href: path('app_sales_documents', {dossier: dossier.id, type: 'quote'})},
+        {label: 'Clients', href: path('app_sales_customers', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button href="{{ path('app_third_party_new', {dossier: dossier.id, kind: 'customer'}) }}" variant="primary" icon="plus" shortcut="N">Nouveau client</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if total == 0 %}
+        <twig:Px:Card>
+            <twig:Px:Empty icon="users" title="Aucun client" text="Les clients sont des tiers de nature « Client », tenus sur le collectif 411000 avec leur code auxiliaire et leurs conditions de règlement."/>
+        </twig:Px:Card>
+    {% else %}
+        <twig:Px:Card :flush="true">
+            <twig:Px:Filters action="{{ path('app_sales_customers', {dossier: dossier.id}) }}" search="{{ search }}" searchLabel="Code ou nom" resetHref="{{ search ? path('app_sales_customers', {dossier: dossier.id}) : null }}"/>
+            {% if customer_rows is empty %}
+                <twig:Px:Empty icon="search" title="Aucun client" text="Aucun client ne correspond à « {{ search }} »."/>
+            {% else %}
+                <twig:Px:Table caption="Clients de {{ dossier.name }}" :rows="true">
+                    <thead>
+                        <tr>
+                            <th scope="col">Code</th>
+                            <th scope="col">Auxiliaire</th>
+                            <th scope="col">Nom</th>
+                            <th scope="col">Ville</th>
+                            <th scope="col">Règlement</th>
+                            <th scope="col" class="px-u-num">Encours</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for customer in customer_rows %}
+                            <tr data-rows-target="row">
+                                <td class="px-u-code"><a class="px-link" href="{{ path('app_third_party', {dossier: dossier.id, code: customer.code}) }}">{{ customer.code }}</a></td>
+                                <td class="px-u-code">{{ customer.auxiliaryCode }}</td>
+                                <td class="px-u-fill" title="{{ customer.name }}">{{ customer.name }}</td>
+                                <td>{{ customer.city }}</td>
+                                <td>{{ customer.paymentTerms.label }} · {{ customer.paymentMethod.label|lower }}</td>
+                                {% set owed = outstanding[customer.id] ?? null %}
+                                <td class="px-u-num">{% if owed is not null and not owed.isZero %}<a class="px-link" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: customer.auxiliaryCode ?? customer.code}) }}">{{ owed.balance|balance }}</a>{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </twig:Px:Table>
+            {% endif %}
+            <twig:Px:Pager :total="shown_total" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>Clients · <b>{{ total }}</b></span>{% endblock %}
