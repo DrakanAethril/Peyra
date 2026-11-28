@@ -1,0 +1,13 @@
+{#
+ # Pièces (design-ux.md § 2.5): the module's tab bar - Boîte de réception. A screen sets
+ # `dossier_title` outside any block.
+ #}
+{% extends 'dossier/_layout.html.twig' %}
+
+{% set rail_current = 'documents' %}
+
+{% block module_tabs %}
+    <twig:Px:ModuleTabs label="Pièces" :tabs="[
+        {label: 'Boîte de réception', href: path('app_documents', {dossier: dossier.id}), current: true},
+    ]"/>
+{% endblock %}

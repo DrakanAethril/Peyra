@@ -7,6 +7,7 @@ namespace App\Service\Dossier;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
 use App\Enum\Dossier\DossierKind;
+use App\Repository\Document\DocumentRepository;
 use App\Repository\Dossier\DossierDateChangeRepository;
 use App\Repository\Dossier\DossierRepository;
 use App\Repository\Dossier\ExerciseRepository;
@@ -34,6 +35,7 @@ final readonly class DossierShell
         private PeriodRepository $periods,
         private DossierDateChangeRepository $dateChanges,
         private DossierRights $rights,
+        private DocumentRepository $documents,
     ) {
     }
 
@@ -58,6 +60,7 @@ final readonly class DossierShell
             $holders,
             $dateMoved,
             $this->rights->profileOf($dossier, $me),
+            $this->documents->countToProcess($dossier),
         );
     }
 

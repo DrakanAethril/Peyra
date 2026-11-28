@@ -1,0 +1,153 @@
+{#
+ # A pièce's sheet (gabarit P, design-ux.md § 3.5): the viewer on the left, kept in sight; on the
+ # right the read data - type, third party, number, dates, order reference, VAT by rate, the three
+ # totals -, saved with F10 while the pièce is open, then the entries carrying its number as their
+ # pièce reference, and where it came from. F7 shows the pièce over the whole window.
+ #}
+{% extends 'document/_layout.html.twig' %}
+
+{% set label = document.type.label ~ (document.number ? ' ' ~ document.number : '') %}
+{% set dossier_title = label %}
+{% set file_href = path('app_document_file', {dossier: dossier.id, id: document.id}) %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}, {combo: 'F7', verb: 'Pièce en grand'}] : [{combo: 'F7', verb: 'Pièce en grand'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ label }}" :trail="[
+        {label: 'Pièces', href: path('app_documents', {dossier: dossier.id})},
+        {label: 'Boîte de réception', href: path('app_documents', {dossier: dossier.id})},
+        {label: document.number ?? document.fileName, href: path('app_document', {dossier: dossier.id, id: document.id})},
+    ]">
+        <twig:block name="badge"> <twig:Px:Badge :of="document.state"/></twig:block>
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button type="submit" variant="primary" form="document-reading" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if reading.errors is not empty %}
+        <twig:Px:Alert tone="danger">Les données lues ne sont pas enregistrées : {{ reading.errors|length > 1 ? reading.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+    <div class="px-split px-split--doc">
+        <div class="px-document__viewer">
+            {% if document.pdf %}
+                <twig:Px:Viewer src="{{ file_href }}" kind="pdf" name="{{ document.fileName }}" download="{{ path('app_document_file', {dossier: dossier.id, id: document.id, download: 1}) }}"/>
+            {% else %}
+                <twig:Px:Viewer src="{{ file_href }}" kind="image" name="{{ document.fileName }}" alt="{{ label }}{{ document.thirdParty ? ' · ' ~ document.thirdParty.name : '' }}" download="{{ path('app_document_file', {dossier: dossier.id, id: document.id, download: 1}) }}"/>
+            {% endif %}
+        </div>
+
+        <div class="px-stack">
+            {% if can_edit %}
+                <form method="post" action="{{ path('app_document', {dossier: dossier.id, id: document.id}) }}" id="document-reading" novalidate data-controller="focus-error">
+                    <input type="hidden" name="_token" value="{{ csrf_token('document-' ~ document.id) }}">
+                    <twig:Px:Card title="Données lues">
+                        <div class="px-fieldgrid">
+                            <twig:Px:Field id="type" label="Nature" :required="true" :error="reading.error('type')">
+                                <twig:Px:Select id="type" placeholder="Choisir la nature…" :options="type_options" value="{{ reading.type }}" :required="true" :error="reading.error('type')"/>
+                            </twig:Px:Field>
+                            <twig:Px:Field id="thirdParty" label="Tiers" :error="reading.error('thirdParty')">
+                                <twig:Px:Select id="thirdParty" placeholder="Aucun tiers" :options="third_party_options" value="{{ reading.thirdParty }}" :error="reading.error('thirdParty')" autofocus/>
+                            </twig:Px:Field>
+                            <twig:Px:Field id="number" label="Numéro" :error="reading.error('number')">
+                                <twig:Px:Input id="number" value="{{ reading.number }}" :error="reading.error('number')" class="px-u-code" maxlength="40" autocomplete="off" spellcheck="false"/>
+                            </twig:Px:Field>
+                            <twig:Px:Field id="orderReference" label="Référence de commande" :error="reading.error('orderReference')">
+                                <twig:Px:Input id="orderReference" value="{{ reading.orderReference }}" :error="reading.error('orderReference')" class="px-u-code" maxlength="40" autocomplete="off" spellcheck="false"/>
+                            </twig:Px:Field>
+                            <twig:Px:Field id="date" label="Date" :error="reading.error('date')">
+                                <twig:Px:DateInput id="date" :reference="dossier.dossierDate" :value="reading.date ? date(reading.date) : null" :error="reading.error('date')"/>
+                            </twig:Px:Field>
+                            <twig:Px:Field id="dueDate" label="Échéance" :error="reading.error('dueDate')">
+                                <twig:Px:DateInput id="dueDate" :reference="dossier.dossierDate" :value="reading.dueDate ? date(reading.dueDate) : null" :error="reading.error('dueDate')"/>
+                            </twig:Px:Field>
+                        </div>
+                        <h3 class="px-document__section">TVA par taux</h3>
+                        <div class="px-vatrows">
+                            {% for row in reading.vat %}
+                                {% set i = loop.index0 %}
+                                <twig:Px:Field id="vat_rate_{{ i }}" label="Taux" :error="reading.error('vat.' ~ i ~ '.rate')">
+                                    <twig:Px:Input id="vat_rate_{{ i }}" value="{{ row.rate }}" :error="reading.error('vat.' ~ i ~ '.rate')" class="px-u-num" inputmode="decimal" maxlength="7" autocomplete="off"/>
+                                </twig:Px:Field>
+                                <twig:Px:Field id="vat_base_{{ i }}" label="Base HT" :error="reading.error('vat.' ~ i ~ '.base')">
+                                    <twig:Px:AmountInput id="vat_base_{{ i }}" :value="row.base" unit="€" :error="reading.error('vat.' ~ i ~ '.base')"/>
+                                </twig:Px:Field>
+                                <twig:Px:Field id="vat_amount_{{ i }}" label="TVA">
+                                    <twig:Px:AmountInput id="vat_amount_{{ i }}" :value="row.vat" unit="€"/>
+                                </twig:Px:Field>
+                            {% endfor %}
+                        </div>
+                        <h3 class="px-document__section">Totaux</h3>
+                        <div class="px-fieldgrid">
+                            <twig:Px:Field id="totalExcludingTax" label="Total HT">
+                                <twig:Px:AmountInput id="totalExcludingTax" :value="reading.totalExcludingTax" unit="€"/>
+                            </twig:Px:Field>
+                            <twig:Px:Field id="totalVat" label="Total TVA">
+                                <twig:Px:AmountInput id="totalVat" :value="reading.totalVat" unit="€"/>
+                            </twig:Px:Field>
+                            <twig:Px:Field id="totalIncludingTax" label="Total TTC">
+                                <twig:Px:AmountInput id="totalIncludingTax" :value="reading.totalIncludingTax" unit="€"/>
+                            </twig:Px:Field>
+                        </div>
+                    </twig:Px:Card>
+                </form>
+            {% else %}
+                <twig:Px:Card title="Données lues">
+                    <dl class="px-facts">
+                        <dt>Nature</dt><dd>{{ document.type.label }}</dd>
+                        <dt>Tiers</dt><dd>{{ document.thirdParty ? document.thirdParty.code ~ ' · ' ~ document.thirdParty.name : '—' }}</dd>
+                        <dt>Numéro</dt><dd class="px-u-code">{{ document.number ?? '—' }}</dd>
+                        <dt>Référence de commande</dt><dd class="px-u-code">{{ document.orderReference ?? '—' }}</dd>
+                        <dt>Date</dt><dd>{{ document.documentDate ? document.documentDate|date_fr : '—' }}</dd>
+                        <dt>Échéance</dt><dd>{{ document.dueDate ? document.dueDate|date_fr : '—' }}</dd>
+                        {% for line in document.vatLines %}
+                            <dt>TVA {{ line.rate|replace({'.': ','}) }} %</dt><dd class="px-u-num">base {{ line.base|amount }} · TVA {{ line.vat|amount }}</dd>
+                        {% endfor %}
+                        <dt>Total HT</dt><dd class="px-u-num">{{ document.totalExcludingTax ? document.totalExcludingTax|amount : '—' }}</dd>
+                        <dt>Total TVA</dt><dd class="px-u-num">{{ document.totalVat ? document.totalVat|amount : '—' }}</dd>
+                        <dt>Total TTC</dt><dd class="px-u-num">{{ document.totalIncludingTax ? document.totalIncludingTax|amount : '—' }}</dd>
+                    </dl>
+                </twig:Px:Card>
+            {% endif %}
+
+            <twig:Px:Card title="Écritures de la pièce" meta="{{ document.number ? 'portant la référence ' ~ document.number : '' }}" :flush="entries is not empty">
+                {% if entries is empty %}
+                    <p class="px-u-muted">{{ document.number ? 'Aucune écriture ne porte la référence de pièce ' ~ document.number ~ '.' : 'Saisissez le numéro de la pièce : ses écritures sont celles qui portent ce numéro comme référence de pièce.' }}</p>
+                {% else %}
+                    <twig:Px:Table caption="Écritures portant la référence {{ document.number }}">
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Journal</th>
+                                <th scope="col">Numéro</th>
+                                <th scope="col">Libellé</th>
+                                <th scope="col" class="px-u-num">Montant</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in entries %}
+                                <tr>
+                                    <td>{{ entry.entryDate|date_fr }}</td>
+                                    <td class="px-u-code">{{ entry.journal.code }}</td>
+                                    <td><a class="px-link" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id, return: path('app_document', {dossier: dossier.id, id: document.id})}) }}">{{ entry.numberLabel ?? 'Brouillard' }}</a></td>
+                                    <td class="px-u-truncate px-u-fill" title="{{ entry.label }}">{{ entry.label }}</td>
+                                    <td class="px-u-num">{{ entry.totalDebit|amount }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                {% endif %}
+            </twig:Px:Card>
+
+            <twig:Px:Card title="Arrivée">
+                <dl class="px-facts">
+                    <dt>Fichier</dt><dd>{{ document.fileName }}</dd>
+                    <dt>Arrivée le</dt><dd>{{ document.receivedOn|date_fr }} (date du dossier)</dd>
+                    <dt>Déposée par</dt><dd>{{ document.depositedBy ? document.depositedBy.displayName : '—' }}</dd>
+                </dl>
+            </twig:Px:Card>
+        </div>
+    </div>
+{% endblock %}
+
+{% block facts %}<span>{{ document.type.label }} · <b>{{ document.state.label }}</b></span>{% if document.totalIncludingTax %}<span>TTC · <b>{{ document.totalIncludingTax|amount }}</b></span>{% endif %}{% endblock %}

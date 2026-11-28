@@ -374,6 +374,13 @@
         <twig:Px:Empty icon="lock" title="Module fermé" text="La mission en cours n’ouvre pas ce module."/>
     </twig:Px:Card>
 
+    {# ------------------------------------------------------------------ Viewer #}
+    <twig:Px:Card title="Visionneuse" meta="§ 4.12 · une image : + − 0 au focus, F7 en grand">
+        <div class="px-document__viewer">
+            <twig:Px:Viewer src="{{ asset('brand/seal.svg') }}" kind="image" name="sceau.svg" alt="Le sceau de Peyra"/>
+        </div>
+    </twig:Px:Card>
+
     {# ------------------------------------------------------------------ Overlays #}
     <twig:Px:Card title="Dialogue, tiroir, raccourcis" meta="§ 4.14">
         <p>Le dialogue sert à saisir, jamais à confirmer : son contenu vient du serveur et y retourne ; un refus renvoie le formulaire en 422. Le tiroir laisse l’écran lisible. <kbd class="px-kbd">?</kbd> ouvre la liste des raccourcis.</p>

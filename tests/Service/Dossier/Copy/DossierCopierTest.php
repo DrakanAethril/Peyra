@@ -9,6 +9,7 @@ use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\DossierOwned;
 use App\Entity\Identity\User;
 use App\Enum\Accounting\EntryState;
+use App\Enum\Document\DocumentType;
 use App\Enum\Dossier\CopyKind;
 use App\Enum\Dossier\DossierKind;
 use App\Enum\Identity\AccountKind;
@@ -20,6 +21,7 @@ use App\Service\Accounting\Entry\GridGroup;
 use App\Service\Accounting\Entry\GridLine;
 use App\Service\Accounting\Entry\PendingEntries;
 use App\Service\Accounting\Ledger\Ledger;
+use App\Service\Document\Documents;
 use App\Service\Dossier\Copy\CopyPlan;
 use App\Service\Dossier\Copy\DossierCopier;
 use App\Service\Dossier\Copy\DossierEraser;
@@ -33,11 +35,12 @@ use App\Tests\Support\DossierFixtures;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
  * The completeness test of the dossier copier (README of the plan, § 8): the demonstration
  * dossier, given what it lacks for every table to hold rows (a pending entry rewriting a draft, a
- * reversal, a moved date, a file), copied, then both copies compared through their canonical
+ * reversal, a moved date, a pièce and its file), copied, then both copies compared through their canonical
  * exports. A new DossierOwned entity fails it until the source holds rows of it and the copy
  * reproduces them; a column holding a file's key without its mark fails it too.
  */
@@ -80,7 +83,14 @@ final class DossierCopierTest extends KernelTestCase
         });
         self::getContainer()->get(DossierDates::class)->move($this->source, new \DateTimeImmutable('2026-02-28'), $this->teacher, $at);
         $entityManager->flush();
-        self::getContainer()->get(DossierFiles::class)->storeContents((int) $this->source->getId(), 'pieces', 'pdf', '%PDF-1.7 facture');
+        // A pièce: a row of its own and a file whose key the copy rewrites.
+        $path = tempnam(sys_get_temp_dir(), 'piece');
+        \assert(\is_string($path));
+        file_put_contents($path, "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n");
+        self::getContainer()->get(DossierContext::class)->within($this->source, function () use ($entityManager, $path): void {
+            self::getContainer()->get(Documents::class)->deposit($this->source, new UploadedFile($path, 'FA-2603-0112.pdf', null, null, true), DocumentType::PurchaseInvoice, $this->teacher);
+            $entityManager->flush();
+        });
     }
 
     public function testASnapshotReproducesEveryTableOfTheDossier(): void

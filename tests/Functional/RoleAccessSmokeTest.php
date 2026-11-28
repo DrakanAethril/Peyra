@@ -15,6 +15,7 @@ use App\Entity\Payroll\EmploymentTerms;
 use App\Entity\Payroll\PayrollEstablishment;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\JournalType;
+use App\Enum\Document\DocumentType;
 use App\Enum\Dossier\DistributionMode;
 use App\Enum\Dossier\DossierKind;
 use App\Enum\Payroll\ContractType;
@@ -33,6 +34,7 @@ use App\Service\Accounting\Subscription\SubscriptionSheet;
 use App\Service\Accounting\Template\TemplateDraft;
 use App\Service\Accounting\Template\TemplateLineDraft;
 use App\Service\Accounting\Template\TemplateSheet;
+use App\Service\Document\Documents;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Restore\RestorePoints;
 use App\Service\Dossier\Restore\RestoreRunner;
@@ -47,6 +49,7 @@ use App\Tests\Support\SignsIn;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
  * Each main screen as each kind of account (README of the plan, § 6): the cheapest place to notice
@@ -238,6 +241,15 @@ final class RoleAccessSmokeTest extends WebTestCase
             EntryLineDraft::debit('401000', Money::cents(1_000), '', 'F0001'),
             EntryLineDraft::credit('512100', Money::cents(1_000)),
         ]), 'test'));
+        $documentId = $client->getContainer()->get(DossierContext::class)->within($saved, static function () use ($client, $saved, $ines): ?int {
+            $path = tempnam(sys_get_temp_dir(), 'piece');
+            \assert(\is_string($path));
+            file_put_contents($path, "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n");
+            $document = $client->getContainer()->get(Documents::class)->deposit($saved, new UploadedFile($path, 'FA-2601-0012.pdf', null, null, true), DocumentType::PurchaseInvoice, $ines);
+            $client->getContainer()->get(EntityManagerInterface::class)->flush();
+
+            return $document->getId();
+        });
         $dossier = (int) $saved->getId();
         $point = $client->getContainer()->get(RestorePoints::class)->pose($saved, 'Avant validation', $ines, new \DateTimeImmutable('2026-11-28 10:00'));
         $pointId = (int) $point->getId();
@@ -277,6 +289,7 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/payroll/employees/S001?from=2012-09-03',
             '/payroll/employees/register', '/payroll/employees/register.pdf', '/payroll/employees/S001/formalities',
             '/payroll/employees/S001/contract.pdf', '/payroll/social-portal/dpae/S001', '/payroll/employees/S001/exit',
+            '/documents', '/documents?state=to_process&q=fa', '/documents/new', '/documents/'.$documentId, '/documents/'.$documentId.'/file',
             '/restore-points', '/restore-points/new', '/restore-points/'.$pointId.'/return', '/restoring/state',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {

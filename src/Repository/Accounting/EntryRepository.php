@@ -6,6 +6,7 @@ namespace App\Repository\Accounting;
 
 use App\Entity\Accounting\Entry;
 use App\Entity\Accounting\Journal;
+use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\Exercise;
 use App\Entity\Dossier\Period;
 use App\Enum\Accounting\EntryState;
@@ -126,6 +127,27 @@ final class EntryRepository extends ServiceEntityRepository
 
         /* @var list<Entry> */
         return $query->getQuery()->getResult();
+    }
+
+    /**
+     * The dossier's entries carrying this pièce reference, in any journal and exercise, by date
+     * (MariaDB's collation ignores the case): what a pièce's sheet lists as its entries.
+     *
+     * @return list<Entry>
+     */
+    public function findByDocumentReference(Dossier $dossier, string $document): array
+    {
+        /* @var list<Entry> */
+        return $this->createQueryBuilder('e')
+            ->addSelect('j')
+            ->join('e.journal', 'j')
+            ->andWhere('e.dossier = :dossier')
+            ->andWhere('e.document = :document')
+            ->setParameter('dossier', $dossier)
+            ->setParameter('document', $document)
+            ->orderBy('e.entryDate', 'ASC')
+            ->addOrderBy('e.id', 'ASC')
+            ->getQuery()->getResult();
     }
 
     /**
