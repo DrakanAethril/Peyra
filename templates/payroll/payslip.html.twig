@@ -16,7 +16,8 @@
 {% set validated = status.value == 'validated' %}
 {% set can_enter = is_granted('PAYROLL_ENTER', dossier) %}
 {% set can_edit = can_enter and not validated %}
-{% set totals_hidden = entry_check is not null and not entry_check.complete %}
+{% set establishing = entry_check is not null and entry_check.typedByStudent %}
+{% set totals_hidden = establishing and not entry_check.complete %}
 {% set status_keys = [{combo: 'F5', verb: 'détail du calcul'}]|merge(can_edit ? [{combo: 'F9', verb: 'calculer'}, {combo: 'Insert', verb: 'ajouter une rubrique'}, {combo: 'Ctrl+Delete', verb: 'retirer la rubrique'}] : [])|merge(can_edit and status.toValidate ? [{combo: 'Ctrl+Enter', verb: 'valider'}] : [])|merge([{combo: 'Ctrl+ArrowUp', verb: 'salarié précédent'}, {combo: 'Ctrl+ArrowDown', verb: 'salarié suivant'}]) %}
 
 {% block page_head %}
@@ -89,13 +90,11 @@
         {% if not has_establishment %}
             <twig:Px:Alert tone="warning" actionLabel="Renseigner l’établissement" actionHref="{{ path('app_payroll_establishment', {dossier: dossier.id}) }}">L’établissement n’est pas renseigné : son effectif et ses taux décident des cotisations.</twig:Px:Alert>
         {% endif %}
-        {% if entry_check is not null %}
+        {% if establishing %}
             {% set missing = entry_check.missing %}
-            {% set gaps = entry_check.gaps %}
-            <twig:Px:Alert tone="{{ gaps > 0 and assistance.blocksPayslipGaps ? 'warning' : 'info' }}" title="Bulletin à établir">
-                {{- assistance.startsPayslipEmpty ? 'Ajoutez chaque rubrique (Inser) et saisissez sa base, son taux ou son montant ; ' : 'Saisissez la base, le taux ou le montant de chaque rubrique ; ' -}}
+            <twig:Px:Alert tone="info" title="Bulletin à établir">
+                {{- 'Ajoutez chaque rubrique (Inser) et saisissez sa base, son taux ou son montant ; ' -}}
                 F9 recalcule. {{ missing > 0 ? (missing > 1 ? missing ~ ' cellules restent à saisir' : 'Une cellule reste à saisir') ~ ' : les montants d’une ligne et les totaux s’affichent une fois ses cellules saisies.' : 'Toutes les cellules sont saisies.' }}
-                {%- if assistance.signalsPayslipGaps %} {{ gaps > 0 ? (gaps > 1 ? gaps ~ ' cellules diffèrent' : 'Une cellule diffère') ~ ' du calcul de l’outil' ~ (assistance.blocksPayslipGaps ? ' : le bulletin ne se valide pas tant qu’elles restent.' : ' : elles sont signalées, le bulletin se valide.') : 'Aucun écart avec le calcul de l’outil.' }}{% endif %}
             </twig:Px:Alert>
         {% endif %}
         {% if last_entries.any %}
@@ -173,6 +172,12 @@
                         </twig:Px:Table>
                     </form>
                 </twig:Px:Card>
+                {% if controls %}
+                    {% set blocking = assistance and assistance.blocksPayslipControls %}
+                    <twig:Px:Card title="Contrôles" meta="{{ controls.faults == 0 ? 'aucun défaut' : (controls.faults > 1 ? controls.faults ~ ' défauts' : 'un défaut') ~ (blocking ? ', bloquant' : ', signalé') }}">
+                        <twig:Px:Checks :items="controls.items|map(c => {state: c.tone == 'passed' ? 'passed' : (c.tone == 'fault' and blocking ? 'blocking' : 'warning'), text: c.text})"/>
+                    </twig:Px:Card>
+                {% endif %}
             </div>
             <div class="px-stack">
                 <twig:Px:Card title="Bulletin de paie" meta="du 1er au {{ pay_day|date('j') }} {{ month|period }} · paiement le {{ pay_day|day_month(pay_day|date('Y')) }} par virement" :flush="true">

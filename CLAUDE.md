@@ -1296,12 +1296,14 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   Payslip in JSON) and only that is read again; the year to date is the sum of the validated payslips' month
   figures. The month paid is the one after the last `PayrollMonthClosure`, else the dossier's date's. The
   « de / d’ » before a month is `of_period` (`FrenchFormat::ofPeriod()`).
-- **Established by the student** (step 4.4c): at B, A and 0 (`Assistance::calculatesPayslip()` false; a template
-  always calculates) every open cell is typed, shown empty until then, compared by `PayslipEntryCheck` with the
-  same payslip without forcings - a gap is said, never its value; a line's amounts and the totals wait for its
-  cells. A forced value equal to the calculation moves nothing (`PayslipForcing`). What a validated payslip read
-  (the employee, the terms, the exit) no longer moves (`ValidatedPayslipLocks`, in `EmployeeSheet`/`EmployeeExits`);
-  the last payslip's card is `LastPayslipEntries`; the reçu pour solde de tout compte reads it (`FinalSettlement`).
+- **Levels of the payslip** (step 4.4c, realigned at review 4.7a): at G, B and A the tool calculates from the elements
+  the student enters (`Assistance::calculatesPayslip()`), and the « Contrôles » card (`PayslipControls`, pure: SMIC or
+  apprentice minimum, ceiling, general reduction, cells forced that differ from the calculation - `PayslipEntryCheck`
+  gaps) blocks the validation at B, signals at G and A; at 0 only, every open cell is typed, shown empty until then
+  (`PayslipEntryCheck` `typedByStudent`), nothing compared. A forced value equal to the calculation moves nothing
+  (`PayslipForcing`). What a validated payslip read (the employee, the terms, the exit) no longer moves
+  (`ValidatedPayslipLocks`, in `EmployeeSheet`/`EmployeeExits`); the last payslip's card is `LastPayslipEntries`; the
+  reçu pour solde de tout compte reads it (`FinalSettlement`).
 - **States and entries** (step 4.5, `src/Service/Payroll/Statement/`): every payroll state and entry reads the
   **validated** payslips only (`PayrollStatementsReader`, frozen snapshots), each line put where it goes by the pure
   `PayrollAllocations` (the general reduction cut into its Urssaf and pension shares); accounts come from the item

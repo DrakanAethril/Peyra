@@ -87,23 +87,26 @@ final readonly class Assistance
     }
 
     /**
-     * The payslip is calculated by the tool, for the student to check (G); at B, A and 0 its base, rate
-     * and amount cells are the student's to type, shown empty until typed, and the tool's calculation
-     * serves the correction (design-ux.md §§ 3.2 and 4.7).
+     * The payslip is calculated by the tool from the elements of the month the student enters (G, B and
+     * A; review 4.7 of lot 4); at level 0 its base, rate and amount cells are the student's to type, shown
+     * empty until typed, and the tool's calculation serves the correction (design-ux.md §§ 3.2 and 4.7).
      */
     public function calculatesPayslip(): bool
     {
-        return AssistanceLevel::Guided === $this->level;
+        return AssistanceLevel::None !== $this->level;
     }
 
-    /** A cell typed on the payslip that differs from the tool's calculation is shown as such, never its value (B and A). */
-    public function signalsPayslipGaps(): bool
+    /**
+     * A calculated payslip carries its « Contrôles » card (PayslipControls: the minimum, the ceiling, the
+     * general reduction, the values typed that differ from the calculation), its faults said (G, B, A).
+     */
+    public function controlsPayslip(): bool
     {
-        return AssistanceLevel::Blocking === $this->level || AssistanceLevel::Warnings === $this->level;
+        return AssistanceLevel::None !== $this->level;
     }
 
-    /** Such a cell stops the payslip's validation (B). */
-    public function blocksPayslipGaps(): bool
+    /** A fault of the payslip's controls stops its validation (B); elsewhere it is signalled. */
+    public function blocksPayslipControls(): bool
     {
         return AssistanceLevel::Blocking === $this->level;
     }

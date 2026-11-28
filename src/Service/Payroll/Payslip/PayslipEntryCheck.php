@@ -6,16 +6,16 @@ namespace App\Service\Payroll\Payslip;
 
 use App\Service\Payroll\Engine\Payslip;
 use App\Service\Payroll\Plan\PayrollItemSpec;
-use App\Service\Shared\Assistance\Assistance;
 
 /**
- * A payslip established by the student (step 4.4c; design-ux.md § 4.7, levels B, A and 0), pure: every
- * open cell of its lines (PayslipLineCells::open) is the student's to type - one not typed yet is
- * `missing` -, and where the level signals gaps (B and A) a typed cell whose value is not the tool's
- * calculation (the same payslip with nothing forced, `reference`) is a `gap`, never told its value. A
- * line added by hand that the calculation does not carry is a gap in every cell typed. A line is
- * complete once none of its cells is missing: only then are its amounts shown, and the totals once
- * every line is.
+ * The cells of a payslip checked against the tool's calculation, pure. Where the student establishes the
+ * payslip (level 0, `typedByStudent`) every open cell of its lines (PayslipLineCells::open) is theirs to
+ * type - one not typed yet is `missing` -, and no comparison is made: the calculation serves the
+ * correction. Where the tool calculates (G, B, A; review 4.7) a cell is the calculation's until forced by
+ * hand, and a forced cell whose value is not the tool's calculation (the same payslip with nothing forced,
+ * `reference`) is a `gap`, never told its value - a fault of the « Contrôles » card (PayslipControls). A
+ * line added by hand that the calculation does not carry is a gap in every cell forced. A line is complete
+ * once none of its cells is missing: only then are its amounts shown, and the totals once every line is.
  */
 final readonly class PayslipEntryCheck
 {
@@ -23,12 +23,12 @@ final readonly class PayslipEntryCheck
     public const string GAP = 'gap';
 
     /** @param array<string, string> $cells state by « code.field », for the cells missing or in gap only */
-    private function __construct(public array $cells)
+    private function __construct(public array $cells, public bool $typedByStudent)
     {
     }
 
     /** @param list<PayrollItemSpec> $plan */
-    public static function of(Payslip $payslip, ?Payslip $reference, array $plan): self
+    public static function of(Payslip $payslip, ?Payslip $reference, array $plan, bool $typedByStudent): self
     {
         $specs = [];
         foreach ($plan as $spec) {
@@ -40,7 +40,9 @@ final readonly class PayslipEntryCheck
             foreach (PayslipLineCells::open($row, $specs[$row->code] ?? null) as $field) {
                 $key = $row->code.'.'.$field;
                 if (!$row->isForced($field)) {
-                    $cells[$key] = self::MISSING;
+                    if ($typedByStudent) {
+                        $cells[$key] = self::MISSING;
+                    }
                     continue;
                 }
                 if (null === $reference) {
@@ -54,7 +56,7 @@ final readonly class PayslipEntryCheck
             }
         }
 
-        return new self($cells);
+        return new self($cells, $typedByStudent);
     }
 
     public function state(string $key): ?string
@@ -88,18 +90,11 @@ final readonly class PayslipEntryCheck
         return true;
     }
 
-    /** Why the payslip may not be validated at that level, in French, or null: a cell not typed, or (B) a cell in gap. */
-    public function validationRefusal(Assistance $assistance): ?string
+    /** Why a payslip the student establishes may not be validated, in French, or null: a cell not typed. */
+    public function validationRefusal(): ?string
     {
         $missing = $this->missing();
-        if ($missing > 0) {
-            return 1 === $missing ? 'Une cellule du bulletin reste à saisir.' : \sprintf('%d cellules du bulletin restent à saisir.', $missing);
-        }
-        $gaps = $this->gaps();
-        if ($assistance->blocksPayslipGaps() && $gaps > 0) {
-            return 1 === $gaps ? 'Une cellule diffère du calcul de l’outil : revoyez-la avant de valider.' : \sprintf('%d cellules diffèrent du calcul de l’outil : revoyez-les avant de valider.', $gaps);
-        }
 
-        return null;
+        return 0 === $missing ? null : (1 === $missing ? 'Une cellule du bulletin reste à saisir.' : \sprintf('%d cellules du bulletin restent à saisir.', $missing));
     }
 }
