@@ -8,10 +8,11 @@ use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
 use App\Entity\Payroll\Employee;
 use App\Entity\Payroll\MonthlyPayslip;
+use App\Enum\Dossier\DossierKind;
 use App\Enum\Payroll\PayslipStatus;
 use App\Security\Voter\DossierRightVoter;
 use App\Security\Voter\DossierVoter;
-use App\Service\Payroll\Employee\Nir;
+use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Payroll\Engine\PayslipAdjustments;
 use App\Service\Payroll\Engine\PayslipRow;
 use App\Service\Payroll\Payslip\PayslipBook;
@@ -20,9 +21,9 @@ use App\Service\Payroll\Payslip\PayslipElementFields;
 use App\Service\Payroll\Payslip\PayslipElements;
 use App\Service\Payroll\Payslip\PayslipElementsRules;
 use App\Service\Payroll\Payslip\PayslipLineCells;
-use App\Service\Payroll\Payslip\PayslipPrintLines;
 use App\Service\Payroll\Payslip\PayslipView;
 use App\Service\Payroll\Plan\PayrollItemSpec;
+use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\Pdf\PdfRenderer;
 use App\Service\Shared\PostValue;
@@ -108,14 +109,16 @@ final class PayslipsController extends AbstractController
     }
 
     #[Route('/{number}', name: 'app_payroll_payslip', requirements: ['number' => '[A-Z0-9]{1,10}'], methods: ['GET', 'POST'])]
-    public function payslip(Dossier $dossier, string $number, Request $request, PayslipBook $book, EntityManagerInterface $entityManager): Response
+    public function payslip(Dossier $dossier, string $number, Request $request, PayslipBook $book, AssistanceLevels $levels, EntityManagerInterface $entityManager): Response
     {
         $this->readable($dossier);
+        $assistance = self::assistance($dossier, $levels);
         $month = $book->month($dossier);
         [$employees, $index] = $this->place($book, $dossier, $month, $number);
         $employee = $employees[$index];
         $plan = $book->plan($dossier);
-        $fields = PayslipElementFields::of($plan);
+        $last = PayslipBook::lastEntries($employee, $month, $plan);
+        $fields = PayslipElementFields::of($plan, $last);
         $takesPaidLeave = PayslipElementFields::takesPaidLeave($plan);
         $payslip = $book->payslipOf($employee, $month);
         $elements = PayslipElements::fromArray($payslip?->getElements() ?? []);
@@ -131,14 +134,20 @@ final class PayslipsController extends AbstractController
             }
             $typed = $this->posted($request, $fields);
             $cells = PostValue::stringsByKey($request, 'cell');
-            $read = PayslipElementsRules::read($fields, $takesPaidLeave, $typed);
+            $read = PayslipElementsRules::read($fields, $takesPaidLeave, $typed, $last);
             $errors = $read['errors'];
             $lines = PayslipLineCells::read($current['payslip']->rows ?? [], $plan, $adjustments, $cells, PostValue::stringsByKey($request, 'shown'));
             $errors += $lines['errors'];
-            $adjustments = $this->addedOrRemoved($request, $plan, $lines['adjustments'], $errors);
+            $adjustments = $this->addedOrRemoved($request, $plan, $lines['adjustments'], $errors, true === $assistance?->startsPayslipEmpty());
             if (null !== $read['elements'] && [] === $errors) {
                 $calculation = $book->calculate($employee, $month, $read['elements'], $plan, $adjustments);
                 if (null === $calculation['refusal']) {
+                    if (null === $payslip && null !== $calculation['payslip'] && true === $assistance?->startsPayslipEmpty()) {
+                        // Level 0: the payslip starts with no line, the student adds each rubrique (Inser).
+                        foreach ($calculation['payslip']->rows as $row) {
+                            $adjustments = $adjustments->withRemoved($row->code);
+                        }
+                    }
                     $book->record($employee, $month, $read['elements'], $adjustments);
                     $entityManager->flush();
                     $this->addFlash('status', \sprintf('Bulletin de %s calculé.', $employee->getFullName()));
@@ -158,7 +167,8 @@ final class PayslipsController extends AbstractController
         $shown = null === $current['payslip'] ? [] : array_map(static fn (PayslipRow $row): string => $row->code, $current['payslip']->rows);
         // The cells stay those of the payslip as it stood when the post is refused: what was typed is shown in them.
         $grid = null === $current['payslip'] || true === $payslip?->isValidated() || !$this->isGranted(DossierRightVoter::PAYROLL_ENTER, $dossier) ? [] : $current['payslip']->rows;
-        [$open, $texts] = $this->openCells($grid, $specs);
+        [$open, $texts] = $this->openCells($grid, $specs, false === $assistance?->calculatesPayslip());
+        $check = null === $current['payslip'] || null === $assistance || true === $payslip?->isValidated() ? null : $book->entryCheck($employee, $month, $elements, PayslipAdjustments::fromArray($payslip?->getAdjustments() ?? []), $current['payslip'], $plan, $assistance);
 
         return $this->render('payroll/payslip.html.twig', [
             'dossier' => $dossier,
@@ -174,6 +184,7 @@ final class PayslipsController extends AbstractController
             'next' => $employees[$index + 1] ?? null,
             'fields' => $fields,
             'takes_paid_leave' => $takesPaidLeave,
+            'last_entries' => $last,
             'typed' => $typed,
             'cells' => $cells,
             'errors' => $errors,
@@ -182,16 +193,18 @@ final class PayslipsController extends AbstractController
             'refusal' => $current['refusal'],
             'payslip_view' => null === $current['payslip'] ? null : PayslipView::of($current['payslip']),
             'open_cells' => $open,
+            'entry_check' => $check,
+            'assistance' => $assistance,
             'cell_texts' => $texts,
             'addable' => null === $current['payslip'] ? [] : array_values(array_filter($plan, static fn (PayrollItemSpec $spec): bool => !\in_array($spec->code, $shown, true))),
         ], new Response(null, [] === $errors ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY));
     }
 
     #[Route('/{number}/validate', name: 'app_payroll_payslip_validate', requirements: ['number' => '[A-Z0-9]{1,10}'], methods: ['POST'])]
-    public function validate(Dossier $dossier, string $number, Request $request, PayslipBook $book, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
+    public function validate(Dossier $dossier, string $number, Request $request, PayslipBook $book, AssistanceLevels $levels, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $payslip = $this->stored($dossier, $number, $request, $book, 'payslip-validate-');
-        $refusal = $book->validate($payslip, $me);
+        $refusal = $book->validate($payslip, $me, self::assistance($dossier, $levels));
         if (null !== $refusal) {
             $this->addFlash('payslip_fault', $refusal);
 
@@ -250,22 +263,17 @@ final class PayslipsController extends AbstractController
             throw new NotFoundHttpException('Only a validated payslip is printed.');
         }
         $result = $book->resultOf($payslip)['payslip'] ?? throw new NotFoundHttpException('A frozen payslip reads.');
-        $day = PayslipBook::payDay($month);
 
-        return self::pdf($renderer, 'payroll/payslip.pdf.html.twig', [
-            'pdf' => true,
-            'dossier' => $dossier,
-            'company' => $dossier->getCompany(),
-            'employee' => $employee,
-            'terms' => $employee->termsAt($day),
-            'nir' => null === $employee->getNir() ? null : Nir::format($employee->getNir()),
-            'month' => $month,
-            'pay_day' => $day,
-            'payslip' => $payslip,
-            'result' => $result,
-            'lines' => PayslipPrintLines::of($result),
-            'duplicate' => null !== $payslip->getSentOn(),
-        ], ($payslip->getSentOn() ? 'duplicata bulletin ' : 'bulletin ').$employee->getRegistrationNumber().' '.$month->format('Y-m'), $dossier);
+        return self::payslipPdf($renderer, $payslip, $result);
+    }
+
+    /**
+     * The level the payslip is established at (step 4.4c); none in a template, which the teacher
+     * prepares: its payslips are calculated by the tool.
+     */
+    private static function assistance(Dossier $dossier, AssistanceLevels $levels): ?Assistance
+    {
+        return DossierKind::Template === $dossier->getKind() ? null : Assistance::at($levels->for($dossier));
     }
 
     private function readable(Dossier $dossier): void
@@ -308,12 +316,13 @@ final class PayslipsController extends AbstractController
     }
 
     /**
-     * A rubrique added (Inser, the list of the plan) or removed (Ctrl+Suppr) by the button that posted.
+     * A rubrique added (Inser, the list of the plan) or removed (Ctrl+Suppr) by the button that posted;
+     * a due rubrique is removed only where the student establishes the payslip from nothing (level 0).
      *
      * @param list<PayrollItemSpec>  $plan
      * @param array<string, string>  $errors
      */
-    private function addedOrRemoved(Request $request, array $plan, PayslipAdjustments $adjustments, array &$errors): PayslipAdjustments
+    private function addedOrRemoved(Request $request, array $plan, PayslipAdjustments $adjustments, array &$errors, bool $anyRemovable): PayslipAdjustments
     {
         $add = PostValue::trimmed($request, 'add');
         $remove = PostValue::trimmed($request, 'remove');
@@ -322,7 +331,7 @@ final class PayslipsController extends AbstractController
                 return $adjustments->withAdded($add);
             }
             if ($spec->code === $remove) {
-                if (!PayslipLineCells::removable($spec)) {
+                if (!$anyRemovable && !PayslipLineCells::removable($spec)) {
                     $errors['remove'] = \sprintf('La rubrique %s · %s est due : elle ne se retire pas du bulletin.', $spec->code, $spec->label);
 
                     return $adjustments;
@@ -336,19 +345,20 @@ final class PayslipsController extends AbstractController
     }
 
     /**
-     * @param list<PayslipRow>               $rows
-     * @param array<array-key, PayrollItemSpec> $specs by code
+     * @param list<PayslipRow>                  $rows
+     * @param array<array-key, PayrollItemSpec>  $specs by code
      *
      * @return array{0: array<string, list<string>>, 1: array<string, string>} the open cells of each line by code, and what each shows by « code.field »
      */
-    private function openCells(array $rows, array $specs): array
+    private function openCells(array $rows, array $specs, bool $typedOnly): array
     {
         $open = [];
         $texts = [];
         foreach ($rows as $row) {
             $open[$row->code] = PayslipLineCells::open($row, $specs[$row->code] ?? null);
             foreach ($open[$row->code] as $field) {
-                $texts[$row->code.'.'.$field] = PayslipLineCells::text($row, $field);
+                // Where the student establishes the payslip (B, A, 0) a cell shows what they typed, never the calculation.
+                $texts[$row->code.'.'.$field] = $typedOnly && !$row->isForced($field) ? '' : PayslipLineCells::text($row, $field);
             }
         }
 
@@ -402,11 +412,16 @@ final class PayslipsController extends AbstractController
         foreach ($fields as $field) {
             $typed[$field->key()] = $elements->shown($field);
         }
-        $leave = $elements->paidLeave;
-        $typed['paidLeave.hours'] = null === $leave ? '' : PayslipElements::french($leave->hours);
-        $typed['paidLeave.daysTaken'] = null === $leave ? '' : PayslipElements::french($leave->daysTaken);
-        $typed['paidLeave.daysAcquired'] = null === $leave ? '' : PayslipElements::french($leave->daysAcquired);
-        $typed['paidLeave.referenceGross'] = null === $leave ? '' : PayslipElements::french($leave->referenceGross->toDecimal());
+        foreach (['paidLeave' => $elements->paidLeave, 'compensatoryLeave' => $elements->compensatoryLeave] as $prefix => $leave) {
+            $typed[$prefix.'.hours'] = null === $leave ? '' : PayslipElements::french($leave->hours);
+            $typed[$prefix.'.daysTaken'] = null === $leave ? '' : PayslipElements::french($leave->daysTaken);
+            $typed[$prefix.'.daysAcquired'] = null === $leave ? '' : PayslipElements::french($leave->daysAcquired);
+            $typed[$prefix.'.referenceGross'] = null === $leave ? '' : PayslipElements::french($leave->referenceGross->toDecimal());
+        }
+        $severance = $elements->severance;
+        $typed['severance.referenceSalary'] = null === $severance ? '' : PayslipElements::french($severance->referenceSalary->toDecimal());
+        $typed['severance.agreed'] = null === $severance?->agreed ? '' : PayslipElements::french($severance->agreed->toDecimal());
+        $typed['severance.previousYearGross'] = null === $severance?->previousYearGross ? '' : PayslipElements::french($severance->previousYearGross->toDecimal());
         $typed['unpaidDays'] = 0 === $elements->unpaidDays ? '' : (string) $elements->unpaidDays;
 
         return $typed;
@@ -427,9 +442,15 @@ final class PayslipsController extends AbstractController
         foreach ($fields as $field) {
             $typed[$field->key()] = $byKind[$field->kind][$field->code] ?? '';
         }
-        $leave = PostValue::stringsByKey($request, 'paidLeave');
-        foreach (PayslipElementsRules::PAID_LEAVE as $part) {
-            $typed['paidLeave.'.$part] = $leave[$part] ?? '';
+        foreach (['paidLeave', 'compensatoryLeave'] as $prefix) {
+            $leave = PostValue::stringsByKey($request, $prefix);
+            foreach (PayslipElementsRules::PAID_LEAVE as $part) {
+                $typed[$prefix.'.'.$part] = $leave[$part] ?? '';
+            }
+        }
+        $severance = PostValue::stringsByKey($request, 'severance');
+        foreach (PayslipElementsRules::SEVERANCE as $part) {
+            $typed['severance.'.$part] = $severance[$part] ?? '';
         }
         $typed['unpaidDays'] = PostValue::trimmed($request, 'unpaidDays');
 

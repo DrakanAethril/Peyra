@@ -7,19 +7,32 @@ namespace App\Service\Payroll\Exit;
 use App\Entity\Identity\User;
 use App\Entity\Payroll\Employee;
 use App\Enum\Audit\AuditAction;
+use App\Repository\Payroll\MonthlyPayslipRepository;
 use App\Service\Audit\AuditTrail;
+use App\Service\Payroll\Payslip\ValidatedPayslipLocks;
 use App\Service\Shared\FrenchFormat;
 
 /**
  * The one door to an employee's exit (Paie et social › Salariés › Fin de contrat, step 4.2c):
  * checks it as typed (ExitRules, over the employee's contract), records or changes it, cancels it -
- * each gesture in the audit trail. Runs inside the dossier's context; the caller checks
+ * each gesture in the audit trail. An exit a validated payslip read no longer changes (step 4.4c,
+ * ValidatedPayslipLocks). Runs inside the dossier's context; the caller checks
  * DossierRightVoter::PAYROLL_ENTER and flushes.
  */
 final readonly class EmployeeExits
 {
-    public function __construct(private AuditTrail $auditTrail)
+    public function __construct(private AuditTrail $auditTrail, private MonthlyPayslipRepository $payslips)
     {
+    }
+
+    /** Why the exit may not become these fields (null: be cancelled), or null when it may. */
+    public function refusal(Employee $employee, ?ExitFields $fields): ?string
+    {
+        if (self::unchanged($employee, $fields)) {
+            return null;
+        }
+
+        return ValidatedPayslipLocks::exitChange($employee->getExitOn(), $fields?->exitOn, $this->payslips->findValidatedMonths($employee));
     }
 
     /** What may be recorded, or null with the draft's errors filled. */
@@ -34,8 +47,11 @@ final readonly class EmployeeExits
     /** False when nothing changed (nothing is written). */
     public function record(Employee $employee, ExitFields $fields, User|string $by): bool
     {
-        if ($employee->getExitReason() === $fields->reason && $employee->getExitNotifiedOn() == $fields->notifiedOn && $employee->getExitOn() == $fields->exitOn) {
+        if (self::unchanged($employee, $fields)) {
             return false;
+        }
+        if (null !== $this->refusal($employee, $fields)) {
+            throw new \LogicException('A validated payslip read this exit.');
         }
         $employee->leave($fields->reason, $fields->notifiedOn, $fields->exitOn);
         $this->auditTrail->inDossier(
@@ -52,6 +68,9 @@ final readonly class EmployeeExits
     public function cancel(Employee $employee, User|string $by): void
     {
         $exitOn = $employee->getExitOn() ?? throw new \LogicException('No exit to cancel.');
+        if (null !== $this->refusal($employee, null)) {
+            throw new \LogicException('A validated payslip read this exit.');
+        }
         $employee->leave(null, null, null);
         $this->auditTrail->inDossier(
             $employee->getDossier(),
@@ -60,5 +79,12 @@ final readonly class EmployeeExits
             \sprintf('Sortie de %s %s du %s annulée', $employee->getRegistrationNumber(), $employee->getFullName(), FrenchFormat::date($exitOn)),
             ['dossier' => $employee->getDossier()->getId(), 'number' => $employee->getRegistrationNumber(), 'exitOn' => $exitOn->format('Y-m-d')],
         );
+    }
+
+    private static function unchanged(Employee $employee, ?ExitFields $fields): bool
+    {
+        return null === $fields
+            ? null === $employee->getExitOn()
+            : $employee->getExitReason() === $fields->reason && $employee->getExitNotifiedOn() == $fields->notifiedOn && $employee->getExitOn() == $fields->exitOn;
     }
 }

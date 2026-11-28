@@ -1,0 +1,9 @@
+{# The head of an employee's read-only tabs (step 4.4c): matricule and name, the trail ending on the tab, the contract's badges. Takes `tab_label` and `tab_route`. #}
+<twig:Px:PageHead title="{{ employee.registrationNumber }} · {{ employee.fullName }}" :trail="[
+    {label: 'Paie et social', href: path('app_payroll_employees', {dossier: dossier.id})},
+    {label: 'Salariés', href: path('app_payroll_employees', {dossier: dossier.id})},
+    {label: employee.registrationNumber, href: path('app_payroll_employee', {dossier: dossier.id, number: employee.registrationNumber})},
+    {label: tab_label, href: path(tab_route, {dossier: dossier.id, number: employee.registrationNumber})},
+]">
+    <twig:block name="badge"> <twig:Px:Badge :of="employee.contractType"/> <twig:Px:Badge :of="employee.stateAt(dossier.dossierDate)"/></twig:block>
+</twig:Px:PageHead>

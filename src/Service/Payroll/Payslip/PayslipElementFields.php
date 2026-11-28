@@ -13,9 +13,10 @@ use App\Service\Payroll\Plan\PayrollItemSpec;
  * rubrique whose base or rate is entered for the month, in the plan's order - hours of overtime or
  * of absence, a number of meals, an amount of bonus or of advance, the seniority percent, the hours
  * of sick pay with the daily allowances received - plus the paid leave taken when the plan pays it.
- * A pure function of the plan; the card adds the whole days of absence without any pay. What only
- * the last payslip of a contract takes (leave not taken, severance, the gross of a fixed-term
- * contract) is not here: step 4.4c.
+ * A pure function of the plan; the card adds the whole days of absence without any pay. On the last
+ * payslip of a fixed-term contract at its term (step 4.4c, LastPayslipEntries) the end-of-contract
+ * indemnity's rubrique takes the contract's gross pay of the months before; the leave not taken and the
+ * severance are the card's own groups of fields.
  */
 final class PayslipElementFields
 {
@@ -24,11 +25,16 @@ final class PayslipElementFields
      *
      * @return list<PayslipElementField>
      */
-    public static function of(array $plan): array
+    public static function of(array $plan, ?LastPayslipEntries $last = null): array
     {
         $fields = [];
         foreach ($plan as $spec) {
             switch ($spec->base) {
+                case PayrollBase::FixedTermEnd:
+                    if (true === $last?->fixedTermGross) {
+                        $fields[] = new PayslipElementField($spec->code, $spec->label.' : brut du contrat des mois précédents', PayslipElementField::AMOUNT, '€');
+                    }
+                    break;
                 case PayrollBase::EnteredHours:
                     $fields[] = new PayslipElementField($spec->code, $spec->label, PayslipElementField::QUANTITY, 'h');
                     break;

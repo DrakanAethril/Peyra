@@ -86,6 +86,34 @@ final readonly class Assistance
         return AssistanceLevel::Guided === $this->level;
     }
 
+    /**
+     * The payslip is calculated by the tool, for the student to check (G); at B, A and 0 its base, rate
+     * and amount cells are the student's to type, shown empty until typed, and the tool's calculation
+     * serves the correction (design-ux.md §§ 3.2 and 4.7).
+     */
+    public function calculatesPayslip(): bool
+    {
+        return AssistanceLevel::Guided === $this->level;
+    }
+
+    /** A cell typed on the payslip that differs from the tool's calculation is shown as such, never its value (B and A). */
+    public function signalsPayslipGaps(): bool
+    {
+        return AssistanceLevel::Blocking === $this->level || AssistanceLevel::Warnings === $this->level;
+    }
+
+    /** Such a cell stops the payslip's validation (B). */
+    public function blocksPayslipGaps(): bool
+    {
+        return AssistanceLevel::Blocking === $this->level;
+    }
+
+    /** The payslip starts with no line: the student adds each rubrique (Inser) and may remove any (0). */
+    public function startsPayslipEmpty(): bool
+    {
+        return AssistanceLevel::None === $this->level;
+    }
+
     /** A receipt that differs from what its order left to receive is flagged (G: « écart de quantité signalé »). */
     public function flagsQuantityGaps(): bool
     {

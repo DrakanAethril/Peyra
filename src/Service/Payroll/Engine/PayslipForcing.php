@@ -59,22 +59,27 @@ final readonly class PayslipForcing
      */
     public function apply(PayslipRow $row, bool $negative): PayslipRow
     {
-        $base = $this->base ?? $row->base;
-        $employeeBase = null === $this->base ? $row->employeeBaseOrBase() : $this->base;
-        $employeeRate = $this->employeeRate ?? $row->employeeRate;
-        $employerRate = $this->employerRate ?? $row->employerRate;
+        // A value forced to what the calculation gave moves nothing (step 4.4c: at levels B, A and 0 every
+        // cell is typed): the mensualised salary keeps the contract's amount, an apprentice their two bases.
+        $baseMoved = self::moved($this->base, $row->base);
+        $employeeRateMoved = self::moved($this->employeeRate, $row->employeeRate);
+        $employerRateMoved = self::moved($this->employerRate, $row->employerRate);
+        $base = $baseMoved ? $this->base : $row->base;
+        $employeeBase = $baseMoved ? $this->base : $row->employeeBaseOrBase();
+        $employeeRate = $employeeRateMoved ? $this->employeeRate : $row->employeeRate;
+        $employerRate = $employerRateMoved ? $this->employerRate : $row->employerRate;
         $sign = static fn (Money $amount): Money => $negative ? $amount->negated() : $amount;
 
         $employeeAmount = $row->employeeAmount;
         if (null !== $this->employeeAmount) {
             $employeeAmount = $sign($this->employeeAmount);
-        } elseif ((null !== $this->base || null !== $this->employeeRate) && null !== $employeeBase && null !== $employeeRate && null !== $row->employeeRateUnit) {
+        } elseif (($baseMoved || $employeeRateMoved) && null !== $employeeBase && null !== $employeeRate && null !== $row->employeeRateUnit) {
             $employeeAmount = $sign(Money::euros($row->employeeRateUnit->times($employeeBase, $employeeRate)));
         }
         $employerAmount = $row->employerAmount;
         if (null !== $this->employerAmount) {
             $employerAmount = $sign($this->employerAmount);
-        } elseif ((null !== $this->base || null !== $this->employerRate) && null !== $base && null !== $employerRate && null !== $row->employerRateUnit) {
+        } elseif (($baseMoved || $employerRateMoved) && null !== $base && null !== $employerRate && null !== $row->employerRateUnit) {
             $employerAmount = $sign(Money::euros($row->employerRateUnit->times($base, $employerRate)));
         }
 
@@ -130,10 +135,15 @@ final readonly class PayslipForcing
             $row->employerRateUnit,
             $employerAmount,
             $row->line,
-            null === $this->base ? $row->employeeBase : null,
+            $baseMoved ? null : $row->employeeBase,
             $this->fields(),
             $row->added,
         );
+    }
+
+    private static function moved(?BigDecimal $forced, ?BigDecimal $calculated): bool
+    {
+        return null !== $forced && (null === $calculated || 0 !== $forced->compareTo($calculated));
     }
 
     /** @return array<string, string> */

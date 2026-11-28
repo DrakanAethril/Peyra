@@ -100,7 +100,7 @@ final class EmployeeSheetTest extends KernelTestCase
         self::assertSame('Le matricule S005 est déjà celui de Julien Roche.', $other->error('registrationNumber'));
 
         // The hire's terms stay; a later one goes.
-        self::assertSame('Les conditions de l’embauche ne se suppriment pas : corrigez-les.', EmployeeSheet::termsDeletionRefusal($julien->getTerms()[0]));
+        self::assertSame('Les conditions de l’embauche ne se suppriment pas : corrigez-les.', $sheet->termsDeletionRefusal($julien->getTerms()[0]));
         $sheet->deleteTerms($julien->getTerms()[1], $student);
         $entityManager->flush();
         self::assertSame(['2015-03-09'], array_map(static fn ($t): string => $t->getEffectiveFrom()->format('Y-m-d'), $julien->getTerms()));
