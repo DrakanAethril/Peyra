@@ -14,6 +14,7 @@ use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Accounting\Template\GuidedEntry;
 use App\Service\Accounting\Template\GuidedEntryInput;
 use App\Service\Accounting\Template\GuidedEntryPreview;
+use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\DateValue;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\PostValue;
@@ -29,7 +30,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 /**
  * Comptabilité › Saisie › guidée (design-ux.md § 3.2, gabarit F): a template, a few fields, the
  * entry shown as it will be written (`preview`, a Turbo frame the form refreshes as it is filled),
- * then F10 writes it to the brouillard. Open at levels G and B and to teachers (GuidedEntry::isOpen);
+ * then F10 writes it to the brouillard. Open at levels G and B and to teachers (Assistance::opensGuidedEntry());
  * hidden otherwise, like any screen one may not reach: a 404. For whoever works in the dossier.
  */
 #[Route('/d/{dossier}/accounting/entry/guided', requirements: ['dossier' => '\d+'])]
@@ -90,7 +91,7 @@ final class GuidedEntryController extends AbstractController
     /** For whoever works in the dossier, at a level that opens it (or a teacher). */
     private function open(Dossier $dossier, AssistanceLevels $levels): void
     {
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !GuidedEntry::isOpen($levels->for($dossier), $this->isGranted('ROLE_TEACHER'))) {
+        if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !Assistance::at($levels->for($dossier))->opensGuidedEntry($this->isGranted('ROLE_TEACHER'))) {
             throw new NotFoundHttpException('No guided entry here.');
         }
     }

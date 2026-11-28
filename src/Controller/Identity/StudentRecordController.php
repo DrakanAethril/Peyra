@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Identity;
 
 use App\Entity\Identity\User;
+use App\Enum\Accounting\AssistanceLevel;
 use App\Repository\Dossier\DossierRepository;
 use App\Repository\Identity\EnrolmentRepository;
 use App\Repository\Identity\SchoolClassRepository;
@@ -14,6 +15,7 @@ use App\Security\Voter\StudentVoter;
 use App\Service\Dossier\DossierListing;
 use App\Service\Identity\ClassBoard;
 use App\Service\Identity\Enrolments;
+use App\Service\Shared\Assistance\StudentAssistance;
 use App\Service\Shared\PostValue;
 use App\Service\Shared\QueryValue;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
@@ -30,8 +32,9 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * The student's record (design-ux.md § 3.3, « Fiche étudiant »): their enrolments year by year,
  * what the directory said when their account was created, and « Changer de classe » for the
  * current year (design-ux.md § 4.1, step 5) - the dossiers do not move -, and their dossiers of every
- * year, each opened in a new tab for whoever DossierVoter lets in. Missions and positioning join it
- * with their lots. Every teacher of the field (StudentVoter).
+ * year, each opened in a new tab for whoever DossierVoter lets in, and their aménagements (their own
+ * assistance level, step 2.8). Missions and positioning join it with their lots. Every teacher of
+ * the field (StudentVoter).
  */
 #[Route('/teacher/students')]
 final class StudentRecordController extends AbstractController
@@ -71,7 +74,29 @@ final class StudentRecordController extends AbstractController
             'current' => $current,
             'classes' => null === $year ? [] : $board->rows($year),
             'dossier_groups' => $listing->byYear($dossiers->findForStudent($student)),
+            'assistance_levels' => AssistanceLevel::cases(),
         ]);
+    }
+
+    /** Aménagements › « Niveau d'assistance propre »: one of the four levels, or the mission's (`level` = mission). */
+    #[Route('/{id}/assistance', name: 'app_teacher_student_assistance', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function assistance(#[MapEntity] User $student, Request $request, StudentAssistance $assistance, ClockInterface $clock, #[CurrentUser] User $me): Response
+    {
+        $this->denyAccessUnlessGranted(StudentVoter::ACCOMMODATE, $student);
+        if (!$this->isCsrfTokenValid('student-assistance-'.$student->getId(), $request->request->getString('_token'))) {
+            throw new NotFoundHttpException('Invalid CSRF token.');
+        }
+        $choice = PostValue::trimmed($request, 'level');
+        $level = AssistanceLevel::tryFrom($choice);
+        if (null === $level && 'mission' !== $choice) {
+            $this->addFlash('status', 'Choisissez un niveau d’assistance.');
+        } elseif ($assistance->set($student, $level, $me, $clock->now())) {
+            $this->addFlash('status', \sprintf('Niveau d’assistance de %s : %s. Il s’applique dès son prochain écran.', $student->getDisplayName(), mb_strtolower(StudentAssistance::label($level))));
+        } else {
+            $this->addFlash('status', 'Rien à enregistrer : le niveau est inchangé.');
+        }
+
+        return $this->redirectToRoute('app_teacher_student', ['id' => $student->getId()], Response::HTTP_SEE_OTHER);
     }
 
     /** « Changer de classe » for the current year, or « Retirer de la classe » (`class` = none). */

@@ -7,8 +7,8 @@ namespace App\Controller\Dossier;
 use App\Entity\Dossier\Dossier;
 use App\Security\Voter\DossierVoter;
 use App\Service\Accounting\Entry\AssistanceLevels;
-use App\Service\Accounting\Template\GuidedEntry;
 use App\Service\Dossier\Search\GlobalSearch;
+use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\QueryValue;
 use App\Service\Shared\ReturnPath;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -36,7 +36,7 @@ final class SearchController extends AbstractController
                 $dossier,
                 $query,
                 $canEdit,
-                GuidedEntry::isOpen($levels->for($dossier), $this->isGranted('ROLE_TEACHER')),
+                Assistance::at($levels->for($dossier))->opensGuidedEntry($this->isGranted('ROLE_TEACHER')),
                 ReturnPath::of(QueryValue::trimmed($request, 'here'), (int) $dossier->getId()),
             ),
         ]);

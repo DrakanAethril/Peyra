@@ -16,6 +16,7 @@ use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Audit\AuditTrail;
 use App\Service\Dossier\Rights\DossierRights;
 use App\Service\Dossier\Rights\Gesture;
+use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\Money;
 use Doctrine\DBAL\LockMode;
@@ -73,7 +74,7 @@ final readonly class Lettering
         }
         self::refuseUnlettrable($key);
         $this->refuseUnlessAllowed($dossier, $key, $actor);
-        $partialAllowed = !$this->assistance->for($dossier)->blocks();
+        $partialAllowed = Assistance::at($this->assistance->for($dossier))->allowsPartialLettering();
 
         return $this->transactional($key, function (array $accountLines) use ($dossier, $key, $chosen, $partialAllowed, $actor): LetteringResult {
             $byId = self::byId($accountLines);

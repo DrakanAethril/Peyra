@@ -6,7 +6,6 @@ namespace App\Controller\Accounting;
 
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
-use App\Enum\Accounting\AssistanceLevel;
 use App\Enum\Accounting\LetteringMode;
 use App\Enum\Dossier\AccessLevel;
 use App\Repository\Accounting\AccountRepository;
@@ -18,6 +17,7 @@ use App\Service\Accounting\Lettering\LetteringKey;
 use App\Service\Accounting\Lettering\LetteringRefused;
 use App\Service\Dossier\Rights\DossierRights;
 use App\Service\Dossier\Rights\Gesture;
+use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\PostValue;
 use App\Service\Shared\QueryValue;
 use App\Service\Shared\ReturnPath;
@@ -44,8 +44,8 @@ final class LetteringController extends AbstractController
     {
         $typed = mb_strtoupper(QueryValue::trimmed($request, 'account'));
         $on = QueryValue::trimmed($request, 'on');
-        $level = $assistance->for($dossier);
-        $auto = 'none' === QueryValue::trimmed($request, 'auto') ? null : (LetteringMode::tryFrom(QueryValue::trimmed($request, 'auto')) ?? (AssistanceLevel::Guided === $level ? LetteringMode::Amount : null));
+        $level = Assistance::at($assistance->for($dossier));
+        $auto = 'none' === QueryValue::trimmed($request, 'auto') ? null : (LetteringMode::tryFrom(QueryValue::trimmed($request, 'auto')) ?? ($level->proposesLettering() ? LetteringMode::Amount : null));
         $collective = 1 === preg_match('/^\d+$/', $typed) ? $accounts->findOneByNumber($dossier, $typed) : null;
         if (null !== $collective && (!$collective->isCollective() || !$collective->isLettrable())) {
             $collective = null;
@@ -72,7 +72,7 @@ final class LetteringController extends AbstractController
             'key' => $key,
             'face' => $view,
             'all' => QueryValue::bool($request, 'all'),
-            'level' => $level,
+            'assistance' => $level,
             'auto' => $auto,
             'proposals' => $proposals,
             'proposed' => $proposed,

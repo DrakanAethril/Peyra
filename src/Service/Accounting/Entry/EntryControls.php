@@ -9,6 +9,7 @@ use App\Enum\Accounting\AccountNature;
 use App\Enum\Accounting\AssistanceLevel;
 use App\Enum\Accounting\JournalType;
 use App\Service\Accounting\Ledger\EntryDraft;
+use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\FrenchFormat;
 
 /**
@@ -39,10 +40,11 @@ final class EntryControls
         callable $accountOf,
         callable $documentUse,
     ): array {
-        if (!$level->controls()) {
+        $assistance = Assistance::at($level);
+        if (!$assistance->runsControls()) {
             return [];
         }
-        $blocking = $level->blocks();
+        $blocking = $assistance->blocks();
         $controls = [];
 
         if (null !== $draft->date) {

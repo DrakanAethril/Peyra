@@ -74,8 +74,8 @@ final class ReferentialTest extends TestCase
         self::assertSame(4, $referential->exam('E42')?->coefficient);
         self::assertSame(5, $referential->exam('E5')?->coefficient);
         self::assertSame(5, $referential->exam('E6')?->coefficient);
-        self::assertTrue($referential->exam('E42')->onWorkstation ?? false);
-        self::assertFalse($referential->exam('E41')->onWorkstation ?? true);
+        self::assertTrue($referential->exam('E42')->onWorkstation);
+        self::assertFalse($referential->exam('E41')->onWorkstation);
 
         $byExam = static fn (string $code): array => array_values(array_map(
             static fn (ReferentialActivity $activity): string => $activity->code,

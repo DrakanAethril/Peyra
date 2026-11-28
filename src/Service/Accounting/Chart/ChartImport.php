@@ -64,6 +64,7 @@ final readonly class ChartImport
         }
         $carried = $this->thirdParties->countByAccount($dossier);
         $withLines = $this->entryLines->countByAccount($dossier);
+        $refusesOutside = $this->sheet->refusesOutsideChart($dossier);
         $seen = [];
         $lines = [];
         foreach ($rows as $row) {
@@ -83,7 +84,10 @@ final readonly class ChartImport
             }
             $account = $existing[$number] ?? null;
             if (null === $account) {
-                $lines[] = new ChartImportLine($row['line'], $number, $row['label'], $row['lettrable'], $collective, ChartImportLine::CREATE, $this->sheet->outsideChart($dossier, $number));
+                $outside = $this->sheet->outsideChart($dossier, $number);
+                $lines[] = null !== $outside && $refusesOutside
+                    ? new ChartImportLine($row['line'], $number, $row['label'], $row['lettrable'], $collective, ChartImportLine::REFUSED, AccountSheet::outsideChartRefusal($outside))
+                    : new ChartImportLine($row['line'], $number, $row['label'], $row['lettrable'], $collective, ChartImportLine::CREATE, $outside);
                 continue;
             }
             $carries = $carried[(int) $account->getId()] ?? 0;
