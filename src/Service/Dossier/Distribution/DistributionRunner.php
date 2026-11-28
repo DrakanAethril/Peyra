@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Service\Dossier\Distribution;
 
 use App\Repository\Dossier\DistributionCopyRepository;
+use App\Service\Shared\Background\TransactionRetry;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\LockFactory;
 
@@ -16,7 +16,8 @@ use Symfony\Component\Lock\LockFactory;
  * copy per pass: each under its own lock (LOCK_DSN, seen by `php` and `worker` alike), read again
  * under it, so it is made once; a copy held by the other side is left to it.
  *
- * A failure is logged at error level (it reaches the operator), said on the copy - « Relancer » -
+ * A transaction the database gave up (a deadlock with a copy made on the other side) is made again,
+ * up to three times (TransactionRetry). A failure is logged at error level (it reaches the operator), said on the copy - « Relancer » -
  * and announced to the progress page like a success; the other copies are not touched.
  */
 final readonly class DistributionRunner
@@ -24,7 +25,7 @@ final readonly class DistributionRunner
     public function __construct(
         private LockFactory $locks,
         private EntityManagerInterface $entityManager,
-        private ManagerRegistry $registry,
+        private TransactionRetry $retry,
         private DistributionCopyRepository $copies,
         private Distributions $distributions,
         private DistributionLive $live,
@@ -49,10 +50,16 @@ final readonly class DistributionRunner
                 return false;
             }
             try {
-                $this->distributions->make($copy, $now);
+                $this->retry->run(function () use ($copyId, $now): void {
+                    $copy = $this->copies->find($copyId);
+                    if (null !== $copy) {
+                        $this->entityManager->refresh($copy);
+                        $this->distributions->make($copy, $now);
+                    }
+                });
             } catch (\Throwable $exception) {
                 $this->logger->error('Distribution copy {copy} not made: {message}', ['copy' => $copyId, 'message' => $exception->getMessage(), 'exception' => $exception]);
-                $this->recover();
+                $this->retry->recover();
                 $copy = $this->copies->find($copyId);
                 if (null === $copy) {
                     return true;
@@ -64,19 +71,6 @@ final readonly class DistributionRunner
             return true;
         } finally {
             $lock->release();
-        }
-    }
-
-    /**
-     * After a failure: an entity manager that flushes again, nothing stale in it (the dossier
-     * persisted in the rolled-back transaction above all).
-     */
-    private function recover(): void
-    {
-        if ($this->entityManager->isOpen()) {
-            $this->entityManager->clear();
-        } else {
-            $this->registry->resetManager();
         }
     }
 }

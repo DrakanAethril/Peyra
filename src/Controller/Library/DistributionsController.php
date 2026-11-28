@@ -18,6 +18,7 @@ use App\Security\Voter\RestorePointVoter;
 use App\Service\Dossier\ClassDossierRow;
 use App\Service\Dossier\ClassDossiers;
 use App\Service\Dossier\Distribution\DistributionProgress;
+use App\Service\Dossier\Distribution\DistributionQueue;
 use App\Service\Dossier\Distribution\DistributionRefused;
 use App\Service\Dossier\Distribution\Distributions;
 use App\Service\Dossier\DossierLive;
@@ -61,11 +62,16 @@ final class DistributionsController extends AbstractController
     }
 
     #[Route('/{id}', name: 'app_library_distribution', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function show(#[MapEntity] Distribution $distribution, DistributionCopyRepository $copies, UserRepository $users): Response
+    public function show(#[MapEntity] Distribution $distribution, DistributionCopyRepository $copies, UserRepository $users, DistributionQueue $queue): Response
     {
         $this->guard($distribution);
         $lines = $copies->findByDistribution($distribution);
         $progress = DistributionProgress::of($copies->countByState([$distribution])[(int) $distribution->getId()] ?? []);
+        // The page asks again every two seconds while copies are pending: each time, a few more are
+        // made after the answer (DistributionWorkListener, within its WorkBudget).
+        if ($progress->pending > 0) {
+            $queue->add($distribution);
+        }
 
         return $this->render('library/distribution.html.twig', [
             'distribution' => $distribution,

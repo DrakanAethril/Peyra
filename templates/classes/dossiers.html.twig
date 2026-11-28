@@ -42,7 +42,7 @@
                             <label class="px-u-sr-only" for="point-name">Nom du point</label>
                             <input type="text" id="point-name" name="name" value="{{ point_name }}" class="px-input px-input--sm" size="28" maxlength="80" autocomplete="off">
                             <twig:Px:Button type="submit" size="sm" icon="history" formmethod="post" formaction="{{ path('app_teacher_class_dossiers_points', {id: class.id}) }}">Poser un point</twig:Px:Button>
-                            <twig:Px:Button type="submit" size="sm" variant="primary" icon="undo-2">Remettre à l’état de départ</twig:Px:Button>
+                            <twig:Px:Button type="submit" size="sm" variant="primary" icon="undo-2" shortcut="Ctrl+Enter">Remettre à l’état de départ</twig:Px:Button>
                             <input type="hidden" name="_token" value="{{ csrf_token('class-dossiers-' ~ class.id) }}">
                         </div>
                     {% endif %}

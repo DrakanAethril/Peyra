@@ -1,8 +1,38 @@
 /* Dense data table, filter bar, pager (design-ui.md § 4.7). */
 @layer px.components {
+    /*
+     * Under its width, a table scrolls in its container, its first column held (design-ui.md
+     * §§ 3.5 and 4.7): the cell keeps the card's ground unless its row says otherwise (every row
+     * state below wins over this zero-specificity rule), and the rule on its right is drawn only
+     * while the container can scroll sideways (a scroll-state query; elsewhere, no rule).
+     */
     .px-table-wrap {
         overflow: auto;
         max-width: 100%;
+        container-type: scroll-state;
+    }
+
+    :where(.px-table-wrap > .px-table) > :is(thead, tbody, tfoot) > tr > :first-child {
+        position: sticky;
+        inset-inline-start: 0;
+    }
+
+    :where(.px-table-wrap > .px-table > tbody > tr > :first-child) {
+        background-color: var(--px-surface);
+    }
+
+    .px-table-wrap > .px-table > thead > tr > :first-child {
+        z-index: 2;
+    }
+
+    @container scroll-state(scrollable: inline) {
+        :where(.px-table) > :is(thead, tbody, tfoot) > tr > :first-child {
+            box-shadow: inset -1px 0 0 var(--px-border);
+        }
+
+        :where(.px-table) > tbody > tr:is(.is-current, [aria-selected="true"]) > :first-child {
+            box-shadow: inset 2px 0 0 var(--px-action), inset -1px 0 0 var(--px-border);
+        }
     }
 
     .px-table {

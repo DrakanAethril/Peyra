@@ -130,12 +130,16 @@ final class RestorePointScreensTest extends WebTestCase
         $client->followRedirect();
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('.px-restoring__title', 'Retour au point « Point »');
-        $client->request('GET', $this->url($dossier, '/restoring/state'));
-        self::assertSame('{"running":true}', $client->getResponse()->getContent());
         $client->request('POST', $this->url($dossier, '/restore-points'), ['_token' => $token, 'name' => 'Encore']);
         self::assertResponseStatusCodeSame(409);
         $client->xmlHttpRequest('GET', $this->url($dossier, '/search?q=ach'));
         self::assertResponseStatusCodeSame(409);
+
+        // The waiting page polls: its asking queues the return, made once the answer has left.
+        $client->request('GET', $this->url($dossier, '/restoring/state'));
+        self::assertSame('{"running":true}', $client->getResponse()->getContent());
+        $client->request('GET', $this->url($dossier, '/restoring/state'));
+        self::assertSame('{"running":false}', $client->getResponse()->getContent());
     }
 
     /** @return list<RestorePoint> */
