@@ -1,0 +1,74 @@
+{#
+ # Banque › Relevés (step 2.6a; design-ux.md § 3.2, gabarit L): the statements of the bank journals
+ # the person reads, the latest first - journal, number, period, balances, operations, where the
+ # reconciliation stands -; a journal's chip narrows the list; « Importer un relevé » reads a CSV
+ # file. A statement opens on its reconciliation.
+ #}
+{% extends 'banking/_layout.html.twig' %}
+
+{% set bank_tab = 'statements' %}
+{% set dossier_title = 'Relevés' %}
+{% set can_import = journals|filter(j => is_granted('JOURNAL_ENTER', j))|length > 0 %}
+{% set status_keys = can_import ? [{combo: 'N', verb: 'Importer un relevé'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Relevés bancaires" :trail="[
+        {label: 'Banque', href: path('app_bank_reconciliation', {dossier: dossier.id})},
+        {label: 'Relevés', href: path('app_bank_statements', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_import %}<twig:Px:Button href="{{ path('app_bank_statement_import', {dossier: dossier.id, journal: journal ? journal.code : null}) }}" variant="primary" icon="upload" shortcut="N">Importer un relevé</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card :flush="true">
+        {% if journals|length > 1 %}
+            <twig:Px:Filters action="{{ path('app_bank_statements', {dossier: dossier.id}) }}">
+                <span class="px-filters__label">Journal</span>
+                <twig:Px:FilterChip label="Tous" href="{{ path('app_bank_statements', {dossier: dossier.id}) }}" :current="journal is null"/>
+                {% for one in journals %}
+                    <twig:Px:FilterChip label="{{ one.code }}" title="{{ one.label }} · {{ one.counterpartAccount.number }}" href="{{ path('app_bank_statements', {dossier: dossier.id, journal: one.code}) }}" :current="journal and journal.id == one.id"/>
+                {% endfor %}
+            </twig:Px:Filters>
+        {% endif %}
+        {% if journals is empty %}
+            <twig:Px:Empty icon="landmark" title="Aucun journal de banque" text="Un relevé s’importe dans un journal de banque relié à son compte 512 : créez-le dans Comptabilité › Paramètres comptables › Journaux."/>
+        {% elseif statement_rows is empty %}
+            <twig:Px:Empty icon="landmark" title="Aucun relevé" text="Importez le relevé de la banque en CSV, ou attendez celui de votre mission."/>
+        {% else %}
+            <twig:Px:Table caption="Relevés bancaires de {{ dossier.name }}" :rows="true">
+                <thead>
+                    <tr>
+                        <th scope="col">Journal</th>
+                        <th scope="col">Relevé</th>
+                        <th scope="col">Période</th>
+                        <th scope="col" class="px-u-right">Solde de départ</th>
+                        <th scope="col" class="px-u-right">Solde final</th>
+                        <th scope="col" class="px-u-right">Opérations</th>
+                        <th scope="col">Rapprochement</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in statement_rows %}
+                        {% set one = row.statement %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-code" title="{{ one.journal.label }}">{{ one.journal.code }}</td>
+                            <td><a class="px-link" href="{{ path('app_bank_reconciliation_show', {dossier: dossier.id, id: one.id}) }}">{{ one.title }}</a></td>
+                            <td class="px-u-fill">du {{ one.startsOn|date('d/m/Y') }} au {{ one.endsOn|date('d/m/Y') }}</td>
+                            <td class="px-u-num">{{ one.openingBalance|amount }}</td>
+                            <td class="px-u-num">{{ one.closingBalance|amount }}</td>
+                            <td class="px-u-num">{{ one.lines|length }}</td>
+                            <td><twig:Px:Badge :of="row.status"/></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}
+    <span>{{ statement_rows|length }} relevé{{ statement_rows|length > 1 ? 's' : '' }}</span>
+{% endblock %}

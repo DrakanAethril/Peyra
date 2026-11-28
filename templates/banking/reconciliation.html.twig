@@ -1,0 +1,258 @@
+{#
+ # Banque › Rapprochement (step 2.6a; mock-up 2, design-ux.md § 4.5, gabarit X). In the head the
+ # statement's balance, the account's, the lines left to deal with and the gap after justification;
+ # the statement on the left, the bank account's movements on the right - Espace chooses a line,
+ # Tab changes side, and a selection whose two sides meet is pointed at once (Maj+Espace adds to it
+ # without pointing); Suppr on a pointed line unpoints its letter, Ctrl Z the last one. Below, the
+ # état de rapprochement, built as one points, and the panel of the selected line of the statement
+ # that no entry answers: at G and B the entry its assignment rule proposes, at A and 0 « Saisir
+ # moi-même » only. « Valider le rapprochement » (Ctrl Entrée) after the confirmation bar.
+ #}
+{% extends 'banking/_layout.html.twig' %}
+
+{% set bank_tab = 'reconciliation' %}
+{% set report = rec.report %}
+{% set account = rec.account %}
+{% set dossier_title = 'Rapprochement · ' ~ statement.title %}
+{% set month_label = statement.endsOn|period %}
+{% set status_keys = (can_point ? [{combo: 'Space', verb: 'Pointer'}, {combo: 'Tab', verb: 'Autre côté'}] : [])
+    |merge(can_point and last and last in rec.usedLetters ? [{combo: 'Ctrl+Z', verb: 'Dépointer ' ~ last}] : [])
+    |merge(can_validate and not statement.reconciled ? [{combo: 'Ctrl+Enter', verb: 'Valider le rapprochement'}] : []) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ statement.title }} · {{ month_label }}" :trail="[
+        {label: 'Banque', href: path('app_bank_reconciliation', {dossier: dossier.id})},
+        {label: 'Rapprochement', href: path('app_bank_reconciliation', {dossier: dossier.id})},
+        {label: account.number ~ ' ' ~ statement.journal.label, href: path('app_bank_reconciliation_show', {dossier: dossier.id, id: statement.id})},
+    ]">
+        <twig:block name="badge"> <twig:Px:Badge :of="rec.status"/></twig:block>
+        <twig:block name="actions">
+            <div class="px-entry-confirmable" data-controller="confirm-bar">
+                <div class="px-entry-actions" data-confirm-bar-target="actions">
+                    {% if rec.previous %}<twig:Px:IconButton icon="chevron-left" label="Relevé n° {{ rec.previous.number }}" href="{{ path('app_bank_reconciliation_show', {dossier: dossier.id, id: rec.previous.id}) }}"/>{% endif %}
+                    {% if rec.next %}<twig:Px:IconButton icon="chevron-right" label="Relevé n° {{ rec.next.number }}" href="{{ path('app_bank_reconciliation_show', {dossier: dossier.id, id: rec.next.id}) }}"/>{% endif %}
+                    <twig:Px:Button href="{{ path('app_bank_rules', {dossier: dossier.id}) }}">Règles d’affectation</twig:Px:Button>
+                    {% if can_point and rec.status.value == 'to_reconcile' %}<twig:Px:ConfirmButton label="Supprimer le relevé" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="statement-delete"/>{% endif %}
+                    <twig:Px:Button href="{{ path('app_bank_statement_export', {dossier: dossier.id, id: statement.id}) }}" icon="download">Exporter</twig:Px:Button>
+                    <twig:Px:Button href="{{ path('app_bank_reconciliation_pdf', {dossier: dossier.id, id: statement.id}) }}" icon="printer" target="_blank">Éditer l’état</twig:Px:Button>
+                    {% if can_validate and statement.reconciled and (rec.next is null or not rec.next.reconciled) %}
+                        <form method="post" action="{{ path('app_bank_reconciliation_reopen', {dossier: dossier.id, id: statement.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('bank-' ~ dossier.id) }}">
+                            <twig:Px:Button type="submit" icon="lock-open">Rouvrir le rapprochement</twig:Px:Button>
+                        </form>
+                    {% elseif can_validate and not statement.reconciled %}
+                        <twig:Px:Button variant="primary" shortcut="Ctrl+Enter" data-action="confirm-bar#open">Valider le rapprochement</twig:Px:Button>
+                    {% endif %}
+                </div>
+                {% if can_validate and not statement.reconciled %}
+                    <form class="px-confirmbar" method="post" action="{{ path('app_bank_reconciliation_validate', {dossier: dossier.id, id: statement.id}) }}" role="alertdialog" aria-labelledby="reconciliation-validate-text" hidden data-confirm-bar-target="bar" data-action="keydown->confirm-bar#keydown">
+                        <input type="hidden" name="_token" value="{{ csrf_token('bank-' ~ dossier.id) }}">
+                        <p id="reconciliation-validate-text">Valider le rapprochement du {{ statement.title|lower }} ?{% if validation_note %} {{ validation_note }}{% if assistance.blocksReconciliationGaps %} Il sera refusé.{% endif %}{% else %} L’état tombe juste ; le relevé ne se pointera plus sans être rouvert.{% endif %}</p>
+                        <twig:Px:Button variant="quiet" data-action="confirm-bar#close">Annuler</twig:Px:Button>
+                        <twig:Px:Button type="submit" variant="primary" data-confirm-bar-target="confirm">Valider</twig:Px:Button>
+                    </form>
+                {% endif %}
+            </div>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if can_point and rec.status.value == 'to_reconcile' %}
+        <form method="post" action="{{ path('app_bank_statement_delete', {dossier: dossier.id, id: statement.id}) }}" id="statement-delete" hidden>
+            <input type="hidden" name="_token" value="{{ csrf_token('bank-' ~ dossier.id) }}">
+        </form>
+    {% endif %}
+    {% for fault in app.flashes('bank_fault') %}<twig:Px:Alert tone="danger" title="Refusé">{{ fault }}</twig:Px:Alert>{% endfor %}
+    {% for warning in app.flashes('bank_warning') %}<twig:Px:Alert tone="warning" title="Rapprochement validé avec un écart">{{ warning }}</twig:Px:Alert>{% endfor %}
+    {% if rec.openingNote %}<twig:Px:Alert tone="warning">{{ rec.openingNote }}</twig:Px:Alert>{% endif %}
+
+    {% set to_post = report.toPost|length %}
+    {% set outstanding = report.outstanding|length %}
+    <div class="px-kpis">
+        <twig:Px:Kpi label="Solde du relevé au {{ statement.endsOn|date('d/m') }}" value="{{ statement.closingBalance.abs|amount }}" note="{{ statement.closingBalance.negative ? 'débiteur' : 'créditeur' }} à la banque"/>
+        <twig:Px:Kpi label="Solde du compte {{ account.number }}" value="{{ report.accountBalance.abs|amount }}" note="{{ report.accountBalance.negative ? 'créditeur' : 'débiteur' }} en comptabilité"/>
+        <twig:Px:Kpi label="Lignes à traiter" value="{{ report.toDeal }}" note="{{ to_post }} à comptabiliser · {{ outstanding }} en suspens" :state="report.toDeal == 0 ? 'ok' : null"/>
+        <twig:Px:Kpi label="Écart après justification" value="{{ report.gap.abs|amount }}" note="{{ report.gap.zero ? 'l’état de rapprochement tombe juste' : 'l’état ne tombe pas juste' }}" :state="report.gap.zero ? 'ok' : 'alert'"/>
+    </div>
+
+    {% if can_point and rec.proposals is not empty %}
+        <twig:Px:Alert tone="info" title="Pointage proposé">
+            {{ rec.proposals|length }} ligne{{ rec.proposals|length > 1 ? 's' : '' }} du relevé {{ rec.proposals|length > 1 ? 'ont' : 'a' }} une écriture du même montant à trois jours près, marquée{{ rec.proposals|length > 1 ? 's' : '' }} « Proposé ». Vérifiez, puis confirmez - ou pointez vous-même.
+            <form method="post" action="{{ path('app_bank_reconciliation_proposals', {dossier: dossier.id, id: statement.id}) }}" class="px-u-inline">
+                <input type="hidden" name="_token" value="{{ csrf_token('bank-' ~ dossier.id) }}">
+                <twig:Px:Button type="submit" size="sm" variant="primary" icon="link-2">Pointer les propositions</twig:Px:Button>
+            </form>
+        </twig:Px:Alert>
+    {% endif %}
+
+    <form method="post" action="{{ path('app_bank_reconciliation_point', {dossier: dossier.id, id: statement.id}) }}" class="px-stack px-lettering"
+          data-controller="reconciliation" data-action="change->reconciliation#refresh keydown->reconciliation#keydown">
+        <input type="hidden" name="_token" value="{{ csrf_token('bank-' ~ dossier.id) }}">
+        <div class="px-split px-split--even">
+            <twig:Px:Card title="Relevé bancaire" meta="importé le {{ statement.importedOn|date('d/m') }} · {{ rec.lines|length }} mouvement{{ rec.lines|length > 1 ? 's' : '' }}" :flush="true">
+                <twig:block name="content">
+                    <twig:Px:Table caption="Lignes du {{ statement.title|lower }}" :rows="true">
+                        <thead><tr>
+                            {% if can_point %}<th scope="col" class="px-table__pick"><span class="px-u-sr-only">Choisir</span></th>{% endif %}
+                            <th scope="col">Date</th>
+                            <th scope="col">Libellé</th>
+                            <th scope="col" class="px-u-right">Débit</th>
+                            <th scope="col" class="px-u-right">Crédit</th>
+                            <th scope="col">État</th>
+                        </tr></thead>
+                        <tbody>
+                            <tr class="is-dim">
+                                {% if can_point %}<td></td>{% endif %}
+                                <td class="px-u-code">{{ statement.startsOn|date('d/m') }}</td>
+                                <td>Solde précédent</td>
+                                <td class="px-u-num">{{ statement.openingBalance.negative ? statement.openingBalance.abs|amount : '' }}</td>
+                                <td class="px-u-num">{{ statement.openingBalance.negative ? '' : statement.openingBalance|amount }}</td>
+                                <td></td>
+                            </tr>
+                            {% for line in rec.lines %}
+                                {% set letter = rec.lineLetter(line) %}
+                                {% set broken = rec.isBroken(line.letter) %}
+                                {% set proposed = rec.proposedLines[line.id] ?? null %}
+                                {% set current = selected and selected.id == line.id %}
+                                <tr data-rows-target="row" class="{{ current ? 'is-current' : (letter ? '' : 'is-todo') }}">
+                                    {% if can_point %}
+                                        <td class="px-table__pick">
+                                            {% if not line.letter %}
+                                                <label class="px-check"><input type="checkbox" name="lines[]" value="{{ line.id }}" tabindex="-1" data-reconciliation-target="box" data-side="bank" data-cents="{{ line.amount.cents }}"><span class="px-u-sr-only">Choisir la ligne du {{ line.date|date('d/m') }}, {{ line.amount.abs|amount }}</span></label>
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+                                    <td class="px-u-code">{{ line.date|date('d/m') }}</td>
+                                    <td class="px-u-truncate px-u-fill" title="{{ line.label }}">{% if not letter and not statement.reconciled %}<a class="px-link" href="{{ path('app_bank_reconciliation_show', {dossier: dossier.id, id: statement.id, line: line.id}) }}" tabindex="-1">{{ line.label }}</a>{% else %}{{ line.label }}{% endif %}</td>
+                                    <td class="px-u-num">{{ rec.bankDebit(line)|amount_cell }}</td>
+                                    <td class="px-u-num">{{ rec.bankCredit(line)|amount_cell }}</td>
+                                    <td class="px-lettering__letter">
+                                        {% if letter %}
+                                            <twig:Px:Badge tone="success" label="Pointé {{ letter }}" full="Pointé, lettre {{ letter }}"/>
+                                        {% elseif broken %}
+                                            <twig:Px:Badge tone="danger" label="Écart {{ line.letter }}" full="Pointage {{ line.letter }} rompu"/>
+                                        {% elseif proposed %}
+                                            <twig:Px:Badge tone="warning" label="Proposé {{ proposed }}"/>
+                                        {% else %}
+                                            <twig:Px:Badge tone="warning" label="À comptabiliser"/>
+                                        {% endif %}
+                                        {% if can_point and line.letter %}
+                                            <twig:Px:IconButton icon="unlink-2" label="Dépointer {{ line.letter }}" size="sm" type="submit" formaction="{{ path('app_bank_reconciliation_unpoint', {dossier: dossier.id, id: statement.id}) }}" name="letter" value="{{ line.letter }}" tabindex="-1" data-reconciliation-unpoint/>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                </twig:block>
+            </twig:Px:Card>
+
+            <twig:Px:Card title="Compte {{ account.number }}" meta="journal {{ statement.journal.code }} · {{ rec.books|length }} mouvement{{ rec.books|length > 1 ? 's' : '' }}" :flush="true">
+                <twig:block name="content">
+                    <twig:Px:Table caption="Mouvements du compte {{ account.number }} à pointer" :rows="true">
+                        <thead><tr>
+                            {% if can_point %}<th scope="col" class="px-table__pick"><span class="px-u-sr-only">Choisir</span></th>{% endif %}
+                            <th scope="col">Date</th>
+                            <th scope="col">Libellé</th>
+                            <th scope="col" class="px-u-right">Débit</th>
+                            <th scope="col" class="px-u-right">Crédit</th>
+                            <th scope="col">État</th>
+                        </tr></thead>
+                        <tbody>
+                            <tr class="is-dim">
+                                {% if can_point %}<td></td>{% endif %}
+                                <td class="px-u-code">{{ statement.startsOn|date('d/m') }}</td>
+                                <td>Solde rapproché</td>
+                                <td class="px-u-num">{{ statement.openingBalance.negative ? '' : statement.openingBalance|amount }}</td>
+                                <td class="px-u-num">{{ statement.openingBalance.negative ? statement.openingBalance.abs|amount : '' }}</td>
+                                <td></td>
+                            </tr>
+                            {% for item in rec.books %}
+                                {% set entry = item.entry %}
+                                {% set letter = rec.bookLetter(item) %}
+                                {% set proposed = rec.proposedEntries[entry.id] ?? null %}
+                                <tr data-rows-target="row"{% if not letter %} class="is-todo"{% endif %}>
+                                    {% if can_point %}
+                                        <td class="px-table__pick">
+                                            {% if not item.letter %}
+                                                <label class="px-check"><input type="checkbox" name="entries[]" value="{{ entry.id }}" tabindex="-1" data-reconciliation-target="box" data-side="books" data-cents="{{ item.amount.cents }}"><span class="px-u-sr-only">Choisir {{ entry.document }}, {{ item.amount.abs|amount }}</span></label>
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+                                    <td class="px-u-code">{{ entry.entryDate|date('d/m') }}</td>
+                                    <td class="px-u-truncate px-u-fill" title="{{ entry.document }} · {{ item.label }}{{ entry.validated ? '' : ' · au brouillard' }}"><a class="px-link" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id, return: here}) }}" tabindex="-1">{{ item.label }}</a>{% if not entry.validated %} <span class="px-u-muted">· brouillard</span>{% endif %}</td>
+                                    <td class="px-u-num">{{ item.amount.positive ? item.amount|amount : '' }}</td>
+                                    <td class="px-u-num">{{ item.amount.negative ? item.amount.abs|amount : '' }}</td>
+                                    <td class="px-lettering__letter">
+                                        {% if letter %}
+                                            <twig:Px:Badge tone="success" label="{{ letter }}" full="Pointé, lettre {{ letter }}"/>
+                                        {% elseif rec.isBroken(item.letter) %}
+                                            <twig:Px:Badge tone="danger" label="Écart {{ item.letter }}" full="Pointage {{ item.letter }} rompu"/>
+                                        {% elseif proposed %}
+                                            <twig:Px:Badge tone="warning" label="Proposé {{ proposed }}"/>
+                                        {% else %}
+                                            <twig:Px:Badge tone="info" label="{{ item.amount.negative ? 'Non débité' : 'Non crédité' }}"/>
+                                        {% endif %}
+                                        {% if can_point and item.letter %}
+                                            <twig:Px:IconButton icon="unlink-2" label="Dépointer {{ item.letter }}" size="sm" type="submit" formaction="{{ path('app_bank_reconciliation_unpoint', {dossier: dossier.id, id: statement.id}) }}" name="letter" value="{{ item.letter }}" tabindex="-1" data-reconciliation-unpoint/>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                </twig:block>
+            </twig:Px:Card>
+        </div>
+
+        {% if can_point %}
+            <div class="px-lettering__selection">
+                <p class="px-lettering__summary" aria-live="polite">
+                    <span data-reconciliation-target="summary">Espace sur une ligne du relevé, Tab, Espace sur l’écriture qui lui répond : la paire est pointée. Maj+Espace ajoute une ligne sans pointer.</span>
+                    <span data-reconciliation-target="state"></span>
+                </p>
+                <div class="px-cluster px-u-push">
+                    {% if last and last in rec.usedLetters %}
+                        <twig:Px:Button size="sm" variant="quiet" icon="undo-2" type="submit" shortcut="Ctrl+Z" formaction="{{ path('app_bank_reconciliation_unpoint', {dossier: dossier.id, id: statement.id}) }}" name="letter" value="{{ last }}">Dépointer {{ last }}</twig:Px:Button>
+                    {% endif %}
+                    <twig:Px:Button size="sm" variant="quiet" data-action="reconciliation#clear" data-reconciliation-target="clear" :disabled="true">Tout désélectionner</twig:Px:Button>
+                    <twig:Px:Button size="sm" variant="primary" icon="link-2" type="submit" data-reconciliation-target="submit" :disabled="true">Pointer</twig:Px:Button>
+                </div>
+            </div>
+        {% endif %}
+    </form>
+
+    <div class="px-split px-split--even">
+        <twig:Px:Card title="État de rapprochement au {{ statement.endsOn|date('d/m/Y') }}" :flush="true">
+            <twig:block name="content">
+                {{ include('banking/_state_table.html.twig') }}
+            </twig:block>
+        </twig:Px:Card>
+
+        {% if selected %}
+            <twig:Px:Card title="Ligne sélectionnée · {{ selected.date|date('d/m') }} {{ selected.label }}" meta="{{ selected.amount.abs|amount }} au {{ selected.amount.negative ? 'débit' : 'crédit' }}">
+                <twig:block name="content">
+                    {{ include('banking/_selected_line.html.twig') }}
+                </twig:block>
+            </twig:Px:Card>
+        {% elseif not statement.reconciled %}
+            <twig:Px:Card title="Ligne sélectionnée">
+                <twig:block name="content">
+                    <p class="px-u-muted">{{ report.toPost is empty ? 'Toutes les lignes du relevé sont pointées : il reste à valider le rapprochement.' : 'Une ligne « À comptabiliser » sans écriture dans les comptes ? Ouvrez-la (Entrée sur la ligne) pour passer son écriture.' }}</p>
+                </twig:block>
+            </twig:Px:Card>
+        {% else %}
+            <twig:Px:Card title="Rapprochement validé">
+                <twig:block name="content">
+                    <p>Validé le {{ statement.reconciledOn|date_fr }}. {{ rec.next and rec.next.reconciled ? 'Le rapprochement suivant est validé : celui-ci ne se rouvre plus.' : 'Rouvrez-le pour pointer de nouveau.' }}</p>
+                </twig:block>
+            </twig:Px:Card>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block facts %}
+    <span>Pointées · <b>{{ report.pointedLines }} sur {{ report.statementLines }}</b></span>
+    <span>Niveau d’assistance · <b>{{ assistance.level.label }}</b></span>
+{% endblock %}

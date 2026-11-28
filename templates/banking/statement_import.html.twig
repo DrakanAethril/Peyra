@@ -1,0 +1,74 @@
+{#
+ # Banque › Relevés › Importer un relevé (step 2.6a; design-ux.md § 3.2, gabarit E): the bank journal,
+ # the statement's number, its first and last days and its opening balance - the end of the last
+ # statement proposed, or the account's balance in the books for a first one -, then the CSV file,
+ # read whole: a refused file writes nothing and names every line. Posted outside Turbo: the refusal
+ # answers the post; an imported statement opens on its reconciliation.
+ #}
+{% extends 'banking/_layout.html.twig' %}
+
+{% set bank_tab = 'statements' %}
+{% set dossier_title = 'Importer un relevé' %}
+{% set status_keys = [{combo: 'Ctrl+Enter', verb: 'Importer'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Importer un relevé" :trail="[
+        {label: 'Banque', href: path('app_bank_reconciliation', {dossier: dossier.id})},
+        {label: 'Relevés', href: path('app_bank_statements', {dossier: dossier.id})},
+        {label: 'Importer', href: path('app_bank_statement_import', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ path('app_bank_statements', {dossier: dossier.id}) }}" variant="quiet">Annuler</twig:Px:Button>
+            <twig:Px:Button type="submit" variant="primary" form="statement-import-form" icon="upload" shortcut="Ctrl+Enter">Importer</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if errors is not empty %}
+        <twig:Px:Alert tone="danger" title="Rien n’est importé">{{ line_errors is not empty ? (line_errors|length > 1 ? line_errors|length ~ ' lignes du fichier sont refusées' : 'Une ligne du fichier est refusée') ~ ' : corrigez-le, puis importez-le de nouveau. Un relevé n’est importé qu’en entier.' : errors|first }}</twig:Px:Alert>
+    {% endif %}
+    <form method="post" action="{{ path('app_bank_statement_import', {dossier: dossier.id}) }}" enctype="multipart/form-data" id="statement-import-form" data-turbo="false" novalidate data-controller="focus-error">
+        <input type="hidden" name="_token" value="{{ csrf_token('bank-' ~ dossier.id) }}">
+        <twig:Px:Card title="Relevé">
+            <div class="px-fieldgrid">
+                <twig:Px:Field id="journal-chips" label="Journal de banque" :error="errors.journal ?? null">
+                    <span class="px-cluster" id="journal-chips">
+                        {% for one in journals %}
+                            <twig:Px:FilterChip label="{{ one.code }} · {{ one.counterpartAccount.number }}" title="{{ one.label }}" href="{{ path('app_bank_statement_import', {dossier: dossier.id, journal: one.code}) }}" :current="one.id == journal.id"/>
+                        {% endfor %}
+                    </span>
+                    <input type="hidden" name="journal" value="{{ journal.code }}">
+                </twig:Px:Field>
+                <twig:Px:Field id="number" label="Numéro du relevé" :required="true" :error="errors.number ?? null">
+                    <twig:Px:Input id="number" value="{{ form.number }}" :required="true" :error="errors.number ?? null" inputmode="numeric" maxlength="6" autocomplete="off" autofocus/>
+                </twig:Px:Field>
+                <twig:Px:Field id="from" label="Du" :required="true" :error="errors.from ?? null">
+                    <twig:Px:DateInput id="from" :value="form.from" :reference="dossier.dossierDate" :required="true" :error="errors.from ?? null"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="to" label="Au" :required="true" :error="errors.to ?? null">
+                    <twig:Px:DateInput id="to" :value="form.to" :reference="dossier.dossierDate" :required="true" :error="errors.to ?? null"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="opening" label="Solde de départ" hint="Créditeur à la banque : positif. Il reprend le solde final du relevé précédent.">
+                    <twig:Px:AmountInput id="opening" :value="form.opening" hint="1"/>
+                </twig:Px:Field>
+            </div>
+        </twig:Px:Card>
+        <twig:Px:Card title="Fichier">
+            <twig:Px:Field id="file" label="Fichier CSV" :required="true" :error="errors.file ?? null" hint="Une ligne par opération : date ; libellé ; débit ; crédit, comme la banque les imprime - ou date ; libellé ; montant (positif : crédit). Une ligne d’en-tête est reconnue ; le séparateur peut être ; , ou une tabulation.">
+                <input type="file" id="file" name="file" class="px-input" accept="{{ accept }}" aria-describedby="file_hint" required{% if errors.file is defined %} aria-invalid="true"{% endif %}>
+            </twig:Px:Field>
+        </twig:Px:Card>
+    </form>
+
+    {% if line_errors is not empty %}
+        <twig:Px:Card :flush="true" title="Lignes refusées" meta="{{ line_errors|length }}">
+            <twig:Px:Table caption="Lignes refusées du fichier">
+                <thead><tr><th scope="col">Motif</th></tr></thead>
+                <tbody>
+                    {% for message in line_errors %}<tr class="is-error"><td>{{ message }}</td></tr>{% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        </twig:Px:Card>
+    {% endif %}
+{% endblock %}

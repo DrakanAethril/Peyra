@@ -13,10 +13,12 @@ use App\Entity\Payroll\PayrollEstablishment;
 use App\Entity\Sales\SalesSequence;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\AccountOrigin;
+use App\Enum\Accounting\JournalType;
 use App\Enum\Audit\AuditAction;
 use App\Enum\Dossier\DossierKind;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntryRepository;
+use App\Repository\Accounting\JournalRepository;
 use App\Repository\Dossier\DossierRepository;
 use App\Repository\Payroll\EmployeeRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
@@ -24,7 +26,9 @@ use App\Service\Accounting\Chart\AccountNumber;
 use App\Service\Accounting\Chart\ChartInstaller;
 use App\Service\Accounting\Chart\ReferenceCharts;
 use App\Service\Accounting\Ledger\EntryRefused;
+use App\Service\Accounting\Ledger\EntryScope;
 use App\Service\Accounting\Ledger\Ledger;
+use App\Service\Accounting\Ledger\LedgerReader;
 use App\Service\Accounting\Lettering\Lettering;
 use App\Service\Accounting\Lettering\LetteringKey;
 use App\Service\Accounting\Lettering\LetteringRefused;
@@ -32,6 +36,10 @@ use App\Service\Accounting\Subscription\SubscriptionRun;
 use App\Service\Accounting\Subscription\SubscriptionSheet;
 use App\Service\Accounting\Template\TemplateSheet;
 use App\Service\Audit\AuditTrail;
+use App\Service\Banking\Reconciliation\Pointings;
+use App\Service\Banking\Rule\BankRules;
+use App\Service\Banking\Statement\BankStatements;
+use App\Service\Banking\Statement\StatementCsv;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Exercises;
 use App\Service\Inventory\ArticleSheet;
@@ -90,6 +98,11 @@ final readonly class DemoInstaller
         private ArticleSheet $articleSheet,
         private SalesDocuments $salesDocuments,
         private StockMovements $stockMovements,
+        private BankRules $bankRules,
+        private BankStatements $bankStatements,
+        private Pointings $pointings,
+        private LedgerReader $ledgerReader,
+        private JournalRepository $journalRepository,
         #[Autowire('%kernel.project_dir%/fixtures/demo')]
         private string $directory,
     ) {
@@ -127,6 +140,7 @@ final readonly class DemoInstaller
         $hiringFile = DemoHiringFile::read($this->directory.'/hiring.yaml');
         $salesFile = DemoSalesFile::read($this->directory.'/sales.yaml');
         $stockFile = DemoStockFile::read($this->directory.'/stock.yaml');
+        $bankFile = DemoBankFile::read($this->directory.'/bank.yaml');
         $payslipFile = DemoPayslipFile::read($this->directory.'/payslips.yaml');
         $dossier = new Dossier(DossierKind::Template, $file->company, $file->dossierDate, null, null, $at, null);
         $dossier->describeInLibrary($file->library['title'], $file->library['description'], $file->library['level'], $file->library['processes']);
@@ -164,6 +178,7 @@ final readonly class DemoInstaller
         $this->context->within($dossier, fn () => $this->installLetterings($dossier, $letteringFile, $actor));
         $this->context->within($dossier, fn () => $this->installSales($dossier, $salesFile, $actor));
         $this->context->within($dossier, fn () => $this->installStock($dossier, $stockFile, $actor));
+        $this->context->within($dossier, fn () => $this->installBank($dossier, $bankFile, $actor));
         $this->auditTrail->inDossier(
             $dossier,
             AuditAction::DossierCreated,
@@ -270,6 +285,51 @@ final readonly class DemoInstaller
     }
 
     /** Its letterings, each an automatic lettering of one account: one that finds nothing installs nothing more. */
+    /**
+     * Its bank (step 2.6a): the assignment rules, then each statement imported through its CSV - the
+     * account's movements of its days as the books carry them, but those the bank has not passed,
+     * plus the bank's own lines -, the reconciled ones pointed entry by entry and validated.
+     */
+    private function installBank(Dossier $dossier, DemoBankFile $file, string $actor): void
+    {
+        foreach ($file->rules as $rule) {
+            $this->bankRules->save($dossier, null, $rule['pattern'], $rule['account'], $rule['vatRate'], $rule['label'], $actor);
+        }
+        $closing = [];
+        foreach ($file->statements as $index => $definition) {
+            $journal = $this->journalRepository->findOneByCode($dossier, $definition['journal']) ?? throw new \InvalidArgumentException(\sprintf('bank.yaml : statements[%d] : journal %s inconnu.', $index, $definition['journal']));
+            $account = $journal->getCounterpartAccount() ?? throw new \InvalidArgumentException(\sprintf('bank.yaml : statements[%d] : %s n’est pas un journal de banque.', $index, $definition['journal']));
+            // Each line with the entry it comes from (none for the bank's own), in date order - the
+            // bank's lines take their place among the books', which keep theirs.
+            $rows = [];
+            foreach ($this->ledgerReader->movements($account, $definition['from'], $definition['to'], EntryScope::WithDrafts) as $movement) {
+                $entry = $movement->line->getEntry();
+                if (JournalType::Opening === $entry->getJournal()->getType() || \in_array($entry->getDocument(), $definition['omit'], true)) {
+                    continue;
+                }
+                $rows[] = [['date' => $entry->getEntryDate(), 'label' => mb_strtoupper($entry->getLabel()), 'amount' => $movement->line->getDebit()->minus($movement->line->getCredit())], $entry];
+            }
+            foreach ($definition['extra'] as $line) {
+                $rows[] = [$line, null];
+            }
+            usort($rows, static fn (array $one, array $other): int => $one[0]['date'] <=> $other[0]['date']);
+            $opening = $closing[$definition['journal']] ?? $this->bankStatements->booksBefore($journal, $definition['from']);
+            $csv = StatementCsv::write(array_map(static fn (array $row): array => $row[0], $rows));
+            $statement = $this->bankStatements->import($journal, $definition['number'], $definition['from'], $definition['to'], $opening, $csv, \sprintf('releve-%s-%02d.csv', mb_strtolower($definition['journal']), $definition['number']), $actor);
+            $closing[$definition['journal']] = $statement->getClosingBalance();
+            if ($definition['reconciled']) {
+                foreach ($statement->getLines() as $position => $line) {
+                    $entry = $rows[$position][1];
+                    if (null !== $entry) {
+                        $this->pointings->point($statement, [(int) $line->getId()], [(int) $entry->getId()], $actor);
+                    }
+                }
+                $this->pointings->validate($statement, $actor);
+            }
+        }
+        $this->entityManager->flush();
+    }
+
     /** Its stock (step 2.5): each movement checked and recorded by StockMovements, the screen's door. */
     private function installStock(Dossier $dossier, DemoStockFile $file, string $actor): void
     {

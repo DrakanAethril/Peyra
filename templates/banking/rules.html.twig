@@ -1,0 +1,52 @@
+{#
+ # Banque › Règles d'affectation (step 2.6a; design-ux.md § 3.2, gabarit L): « si le libellé
+ # contient… alors ce compte, ce taux de TVA », in the order the reconciliation tries them.
+ #}
+{% extends 'banking/_layout.html.twig' %}
+
+{% set bank_tab = 'rules' %}
+{% set dossier_title = 'Règles d’affectation' %}
+{% set can_edit = is_granted('DOSSIER_SETTINGS', dossier) %}
+{% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouvelle règle'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Règles d’affectation" :trail="[
+        {label: 'Banque', href: path('app_bank_reconciliation', {dossier: dossier.id})},
+        {label: 'Règles d’affectation', href: path('app_bank_rules', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}<twig:Px:Button href="{{ path('app_bank_rule_new', {dossier: dossier.id}) }}" variant="primary" icon="plus" shortcut="N">Nouvelle règle</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card :flush="true">
+        {% if bank_rules is empty %}
+            <twig:Px:Empty icon="list-filter" title="Aucune règle" text="Une règle reconnaît une ligne du relevé à son libellé (« FRAIS TENUE », « CB STATION ») et propose le compte de son écriture au rapprochement."/>
+        {% else %}
+            <twig:Px:Table caption="Règles d’affectation, dans l’ordre où elles sont essayées" :rows="true">
+                <thead>
+                    <tr>
+                        <th scope="col" class="px-u-right">Ordre</th>
+                        <th scope="col">Si le libellé contient</th>
+                        <th scope="col">Compte ou tiers</th>
+                        <th scope="col" class="px-u-right">TVA</th>
+                        <th scope="col">Libellé de l’écriture</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rule in bank_rules %}
+                        <tr data-rows-target="row">
+                            <td class="px-u-num">{{ loop.index }}</td>
+                            <td><a class="px-link" href="{{ path('app_bank_rule', {dossier: dossier.id, id: rule.id}) }}">{{ rule.pattern }}</a></td>
+                            <td class="px-u-code">{{ rule.account }}</td>
+                            <td class="px-u-num">{{ rule.vatRate ? rule.vatRate|replace({'.': ','}) ~ ' %' : '' }}</td>
+                            <td class="px-u-fill">{{ rule.entryLabel ?: 'le libellé de la ligne' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}

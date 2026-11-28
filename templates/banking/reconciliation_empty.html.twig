@@ -1,0 +1,26 @@
+{#
+ # Banque › Rapprochement without a statement (design-ux.md § 4.5, point 7): the empty state, and
+ # the way to import one.
+ #}
+{% extends 'banking/_layout.html.twig' %}
+
+{% set bank_tab = 'reconciliation' %}
+{% set dossier_title = 'Rapprochement' %}
+{% set status_keys = can_import ? [{combo: 'N', verb: 'Importer un relevé'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Rapprochement bancaire" :trail="[
+        {label: 'Banque', href: path('app_bank_reconciliation', {dossier: dossier.id})},
+        {label: 'Rapprochement', href: path('app_bank_reconciliation', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            {% if can_import %}<twig:Px:Button href="{{ path('app_bank_statement_import', {dossier: dossier.id}) }}" variant="primary" icon="upload" shortcut="N">Importer un relevé</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card>
+        <twig:Px:Empty icon="landmark" title="Aucun relevé" text="Aucun relevé pour ce compte. Importez-en un, ou attendez celui de votre mission."/>
+    </twig:Px:Card>
+{% endblock %}

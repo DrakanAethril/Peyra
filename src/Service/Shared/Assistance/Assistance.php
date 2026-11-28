@@ -138,4 +138,33 @@ final readonly class Assistance
     {
         return $this->blocks();
     }
+
+    /** The reconciliation proposes the statement's lines and the entries of the same amount within three days, to confirm (G: « pointage proposé à confirmer »). */
+    public function proposesBankPointing(): bool
+    {
+        return AssistanceLevel::Guided === $this->level;
+    }
+
+    /**
+     * A statement line without its entry gets the account, journal and counterpart of its assignment
+     * rule in the panel (G and B); at A and 0 the student chooses the account (« Saisir moi-même »).
+     */
+    public function proposesBankEntry(): bool
+    {
+        return $this->blocks();
+    }
+
+    /**
+     * A reconciliation that does not fall right - a line of the statement neither pointed nor posted -
+     * is refused (G and B), warned about (A), validated without a word (0).
+     */
+    public function blocksReconciliationGaps(): bool
+    {
+        return $this->blocks();
+    }
+
+    public function signalsReconciliationGaps(): bool
+    {
+        return $this->runsControls();
+    }
 }

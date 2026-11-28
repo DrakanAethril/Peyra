@@ -1,0 +1,59 @@
+{#
+ # Banque › Règles d'affectation › a rule (step 2.6a; design-ux.md § 3.2, gabarit F): the text the
+ # wording contains, the account or third party, the VAT rate and the label; F10 saves, a rule is
+ # deleted in two steps. Read only without DOSSIER_SETTINGS.
+ #}
+{% extends 'banking/_layout.html.twig' %}
+
+{% set bank_tab = 'rules' %}
+{% set dossier_title = rule ? 'Règle « ' ~ rule.pattern ~ ' »' : 'Nouvelle règle' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}] : [] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ rule ? 'Règle « ' ~ rule.pattern ~ ' »' : 'Nouvelle règle d’affectation' }}" :trail="[
+        {label: 'Banque', href: path('app_bank_reconciliation', {dossier: dossier.id})},
+        {label: 'Règles d’affectation', href: path('app_bank_rules', {dossier: dossier.id})},
+        {label: rule ? rule.pattern : 'Nouvelle règle', href: rule ? path('app_bank_rule', {dossier: dossier.id, id: rule.id}) : path('app_bank_rule_new', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ return_path ?: path('app_bank_rules', {dossier: dossier.id}) }}" variant="quiet">{{ return_path ? 'Revenir' : 'Annuler' }}</twig:Px:Button>
+            {% if can_edit and rule %}<twig:Px:ConfirmButton label="Supprimer la règle" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="rule-delete"/>{% endif %}
+            {% if can_edit %}<twig:Px:Button type="submit" variant="primary" form="rule-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>{% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if errors is not empty %}
+        <twig:Px:Alert tone="danger">La règle n’est pas enregistrée : {{ errors|length > 1 ? errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+    <form method="post" action="{{ rule ? path('app_bank_rule', {dossier: dossier.id, id: rule.id}) : path('app_bank_rule_new', {dossier: dossier.id}) }}" id="rule-form" novalidate data-controller="focus-error">
+        <input type="hidden" name="_token" value="{{ csrf_token('bank-' ~ dossier.id) }}">
+        {% if return_path %}<input type="hidden" name="return" value="{{ return_path }}">{% endif %}
+        <twig:Px:Card title="Si le libellé de la ligne contient…">
+            <div class="px-fieldgrid">
+                <twig:Px:Field id="pattern" label="Texte" :required="true" hint="Majuscules et accents indifférents : « frais tenue » reconnaît « FRAIS TENUE DE COMPTE »." :error="errors.pattern ?? null">
+                    <twig:Px:Input id="pattern" value="{{ form.pattern }}" hint="1" :required="true" :error="errors.pattern ?? null" maxlength="60" autocomplete="off" autofocus/>
+                </twig:Px:Field>
+            </div>
+        </twig:Px:Card>
+        <twig:Px:Card title="… alors l’écriture va">
+            <div class="px-fieldgrid">
+                <twig:Px:Field id="account" label="Compte ou tiers" :required="true" :error="errors.account ?? null">
+                    <twig:Px:AccountPicker id="account" name="account" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" value="{{ form.account }}" accountLabel="" :error="errors.account ?? null"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="vat_rate" label="Taux de TVA" hint="En pour cent ; vide : sans TVA. La TVA est séparée du montant de la ligne." :error="errors.vatRate ?? null">
+                    <twig:Px:Input id="vat_rate" value="{{ form.vatRate }}" hint="1" :error="errors.vatRate ?? null" inputmode="decimal" maxlength="6" autocomplete="off"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="label" label="Libellé de l’écriture" hint="Vide : le libellé de la ligne du relevé." :error="errors.label ?? null">
+                    <twig:Px:Input id="label" value="{{ form.label }}" hint="1" :error="errors.label ?? null" maxlength="60" autocomplete="off"/>
+                </twig:Px:Field>
+            </div>
+        </twig:Px:Card>
+    </form>
+    {% if can_edit and rule %}
+        <form method="post" action="{{ path('app_bank_rule_delete', {dossier: dossier.id, id: rule.id}) }}" id="rule-delete" hidden>
+            <input type="hidden" name="_token" value="{{ csrf_token('bank-' ~ dossier.id) }}">
+        </form>
+    {% endif %}
+{% endblock %}

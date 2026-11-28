@@ -10,6 +10,7 @@ use App\Entity\Dossier\Exercise;
 use App\Entity\Dossier\Period;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\AccountOrigin;
+use App\Enum\Accounting\AssistanceLevel;
 use App\Enum\Accounting\EntryOrigin;
 use App\Enum\Dossier\DossierKind;
 use App\Enum\Dossier\TemplateLevel;
@@ -25,6 +26,8 @@ use App\Repository\Accounting\EntryLineRepository;
 use App\Repository\Accounting\EntryRepository;
 use App\Repository\Accounting\EntrySubscriptionRepository;
 use App\Repository\Accounting\EntryTemplateRepository;
+use App\Repository\Banking\BankRuleRepository;
+use App\Repository\Banking\BankStatementRepository;
 use App\Repository\Dossier\DossierRepository;
 use App\Repository\Payroll\EmployeeRepository;
 use App\Repository\Payroll\PayrollBodyRepository;
@@ -36,12 +39,14 @@ use App\Service\Accounting\Lettering\LetteringBoard;
 use App\Service\Accounting\Subscription\SubscriptionRun;
 use App\Service\Accounting\Subscription\SubscriptionSchedule;
 use App\Service\Accounting\Template\TemplateCall;
+use App\Service\Banking\Reconciliation\ReconciliationBoard;
 use App\Service\Dossier\DossierContext;
 use App\Service\Inventory\Stock\StockReader;
 use App\Service\Payroll\Declaration\SocialSchedule;
 use App\Service\Payroll\Hiring\HiringFormalities;
 use App\Service\Payroll\Payslip\PayslipBook;
 use App\Service\Regulatory\RegulatorySync;
+use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\Money;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -340,6 +345,22 @@ final class DemoInstallCommandTest extends KernelTestCase
             self::assertSame(SocialDueState::Due, $states['COT-URSSAF-2026-03']);
             self::assertCount(20, $states, 'Four bodies and the withholding tax, four months.');
             self::assertSame(['VIRSAL-2026-03', '2026-03-31'], [$entries->findOneBy(['dossier' => $vasseur, 'document' => 'VIRSAL-2026-03'])?->getDocument(), $entries->findOneBy(['dossier' => $vasseur, 'document' => 'VIRSAL-2026-03'])?->getEntryDate()->format('Y-m-d')]);
+        });
+
+        // Its bank (step 2.6a, bank.yaml): three rules; the Crédit Coopératif's statements of January
+        // (8 216,45 to 31 090,29, operations-2026.md § 4) and February (to 13 883,89) reconciled; March's
+        // left to reconcile: the 27 600,29 of the books less the cheque CHQ-7702164 of 2 395,20 not
+        // debited, plus a commission of 8,00 the books do not hold - 29 987,49 at the bank.
+        $context->within($vasseur, static function () use ($vasseur): void {
+            self::assertCount(3, self::getContainer()->get(BankRuleRepository::class)->findInOrder($vasseur));
+            $statements = array_reverse(self::getContainer()->get(BankStatementRepository::class)->findLatestFirst($vasseur));
+            self::assertSame([[1, 821_645, 3_109_029, true], [2, 3_109_029, 1_388_389, true], [3, 1_388_389, 2_998_749, false]], array_map(static fn ($s): array => [$s->getNumber(), $s->getOpeningBalance()->cents, $s->getClosingBalance()->cents, $s->isReconciled()], $statements));
+            // Nothing of March is pointed yet: its eight movements carried by the bank are proposed at G,
+            // the commission is left to post and the cheque outstanding once they are pointed.
+            $view = self::getContainer()->get(ReconciliationBoard::class)->view($statements[2], Assistance::at(AssistanceLevel::Guided));
+            self::assertCount(8, $view->proposals);
+            self::assertSame([2_760_029, 9, 9], [$view->report->accountBalance->cents, \count($view->report->toPost), \count($view->report->outstanding)]);
+            self::assertTrue($view->report->gap()->isZero());
         });
     }
 }
