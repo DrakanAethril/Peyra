@@ -53,6 +53,9 @@ final class PayslipContributions
 
     private readonly BigDecimal $gross;
     private readonly BigDecimal $ceiling;
+    private readonly string $ceilingText;
+    /** @var array{due: BigDecimal, full: BigDecimal, text: string}|null */
+    private readonly ?array $presence;
     private readonly BigDecimal $overtimeHours;
     private readonly BigDecimal $premiumHours;
     private readonly BigDecimal $premiumPay;
@@ -68,7 +71,11 @@ final class PayslipContributions
     private function __construct(private readonly PayslipInput $input, array $grossRows, Money $gross)
     {
         $this->gross = $gross->toDecimal();
-        $this->ceiling = $input->regulatory->decimal('social.pmss');
+        $month = PayslipMonth::of($input);
+        $monthly = $input->regulatory->decimal('social.pmss');
+        $this->ceiling = $month->ceiling($monthly);
+        $this->ceilingText = $month->ceilingExplanation($monthly);
+        $this->presence = PayslipPresence::ratio($input->plan, $grossRows);
         $overtime = BigDecimal::zero();
         $premium = BigDecimal::zero();
         $pay = BigDecimal::zero();
@@ -101,7 +108,7 @@ final class PayslipContributions
      * @param list<PayrollItemSpec> $ordered the plan in its order
      * @param list<PayslipRow>      $grossRows
      *
-     * @return array{rows: list<PayslipRow>, reduction: ?GeneralReduction, smic: Money, overtimePay: BigDecimal}
+     * @return array{rows: list<PayslipRow>, reduction: ?GeneralReduction, smic: Money, overtimePay: BigDecimal, ceiling: Money}
      */
     public static function calculate(PayslipInput $input, array $ordered, array $grossRows, Money $gross): array
     {
@@ -127,7 +134,7 @@ final class PayslipContributions
             }
         }
 
-        return ['rows' => $rows, 'reduction' => $self->reduction, 'smic' => $self->smic(), 'overtimePay' => $self->premiumPay];
+        return ['rows' => $rows, 'reduction' => $self->reduction, 'smic' => $self->smic(), 'overtimePay' => $self->premiumPay, 'ceiling' => Money::euros($self->ceiling)];
     }
 
     private function applies(PayrollItemSpec $spec): bool
@@ -216,7 +223,7 @@ final class PayslipContributions
 
         return match ($spec->base) {
             PayrollBase::Gross => $this->bracket($spec->ceiling),
-            PayrollBase::MonthlyCeiling => ['value' => $this->ceiling, 'unit' => $euros, 'origin' => 'Plafond mensuel de la sécurité sociale : '.$euros->format($this->ceiling).'.'],
+            PayrollBase::MonthlyCeiling => ['value' => $this->ceiling, 'unit' => $euros, 'origin' => 'Plafond de la sécurité sociale du mois : '.$this->ceilingText.'.'],
             PayrollBase::Flat => null,
             PayrollBase::CsgBase => $this->csgBase(),
             PayrollBase::ProvidentEmployer => (function () use ($euros): array {
@@ -250,7 +257,7 @@ final class PayslipContributions
             $high = $to->multipliedBy($this->ceiling);
 
             return ['value' => self::part($this->gross, $this->ceiling, $from, $to), 'unit' => $euros, 'origin' => \sprintf(
-                '%s. Part du brut (%s) entre %s et %s plafond%s mensuel%s (%s et %s ; plafond %s).',
+                '%s. Part du brut (%s) entre %s et %s plafond%s mensuel%s (%s et %s ; %s).',
                 $ceiling->label(),
                 $euros->format($this->gross),
                 FrenchFormat::number($from),
@@ -259,7 +266,7 @@ final class PayslipContributions
                 $to->isGreaterThan(1) ? 's' : '',
                 $euros->format($low),
                 $euros->format($high),
-                $euros->format($this->ceiling),
+                $this->ceilingText,
             )];
         }
         $grossBefore = $before->gross->toDecimal();
@@ -270,7 +277,7 @@ final class PayslipContributions
         $yearPart = self::part($yearGross, $yearCeiling, $from, $to);
 
         return ['value' => $yearPart->minus($partBefore), 'unit' => $euros, 'origin' => \sprintf(
-            '%s, régularisée sur l’année : part du brut de l’année (%s) entre %s et %s fois les plafonds de l’année (%s) = %s, moins la part des mois précédents (brut %s, plafonds %s) = %s ; %s pour ce mois.',
+            '%s, régularisée sur l’année : part du brut de l’année (%s) entre %s et %s fois les plafonds de l’année (%s) = %s, moins la part des mois précédents (brut %s, plafonds %s) = %s ; %s pour ce mois (%s).',
             $ceiling->label(),
             $euros->format($yearGross),
             FrenchFormat::number($from),
@@ -281,6 +288,7 @@ final class PayslipContributions
             $euros->format($ceilingBefore),
             $euros->format($partBefore),
             $euros->format($yearPart->minus($partBefore)),
+            $this->ceilingText,
         )];
     }
 
@@ -469,7 +477,7 @@ final class PayslipContributions
 
     private function smic(): Money
     {
-        return $this->smic ??= $this->formula()->smic($this->input->employee->monthlyHours, $this->input->establishment->monthlyHours, $this->premiumHours);
+        return $this->smic ??= $this->formula()->smic($this->input->employee->monthlyHours, $this->input->establishment->monthlyHours, $this->premiumHours, $this->presence);
     }
 
     private function generalReductionRow(PayrollItemSpec $spec): ?PayslipRow
@@ -498,7 +506,7 @@ final class PayslipContributions
             Money::zero(),
             new PayslipExplanation(
                 $formula,
-                \sprintf('Rémunération brute du mois : %s. %s', PayslipUnit::Euros->format($this->gross), $this->formula()->smicExplanation($this->input->employee->monthlyHours, $this->input->establishment->monthlyHours, $this->premiumHours, $reduction->smic)),
+                \sprintf('Rémunération brute du mois : %s. %s', PayslipUnit::Euros->format($this->gross), $this->formula()->smicExplanation($this->input->employee->monthlyHours, $this->input->establishment->monthlyHours, $this->premiumHours, $this->presence, $reduction->smic)),
                 'Coefficient de la réduction générale du millésime : '.$coefficient->format($reduction->coefficient).($regularised ? ', calculé sur l’année.' : '.'),
                 $reduction->source,
                 $reduction->steps,

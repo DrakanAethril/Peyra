@@ -68,7 +68,7 @@ enum PayrollRateSource: string
         return match ($kind) {
             PayrollItemKind::Gross => match ($base) {
                 PayrollBase::ContractHours, PayrollBase::EnteredHours, PayrollBase::PaidLeaveHours => \in_array($this, [self::HourlyRate, self::HourlyRateWithPremium, self::Fixed], true),
-                PayrollBase::PaidLeavePay => \in_array($this, [self::Regulatory, self::Fixed], true),
+                PayrollBase::PaidLeavePay, PayrollBase::SickPay => \in_array($this, [self::Regulatory, self::Fixed], true),
                 PayrollBase::BaseSalary => \in_array($this, [self::Entered, self::Fixed, self::Regulatory], true),
                 PayrollBase::EnteredCount => \in_array($this, [self::Regulatory, self::Amount], true),
                 default => false,

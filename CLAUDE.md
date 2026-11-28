@@ -1121,7 +1121,7 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   mobility rates, working time). `PayrollItemRules` is pure; `PayrollItemSheet` adds the code, the
   body and **a regulatory value that reads at the dossier's date** - a rate the law fixes is never
   written in a rubrique, it names its key and path (`social.agirc_arrco.ceg`, `0.employee_rate`).
-- **The standard plan is data**, `fixtures/payroll/standard-plan.yaml` (49 rubriques), installed by
+- **The standard plan is data**, `fixtures/payroll/standard-plan.yaml` (50 rubriques), installed by
   `PayrollPlanInstaller` into an empty plan; `StandardPayrollPlanTest` reads every value it names
   from `config/regulatory/2025.yaml` and `2026.yaml`. 2025's maladie and famille carry their full
   rate under `employer_rate`, like 2026, the reduced one beside it for the engine.

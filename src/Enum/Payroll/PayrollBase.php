@@ -11,7 +11,10 @@ namespace App\Enum\Payroll;
  * stands on two: its hours, taken off the salary, and its pay - the better of the salary kept
  * (« maintien ») and the tenth of the reference period's gross pay, the item's rate being the tenth.
  * The forfait social on the provident schemes stands on the employer's share of the contributions of
- * the payslip's « complémentaire santé » and « prévoyance » lines.
+ * the payslip's « complémentaire santé » and « prévoyance » lines. Step 4.3d adds the days of the
+ * month outside the contract (an employee hired or leaving during the month), their rate the salary
+ * over the days of the month, and the sick pay: the hours whose salary is kept, at the hourly rate
+ * times the item's rate, less the daily allowances of the social security entered beside them.
  */
 enum PayrollBase: string
 {
@@ -31,6 +34,8 @@ enum PayrollBase: string
     case ProvidentEmployer = 'provident_employer';
     case BenefitsInKind = 'benefits_in_kind';
     case NetTaxable = 'net_taxable';
+    case EntryExitDays = 'entry_exit_days';
+    case SickPay = 'sick_pay';
 
     public function label(): string
     {
@@ -51,6 +56,8 @@ enum PayrollBase: string
             self::ProvidentEmployer => 'Part patronale prévoyance et santé',
             self::BenefitsInKind => 'Avantages en nature',
             self::NetTaxable => 'Net imposable',
+            self::EntryExitDays => 'Jours hors contrat du mois',
+            self::SickPay => 'Maintien maladie : heures, IJSS déduites',
         };
     }
 

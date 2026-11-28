@@ -329,6 +329,19 @@ entries:
     note: Taux général du forfait social 20 % ; 8 % sur les contributions patronales de prévoyance complémentaire (santé et prévoyance collectives exonérées de cotisations) pour les entreprises de 11 salariés et plus ; non dû en dessous de 11 salariés.
 
   # --- Tranches de rémunération -------------------------------------------------------------------
+  - key: social.ceiling_proration
+    label: Plafond du mois - proratisation (entrée, sortie, absence sans aucun versement)
+    value: "Plafond mensuel × nombre de jours calendaires de la période d'emploi ÷ nombre de jours calendaires du mois ; la période d'emploi perd les journées entières d'absence qui n'ont donné lieu à aucun versement, même partiel. Une absence d'une ou plusieurs heures ou demi-journées, les congés payés, une absence en partie payée par l'employeur (maintien de salaire), les jours non travaillés d'un temps partiel ne réduisent pas le plafond."
+    unit: text
+    effective_from: 2018-01-01
+    source_url: https://www.net-entreprises.fr/media/documentation/dsn-rubrique-unite-de-mesure-valeur40.pdf
+    consulted_on: 2026-11-28
+    verified: true
+    note: >-
+      Fiche consigne DSN 2713 (net-entreprises, décembre 2025), « Les règles de calcul », qui reprend l'article
+      R. 242-2 du code de la sécurité sociale (décret n° 2017-858) et la fiche « Assiette générale » du BOSS
+      (§ 850, 930, 940) ; exemple 7 : embauche le 15 janvier, 17 jours. L'arrondi du plafond proratisé au centime
+      n'est pas écrit dans la fiche (choix du moteur, A-VERIFIER).
   - key: social.ceiling_brackets
     label: Tranches de rémunération, en plafonds de la sécurité sociale
     value:
@@ -698,6 +711,25 @@ entries:
       Plafond 1,4 × 1 867,02 = 2 613,82 € → SJB max 85,93 € → IJ max 42,97 € (SMIC de juin 2026). Avec le SMIC
       de janvier 2026 (1 823,03 €) le calcul donne 41,95 € (calcul, non lu).
       Pas de carence si reprise < 48 h entre deux arrêts, ni pour les ALD.
+
+  - key: social.sick_pay.employer_complement
+    label: Maladie - indemnité complémentaire légale de l'employeur (maintien de salaire)
+    value:
+      first_period_rate: 90
+      first_period: "90 % de la rémunération brute que le salarié aurait perçue, pendant les 30 premiers jours"
+      second_period: "deux tiers de cette rémunération pendant les 30 jours suivants (durées allongées de 10 jours par période de 5 ans d'ancienneté au-delà d'un an, 90 jours au plus chacune)"
+      deduction: "sous déduction des indemnités journalières de la sécurité sociale (et d'un régime de prévoyance)"
+      seniority: "1 an d'ancienneté au premier jour de l'absence"
+    unit: percent
+    effective_from: 2026-01-01
+    source_url: https://www.service-public.gouv.fr/particuliers/vosdroits/F175
+    consulted_on: 2026-11-28
+    verified: true
+    note: >-
+      Page vérifiée le 1er novembre 2026 (articles L1226-1 et D1226-1 et suivants du code du travail). La page dit
+      le versement dû « dès votre 1er jour d'absence » ; d'autres sources donnent encore un délai de 7 jours
+      (D1226-3) : le moteur ne décide pas du délai, les heures maintenues sont saisies (A-VERIFIER). Seule la
+      première période (90 %) a un taux lu par le moteur.
 
   # --- Prélèvement à la source ------------------------------------------------------------------
   - key: social.withholding_tax.default_rate_grid

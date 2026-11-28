@@ -44,7 +44,7 @@ final class PayslipNet
      *
      * @return array{rows: list<PayslipRow>, totals: PayslipTotals, yearToDate: PayslipYearToDate}
      */
-    public static function calculate(PayslipInput $input, array $ordered, array $rows, Money $gross, BigDecimal $overtimePay, ?GeneralReduction $reduction, Money $smic): array
+    public static function calculate(PayslipInput $input, array $ordered, array $rows, Money $gross, BigDecimal $overtimePay, ?GeneralReduction $reduction, Money $smic, Money $ceiling): array
     {
         $euros = PayslipUnit::Euros;
         $employee = Money::zero();
@@ -127,7 +127,7 @@ final class PayslipNet
         $before = $input->yearToDate;
         $yearToDate = new PayslipYearToDate(
             $before->gross->plus($gross),
-            $before->ceiling->plus(Money::euros($input->regulatory->decimal('social.pmss'))),
+            $before->ceiling->plus($ceiling),
             $before->smic->plus($smic),
             $before->generalReduction->plus($reduction->amount ?? Money::zero()),
             $before->exemptOvertime->plus($exempt['amount']),
@@ -300,6 +300,9 @@ final class PayslipNet
             $origin = \sprintf('Taux neutre (aucun taux transmis) : %s pour un net imposable %s, grille mensuelle en vigueur au %s.', $percent->format($rate), null === $neutral['to']
                 ? 'à partir de '.PayslipUnit::Euros->format($neutral['from'])
                 : \sprintf('de %s à moins de %s', PayslipUnit::Euros->format($neutral['from']), PayslipUnit::Euros->format($neutral['to'])), FrenchFormat::date($input->regulatory->day));
+            if (!PayslipMonth::of($input)->isComplete()) {
+                $origin .= ' Le mois est incomplet (entrée ou sortie) : la grille mensuelle s’applique telle quelle, sans proratisation.';
+            }
         }
         $base = $netTaxable->toDecimal();
         $amount = $netTaxable->isPositive() ? Money::euros($percent->times($base, $rate)) : Money::zero();
