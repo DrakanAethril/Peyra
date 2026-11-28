@@ -9,11 +9,12 @@ import { Controller } from '@hotwired/stimulus';
  * without changing the value. `url` answers ?q=… with {groups: [{label, options: [{value, label,
  * balance}]}], more, empty} - `balance` is the account's or third party's balance at the dossier's
  * date (« 3 248,40 C »), empty when nothing moved it; `nature` narrows the search (a bank
- * journal's counterpart).
+ * journal's counterpart). With `submit` (a consultation's filter bar), taking a line submits the
+ * field's form instead of moving on.
  */
 export default class extends Controller {
     static targets = ['input', 'panel', 'list', 'chosen'];
-    static values = { url: String, nature: String };
+    static values = { url: String, nature: String, submit: Boolean };
 
     connect() {
         this.options = [];
@@ -129,6 +130,9 @@ export default class extends Controller {
         item.addEventListener('pointerdown', (event) => {
             event.preventDefault();
             this.choose(index);
+            if (this.submitValue) {
+                this.inputTarget.form?.requestSubmit();
+            }
         });
 
         return item;
@@ -155,7 +159,11 @@ export default class extends Controller {
         } else if (event.key === 'Enter' && this.active >= 0) {
             event.preventDefault();
             this.choose(this.active);
-            this.focusNext();
+            if (this.submitValue && this.inputTarget.form) {
+                this.inputTarget.form.requestSubmit();
+            } else {
+                this.focusNext();
+            }
         } else if (event.key === 'Escape') {
             event.preventDefault();
             event.stopPropagation();

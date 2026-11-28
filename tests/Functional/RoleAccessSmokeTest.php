@@ -213,6 +213,10 @@ final class RoleAccessSmokeTest extends WebTestCase
             '/accounting/entry', '/accounting/entry?journal=BQ1&period=2026-01-01', '/accounting/entries/'.$entry->getId(),
             '/accounting/templates', '/accounting/templates/new', '/accounting/templates/VIRSCIE',
             '/accounting/subscriptions', '/accounting/subscriptions/new', '/accounting/subscriptions/'.$subscriptionId,
+            '/accounting/brouillard', '/accounting/brouillard/export.csv', '/accounting/consultation', '/accounting/consultation?account=401SCIE',
+            '/accounting/consultation?account=512100&scope=validated', '/accounting/consultation/export.xlsx?account=512100',
+            '/accounting/consultation/peek?account=401SCIE', '/accounting/entries', '/accounting/entries?journal=BQ1&period=2026-01-01',
+            '/accounting/entries/export.csv?journal=BQ1', '/accounting/entries/'.$entry->getId().'?return=/d/'.$saved->getId().'/accounting/brouillard',
         ];
         foreach (array_map(static fn (string $path): string => '/d/'.$dossier.$path, $screens) as $url) {
             $actual = [];

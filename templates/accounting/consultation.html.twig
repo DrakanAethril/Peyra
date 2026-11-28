@@ -1,0 +1,133 @@
+{#
+ # Comptabilité › Consultation › Compte ou tiers (design-ux.md § 3.2, gabarit L): the account or
+ # third party typed in the filter bar (F4 lists them), the window (the exercise up to the
+ # dossier's date by default), brouillard included or not; its movements with the running
+ # balance, the balance carried at the head of each page (§ 6.6), the window's totals in the foot.
+ # A line opens its entry, which offers the way back here.
+ #}
+{% extends 'accounting/_layout.html.twig' %}
+
+{% set module_current = 'consultation' %}
+{% set consultation_current = 'account' %}
+{% set dossier_title = subject ? subject.code ~ ' · ' ~ subject.label : 'Consulter un compte' %}
+{% set status_keys = [{combo: 'F4', verb: 'Liste des comptes'}, {combo: 'Enter', verb: 'Ouvrir l’écriture'}] %}
+{% set keep = {account: typed ?: null, from: window.from|date('Y-m-d'), to: window.to|date('Y-m-d'), scope: scope.value == 'validated' ? 'validated' : null} %}
+{% set default_window = window.isDefault(default_from, dossier.dossierDate) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ subject ? subject.code ~ ' · ' ~ subject.label : 'Consulter un compte ou un tiers' }}" :trail="[
+        {label: 'Comptabilité', href: path('app_accounting_entry', {dossier: dossier.id})},
+        {label: 'Consultation', href: path('app_accounting_consultation', {dossier: dossier.id})},
+    ]|merge(subject ? [{label: subject.code, href: path('app_accounting_consultation', {dossier: dossier.id, account: subject.code})}] : [])">
+        <twig:block name="badge">{% if subject %} <twig:Px:Badge tone="neutral" label="{{ subject.thirdParty ? subject.thirdParty.kind.label : subject.account.nature.label }}"/>{% endif %}</twig:block>
+        <twig:block name="actions">
+            {% if return_path %}<twig:Px:Button href="{{ return_path }}" variant="quiet" icon="chevron-left">Revenir</twig:Px:Button>{% endif %}
+            {% if subject %}
+                {% if subject.thirdParty %}
+                    <twig:Px:Button href="{{ path('app_third_party', {dossier: dossier.id, code: subject.thirdParty.code}) }}" icon="user">Fiche du tiers</twig:Px:Button>
+                {% else %}
+                    <twig:Px:Button href="{{ path('app_accounting_account', {dossier: dossier.id, number: subject.account.number}) }}" icon="book-text">Fiche du compte</twig:Px:Button>
+                {% endif %}
+                <twig:Px:ExportMenu xlsx="{{ path('app_accounting_consultation_export', {dossier: dossier.id, format: 'xlsx'}|merge(keep)) }}" csv="{{ path('app_accounting_consultation_export', {dossier: dossier.id, format: 'csv'}|merge(keep)) }}"/>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {{ include('accounting/_consultation_tabs.html.twig') }}
+
+    {% if error %}<twig:Px:Alert tone="danger">{{ error }}</twig:Px:Alert>{% endif %}
+
+    <twig:Px:Card :flush="true">
+        <twig:Px:Filters action="{{ path('app_accounting_consultation', {dossier: dossier.id}) }}" resetHref="{{ not default_window or scope.value == 'validated' ? path('app_accounting_consultation', {dossier: dossier.id, account: typed ?: null}) : null }}">
+            <span class="px-filters__field">
+                <label for="consult-account">Compte ou tiers</label>
+                <twig:Px:AccountPicker id="consult-account" name="account" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" value="{{ typed }}" accountLabel="{{ subject ? subject.label : '' }}" :error="typed and subject is null ? 'Introuvable' : null" data-account-picker-submit-value="true" autofocus/>
+            </span>
+            <span class="px-filters__field">
+                <label for="consult-from">Du</label>
+                <twig:Px:DateInput id="consult-from" name="from" :value="window.from" :reference="dossier.dossierDate"/>
+            </span>
+            <span class="px-filters__field">
+                <label for="consult-to">au</label>
+                <twig:Px:DateInput id="consult-to" name="to" :value="window.to" :reference="dossier.dossierDate"/>
+            </span>
+            {% if scope.value == 'validated' %}<input type="hidden" name="scope" value="validated">{% endif %}
+            <twig:Px:Button type="submit" size="sm">Afficher</twig:Px:Button>
+            <span class="px-filters__sep" aria-hidden="true"></span>
+            <twig:Px:FilterChip label="Brouillard inclus" href="{{ path('app_accounting_consultation', {dossier: dossier.id}|merge(keep)|merge({scope: null})) }}" :current="scope.value != 'validated'"/>
+            <twig:Px:FilterChip label="Écritures validées" href="{{ path('app_accounting_consultation', {dossier: dossier.id}|merge(keep)|merge({scope: 'validated'})) }}" :current="scope.value == 'validated'"/>
+        </twig:Px:Filters>
+
+        {% if statement is null %}
+            <twig:Px:Empty icon="search" title="Choisissez un compte ou un tiers" text="Tapez un numéro de compte (512200), un code de tiers (401SCIE) ou les premières lettres d’un nom, puis Entrée ; F4 ouvre la liste. Les mouvements de la période s’affichent avec leur solde progressif."/>
+        {% else %}
+            {% if statement.movements is empty and not statement.hasOpening %}
+                <twig:Px:Empty icon="book-text" title="Aucun mouvement" text="{{ subject.code }} n’a aucun mouvement du {{ window.from|date_fr }} au {{ window.to|date_fr }}{{ scope.value == 'validated' ? ' parmi les écritures validées' : '' }}."/>
+            {% else %}
+                <twig:Px:Table caption="Mouvements de {{ subject.code }} du {{ window.from|date_fr }} au {{ window.to|date_fr }}" :rows="true">
+                    {# One more column: the account of each line for a third party, the third party of each line for a collective account. #}
+                    {% set extra = subject.thirdParty ? 'Compte' : (subject.account.collective ? 'Tiers' : null) %}
+                    {% set lead = extra ? 8 : 7 %}
+                    <thead><tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Journal</th>
+                        <th scope="col">Pièce</th>
+                        <th scope="col">Numéro</th>
+                        {% if extra %}<th scope="col">{{ extra }}</th>{% endif %}
+                        <th scope="col">Libellé</th>
+                        <th scope="col">Échéance</th>
+                        <th scope="col" title="Lettrage">Let.</th>
+                        <th scope="col" class="px-u-right">Débit</th>
+                        <th scope="col" class="px-u-right">Crédit</th>
+                        <th scope="col" class="px-u-right">Solde</th>
+                    </tr></thead>
+                    <tbody>
+                        {% if list_page.page > 1 %}
+                            <tr class="is-dim"><td colspan="{{ lead }}">Report de la page précédente</td><td></td><td></td><td class="px-u-num">{{ statement_page.carried|balance }}</td></tr>
+                        {% elseif statement.hasOpening %}
+                            <tr class="is-dim"><td colspan="{{ lead }}">Solde au {{ statement.openingDay|date_fr }}</td><td class="px-u-num">{{ statement.opening.debit|amount_cell }}</td><td class="px-u-num">{{ statement.opening.credit|amount_cell }}</td><td class="px-u-num">{{ statement.opening.balance|balance }}</td></tr>
+                        {% endif %}
+                        {% for movement in statement_page.rows %}
+                            {% set line = movement.line %}
+                            {% set entry = line.entry %}
+                            <tr data-rows-target="row"{% if not entry.validated %} class="is-todo"{% endif %}>
+                                <td class="px-u-code">{{ entry.entryDate|date('d/m/Y') }}</td>
+                                <td class="px-u-code">{{ entry.journal.code }}</td>
+                                <td class="px-u-code">{{ entry.document }}</td>
+                                <td{% if entry.numberLabel %} class="px-u-code"{% endif %}><a class="px-link" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id, return: here}) }}">{{ entry.numberLabel ?? 'Brouillard' }}</a></td>
+                                {% if extra == 'Compte' %}<td class="px-u-code">{{ line.account.number }}</td>{% elseif extra %}<td class="px-u-code" title="{{ line.thirdParty ? line.thirdParty.name : '' }}">{{ line.thirdParty ? (line.thirdParty.auxiliaryCode ?? line.thirdParty.code) : '' }}</td>{% endif %}
+                                <td class="px-u-truncate px-u-fill" title="{{ line.label ?: entry.label }}">{{ line.label ?: entry.label }}</td>
+                                <td class="px-u-code">{{ line.dueDate ? line.dueDate|date('d/m/Y') : '' }}</td>
+                                <td class="px-u-code">{{ line.letter }}</td>
+                                <td class="px-u-num">{{ line.debit|amount_cell }}</td>
+                                <td class="px-u-num">{{ line.credit|amount_cell }}</td>
+                                <td class="px-u-num">{{ movement.balanceAfter|balance }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% set totals = statement.totals %}
+                    <tfoot>
+                        <tr class="px-table__total">
+                            <th scope="row" colspan="{{ lead }}">Mouvements du {{ window.from|date_fr }} au {{ window.to|date_fr }}</th>
+                            <td class="px-u-num">{{ totals.debit|amount }}</td>
+                            <td class="px-u-num">{{ totals.credit|amount }}</td>
+                            <td class="px-u-num">{{ statement.closing|balance }}</td>
+                        </tr>
+                    </tfoot>
+                </twig:Px:Table>
+                <twig:Px:Pager :total="statement.movements|length" :perPage="list_page.perPage" :page="list_page.page" :sizes="true"/>
+            {% endif %}
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}
+    {% if statement %}
+        <span>Solde au {{ window.to|date('d/m/Y') }} · <b>{{ statement.closing|balance }}</b></span>
+        <span>{{ statement.movements|length }} mouvement{{ statement.movements|length > 1 ? 's' : '' }}{{ scope.value == 'validated' ? ' validés' : ', brouillard inclus' }}</span>
+    {% else %}
+        {{ parent() }}
+    {% endif %}
+{% endblock %}

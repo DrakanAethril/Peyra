@@ -243,6 +243,14 @@
             <twig:Px:FilterChip label="Validées" :count="431" href="{{ path('app_design_gallery') }}"/>
             <twig:Px:FilterChip label="Toutes" href="{{ path('app_design_gallery') }}"/>
             <twig:Px:Select id="g-filter-journal" name="journal" size="sm" :options="[{value: '', label: 'Tous les journaux'}, {value: 'ACH', label: 'ACH'}, {value: 'VTE', label: 'VTE'}]"/>
+            <div class="px-filters__values">
+                <span class="px-filters__field">
+                    <label for="g-filter-amount">Montant</label>
+                    <twig:Px:Input id="g-filter-amount" name="amount" class="px-u-code px-filters__amount"/>
+                </span>
+                <span class="px-filters__sep" aria-hidden="true"></span>
+                <twig:Px:ExportMenu id="g-export-menu" xlsx="{{ path('app_design_gallery') }}" csv="{{ path('app_design_gallery') }}"/>
+            </div>
         </twig:Px:Filters>
         <twig:Px:Table caption="Écritures du journal ACH, novembre 2026" :rows="true">
             <thead>

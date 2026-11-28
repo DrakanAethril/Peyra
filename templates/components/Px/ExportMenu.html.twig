@@ -1,0 +1,17 @@
+{#
+ # Px:ExportMenu - « Exporter » and its menu of formats (lot 1, step 1.5: every list exports to a
+ # spreadsheet), the avatar's menu pattern (menu_controller.js): the button opens it, ↑ ↓ choose,
+ # Escape closes. `xlsx` and `csv` are the download addresses, with the list's filters.
+ #}
+{% props xlsx, csv, id = 'export-menu', label = 'Exporter' %}
+<div{{ attributes.defaults({class: 'px-menubutton'}) }} data-controller="menu" data-action="keydown->menu#keydown">
+    <button type="button" class="px-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="{{ id }}" data-menu-target="button" data-action="menu#toggle">
+        <twig:ux:icon name="download" aria-hidden="true"/><span>{{ label }}</span><twig:ux:icon name="chevron-down" aria-hidden="true"/>
+    </button>
+    <div class="px-popover px-menubutton__panel" id="{{ id }}" data-menu-target="panel" hidden>
+        <div class="px-menu" role="menu" aria-label="{{ label }}">
+            <a class="px-menu__item" role="menuitem" href="{{ xlsx }}" data-turbo="false"><twig:ux:icon name="sheet" aria-hidden="true"/>Tableur (.xlsx)</a>
+            <a class="px-menu__item" role="menuitem" href="{{ csv }}" data-turbo="false"><twig:ux:icon name="file-text" aria-hidden="true"/>Texte CSV (.csv)</a>
+        </div>
+    </div>
+</div>

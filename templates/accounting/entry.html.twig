@@ -12,6 +12,7 @@
 {% set open_month = not entry.period.closed and not entry.period.exercise.closed %}
 {% set title = entry.numberLabel ?? entry.document %}
 {% set dossier_title = 'Écriture ' ~ (entry.numberLabel ?? entry.document) %}
+{% set here = path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id}) %}
 {% set grid_href = path('app_accounting_entry', {dossier: dossier.id, journal: entry.journal.code, period: entry.period.startsOn|date('Y-m-d'), entry: entry.id}) %}
 {% set status_keys = can_edit and not entry.validated ? [{combo: 'Ctrl+Enter', verb: 'Valider'}] : [] %}
 
@@ -24,6 +25,7 @@
     ]">
         <twig:block name="badge"> <twig:Px:Badge :of="entry.state"/>{% if reversal %} <twig:Px:Badge tone="neutral" label="Contrepassée"/>{% elseif entry.reversalOf %} <twig:Px:Badge tone="neutral" label="Contrepassation"/>{% endif %}</twig:block>
         <twig:block name="actions">
+            {% if return_path %}<twig:Px:Button href="{{ return_path }}" variant="quiet" icon="chevron-left">Revenir</twig:Px:Button>{% endif %}
             {% if can_edit and open_month %}
                 <div class="px-entry-confirmable" data-controller="confirm-bar">
                 <div class="px-entry-actions" data-confirm-bar-target="actions">
@@ -76,10 +78,11 @@
                     {% set party = line.thirdParty %}
                     {% set own = party and party.auxiliaryCode and party.account == line.account %}
                     <tr{% if automatic and line.account == automatic %} class="is-dim"{% endif %}>
-                        <td class="px-u-code">{{ own ? party.auxiliaryCode : line.account.number }}</td>
+                        {% set consulted = own ? party.auxiliaryCode : line.account.number %}
+                        <td class="px-u-code"><a class="px-link" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: consulted, return: here}) }}" title="Consulter {{ consulted }}">{{ consulted }}</a></td>
                         <td>{{ party ? party.name ~ (own ? '' : ' · ' ~ party.code) : line.account.label }}</td>
                         <td>{{ line.label }}</td>
-                        X
+                        <td class="px-u-code">{{ line.dueDate ? line.dueDate|date('d/m/Y') : '' }}</td>
                         <td class="px-u-num">{{ line.debit|amount_cell }}</td>
                         <td class="px-u-num">{{ line.credit|amount_cell }}</td>
                     </tr>

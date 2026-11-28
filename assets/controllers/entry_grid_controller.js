@@ -45,6 +45,7 @@ export default class extends Controller {
         'checks', 'checkList', 'picker', 'pickerList', 'classes', 'create', 'createNumber', 'createLabel', 'createError',
         'treasury', 'problem', 'iconLock', 'iconDraft', 'iconAlert',
         'templates', 'templateChoose', 'templateFilter', 'templateList', 'templateAsk', 'templateName', 'templateBase', 'templateAmount', 'templateRate', 'templateError',
+        'peek', 'peekBody',
     ];
 
     static values = {
@@ -61,6 +62,7 @@ export default class extends Controller {
         entryUrl: String,
         templateUrl: String,
         templatesHref: String,
+        peekUrl: String,
     };
 
     connect() {
@@ -840,7 +842,7 @@ export default class extends Controller {
         if (this.rendering || !input.isConnected || !(input instanceof HTMLInputElement) || !input.classList.contains('px-entry__cell')) {
             return;
         }
-        if (!this.tableTarget.contains(event.relatedTarget) && !this.pickerTarget.contains(event.relatedTarget) && !this.createTarget.contains(event.relatedTarget) && !this.templatesTarget.contains(event.relatedTarget)) {
+        if (!this.tableTarget.contains(event.relatedTarget) && !this.pickerTarget.contains(event.relatedTarget) && !this.createTarget.contains(event.relatedTarget) && !this.templatesTarget.contains(event.relatedTarget) && !(this.hasPeekTarget && this.peekTarget.contains(event.relatedTarget))) {
             // Leaving the grid (a click outside, Ctrl F6): the cell is committed, the line left.
             if (this.commit(input, false)) {
                 const left = this.pos;
@@ -1090,6 +1092,12 @@ export default class extends Controller {
         if (key === 'Insert' && event.altKey) {
             event.preventDefault();
             this.openCreate();
+
+            return;
+        }
+        if (key === 'F5') {
+            event.preventDefault();
+            this.peek();
 
             return;
         }
@@ -1762,6 +1770,37 @@ export default class extends Controller {
         if (pos) {
             this.focusCell(pos.key, pos.line, pos.field);
         }
+    }
+
+    /* ------------------------------------------------ Account detail (F5, design-ux.md § 5.1) */
+
+    /**
+     * F5: the current line's account - or third party, when the line names one by its auxiliary
+     * code - in the drawer: its balance at the dossier's date and its last movements, served by the
+     * consultation (a fragment); « Consulter » opens the whole consultation, which leads back here.
+     * The cell is committed first, so what was just typed is what is shown.
+     */
+    async peek() {
+        if (!this.hasPeekTarget || !this.commit()) {
+            return;
+        }
+        const opener = this.inputAt();
+        const line = this.currentGroup()?.lines[this.pos?.line];
+        const found = line ? this.resolved(line) : null;
+        const code = found ? (found.auxiliary ? found.thirdParty.a : found.account.n) : '';
+        const url = new URL(this.peekUrlValue, window.location.href);
+        url.searchParams.set('account', code);
+        url.searchParams.set('return', window.location.pathname + window.location.search);
+        this.peekBodyTarget.setAttribute('aria-busy', 'true');
+        try {
+            const response = await fetch(url, { headers: { Accept: 'text/html', 'X-Requested-With': 'fetch' } });
+            this.peekBodyTarget.innerHTML = await response.text();
+        } catch {
+            this.peekBodyTarget.textContent = 'Le détail du compte n’a pas pu être chargé. Réessayez (F5).';
+        } finally {
+            this.peekBodyTarget.removeAttribute('aria-busy');
+        }
+        this.peekTarget.dispatchEvent(new CustomEvent('px:open', { detail: { opener } }));
     }
 
     /* -------------------------------------------- Entry templates (F6, design-ux.md § 5.1) */

@@ -16,6 +16,8 @@ use App\Service\Accounting\Ledger\EntryRefused;
 use App\Service\Accounting\Ledger\Ledger;
 use App\Service\Shared\DateValue;
 use App\Service\Shared\PostValue;
+use App\Service\Shared\QueryValue;
+use App\Service\Shared\ReturnPath;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -30,13 +32,14 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * state and number, and the gestures of its state (design-ux.md § 6.3) - a draft is changed in the
  * grid, deleted, validated (confirmation bar, § 6.2) or duplicated; a validated entry is reversed
  * (« Contrepasser », or « Contrepasser et ressaisir », which also puts a copy back in the grid) or
- * duplicated. A duplicate is a new entry of the grid, pending, never written before F10.
+ * duplicated. A duplicate is a new entry of the grid, pending, never written before F10. Reached
+ * from a consultation (`return`), it offers the way back; each line's account opens its consultation.
  */
 #[Route('/d/{dossier}/accounting/entries/{id}', requirements: ['dossier' => '\d+', 'id' => '\d+'])]
 final class EntryController extends AbstractController
 {
     #[Route('', name: 'app_accounting_entry_show', methods: ['GET'])]
-    public function show(Dossier $dossier, int $id, EntryRepository $entries): Response
+    public function show(Dossier $dossier, int $id, Request $request, EntryRepository $entries): Response
     {
         $entry = $entries->find($id) ?? throw new NotFoundHttpException('No such entry.');
 
@@ -45,6 +48,7 @@ final class EntryController extends AbstractController
             'entry' => $entry,
             'reversal' => $entry->isValidated() ? $entries->findReversalOf($entry) : null,
             'reverse_error' => null,
+            'return_path' => ReturnPath::of(QueryValue::trimmed($request, 'return'), (int) $dossier->getId()),
         ]);
     }
 
@@ -108,6 +112,7 @@ final class EntryController extends AbstractController
             'entry' => $entry,
             'reversal' => $entries->findReversalOf($entry),
             'reverse_error' => $error,
+            'return_path' => null,
             'reverse_typed' => $typed,
         ], new Response(status: Response::HTTP_UNPROCESSABLE_ENTITY));
     }

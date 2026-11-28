@@ -1,8 +1,8 @@
 {#
- # Comptabilité (design-ux.md § 2.5): the module's tab bar - Saisie, Paramètres comptables; the
- # brouillard, the consultation and the editions join it with their steps. A screen sets
- # `module_current` (entry, settings; settings by default), `settings_current` for the three views of
- # the settings (plan de comptes, journaux, tiers) and `dossier_title`, outside any block.
+ # Comptabilité (design-ux.md § 2.5): the module's tab bar - Saisie, Brouillard, Consultation,
+ # Paramètres comptables; the editions join it with their step (1.5b). A screen sets
+ # `module_current` (entry, brouillard, consultation, settings; settings by default),
+ # `settings_current` for the views of the settings and `dossier_title`, outside any block.
  #}
 {% extends 'dossier/_layout.html.twig' %}
 
@@ -11,6 +11,8 @@
 {% block module_tabs %}
     <twig:Px:ModuleTabs label="Comptabilité" :tabs="[
         {label: 'Saisie', href: path('app_accounting_entry', {dossier: dossier.id}), current: (module_current ?? 'settings') == 'entry'},
+        {label: 'Brouillard', href: path('app_accounting_brouillard', {dossier: dossier.id}), current: (module_current ?? 'settings') == 'brouillard'},
+        {label: 'Consultation', href: path('app_accounting_consultation', {dossier: dossier.id}), current: (module_current ?? 'settings') == 'consultation'},
         {label: 'Paramètres comptables', href: path('app_accounting_accounts', {dossier: dossier.id}), current: (module_current ?? 'settings') == 'settings'},
     ]"/>
 {% endblock %}

@@ -134,6 +134,12 @@
         max-width: 14rem;
     }
 
+    /* The table cell that takes the room left, and is cut there (with px-u-truncate): a label column. */
+    .px-u-fill {
+        width: 100%;
+        max-width: 0;
+    }
+
     .px-u-nowrap {
         white-space: nowrap;
     }

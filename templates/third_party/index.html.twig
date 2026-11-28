@@ -77,7 +77,7 @@
                                 <td class="px-u-truncate px-u-truncate-short" title="{{ third_party.city }}">{{ third_party.city }}{% if third_party.country != 'FR' %} ({{ third_party.country }}){% endif %}</td>
                                 <td class="px-u-truncate px-u-truncate-short" title="{{ third_party.paymentTerms.label }} · {{ third_party.paymentMethod.label }}">{{ third_party.paymentTerms.label }} · {{ third_party.paymentMethod.label|lower }}</td>
                                 {% set owed = outstanding[third_party.id] ?? null %}
-                                <td class="px-u-num">{{ owed is null or owed.isZero ? '' : owed.balance|balance }}</td>
+                                <td class="px-u-num">{% if owed is not null and not owed.isZero %}<a class="px-link" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: third_party.auxiliaryCode ?? third_party.code}) }}" title="Consulter les mouvements de {{ third_party.name }}">{{ owed.balance|balance }}</a>{% endif %}</td>
                             </tr>
                         {% endfor %}
                     </tbody>

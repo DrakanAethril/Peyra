@@ -428,3 +428,37 @@
         color: var(--px-text-disabled);
     }
 }
+
+/* ---------------------------------------------------------------- F5: the line's account (drawer) */
+@layer px.components {
+    .px-peek {
+        display: grid;
+        gap: var(--px-space-12);
+
+        & > p {
+            margin: 0;
+        }
+    }
+
+    .px-peek__subject {
+        color: var(--px-text-strong);
+        font-weight: var(--px-fw-semibold);
+    }
+
+    /* The brouillard's controls: the badge, then the first message, on one line. */
+    .px-brouillard__controls {
+        max-width: 420px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-12);
+    }
+}
+
+@layer px.components {
+    .px-brouillard__pending {
+        margin: 0 0 var(--px-space-4);
+        padding-inline-start: var(--px-space-16);
+    }
+}

@@ -20,6 +20,7 @@
     ]">
         <twig:block name="badge">{% if third_party %} <twig:Px:Badge :of="third_party.kind"/>{% endif %}</twig:block>
         <twig:block name="actions">
+            {% if third_party %}<twig:Px:Button href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: third_party.auxiliaryCode ?? third_party.code}) }}" icon="search">Consulter</twig:Px:Button>{% endif %}
             {% if can_edit %}
                 {% if third_party and deletion_refusal is null %}<twig:Px:ConfirmButton label="Supprimer le tiers" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="third-party-delete"/>{% endif %}
                 <twig:Px:Button type="submit" variant="primary" form="third-party-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>

@@ -386,6 +386,17 @@ final class PxComponentsTest extends KernelTestCase
         self::assertStringContainsString(' inert', $drawer);
     }
 
+    public function testExportMenuOffersBothFormatsOutsideTurbo(): void
+    {
+        $menu = self::tight($this->renderTwigComponent('Px:ExportMenu', ['xlsx' => '/export.xlsx?account=401SCIE', 'csv' => '/export.csv?account=401SCIE'])->toString());
+
+        self::assertStringContainsString('data-controller="menu"', $menu);
+        self::assertStringContainsString('aria-haspopup="menu" aria-expanded="false" aria-controls="export-menu"', $menu);
+        self::assertStringContainsString('<a class="px-menu__item" role="menuitem" href="/export.xlsx?account=401SCIE" data-turbo="false">', $menu);
+        self::assertStringContainsString('<a class="px-menu__item" role="menuitem" href="/export.csv?account=401SCIE" data-turbo="false">', $menu);
+        self::assertStringContainsString('id="export-menu" data-menu-target="panel" hidden', $menu);
+    }
+
     public function testStepperAndTabs(): void
     {
         $steps = self::tight($this->renderTwigComponent('Px:Stepper', ['steps' => [['label' => 'Préparation', 'href' => '/1', 'state' => 'done'], ['label' => 'Cadrage', 'href' => '/2', 'state' => 'current'], ['label' => 'Dépôt', 'href' => '/3']]])->toString());
