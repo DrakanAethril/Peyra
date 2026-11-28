@@ -1,0 +1,47 @@
+{#
+ # A posted pièce's entry, read only (design-ux.md § 3.5: « déjà au brouillard, en lecture »): its
+ # head, its lines and totals; « Corriger l'écriture » opens it in its journal's grid while it is in
+ # the brouillard, « Voir l'écriture » its own sheet.
+ #}
+<section class="px-card px-card--flush" aria-labelledby="piece-written-title">
+    <header class="px-card__head">
+        <h2 id="piece-written-title">Écriture</h2>
+        <small><twig:Px:Badge :of="entry.state"/></small>
+        <div class="px-card__actions">
+            {% if entry.validated %}
+                <twig:Px:Button size="sm" href="{{ path('app_accounting_entry_show', {dossier: dossier.id, id: entry.id, return: path('app_document', {dossier: dossier.id, id: document.id})}) }}">Voir l’écriture</twig:Px:Button>
+            {% else %}
+                <twig:Px:Button size="sm" href="{{ path('app_accounting_entry', {dossier: dossier.id, journal: entry.journal.code, period: entry.period.startsOn|date('Y-m-d'), entry: entry.id}) }}">Corriger l’écriture</twig:Px:Button>
+            {% endif %}
+        </div>
+    </header>
+    <dl class="px-facts px-entry__facts">
+        <dt>Journal</dt><dd><span class="px-u-code">{{ entry.journal.code }}</span> {{ entry.journal.label }}</dd>
+        <dt>Date</dt><dd>{{ entry.entryDate|date_fr }}</dd>
+        <dt>N° de pièce</dt><dd class="px-u-code">{{ entry.document }}</dd>
+        <dt>Libellé</dt><dd>{{ entry.label }}</dd>
+    </dl>
+    <twig:Px:Table caption="Lignes de l’écriture">
+        <thead><tr>
+            <th scope="col">Compte</th><th scope="col">Intitulé</th>
+            <th scope="col" class="px-u-right">Débit</th><th scope="col" class="px-u-right">Crédit</th>
+        </tr></thead>
+        <tbody>
+            {% for line in entry.lines %}
+                {% set party = line.thirdParty %}
+                {% set own = party and party.auxiliaryCode and party.account == line.account %}
+                <tr>
+                    <td class="px-u-code">{{ own ? party.auxiliaryCode : line.account.number }}</td>
+                    <td>{{ party ? party.name ~ (own ? '' : ' · ' ~ party.code) : line.account.label }}{{ line.dueDate ? ' · échéance ' ~ line.dueDate|date('d/m/Y') : '' }}</td>
+                    <td class="px-u-num">{{ line.debit|amount_cell }}</td>
+                    <td class="px-u-num">{{ line.credit|amount_cell }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot><tr>
+            <th scope="row" colspan="2">Totaux <twig:Px:Badge tone="success" label="Équilibrée"/></th>
+            <td class="px-u-num">{{ entry.totalDebit|amount }}</td>
+            <td class="px-u-num">{{ entry.totalCredit|amount }}</td>
+        </tr></tfoot>
+    </twig:Px:Table>
+</section>

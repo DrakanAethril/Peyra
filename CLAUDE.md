@@ -553,8 +553,10 @@ Conception § 5, held by code in `src/Entity/Accounting/`, `src/Service/Accounti
   `Totals::balance()` is debit minus credit; the `balance` Twig filter writes « D »/« C ».
 - **`AccountingGateway::submit(dossier, EntryProposal)`** is the modules' door (`ModulesDoNotPostTest`:
   only `Service/Accounting/`, `Controller/Accounting/` and the demonstration name the Ledger). It
-  applies `AccountingBehaviours` (Propose, LetEnter, Post); `ProposeByDefault` answers until the
-  missions (2.9).
+  applies `AccountingBehaviours` (Propose, LetEnter, Post - Post drafts in the brouillard, it never
+  validates: lot 2's rule); `ProposeByDefault` answers until the missions (2.9). A module whose screen
+  shows its proposal first (the pièces) asks `behaviourFor()`, then hands the student's entry to
+  `record()`.
 - **What carries entries keeps its shape**: an account with validated lines keeps its number and
   stays, with any line keeps its « collectif » box (the plan's import too); a journal with entries
   keeps its type and stays, with validated ones its code; a third party named on a line keeps its
@@ -1093,6 +1095,15 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   `Documents::generated()` - read data = what it prints. `Document::$generation` keeps the operation
   and its faults: answer key, no student screen shows it. The form is a GET (the preview's address);
   « Générer » posts, its token as the button's value.
+- **Processing a pièce** (step 2.2a, `src/Service/Document/Processing/`, `PieceProcessing` the one
+  door, module `AccountingModule::Documents`): the proposal is **kept on the pièce**
+  (`Document::$proposal`, `PieceProposal`: GridLine-shaped lines + the fingerprint of the read data
+  it came from), made by the pure `PieceProposals` when the pièce first has read data (arrival of a
+  generated one, F10 on a deposit) and again only by « Reprendre l'écriture depuis les données lues »;
+  the expense/revenue account is the one the third party's latest entry used
+  (`EntryLineRepository::usualAccountOf()`), else left empty. The entry is checked by
+  `JournalGrid::check()` (the grid's own rules and controls) and written through the gateway;
+  `Document::$entry` links the pièce to it. `PieceControls` (pure) checks the read data by level.
 
 ## Référentiel and assistance levels (built at step 2.8)
 

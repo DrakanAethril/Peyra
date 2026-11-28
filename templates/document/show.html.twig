@@ -1,15 +1,19 @@
 {#
- # A pièce's sheet (gabarit P, design-ux.md § 3.5): the viewer on the left, kept in sight; on the
- # right the read data - type, third party, number, dates, order reference, VAT by rate, the three
- # totals -, saved with F10 while the pièce is open, then the entries carrying its number as their
- # pièce reference, and where it came from. F7 shows the pièce over the whole window.
+ # A pièce's processing screen (gabarit P, design-ux.md §§ 3.5 and 4.3; maquette 1): the viewer on
+ # the left, kept in sight; on the right, in one form saved by F10, the read data, then the entry -
+ # proposed (each line marked amber until the student goes through it), an empty grid, or, once
+ # written, the entry in the brouillard -, then the card « Contrôles avant validation ». « Signaler
+ # une anomalie » opens its panel. F7 shows the pièce over the whole window.
  #}
 {% extends 'document/_layout.html.twig' %}
 
 {% set label = document.type.label ~ (document.number ? ' ' ~ document.number : '') %}
 {% set dossier_title = label %}
 {% set file_href = path('app_document_file', {dossier: dossier.id, id: document.id}) %}
-{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}, {combo: 'F7', verb: 'Pièce en grand'}] : [{combo: 'F7', verb: 'Pièce en grand'}] %}
+{% set status_keys = can_edit
+    ? [{combo: 'F10', verb: 'Enregistrer'}, {combo: 'Enter', verb: 'ligne suivante'}, {combo: 'F4', verb: 'chercher un compte'}, {combo: 'F7', verb: 'Pièce en grand'}]
+    : [{combo: 'F7', verb: 'Pièce en grand'}] %}
+{% set entry_rows = entry_form ? entry_form.lines : [] %}
 
 {% block page_head %}
     <twig:Px:PageHead title="{{ label }}" :trail="[
@@ -19,14 +23,19 @@
     ]">
         <twig:block name="badge"> <twig:Px:Badge :of="document.state"/></twig:block>
         <twig:block name="actions">
-            {% if can_edit %}<twig:Px:Button type="submit" variant="primary" form="document-reading" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>{% endif %}
+            {% if can_edit %}
+                <twig:Px:Button variant="quiet" data-px-open="document-anomaly">Signaler une anomalie</twig:Px:Button>
+                <twig:Px:Button type="submit" variant="primary" form="document-reading" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+            {% endif %}
         </twig:block>
     </twig:Px:PageHead>
 {% endblock %}
 
 {% block page %}
     {% if reading.errors is not empty %}
-        <twig:Px:Alert tone="danger">Les données lues ne sont pas enregistrées : {{ reading.errors|length > 1 ? reading.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+        <twig:Px:Alert tone="danger">Rien n’est enregistré : {{ reading.errors|length > 1 ? reading.errors|length ~ ' champs des données lues sont à corriger' : 'un champ des données lues est à corriger' }}.</twig:Px:Alert>
+    {% elseif check and check.errors is not empty %}
+        <twig:Px:Alert tone="danger">Rien n’est enregistré : {{ check.errors|first }}</twig:Px:Alert>
     {% endif %}
     <div class="px-split px-split--doc">
         <div class="px-document__viewer">
@@ -39,10 +48,11 @@
 
         <div class="px-stack">
             {% if can_edit %}
-                <form method="post" action="{{ path('app_document', {dossier: dossier.id, id: document.id}) }}" id="document-reading" novalidate data-controller="focus-error">
+                <form method="post" action="{{ path('app_document', {dossier: dossier.id, id: document.id}) }}" id="document-reading" novalidate data-controller="focus-error piece-entry" data-action="keydown->piece-entry#keydown">
                     <input type="hidden" name="_token" value="{{ csrf_token('document-' ~ document.id) }}">
+                    <div class="px-stack">
                     <twig:Px:Card title="Données lues" meta="{{ document.generated ? 'Lecture automatique : à contrôler.' : '' }}">
-                        <div class="px-fieldgrid">
+                        <div class="px-fieldgrid" data-action="change->piece-entry#readingChanged">
                             <twig:Px:Field id="type" label="Nature" :required="true" :error="reading.error('type')">
                                 <twig:Px:Select id="type" placeholder="Choisir la nature…" :options="type_options" value="{{ reading.type }}" :required="true" :error="reading.error('type')"/>
                             </twig:Px:Field>
@@ -63,7 +73,7 @@
                             </twig:Px:Field>
                         </div>
                         <h3 class="px-document__section">TVA par taux</h3>
-                        <div class="px-vatrows">
+                        <div class="px-vatrows" data-action="change->piece-entry#readingChanged">
                             {% for row in reading.vat %}
                                 {% set i = loop.index0 %}
                                 <twig:Px:Field id="vat_rate_{{ i }}" label="Taux" :error="reading.error('vat.' ~ i ~ '.rate')">
@@ -78,7 +88,7 @@
                             {% endfor %}
                         </div>
                         <h3 class="px-document__section">Totaux</h3>
-                        <div class="px-fieldgrid">
+                        <div class="px-fieldgrid" data-action="change->piece-entry#readingChanged">
                             <twig:Px:Field id="totalExcludingTax" label="Total HT">
                                 <twig:Px:AmountInput id="totalExcludingTax" :value="reading.totalExcludingTax" unit="€"/>
                             </twig:Px:Field>
@@ -90,6 +100,56 @@
                             </twig:Px:Field>
                         </div>
                     </twig:Px:Card>
+
+                    <div class="px-piece__stale" data-piece-entry-target="stale"{% if not stale %} hidden{% endif %}>
+                        <span>Les données lues ont changé : l’écriture n’est pas recalculée.</span>
+                        <twig:Px:Button type="submit" variant="quiet" size="sm" name="_action" value="rebuild" formnovalidate>Reprendre l’écriture depuis les données lues</twig:Px:Button>
+                    </div>
+
+                    <section class="px-card px-card--flush px-piece" aria-labelledby="piece-entry-title" data-piece-entry-target="card" data-next="{{ entry_rows|length }}">
+                        <header class="px-card__head">
+                            <h2 id="piece-entry-title">{{ proposed ? 'Écriture proposée' : 'Écriture' }}</h2>
+                            <small>{{ proposed ? 'Parcourez chaque ligne (Entrée) ou corrigez-la' : (behaviour.value == 'let_enter' ? 'Saisissez l’écriture de la pièce' : '') }}</small>
+                            <div class="px-card__actions"><twig:Px:Button size="sm" data-action="piece-entry#balance">Équilibrer <kbd class="px-kbd">+</kbd></twig:Px:Button></div>
+                        </header>
+                        <div class="px-piece__head">
+                            <twig:Px:Field id="entry_journal" label="Journal" :error="check ? check.error('journal') : null">
+                                <twig:Px:Select id="entry_journal" placeholder="Choisir…" :options="journal_options" value="{{ entry_form.journal }}" size="sm" :error="check ? check.error('journal') : null"/>
+                            </twig:Px:Field>
+                            <twig:Px:Field id="entry_date" label="Date" :error="check ? check.error('date') : null">
+                                <twig:Px:DateInput id="entry_date" :reference="dossier.dossierDate" :value="entry_form.date ? date(entry_form.date) : null" :error="check ? check.error('date') : null"/>
+                            </twig:Px:Field>
+                            <twig:Px:Field id="entry_document" label="N° de pièce" :error="check ? check.error('document') : null">
+                                <twig:Px:Input id="entry_document" value="{{ entry_form.document }}" size="sm" class="px-u-code" maxlength="60" autocomplete="off" spellcheck="false" :error="check ? check.error('document') : null"/>
+                            </twig:Px:Field>
+                            <twig:Px:Field id="entry_label" label="Libellé" :error="check ? check.error('label') : null">
+                                <twig:Px:Input id="entry_label" value="{{ entry_form.label }}" size="sm" maxlength="250" autocomplete="off" :error="check ? check.error('label') : null"/>
+                            </twig:Px:Field>
+                        </div>
+                        <table class="px-table px-tlines px-piece__lines" data-density="compact">
+                            <caption class="px-u-sr-only">Lignes de l’écriture</caption>
+                            <colgroup><col class="px-piece__col-account"><col><col class="px-piece__col-amount"><col class="px-piece__col-amount"><col class="px-tlines__col-remove"></colgroup>
+                            <thead><tr>
+                                <th scope="col">Compte</th><th scope="col">Intitulé</th>
+                                <th scope="col" class="px-u-right">Débit</th><th scope="col" class="px-u-right">Crédit</th><th scope="col"><span class="px-u-sr-only">Retirer</span></th>
+                            </tr></thead>
+                            {% for line in entry_rows %}
+                                {{ include('document/_entry_line.html.twig', {index: loop.index0, line: line, proposed: proposed and not line.blank, errors: check ? check.errors : {}}) }}
+                            {% endfor %}
+                            <template data-piece-entry-target="prototype">{{ include('document/_entry_line.html.twig', {index: '__N__', line: null, proposed: false, errors: {}}) }}</template>
+                            <tfoot><tr>
+                                <th scope="row" colspan="2">Totaux <span class="px-badge px-badge--neutral px-badge--dot" data-piece-entry-target="badge" aria-live="polite">—</span></th>
+                                <td class="px-u-num" data-piece-entry-target="debit"></td>
+                                <td class="px-u-num" data-piece-entry-target="credit"></td>
+                                <td></td>
+                            </tr></tfoot>
+                        </table>
+                        {% if check and check.error('lines') %}<p class="px-piece__problem">{{ check.error('lines') }}</p>{% endif %}
+                        {% if check and check.controls is not empty %}
+                            <twig:Px:Checks class="px-piece__controls" :items="check.controls|map(c => {state: c.blocking ? 'blocking' : 'warning', text: c.message})"/>
+                        {% endif %}
+                    </section>
+                    </div>
                 </form>
             {% else %}
                 <twig:Px:Card title="Données lues" meta="{{ document.generated ? 'Lecture automatique : à contrôler.' : '' }}">
@@ -108,12 +168,36 @@
                         <dt>Total TTC</dt><dd class="px-u-num">{{ document.totalIncludingTax ? document.totalIncludingTax|amount : '—' }}</dd>
                     </dl>
                 </twig:Px:Card>
+
+                {% if written %}
+                    {{ include('document/_written_entry.html.twig', {entry: written}) }}
+                {% elseif document.state.value == 'posted' %}
+                    <twig:Px:Card title="Écriture"><p class="px-u-muted">L’écriture de cette pièce a été supprimée du brouillard.</p></twig:Px:Card>
+                {% endif %}
             {% endif %}
 
-            <twig:Px:Card title="Écritures de la pièce" meta="{{ document.number ? 'portant la référence ' ~ document.number : '' }}" :flush="entries is not empty">
-                {% if entries is empty %}
-                    <p class="px-u-muted">{{ document.number ? 'Aucune écriture ne porte la référence de pièce ' ~ document.number ~ '.' : 'Saisissez le numéro de la pièce : ses écritures sont celles qui portent ce numéro comme référence de pièce.' }}</p>
-                {% else %}
+            {% if document.state.open or controls is not empty %}
+                <twig:Px:Card title="Contrôles avant validation" meta="Assistance : {{ level_label|lower }}">
+                    {% if controls is empty %}
+                        <p class="px-u-muted">{{ document.type.value in ['purchase_invoice', 'sales_invoice', 'credit_note'] ? 'Seul l’équilibre de l’écriture est contrôlé à ce niveau d’assistance.' : 'Aucun contrôle pour cette nature de pièce : l’équilibre de l’écriture seul.' }}</p>
+                    {% else %}
+                        <twig:Px:Checks :items="controls|map(c => {state: c.passed ? 'passed' : (c.blocking ? 'blocking' : 'warning'), text: c.message})"/>
+                    {% endif %}
+                </twig:Px:Card>
+            {% endif %}
+
+            {% if document.anomalies is not empty %}
+                <twig:Px:Card title="Anomalies signalées">
+                    <ul class="px-piece__anomalies">
+                        {% for anomaly in document.anomalies %}
+                            <li><b>{{ anomaly.nature.label }}</b> · {{ anomaly.outcome.label }}, le {{ anomaly.on|date_fr }}<br>{{ anomaly.comment }}</li>
+                        {% endfor %}
+                    </ul>
+                </twig:Px:Card>
+            {% endif %}
+
+            {% if entries is not empty %}
+                <twig:Px:Card title="Autres écritures de même référence" meta="portant la référence {{ document.number }}" :flush="true">
                     <twig:Px:Table caption="Écritures portant la référence {{ document.number }}">
                         <thead>
                             <tr>
@@ -136,8 +220,8 @@
                             {% endfor %}
                         </tbody>
                     </twig:Px:Table>
-                {% endif %}
-            </twig:Px:Card>
+                </twig:Px:Card>
+            {% endif %}
 
             <twig:Px:Card title="Arrivée">
                 <dl class="px-facts">
@@ -148,6 +232,25 @@
             </twig:Px:Card>
         </div>
     </div>
+
+    {% if can_edit %}
+        <twig:Px:Drawer id="document-anomaly" title="Signaler une anomalie">
+            <form method="post" action="{{ path('app_document_anomaly', {dossier: dossier.id, id: document.id}) }}" id="document-anomaly-form" class="px-stack" novalidate>
+                <input type="hidden" name="_token" value="{{ csrf_token('document-' ~ document.id) }}">
+                <p class="px-u-muted">Ce qui ne se corrige pas dans un champ : un doublon, une mention obligatoire absente, une erreur de calcul du fournisseur…</p>
+                <twig:Px:Field id="nature" label="Nature" :required="true">
+                    <twig:Px:Select id="nature" placeholder="Choisir la nature…" :options="nature_options" :required="true"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="comment" label="Commentaire" :required="true" hint="La justification de votre décision.">
+                    <twig:Px:Input id="comment" :area="true" :required="true" maxlength="500"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="outcome" label="Suite donnée" :required="true">
+                    <twig:Px:Select id="outcome" placeholder="Choisir la suite…" :options="outcome_options" :required="true"/>
+                </twig:Px:Field>
+            </form>
+            <twig:block name="foot"><twig:Px:Button type="submit" variant="primary" form="document-anomaly-form">Signaler</twig:Px:Button></twig:block>
+        </twig:Px:Drawer>
+    {% endif %}
 {% endblock %}
 
 {% block facts %}<span>{{ document.type.label }} · <b>{{ document.state.label }}</b></span>{% if document.totalIncludingTax %}<span>TTC · <b>{{ document.totalIncludingTax|amount }}</b></span>{% endif %}{% endblock %}

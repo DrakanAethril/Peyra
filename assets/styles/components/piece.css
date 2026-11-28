@@ -1,0 +1,80 @@
+/*
+ * A pièce's processing screen (gabarit P, maquette 1): the entry's head - journal, date, pièce
+ * number, label - in one row, then its lines in the template's dense table (px-tlines): the
+ * account's field and its label side by side across the Compte and Intitulé columns, the debit
+ * and the credit, the bin. A proposed line not yet gone through carries an amber edge
+ * (design-ux.md § 3.5). The banner offering to take the entry again from the read data sits
+ * between the two cards.
+ */
+@layer px.components {
+    .px-piece__head {
+        display: grid;
+        grid-template-columns: 9rem 10rem 10rem minmax(0, 1fr);
+        gap: var(--px-space-8) var(--px-space-12);
+        padding: var(--px-space-12) var(--px-space-16);
+    }
+
+    .px-piece__lines {
+        & .px-accountpicker {
+            display: grid;
+            grid-template-columns: 112px minmax(0, 1fr);
+            align-items: center;
+            column-gap: var(--px-space-12);
+        }
+
+        & .px-accountpicker .px-picker__chosen {
+            margin: 0;
+            color: var(--px-text);
+            font-size: var(--px-fs-13);
+        }
+
+        & .px-tlines__line.is-proposed > tr:first-child > td:first-child {
+            box-shadow: inset 3px 0 0 var(--px-warning);
+        }
+
+        & .px-tlines__line.is-proposed > tr:first-child > td {
+            background: var(--px-warning-row);
+        }
+
+        & tfoot th,
+        & tfoot td {
+            background: var(--px-surface-sunken);
+            font-weight: 600;
+        }
+    }
+
+    .px-piece__col-account { width: 112px; }
+    .px-piece__col-amount { width: 132px; }
+
+    .px-piece__problem {
+        margin: 0;
+        padding: var(--px-space-8) var(--px-space-16);
+        color: var(--px-danger-text);
+        font-size: var(--px-fs-12);
+    }
+
+    .px-piece__controls {
+        padding: var(--px-space-8) var(--px-space-16) var(--px-space-12);
+    }
+
+    .px-piece__stale {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--px-space-12);
+        padding: var(--px-space-6) var(--px-space-12);
+        border: 1px solid var(--px-border);
+        border-radius: var(--px-radius-md);
+        background: var(--px-surface-sunken);
+        color: var(--px-text-muted);
+        font-size: var(--px-fs-13);
+    }
+
+    .px-piece__anomalies {
+        display: grid;
+        gap: var(--px-space-8);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+}

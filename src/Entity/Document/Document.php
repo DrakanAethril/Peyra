@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Entity\Document;
 
+use App\Entity\Accounting\Entry;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\DossierOwned;
 use App\Entity\Dossier\DossierOwnedTrait;
 use App\Entity\Identity\User;
 use App\Entity\Shared\DossierFileKey;
 use App\Entity\ThirdParty\ThirdParty;
+use App\Enum\Document\AnomalyOutcome;
 use App\Enum\Document\DocumentState;
 use App\Enum\Document\DocumentType;
 use App\Repository\Document\DocumentRepository;
+use App\Service\Document\PieceAnomaly;
 use App\Service\Document\VatLine;
 use App\Service\Shared\Money;
 use Doctrine\DBAL\Types\Types;
@@ -25,8 +28,10 @@ use Doctrine\ORM\Mapping as ORM;
  * and the three totals (design-ux.md § 3.5). The read data are read, never computed: a pièce whose
  * total is wrong keeps the wrong total. Documents is the only writer.
  *
- * Its entries are not a column: the dossier's entries carrying its number as their pièce reference
- * are read (DocumentRepository's caller, the sheet).
+ * Its processing (step 2.2a) adds the entry proposed from the read data, kept on the pièce and
+ * distinct from the entry written (conception, « Piste A »), the entry written in the brouillard when
+ * the pièce is posted, and the anomalies the student reported. Other entries carrying its number as
+ * their pièce reference are read (the sheet).
  */
 #[ORM\Entity(repositoryClass: DocumentRepository::class)]
 #[ORM\Table(name: 'document')]
@@ -106,6 +111,30 @@ class Document implements DossierOwned
      */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $generation = null;
+
+    /**
+     * The entry proposed from the read data (PieceProposal::toArray(): journal, date, document,
+     * label, lines, and the read data it was made from), null until there were read data to
+     * propose from. Changing the read data never rewrites it: « Reprendre l'écriture depuis les
+     * données lues » does (design-ux.md § 3.5).
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $proposal = null;
+
+    /** The entry its posting wrote in the brouillard; null until posted, or once that draft was deleted. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?Entry $entry = null;
+
+    /**
+     * What the student reported on it (PieceAnomaly::toArray()), oldest first.
+     *
+     * @var list<array<string, mixed>>
+     */
+    #[ORM\Column(type: Types::JSON)]
+    private array $anomalies = [];
 
     public function __construct(Dossier $dossier, DocumentType $type, string $fileKey, string $fileName, string $mediaType, \DateTimeImmutable $receivedOn, ?User $depositedBy)
     {
@@ -243,5 +272,87 @@ class Document implements DossierOwned
         $this->totalExcludingTax = $totalExcludingTax;
         $this->totalVat = $totalVat;
         $this->totalIncludingTax = $totalIncludingTax;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function getProposal(): ?array
+    {
+        return $this->proposal;
+    }
+
+    /** @param array<string, mixed> $proposal */
+    public function propose(array $proposal): void
+    {
+        $this->proposal = $proposal;
+    }
+
+    public function getEntry(): ?Entry
+    {
+        return $this->entry;
+    }
+
+    /** Its entry is in the brouillard: the pièce is posted and its read data no longer change. */
+    public function posted(Entry $entry): void
+    {
+        if (!$this->state->isOpen()) {
+            throw new \LogicException('Only an open pièce is posted.');
+        }
+        $this->entry = $entry;
+        $this->state = DocumentState::Posted;
+    }
+
+    /** Worked on (its read data saved, its entry taken again, a reserve made): « En cours ». */
+    public function startProcessing(): void
+    {
+        if (DocumentState::ToProcess === $this->state) {
+            $this->state = DocumentState::InProgress;
+        }
+    }
+
+    /** @return list<PieceAnomaly> */
+    public function getAnomalies(): array
+    {
+        return array_map(PieceAnomaly::fromArray(...), $this->anomalies);
+    }
+
+    /** A rejected pièce is set aside (« Écartée »); one posted with a reserve stays open. */
+    public function reportAnomaly(PieceAnomaly $anomaly): void
+    {
+        if (!$this->state->isOpen()) {
+            throw new \LogicException('Only an open pièce takes an anomaly.');
+        }
+        $this->anomalies[] = $anomaly->toArray();
+        if (AnomalyOutcome::Reject === $anomaly->outcome) {
+            $this->state = DocumentState::Discarded;
+        } else {
+            $this->startProcessing();
+        }
+    }
+
+    /** The reason it was rejected: the comment of the anomaly that rejected it. */
+    public function getRejection(): ?PieceAnomaly
+    {
+        if (DocumentState::Discarded !== $this->state) {
+            return null;
+        }
+        foreach (array_reverse($this->getAnomalies()) as $anomaly) {
+            if (AnomalyOutcome::Reject === $anomaly->outcome) {
+                return $anomaly;
+            }
+        }
+
+        return null;
+    }
+
+    /** An anomaly was reported with « Comptabiliser avec réserve »: its controls no longer stop it. */
+    public function isPostedWithReserve(): bool
+    {
+        foreach ($this->getAnomalies() as $anomaly) {
+            if (AnomalyOutcome::PostWithReserve === $anomaly->outcome) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
