@@ -45,7 +45,7 @@ final readonly class TransactionRetry
      */
     public function run(callable $work): mixed
     {
-        for ($attempt = 1; ; ++$attempt) {
+        for ($attempt = 1;; ++$attempt) {
             $level = $this->connection->getTransactionNestingLevel();
             try {
                 return $work();

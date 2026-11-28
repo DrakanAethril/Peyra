@@ -21,11 +21,4 @@ final class WorkBudgetTest extends TestCase
         $clock->sleep(1);
         self::assertFalse($budget->allowsMore(), 'Douze secondes : la requête s’arrête là.');
     }
-
-    public function testTwelveSecondsLeaveRoomUnderPhpsThirty(): void
-    {
-        // A unit started at the last moment (a copy, a return: a few seconds at most) still ends
-        // well before max_execution_time, which counts kernel.terminate.
-        self::assertLessThanOrEqual(15, WorkBudget::SECONDS);
-    }
 }

@@ -25,16 +25,15 @@ final class TransactionRetryTest extends TestCase
     public function testADeadlockIsMadeAgain(): void
     {
         $calls = 0;
-        $result = $this->retry($this->connection())->run(function () use (&$calls): string {
+        $result = $this->retry($this->connection())->run(function () use (&$calls): int {
             if (1 === ++$calls) {
                 throw self::deadlock();
             }
 
-            return 'fait';
+            return $calls;
         });
 
-        self::assertSame('fait', $result);
-        self::assertSame(2, $calls);
+        self::assertSame(2, $result, 'Le second essai rend son résultat.');
     }
 
     public function testTheDeadlockHiddenBehindTheLostSavepointIsMadeAgainOnAFreshConnection(): void
@@ -70,16 +69,15 @@ final class TransactionRetryTest extends TestCase
     public function testItGivesUpAfterThreeAttempts(): void
     {
         $calls = 0;
+        $this->expectException(DeadlockException::class);
         try {
             $this->retry($this->connection())->run(function () use (&$calls): void {
                 ++$calls;
                 throw self::deadlock();
             });
-            self::fail('Trois verrous mortels de suite : la copie est dite en échec.');
-        } catch (DeadlockException) {
+        } finally {
+            self::assertSame(3, $calls, 'Trois verrous mortels de suite : la copie est dite en échec.');
         }
-
-        self::assertSame(3, $calls);
     }
 
     public function testAnyOtherFailureStopsAtOnce(): void
