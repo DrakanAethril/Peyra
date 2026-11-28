@@ -40,13 +40,15 @@
                             <td class="px-u-num">{{ row.result ? row.result.totals.employerCost|amount : '—' }}</td>
                             <td class="px-u-num">{{ p.validatedOn ? p.validatedOn|date_fr : '—' }}</td>
                             <td class="px-u-num">{{ p.sentOn ? p.sentOn|date_fr : '—' }}</td>
-                            <td class="px-u-num">
+                            <td>
+                                <div class="px-cluster">
                                 {% if p.validated %}
                                     <twig:Px:Button size="sm" href="{{ path('app_payroll_employee_payslip_pdf', {dossier: dossier.id, number: employee.registrationNumber, month: p.month|date('Y-m')}) }}" icon="file-text" target="_blank" data-turbo="false">{{ p.sentOn ? 'Duplicata PDF' : 'Aperçu PDF' }}</twig:Px:Button>
                                 {% endif %}
                                 {% if p.month == month_paid %}
                                     <twig:Px:Button size="sm" href="{{ path('app_payroll_payslip', {dossier: dossier.id, number: employee.registrationNumber}) }}">Ouvrir</twig:Px:Button>
                                 {% endif %}
+                                </div>
                             </td>
                         </tr>
                     {% endfor %}

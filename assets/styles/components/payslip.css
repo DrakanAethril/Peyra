@@ -42,6 +42,11 @@
         font-weight: var(--px-fw-semibold);
     }
 
+    .px-payslip__cell.is-missing {
+        background: var(--px-info-tint);
+        box-shadow: inset 0 0 0 1px var(--px-border-control);
+    }
+
     .px-payslip__cell.is-gap {
         background: var(--px-danger-tint);
         color: var(--px-danger-text);

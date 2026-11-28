@@ -1267,6 +1267,12 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   Payslip in JSON) and only that is read again; the year to date is the sum of the validated payslips' month
   figures. The month paid is the one after the last `PayrollMonthClosure`, else the dossier's date's. The
   « de / d’ » before a month is `of_period` (`FrenchFormat::ofPeriod()`).
+- **Established by the student** (step 4.4c): at B, A and 0 (`Assistance::calculatesPayslip()` false; a template
+  always calculates) every open cell is typed, shown empty until then, compared by `PayslipEntryCheck` with the
+  same payslip without forcings - a gap is said, never its value; a line's amounts and the totals wait for its
+  cells. A forced value equal to the calculation moves nothing (`PayslipForcing`). What a validated payslip read
+  (the employee, the terms, the exit) no longer moves (`ValidatedPayslipLocks`, in `EmployeeSheet`/`EmployeeExits`);
+  the last payslip's card is `LastPayslipEntries`; the reçu pour solde de tout compte reads it (`FinalSettlement`).
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

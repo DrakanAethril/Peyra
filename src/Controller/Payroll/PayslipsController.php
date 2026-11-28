@@ -8,6 +8,7 @@ use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
 use App\Entity\Payroll\Employee;
 use App\Entity\Payroll\MonthlyPayslip;
+use App\Enum\Dossier\DossierKind;
 use App\Enum\Payroll\PayslipStatus;
 use App\Security\Voter\DossierRightVoter;
 use App\Security\Voter\DossierVoter;
@@ -111,7 +112,7 @@ final class PayslipsController extends AbstractController
     public function payslip(Dossier $dossier, string $number, Request $request, PayslipBook $book, AssistanceLevels $levels, EntityManagerInterface $entityManager): Response
     {
         $this->readable($dossier);
-        $assistance = Assistance::at($levels->for($dossier));
+        $assistance = self::assistance($dossier, $levels);
         $month = $book->month($dossier);
         [$employees, $index] = $this->place($book, $dossier, $month, $number);
         $employee = $employees[$index];
@@ -137,11 +138,11 @@ final class PayslipsController extends AbstractController
             $errors = $read['errors'];
             $lines = PayslipLineCells::read($current['payslip']->rows ?? [], $plan, $adjustments, $cells, PostValue::stringsByKey($request, 'shown'));
             $errors += $lines['errors'];
-            $adjustments = $this->addedOrRemoved($request, $plan, $lines['adjustments'], $errors, $assistance->startsPayslipEmpty());
+            $adjustments = $this->addedOrRemoved($request, $plan, $lines['adjustments'], $errors, true === $assistance?->startsPayslipEmpty());
             if (null !== $read['elements'] && [] === $errors) {
                 $calculation = $book->calculate($employee, $month, $read['elements'], $plan, $adjustments);
                 if (null === $calculation['refusal']) {
-                    if (null === $payslip && null !== $calculation['payslip'] && $assistance->startsPayslipEmpty()) {
+                    if (null === $payslip && null !== $calculation['payslip'] && true === $assistance?->startsPayslipEmpty()) {
                         // Level 0: the payslip starts with no line, the student adds each rubrique (Inser).
                         foreach ($calculation['payslip']->rows as $row) {
                             $adjustments = $adjustments->withRemoved($row->code);
@@ -166,8 +167,8 @@ final class PayslipsController extends AbstractController
         $shown = null === $current['payslip'] ? [] : array_map(static fn (PayslipRow $row): string => $row->code, $current['payslip']->rows);
         // The cells stay those of the payslip as it stood when the post is refused: what was typed is shown in them.
         $grid = null === $current['payslip'] || true === $payslip?->isValidated() || !$this->isGranted(DossierRightVoter::PAYROLL_ENTER, $dossier) ? [] : $current['payslip']->rows;
-        [$open, $texts] = $this->openCells($grid, $specs, !$assistance->calculatesPayslip());
-        $check = null === $current['payslip'] || true === $payslip?->isValidated() ? null : $book->entryCheck($employee, $month, $elements, PayslipAdjustments::fromArray($payslip?->getAdjustments() ?? []), $current['payslip'], $plan, $assistance);
+        [$open, $texts] = $this->openCells($grid, $specs, false === $assistance?->calculatesPayslip());
+        $check = null === $current['payslip'] || null === $assistance || true === $payslip?->isValidated() ? null : $book->entryCheck($employee, $month, $elements, PayslipAdjustments::fromArray($payslip?->getAdjustments() ?? []), $current['payslip'], $plan, $assistance);
 
         return $this->render('payroll/payslip.html.twig', [
             'dossier' => $dossier,
@@ -203,7 +204,7 @@ final class PayslipsController extends AbstractController
     public function validate(Dossier $dossier, string $number, Request $request, PayslipBook $book, AssistanceLevels $levels, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $payslip = $this->stored($dossier, $number, $request, $book, 'payslip-validate-');
-        $refusal = $book->validate($payslip, $me, Assistance::at($levels->for($dossier)));
+        $refusal = $book->validate($payslip, $me, self::assistance($dossier, $levels));
         if (null !== $refusal) {
             $this->addFlash('payslip_fault', $refusal);
 
@@ -264,6 +265,15 @@ final class PayslipsController extends AbstractController
         $result = $book->resultOf($payslip)['payslip'] ?? throw new NotFoundHttpException('A frozen payslip reads.');
 
         return self::payslipPdf($renderer, $payslip, $result);
+    }
+
+    /**
+     * The level the payslip is established at (step 4.4c); none in a template, which the teacher
+     * prepares: its payslips are calculated by the tool.
+     */
+    private static function assistance(Dossier $dossier, AssistanceLevels $levels): ?Assistance
+    {
+        return DossierKind::Template === $dossier->getKind() ? null : Assistance::at($levels->for($dossier));
     }
 
     private function readable(Dossier $dossier): void

@@ -8,12 +8,16 @@ use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\SchoolYear;
 use App\Entity\Identity\User;
 use App\Entity\Payroll\PayrollEstablishment;
+use App\Enum\Accounting\AssistanceLevel;
 use App\Enum\Dossier\DossierKind;
 use App\Repository\Identity\SchoolYearRepository;
+use App\Repository\Payroll\EmployeeRepository;
 use App\Service\Dossier\DossierContext;
 use App\Service\Identity\SchoolClasses;
 use App\Service\Payroll\Employee\EmployeeDraft;
 use App\Service\Payroll\Employee\EmployeeSheet;
+use App\Service\Payroll\Exit\EmployeeExits;
+use App\Service\Payroll\Exit\ExitDraft;
 use App\Service\Payroll\Plan\PayrollPlanInstaller;
 use App\Service\Regulatory\RegulatorySync;
 use App\Tests\Support\BuildsSchool;
@@ -30,7 +34,8 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  * calculated (2 730,00 + 81,90 = 2 811,90 of gross pay) and « Calculé, à valider », and the card keeps
  * what was typed. Step 4.4b: a base forced in the grid, a rubrique removed, one the law makes due refused,
  * the validation that freezes the payslip, its sending, its cancellation, the closing of March - April
- * then reads March in its year to date - and its reopening, a teacher's alone.
+ * then reads March in its year to date - and its reopening, a teacher's alone. Inès works at level G,
+ * where the tool calculates the payslip (the other levels: PayslipEstablishedScreensTest).
  */
 final class PayslipScreensTest extends WebTestCase
 {
@@ -148,13 +153,119 @@ final class PayslipScreensTest extends WebTestCase
         self::assertSelectorTextContains('main tbody', 'Validé');
     }
 
+    /** Level B (step 4.4c): the cells are the student's to type, a gap is said without its value, and the validation waits. */
+    public function testAPayslipTheStudentEstablishes(): void
+    {
+        [$client, $dossier] = $this->school(AssistanceLevel::Blocking);
+        $payslip = $this->url($dossier, '/payroll/payslips/S010');
+        $crawler = $client->request('GET', $payslip);
+        $form = $crawler->filter('#payslip-elements')->form();
+        $form['rate[1010]'] = '3';
+        $client->submit($form);
+        $crawler = $client->followRedirect();
+
+        self::assertSelectorTextContains('main', 'Bulletin à établir');
+        $form = $crawler->filter('#payslip-elements')->form();
+        self::assertSame('', $form['cell[1000.base]']->getValue(), 'The calculation is not shown.');
+        self::assertSame('', $this->gross($crawler->filter('tr.px-table__subtotal')->first()->text()), 'Nor the gross pay before every cell is typed.');
+        self::assertCount(0, $crawler->filter('.px-kpi'));
+        self::assertStringNotContainsString('17,9996', (string) $client->getInternalResponse()->getContent());
+
+        $client->request('POST', $payslip.'/validate', ['_token' => $crawler->filter('form[action$="/validate"] input[name="_token"]')->attr('value')]);
+        $client->followRedirect();
+        self::assertSelectorTextContains('main', 'cellules du bulletin restent à saisir');
+
+        // 2 730,00 ÷ 151,67 = 17,9996: 151,67 is right, 18 is a gap - said, never corrected.
+        $form = $client->getCrawler()->filter('#payslip-elements')->form();
+        $form['cell[1000.base]'] = '151,67';
+        $form['cell[1000.employeeRate]'] = '18';
+        $client->submit($form);
+        $crawler = $client->followRedirect();
+        self::assertCount(1, $crawler->filter('input.is-gap'));
+        self::assertCount(1, $crawler->filter('input.is-gap[name="cell[1000.employeeRate]"]'));
+        self::assertSame('151,67', $crawler->filter('#payslip-elements')->form()['cell[1000.base]']->getValue());
+        self::assertSelectorTextContains('main', 'Une cellule diffère du calcul de l’outil');
+        self::assertStringNotContainsString('17,9996', (string) $client->getInternalResponse()->getContent());
+    }
+
+    /** Level 0 (step 4.4c): the payslip starts with no line, and the student adds and removes any rubrique. */
+    public function testAnEmptyPayslipAtLevelZero(): void
+    {
+        [$client, $dossier] = $this->school(AssistanceLevel::None);
+        $payslip = $this->url($dossier, '/payroll/payslips/S010');
+        $client->submit($client->request('GET', $payslip)->filter('#payslip-elements')->form());
+        $crawler = $client->followRedirect();
+        self::assertCount(0, $crawler->filter('tr[data-code]'));
+
+        $values = $crawler->filter('#payslip-elements')->form()->getPhpValues();
+        $client->request('POST', $payslip, $values + ['add' => '1000']);
+        $crawler = $client->followRedirect();
+        self::assertCount(1, $crawler->filter('tr[data-code="1000"]'));
+        self::assertSame('', $crawler->filter('#payslip-elements')->form()['cell[1000.base]']->getValue());
+        $client->request('POST', $payslip, $crawler->filter('#payslip-elements')->form()->getPhpValues() + ['remove' => '1000']);
+        $crawler = $client->followRedirect();
+        self::assertCount(0, $crawler->filter('tr[data-code]'), 'At level 0 even a due rubrique is removed.');
+    }
+
+    /** Step 4.4c: the last payslip's card, the receipt it gives once validated, and what it keeps from moving on the fiche. */
+    public function testTheLastPayslipAndItsReceipt(): void
+    {
+        [$client, $dossier] = $this->school();
+        $container = $client->getContainer();
+        $container->get(DossierContext::class)->within($dossier, static function () use ($container, $dossier): void {
+            $lucie = $container->get(EmployeeRepository::class)->findOneByNumber($dossier, 'S010') ?? throw new \LogicException('Lucie');
+            $draft = new ExitDraft();
+            [$draft->reason, $draft->notifiedOn, $draft->exitOn] = ['resignation', '2026-02-27', '2026-03-31'];
+            $exits = $container->get(EmployeeExits::class);
+            $exits->record($lucie, $exits->check($draft, $lucie) ?? throw new \LogicException(implode(' ', $draft->errors)), 'test');
+            $container->get(EntityManagerInterface::class)->flush();
+        });
+        $payslip = $this->url($dossier, '/payroll/payslips/S010');
+        $crawler = $client->request('GET', $payslip);
+        self::assertSelectorTextContains('main', 'Dernier bulletin du contrat');
+        $form = $crawler->filter('#payslip-elements')->form();
+        [$form['compensatoryLeave[hours]'], $form['compensatoryLeave[daysTaken]'], $form['compensatoryLeave[daysAcquired]'], $form['compensatoryLeave[referenceGross]']] = ['35', '5', '25', '27300'];
+        $client->submit($form);
+        $crawler = $client->followRedirect();
+        // Kept: 35 h × 17,9996 = 629,99; tenth: (27 300,00 + 2 730,00) × 5 ÷ 25 = 6 006,00 × 10 % = 600,60. The better: 629,99.
+        self::assertStringContainsString('629,99', $crawler->filter('tr[data-code="1320"]')->text());
+
+        $client->request('GET', $this->url($dossier, '/payroll/employees/S010/final-settlement.pdf'));
+        self::assertResponseStatusCodeSame(404);
+        $client->request('POST', $payslip.'/validate', ['_token' => $crawler->filter('form[action$="/validate"] input[name="_token"]')->attr('value')]);
+        $crawler = $client->request('GET', $this->url($dossier, '/payroll/employees/S010/exit'));
+        self::assertSelectorTextContains('main', 'Générer le reçu pour solde de tout compte');
+        $client->request('GET', $this->url($dossier, '/payroll/employees/S010/final-settlement.pdf'));
+        self::assertResponseHeaderSame('Content-Type', 'application/pdf');
+
+        // The exit the payslip read no longer moves; the employee is not deleted.
+        $client->request('POST', $this->url($dossier, '/payroll/employees/S010/exit/cancel'), ['_token' => $crawler->filter('#exit-cancel input[name="_token"]')->attr('value')]);
+        $client->followRedirect();
+        self::assertSelectorTextContains('body', 'Le bulletin de mars 2026 est validé');
+        $crawler = $client->request('GET', $this->url($dossier, '/payroll/employees/S010'));
+        $client->request('POST', $this->url($dossier, '/payroll/employees/S010/delete'), ['_token' => $crawler->filter('#employee-delete input[name="_token"]')->attr('value')]);
+        $client->followRedirect();
+        self::assertSelectorTextContains('body', 'Ce salarié a des bulletins validés');
+
+        // The fiche's tabs read it.
+        $client->request('GET', $this->url($dossier, '/payroll/employees/S010/payslips'));
+        self::assertSelectorTextContains('main tbody', 'Mars 2026');
+        self::assertSelectorTextContains('main tbody', 'Validé');
+        $client->request('GET', $this->url($dossier, '/payroll/employees/S010/payslips/2026-03.pdf'));
+        self::assertResponseHeaderSame('Content-Type', 'application/pdf');
+        $client->request('GET', $this->url($dossier, '/payroll/employees/S010/year-to-date'));
+        self::assertSelectorTextContains('main', 'Cumuls de l’année après mars 2026');
+        $client->request('GET', $this->url($dossier, '/payroll/employees/S010/absences'));
+        self::assertSelectorTextContains('main', 'Aucune absence en 2026.');
+    }
+
     private function gross(string $text): string
     {
         return (string) preg_replace('/\D/', '', $text);
     }
 
     /** @return array{KernelBrowser, Dossier} the client signed in as ines.morel, her dossier */
-    private function school(): array
+    private function school(AssistanceLevel $level = AssistanceLevel::Guided): array
     {
         $client = static::createClient();
         $client->disableReboot();
@@ -169,6 +280,7 @@ final class PayslipScreensTest extends WebTestCase
         $ines = $this->account($client, 'ines.morel');
         $year = $client->getContainer()->get(SchoolYearRepository::class)->findCurrent();
         \assert($ines instanceof User && $year instanceof SchoolYear);
+        $ines->setAssistanceLevel($level);
         $dossier = $this->savedDossier(DossierKind::Student, $ines, $year);
         $container = $client->getContainer();
         $container->get(RegulatorySync::class)->run(new \DateTimeImmutable('2026-11-28 10:00'));
