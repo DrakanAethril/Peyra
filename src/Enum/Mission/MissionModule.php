@@ -50,7 +50,7 @@ enum MissionModule: string
             'payments' => 'receipts' === ($match[2] ?? '') ? self::Sales : self::Purchases,
             'accounting' => self::Accounting,
             'bank' => self::Bank,
-            'closing' => self::Closing,
+            'closing', 'assets' => self::Closing,
             'payroll' => self::Payroll,
             default => null,
         };

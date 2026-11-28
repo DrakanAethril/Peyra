@@ -301,6 +301,15 @@ enum AuditAction: string
 
     case MissionGiven = 'mission.given';
 
+    /** A fixed asset's fiche created (step 3.4). */
+    case FixedAssetCreated = 'assets.fixed_asset_created';
+
+    /** A fixed asset's fiche changed. */
+    case FixedAssetChanged = 'assets.fixed_asset_changed';
+
+    /** A fixed asset's fiche deleted. */
+    case FixedAssetDeleted = 'assets.fixed_asset_deleted';
+
     public function label(): string
     {
         return match ($this) {
@@ -415,6 +424,9 @@ enum AuditAction: string
             self::MissionCreated => 'Mission créée',
             self::MissionChanged => 'Mission modifiée',
             self::MissionGiven => 'Mission donnée',
+            self::FixedAssetCreated => 'Immobilisation créée',
+            self::FixedAssetChanged => 'Immobilisation modifiée',
+            self::FixedAssetDeleted => 'Immobilisation supprimée',
         };
     }
 }

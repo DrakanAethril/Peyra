@@ -13,6 +13,7 @@ use App\Enum\Audit\AuditAction;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntryLineRepository;
 use App\Repository\Accounting\JournalRepository;
+use App\Repository\Assets\FixedAssetRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
 use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Audit\AuditTrail;
@@ -42,6 +43,7 @@ final readonly class AccountSheet
         private ThirdPartyRepository $thirdParties,
         private EntryLineRepository $lines,
         private AssistanceLevels $assistance,
+        private FixedAssetRepository $fixedAssets,
     ) {
     }
 
@@ -220,6 +222,10 @@ final readonly class AccountSheet
             return 1 === \count($thirdParties)
                 ? \sprintf('Ce compte porte le tiers %s : placez-le d’abord sur un autre compte.', $thirdParties[0]->getCode())
                 : \sprintf('Ce compte porte %d tiers (%s…) : placez-les d’abord sur un autre compte.', \count($thirdParties), $thirdParties[0]->getCode());
+        }
+        $assets = $this->fixedAssets->codesOnAccount($account);
+        if ([] !== $assets) {
+            return \sprintf('Ce compte tient l’immobilisation %s : changez d’abord le compte de sa fiche.', implode(', ', $assets));
         }
 
         return null;

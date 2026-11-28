@@ -1,0 +1,173 @@
+{#
+ # The fiche of a fixed asset (step 3.4, gabarit F; design-ux.md § 3.2 « Immobilisations »): what it
+ # is and where it is kept, its cost of entry, how it is depreciated (method, length, residual value,
+ # the fiscal declining plan beside a linear one, the components, the units of work consumed), and
+ # its depreciation plan as a card - calculated at levels G, B and A and for a teacher. F10 saves;
+ # whoever only reads sees the facts and the plan.
+ #}
+{% extends 'closing/_layout.html.twig' %}
+
+{% set closing_tab = 'assets' %}
+{% set can_edit = is_granted('ASSETS_ENTER', dossier) %}
+{% set dossier_title = asset ? 'Immobilisation ' ~ asset.code : 'Nouvelle immobilisation' %}
+{% set status_keys = can_edit ? [{combo: 'F10', verb: 'Enregistrer'}, {combo: 'F4', verb: 'Liste des comptes'}] : [] %}
+{% set origin_options = origins|map(o => {value: o.value, label: o.label}) %}
+{% set method_options = methods|map(m => {value: m.value, label: m.label}) %}
+{% set fiche_url = asset ? path('app_assets_fiche', {dossier: dossier.id, code: asset.code}) : path('app_assets_new', {dossier: dossier.id}) %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="{{ asset ? asset.code ~ ' · ' ~ asset.label : 'Nouvelle immobilisation' }}" :trail="[
+        {label: 'Immobilisations et clôture', href: path('app_assets', {dossier: dossier.id})},
+        {label: 'Immobilisations', href: path('app_assets', {dossier: dossier.id})},
+        {label: asset ? asset.code : 'Nouvelle immobilisation', href: fiche_url},
+    ]">
+        <twig:block name="actions">
+            {% if can_edit %}
+                {% if asset %}<twig:Px:ConfirmButton label="Supprimer l’immobilisation" confirmLabel="Confirmer la suppression" icon="trash-2" type="submit" form="asset-delete"/>{% endif %}
+                <twig:Px:Button type="submit" variant="primary" form="asset-form" shortcut="F10 Ctrl+S">Enregistrer</twig:Px:Button>
+            {% endif %}
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if draft.errors is not empty %}
+        <twig:Px:Alert tone="danger">L’immobilisation n’est pas enregistrée : {{ draft.errors|length > 1 ? draft.errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+
+    {% if can_edit %}
+        <form method="post" action="{{ fiche_url }}" id="asset-form" novalidate data-controller="focus-error">
+            <input type="hidden" name="_token" value="{{ csrf_token(asset ? 'fixed-asset-' ~ asset.id : 'fixed-asset-new-' ~ dossier.id) }}">
+            <div class="px-stack">
+                <twig:Px:Card title="Immobilisation">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="code" label="Code" :required="true" hint="1 à 12 lettres ou chiffres : I01, MAT2026." :error="draft.error('code')">
+                            <twig:Px:Input id="code" value="{{ draft.code }}" :required="true" hint="1" :error="draft.error('code')" class="px-u-code" maxlength="12" autocomplete="off" spellcheck="false" autofocus/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="label" label="Intitulé" :required="true" :wide="true" :error="draft.error('label')">
+                            <twig:Px:Input id="label" value="{{ draft.label }}" :required="true" :error="draft.error('label')" maxlength="120" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="origin" label="Origine" :required="true" :error="draft.error('origin')">
+                            <twig:Px:Select id="origin" placeholder="Choisir l’origine…" :options="origin_options" value="{{ draft.origin }}" :required="true" :error="draft.error('origin')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="account" label="Compte d’immobilisation" :required="true" hint="Classe 2 ; F4 ouvre la liste." :error="draft.error('account')">
+                            <twig:Px:AccountPicker id="account" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" nature="fixed_asset" value="{{ draft.account }}" accountLabel="{{ account_label ?? '' }}" hint="1" :error="draft.error('account')" listLabel="Comptes d’immobilisation"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="supplier" label="Fournisseur" hint="Code ou code auxiliaire (404MBIN), pour une acquisition." :error="draft.error('supplier')">
+                            <twig:Px:Input id="supplier" value="{{ draft.supplier }}" hint="1" :error="draft.error('supplier')" class="px-u-code" maxlength="17" autocomplete="off" spellcheck="false"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="document" label="Pièce" hint="La facture d’acquisition." :error="draft.error('document')">
+                            <twig:Px:Input id="document" value="{{ draft.document }}" hint="1" :error="draft.error('document')" class="px-u-code" maxlength="40" autocomplete="off" spellcheck="false"/>
+                        </twig:Px:Field>
+                    </div>
+                </twig:Px:Card>
+
+                <twig:Px:Card title="Coût d’entrée">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="acquiredOn" label="Date d’acquisition" :required="true" :error="draft.error('acquiredOn')">
+                            <twig:Px:DateInput id="acquiredOn" :reference="dossier.dossierDate" :value="draft.date('acquiredOn')" :required="true" :error="draft.error('acquiredOn')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="inServiceOn" label="Date de mise en service" :required="true" :error="draft.error('inServiceOn')">
+                            <twig:Px:DateInput id="inServiceOn" :reference="dossier.dossierDate" :value="draft.date('inServiceOn')" :required="true" :error="draft.error('inServiceOn')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="price" label="Prix d’acquisition HT ou coût de production" :required="true" :error="draft.error('price')">
+                            <twig:Px:AmountInput id="price" :value="draft.price" :required="true" :error="draft.error('price')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="incidentalCosts" label="Frais accessoires HT" hint="Transport, installation, formation…" :error="draft.error('incidentalCosts')">
+                            <twig:Px:AmountInput id="incidentalCosts" :value="draft.incidentalCosts" hint="1" :error="draft.error('incidentalCosts')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="vat" label="TVA" hint="La TVA de l’acquisition." :error="draft.error('vat')">
+                            <twig:Px:AmountInput id="vat" :value="draft.vat" hint="1" :error="draft.error('vat')"/>
+                        </twig:Px:Field>
+                    </div>
+                </twig:Px:Card>
+
+                <twig:Px:Card title="Amortissement">
+                    <div class="px-fieldgrid">
+                        <twig:Px:Field id="method" label="Mode" :required="true" :error="draft.error('method')">
+                            <twig:Px:Select id="method" placeholder="Choisir le mode…" :options="method_options" value="{{ draft.method }}" :required="true" :error="draft.error('method')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="years" label="Durée d’utilisation (ans)" hint="Linéaire ou dégressif ; sans objet par composants." :error="draft.error('years')">
+                            <twig:Px:Input id="years" value="{{ draft.years }}" hint="1" :error="draft.error('years')" class="px-u-num" maxlength="2" inputmode="numeric" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="totalUnits" label="Unités d’œuvre au total" hint="Pour le mode par unités d’œuvre." :error="draft.error('totalUnits')">
+                            <twig:Px:Input id="totalUnits" value="{{ draft.totalUnits }}" hint="1" :error="draft.error('totalUnits')" class="px-u-num" maxlength="9" inputmode="numeric" autocomplete="off"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="residualValue" label="Valeur résiduelle" :error="draft.error('residualValue')">
+                            <twig:Px:AmountInput id="residualValue" :value="draft.residualValue" :error="draft.error('residualValue')"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="depreciationAccount" label="Compte d’amortissement" hint="28… ; F4 ouvre la liste." :error="draft.error('depreciationAccount')">
+                            <twig:Px:AccountPicker id="depreciationAccount" url="{{ path('app_accounting_account_search', {dossier: dossier.id}) }}" nature="depreciation" value="{{ draft.depreciationAccount }}" accountLabel="{{ depreciation_label ?? '' }}" hint="1" :error="draft.error('depreciationAccount')" listLabel="Comptes d’amortissement"/>
+                        </twig:Px:Field>
+                        <twig:Px:Field id="fiscalDeclining" label="Plan fiscal" :wide="true" :error="draft.error('fiscalDeclining')">
+                            <label class="px-check"><input type="checkbox" name="fiscalDeclining" value="1"{% if draft.fiscalDeclining %} checked{% endif %}{% if draft.error('fiscalDeclining') %} aria-invalid="true" aria-describedby="fiscalDeclining_error"{% endif %}> <span>Dégressif fiscal à côté du linéaire : l’écart est l’amortissement dérogatoire</span></label>
+                        </twig:Px:Field>
+                    </div>
+                </twig:Px:Card>
+
+                <twig:Px:Card title="Composants">
+                    <p class="px-u-muted">Approche par composants : chaque composant s’amortit en linéaire sur sa durée ; leurs valeurs font ensemble le coût d’entrée.</p>
+                    {% if draft.error('components') %}<p class="px-field__error" id="components_error">{{ draft.error('components') }}</p>{% endif %}
+                    <twig:Px:Table caption="Composants" :rows="false">
+                        <thead>
+                            <tr>
+                                <th scope="col">Composant</th>
+                                <th scope="col" class="px-u-right">Valeur</th>
+                                <th scope="col" class="px-u-right">Durée (ans)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for component in component_slots %}
+                                {% set at = 'component.' ~ loop.index0 ~ '.' %}
+                                <tr>
+                                    <td><twig:Px:Input id="components_{{ loop.index0 }}_label" name="components[{{ loop.index0 }}][label]" value="{{ component.label }}" :error="draft.error(at ~ 'label')" maxlength="80" autocomplete="off" aria-label="Composant {{ loop.index }}"/></td>
+                                    <td><twig:Px:AmountInput id="components_{{ loop.index0 }}_cost" name="components[{{ loop.index0 }}][cost]" :value="component.cost" :error="draft.error(at ~ 'cost')" aria-label="Valeur du composant {{ loop.index }}"/></td>
+                                    <td><twig:Px:Input id="components_{{ loop.index0 }}_years" name="components[{{ loop.index0 }}][years]" value="{{ component.years }}" :error="draft.error(at ~ 'years')" class="px-u-num" maxlength="2" inputmode="numeric" autocomplete="off" aria-label="Durée du composant {{ loop.index }}"/></td>
+                                </tr>
+                                {% for field in ['label', 'cost', 'years'] %}{% if draft.error(at ~ field) %}<tr><td colspan="3" class="px-field__error">Composant {{ loop.parent.loop.index }} : {{ draft.error(at ~ field) }}</td></tr>{% endif %}{% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </twig:Px:Table>
+                </twig:Px:Card>
+
+                {% if unit_windows is not empty %}
+                    <twig:Px:Card title="Unités d’œuvre consommées">
+                        {% if draft.error('units') %}<p class="px-field__error" id="units_error">{{ draft.error('units') }}</p>{% endif %}
+                        <twig:Px:Table caption="Unités d’œuvre consommées par exercice" :rows="false">
+                            <thead><tr><th scope="col">Exercice clos le</th><th scope="col" class="px-u-right">Unités consommées</th></tr></thead>
+                            <tbody>
+                                {% for window in unit_windows %}
+                                    {% set day = window.end|date('Y-m-d') %}
+                                    <tr>
+                                        <td class="px-u-num">{{ window.end|date_fr }}</td>
+                                        <td><twig:Px:Input id="units_{{ day }}" name="units[{{ day }}]" value="{{ draft.unitsUsed[day] ?? '' }}" class="px-u-num" maxlength="9" inputmode="numeric" autocomplete="off" aria-label="Unités consommées, exercice clos le {{ window.end|date_fr }}"/></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </twig:Px:Table>
+                    </twig:Px:Card>
+                {% endif %}
+            </div>
+        </form>
+        {% if asset %}
+            <form method="post" action="{{ path('app_assets_delete', {dossier: dossier.id, code: asset.code}) }}" id="asset-delete" hidden>
+                <input type="hidden" name="_token" value="{{ csrf_token('fixed-asset-delete-' ~ asset.id) }}">
+            </form>
+        {% endif %}
+    {% else %}
+        <twig:Px:Card title="Immobilisation">
+            <dl class="px-facts">
+                <dt>Compte</dt><dd><span class="px-u-code">{{ asset.account.number }}</span> {{ asset.account.label }}</dd>
+                <dt>Origine</dt><dd>{{ asset.origin.label }}</dd>
+                <dt>Acquisition</dt><dd>{{ asset.acquiredOn|date_fr }}{% if asset.supplier %} · {{ asset.supplier.name }}{% endif %}{% if asset.document %} · <span class="px-u-code">{{ asset.document }}</span>{% endif %}</dd>
+                <dt>Mise en service</dt><dd>{{ asset.inServiceOn|date_fr }}</dd>
+                <dt>Coût d’entrée</dt><dd class="px-u-num">{{ asset.cost|amount_eur }}</dd>
+                <dt>Mode</dt><dd>{{ asset.method.label }}{% if asset.years %}, {{ asset.years }} ans{% endif %}</dd>
+            </dl>
+        </twig:Px:Card>
+    {% endif %}
+
+    {% if asset %}
+        {{ include('assets/_plan.html.twig') }}
+    {% endif %}
+{% endblock %}

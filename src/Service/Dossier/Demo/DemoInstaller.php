@@ -37,6 +37,7 @@ use App\Service\Accounting\Subscription\SubscriptionSheet;
 use App\Service\Accounting\Template\StandardTemplates;
 use App\Service\Accounting\Template\TemplateFile;
 use App\Service\Accounting\Template\TemplateSheet;
+use App\Service\Assets\FixedAssetSheet;
 use App\Service\Audit\AuditTrail;
 use App\Service\Banking\Reconciliation\Pointings;
 use App\Service\Banking\Rule\BankRules;
@@ -88,6 +89,7 @@ final readonly class DemoInstaller
         private Ledger $ledger,
         private TemplateSheet $templateSheet,
         private StandardTemplates $standardTemplates,
+        private FixedAssetSheet $fixedAssetSheet,
         private SubscriptionSheet $subscriptionSheet,
         private SubscriptionRun $subscriptionRun,
         private Lettering $lettering,
@@ -136,6 +138,7 @@ final readonly class DemoInstaller
         $thirdPartyFile = DemoThirdPartyFile::read($this->directory.'/third_parties.yaml');
         $entryFile = DemoEntryFile::read($this->directory.'/entries.yaml');
         $templateFile = TemplateFile::read($this->directory.'/templates.yaml');
+        $fixedAssetFile = DemoFixedAssetFile::read($this->directory.'/fixed_assets.yaml');
         $subscriptionFile = DemoSubscriptionFile::read($this->directory.'/subscriptions.yaml');
         $letteringFile = DemoLetteringFile::read($this->directory.'/letterings.yaml');
         $payrollFile = DemoPayrollFile::read($this->directory.'/payroll.yaml');
@@ -177,6 +180,7 @@ final readonly class DemoInstaller
         $this->installEntries($dossierId, $entryFile, $actor, $payrollEntries);
         $dossier = $this->fresh($dossierId);
         $this->context->within($dossier, fn () => $this->installTemplates($dossier, $templateFile, $actor));
+        $this->context->within($dossier, fn () => $this->installFixedAssets($dossier, $fixedAssetFile, $actor));
         $this->context->within($dossier, fn () => $this->installSubscriptions($dossier, $subscriptionFile, $actor, $at));
         $this->context->within($dossier, fn () => $this->installLetterings($dossier, $letteringFile, $actor));
         $this->context->within($dossier, fn () => $this->installSales($dossier, $salesFile, $actor));
@@ -449,6 +453,20 @@ final readonly class DemoInstaller
         }
         // Then those every dossier receives (constitution, capital, allocation of the result).
         $this->standardTemplates->install($dossier, $actor);
+    }
+
+    /** Its fixed assets (step 3.4), each checked as the fiche checks it: a fault names the code and installs nothing. */
+    private function installFixedAssets(Dossier $dossier, DemoFixedAssetFile $file, string $actor): void
+    {
+        foreach ($file->drafts as $draft) {
+            $values = $this->fixedAssetSheet->check($draft, $dossier);
+            if (null === $values) {
+                throw new \InvalidArgumentException(\sprintf('fixed_assets.yaml : %s : %s', $draft->code, implode(' ', $draft->errors)));
+            }
+            $this->fixedAssetSheet->create($dossier, $values, $actor);
+            // Flushed one by one: the next one's code is checked against the database.
+            $this->entityManager->flush();
+        }
     }
 
     /**

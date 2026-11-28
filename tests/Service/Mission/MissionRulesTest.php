@@ -41,6 +41,7 @@ final class MissionRulesTest extends TestCase
         self::assertSame(MissionModule::Accounting, MissionModule::ofPath('/d/12/accounting/entry'));
         self::assertSame(MissionModule::Documents, MissionModule::ofPath('/d/12/documents/4'));
         self::assertSame(MissionModule::Payroll, MissionModule::ofPath('/d/12/payroll/payslips'));
+        self::assertSame(MissionModule::Closing, MissionModule::ofPath('/d/12/assets'));
         self::assertNull(MissionModule::ofPath('/d/12'));
         self::assertNull(MissionModule::ofPath('/d/12/company'));
         self::assertNull(MissionModule::ofPath('/d/12/restore-points'));
