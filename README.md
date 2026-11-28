@@ -91,7 +91,10 @@ lecture ou en modification) et ceux de la bibliothèque commune ; chacun a sa fi
 visé, processus couverts, description), se duplique, se partage et se supprime après un
 récapitulatif ; un nouveau modèle part d'un dossier vide (société, exercice, plan de référence et
 cinq journaux posés) ou de la copie d'un autre. Toute copie de dossier passe par un seul copieur,
-éprouvé par un test qui compare le dossier de démonstration et sa copie table par table. Les plans comptables de référence (PCG 2026, PCG 2025, PCG antérieur), lus dans
+éprouvé par un test qui compare le dossier de démonstration et sa copie table par table. Dans un
+dossier, Système d'information › Points de restauration pose un point (une copie faite en
+arrière-plan, dix au plus) et y revient après un récapitulatif : le dossier reprend l'état du point
+en une transaction, ses onglets ouverts attendent sur une page d'attente puis se rechargent. Les plans comptables de référence (PCG 2026, PCG 2025, PCG antérieur), lus dans
 les textes de l'ANC, sont dans `fixtures/pcg/`.
 
 La pile de développement : `php` (FrankenPHP et Caddy), `database` (MariaDB, comme en

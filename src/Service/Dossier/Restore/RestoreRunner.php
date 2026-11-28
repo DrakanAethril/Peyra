@@ -8,7 +8,6 @@ use App\Entity\Dossier\Dossier;
 use App\Repository\Dossier\DossierRestorationRepository;
 use App\Repository\Dossier\RestorePointRepository;
 use App\Service\Dossier\DossierLive;
-use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
@@ -29,7 +28,6 @@ final readonly class RestoreRunner
     public function __construct(
         private LockFactory $locks,
         private EntityManagerInterface $entityManager,
-        private Connection $connection,
         private ManagerRegistry $registry,
         private RestorePointRepository $points,
         private DossierRestorationRepository $restorations,
@@ -136,12 +134,12 @@ final readonly class RestoreRunner
         }
     }
 
-    /** After a failure: no transaction left open, an entity manager that flushes again, nothing stale in it. */
+    /**
+     * After a failure: an entity manager that flushes again, nothing stale in it. The transactions
+     * were rolled back by the `transactional()` that opened them.
+     */
     private function recover(): void
     {
-        while ($this->connection->isTransactionActive()) {
-            $this->connection->rollBack();
-        }
         if ($this->entityManager->isOpen()) {
             $this->entityManager->clear();
         } else {

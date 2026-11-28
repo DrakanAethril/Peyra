@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Dossier\Copy;
 
 use App\Entity\Dossier\Dossier;
+use App\Entity\Dossier\RestorePoint;
 use App\Enum\Dossier\CopyKind;
 use App\Service\Shared\Storage\DossierFiles;
 use Doctrine\DBAL\Connection;
@@ -76,12 +77,13 @@ final readonly class DossierEraser
     public function deleteDossier(Dossier $dossier): void
     {
         $id = $dossier->getId() ?? throw new \LogicException('A saved dossier is deleted.');
-        $snapshots = $this->connection->fetchFirstColumn('SELECT snapshot_id FROM restore_point WHERE dossier_id = ? ORDER BY id', [$id], [ParameterType::INTEGER]);
-        foreach ($snapshots as $snapshotId) {
-            $snapshot = is_numeric($snapshotId) ? $this->entityManager->find(Dossier::class, (int) $snapshotId) : null;
-            if ($snapshot instanceof Dossier) {
-                $this->deleteDossier($snapshot);
-            }
+        $points = $this->entityManager->getRepository(RestorePoint::class)->findBy(['dossier' => $dossier]);
+        foreach ($points as $point) {
+            $this->entityManager->remove($point);
+        }
+        $this->entityManager->flush();
+        foreach ($points as $point) {
+            $this->deleteDossier($point->getSnapshot());
         }
         $this->connection->transactional(function () use ($dossier, $id): void {
             $this->delete($this->plan->ownedTables(), $id);
