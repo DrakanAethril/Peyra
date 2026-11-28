@@ -42,7 +42,7 @@ final class DevDossiersCommandTest extends KernelTestCase
 
         $dossiers = self::getContainer()->get(DossierRepository::class)->findForStudent($manon);
         self::assertCount(1, $dossiers);
-        self::assertSame($year, $dossiers[0]->getSchoolYear());
+        self::assertSame($year->getId(), $dossiers[0]->getSchoolYear()?->getId(), 'The install clears the entity manager: compared by id.');
         self::assertTrue($dossiers[0]->getSourceTemplate()?->isTemplate());
     }
 }

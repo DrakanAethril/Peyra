@@ -59,21 +59,21 @@ final class DossierCopierTest extends KernelTestCase
 
         self::getContainer()->get(DossierContext::class)->within($this->source, function () use ($entityManager, $at): void {
             $journals = self::getContainer()->get(JournalRepository::class);
-            $january = self::getContainer()->get(PeriodRepository::class)->findAt($this->source, new \DateTimeImmutable('2026-01-15'));
+            $march = self::getContainer()->get(PeriodRepository::class)->findAt($this->source, new \DateTimeImmutable('2026-03-15'));
             $purchases = $journals->findOneByCode($this->source, 'ACH');
-            self::assertNotNull($january);
+            self::assertNotNull($march);
             self::assertNotNull($purchases);
             $entries = self::getContainer()->get(EntryRepository::class);
-            $draft = $entries->findDrafts($purchases, $january)[0] ?? throw new \LogicException('The demonstration has drafts in ACH.');
+            $draft = $entries->findDrafts($purchases, $march)[0] ?? throw new \LogicException('The demonstration has drafts in ACH.');
             // A person's pending work: the draft being rewritten, and a new entry left unbalanced.
-            self::getContainer()->get(PendingEntries::class)->keep($purchases, $january, $this->teacher, [
-                new GridGroup('a', $draft->getId(), '2026-01-20', $draft->getDocument(), [new GridLine('606100', '', 'Fournitures', 1000), new GridLine('401000', '', 'Fournitures', 0, 1000)]),
-                new GridGroup('b', null, '2026-01-21', 'F-NEW', [new GridLine('606100', '', 'Laissée', 500)]),
+            self::getContainer()->get(PendingEntries::class)->keep($purchases, $march, $this->teacher, [
+                new GridGroup('a', $draft->getId(), '2026-03-20', $draft->getDocument(), [new GridLine('606100', '', 'Fournitures', 1000), new GridLine('401000', '', 'Fournitures', 0, 1000)]),
+                new GridGroup('b', null, '2026-03-21', 'F-NEW', [new GridLine('606100', '', 'Laissée', 500)]),
             ], null, $at);
             $entityManager->flush();
             // A reversal: an entry pointing at another of its table.
-            $validated = array_values(array_filter($entries->findInJournalPeriod($purchases, $january), static fn (Entry $entry): bool => EntryState::Validated === $entry->getState()))[0];
-            self::getContainer()->get(Ledger::class)->reverse($validated, new \DateTimeImmutable('2026-01-31'), $this->teacher);
+            $validated = array_values(array_filter($entries->findInJournalPeriod($purchases, $march), static fn (Entry $entry): bool => EntryState::Validated === $entry->getState()))[0];
+            self::getContainer()->get(Ledger::class)->reverse($validated, new \DateTimeImmutable('2026-03-31'), $this->teacher);
         });
         self::getContainer()->get(DossierDates::class)->move($this->source, new \DateTimeImmutable('2026-02-28'), $this->teacher, $at);
         $entityManager->flush();
