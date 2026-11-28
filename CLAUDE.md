@@ -1105,6 +1105,14 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   `JournalGrid::check()` (the grid's own rules and controls) and written through the gateway;
   `Document::$entry` links the pièce to it. `PieceControls` (pure) checks the read data by level.
 
+- **Errors the teacher slips in** (step 2.2b, `src/Service/Document/Preparation/`, `PiecePreparation` the one
+  door, « mode préparation » `/d/{dossier}/documents/{id}/prepare`, a template's open pièce, EDIT): the
+  right read data and proposal are kept in `Document::$answerKey` (`AnswerKey`, third parties **by code** -
+  JSON is copied as is, an id would point into the template) with each `SlippedError`; the wrong values are
+  what the pièce's columns hold (`SlippedErrors::apply()`, pure), the proposal's `basis` reset so no banner
+  tells. A doublon is a second `Document` whose `duplicateOf` names the first (the generator's too).
+  `answerKey`, `duplicateOf` and `generation` are named only where `AnswerKeyStaysHomeTest` allows.
+
 ## Référentiel and assistance levels (built at step 2.8)
 
 - **The référentiel is versioned data**, `config/referential/bts-cg.yaml` (edition 2014: four exams,

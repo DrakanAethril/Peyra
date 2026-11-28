@@ -147,7 +147,9 @@ final class SlippedErrors
             return 'Une erreur est déjà glissée sur cette valeur : retirez-la d’abord.';
         }
         if (!\in_array($place, self::places($target, $key->reading, $key->proposal, $partyOf), true)) {
-            return 'L’écriture proposée ne dépend pas de cette valeur : l’erreur ne peut être que dans les données lues.';
+            return self::isReadingTarget($target)
+                ? 'L’écriture proposée ne dépend pas de cette valeur : l’erreur ne peut être que dans les données lues.'
+                : 'Une erreur sur une ligne de l’écriture n’apparaît que dans l’écriture.';
         }
         if ($wrong === self::rightValue($target, $key->reading, $key->proposal)) {
             return 'La valeur fausse doit différer de la valeur juste.';

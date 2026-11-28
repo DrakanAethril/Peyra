@@ -114,6 +114,8 @@ final class InvoiceGeneratorTest extends WebTestCase
         }
         self::assertNotSame($documents[0]->getFileKey(), $documents[1]->getFileKey(), 'Each arrival has its own file.');
         self::assertEqualsCanonicalizing([1, 2], array_map(static fn (Document $d): mixed => $d->getGeneration()['copy'] ?? null, $documents));
+        $second = 2 === ($documents[0]->getGeneration()['copy'] ?? null) ? $documents[0] : $documents[1];
+        self::assertSame($second === $documents[0] ? $documents[1] : $documents[0], $second->getDuplicateOf(), 'The second arrival names the first: « mode préparation » shows the doublon.');
 
         // A refused generation writes nothing.
         $client->request('POST', $this->url($template), ['_token' => $token, 'supplier' => 'F0001']);
