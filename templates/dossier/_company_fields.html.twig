@@ -1,0 +1,53 @@
+{#
+ # The fiche société's fields, two cards (design-ux.md § 3.1, gabarit F: label above, an error under
+ # its field), read from `draft` (a CompanyDraft): the dossier's fiche and a new empty template.
+ #}
+{% set company_choices = company_options() %}
+<twig:Px:Card title="Identité">
+    <div class="px-fieldgrid">
+        <twig:Px:Field id="denomination" label="Dénomination" :required="true" :wide="true" :error="draft.error('denomination')">
+            <twig:Px:Input id="denomination" value="{{ draft.denomination }}" :required="true" :error="draft.error('denomination')" autocomplete="off"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="legalForm" label="Forme juridique" :required="true" :error="draft.error('legalForm')">
+            <twig:Px:Select id="legalForm" placeholder="Choisir la forme…" :options="company_choices.legalForms" value="{{ draft.legalForm }}" :required="true" :error="draft.error('legalForm')"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="capital" label="Capital social" hint="Sans objet pour une EI ou une association." :error="draft.error('capital')">
+            <twig:Px:AmountInput id="capital" :value="draft.capitalCents" unit="€" hint="1" :error="draft.error('capital')"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="siret" label="SIRET" :required="true" hint="14 chiffres, fictifs." :error="draft.error('siret')">
+            <twig:Px:Input id="siret" value="{{ draft.siret }}" :required="true" hint="1" :error="draft.error('siret')" inputmode="numeric" autocomplete="off" spellcheck="false"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="vatNumber" label="N° de TVA intracommunautaire" :error="draft.error('vatNumber')">
+            <twig:Px:Input id="vatNumber" value="{{ draft.vatNumber }}" :error="draft.error('vatNumber')" placeholder="FR36999412736" autocomplete="off" spellcheck="false"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="nafCode" label="Code NAF" :error="draft.error('nafCode')">
+            <twig:Px:Input id="nafCode" value="{{ draft.nafCode }}" :error="draft.error('nafCode')" placeholder="16.23Z" autocomplete="off" spellcheck="false"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="activity" label="Activité" :required="true" class="px-fieldgrid__full" :error="draft.error('activity')">
+            <twig:Px:Input id="activity" :area="true" value="{{ draft.activity }}" :required="true" :error="draft.error('activity')" rows="3"/>
+        </twig:Px:Field>
+    </div>
+</twig:Px:Card>
+
+<twig:Px:Card title="Adresse et régimes">
+    <div class="px-fieldgrid">
+        <twig:Px:Field id="street" label="Adresse" :required="true" :wide="true" :error="draft.error('street')">
+            <twig:Px:Input id="street" value="{{ draft.street }}" :required="true" :error="draft.error('street')" autocomplete="off"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="street2" label="Complément d’adresse" :wide="true" :error="draft.error('street2')">
+            <twig:Px:Input id="street2" value="{{ draft.street2 }}" :error="draft.error('street2')" autocomplete="off"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="postalCode" label="Code postal" :required="true" :error="draft.error('postalCode')">
+            <twig:Px:Input id="postalCode" value="{{ draft.postalCode }}" :required="true" :error="draft.error('postalCode')" inputmode="numeric" autocomplete="off"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="city" label="Commune" :required="true" :error="draft.error('city')">
+            <twig:Px:Input id="city" value="{{ draft.city }}" :required="true" :error="draft.error('city')" autocomplete="off"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="vatRegime" label="Régime de TVA" :required="true" :error="draft.error('vatRegime')">
+            <twig:Px:Select id="vatRegime" placeholder="Choisir le régime…" :options="company_choices.vatRegimes" value="{{ draft.vatRegime }}" :required="true" :error="draft.error('vatRegime')"/>
+        </twig:Px:Field>
+        <twig:Px:Field id="profitTaxRegime" label="Régime fiscal" :required="true" :error="draft.error('profitTaxRegime')">
+            <twig:Px:Select id="profitTaxRegime" placeholder="Choisir le régime…" :options="company_choices.profitTaxRegimes" value="{{ draft.profitTaxRegime }}" :required="true" :error="draft.error('profitTaxRegime')"/>
+        </twig:Px:Field>
+    </div>
+</twig:Px:Card>

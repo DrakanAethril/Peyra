@@ -30,7 +30,7 @@ use Symfony\Component\Yaml\Yaml;
  *
  * The S3 operations seen are mapped to the IAM actions AWS documents for them
  * (https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-with-s3-policy-actions.html), and
- * that set must be the policy's, save the actions granted ahead of the code that needs them.
+ * that set must be the policy's, exactly.
  */
 final class S3BucketPolicyTest extends TestCase
 {
@@ -47,21 +47,13 @@ final class S3BucketPolicyTest extends TestCase
         'CompleteMultipartUpload' => ['s3:PutObject'],
         'CopyObject' => ['s3:GetObject', 's3:PutObject'],
         'ListObjectsV2' => ['s3:ListBucket'],
+        'ListObjects' => ['s3:ListBucket'],
         'DeleteObject' => ['s3:DeleteObject'],
-    ];
-
-    /**
-     * Granted before DossierFiles uses them, each with its reason. Once the code needs one, the
-     * test says so: take it off this list.
-     *
-     * @var array<string, string>
-     */
-    private const array GRANTED_AHEAD = [
-        's3:DeleteObject' => 'the plan (step 0.8) names deletion among the storage\'s gestures: a draft\'s pièce removed, lots 1-2; on the versioned bucket it leaves a recoverable version',
+        'DeleteObjects' => ['s3:DeleteObject'],
     ];
 
     /** The public methods of DossierFiles this test plays; one more fails the test until played. */
-    private const array PLAYED = ['prefix', 'storeUpload', 'storeContents', 'read', 'readStream', 'exists', 'size', 'copyAll', 'owned'];
+    private const array PLAYED = ['prefix', 'storeUpload', 'storeContents', 'read', 'readStream', 'exists', 'size', 'copyAll', 'deleteAll', 'owned'];
 
     /** @var list<array{operation: string, key: ?string, prefix: ?string, copySource: ?string, acl: ?string, aclHeader: string}> */
     private array $sent = [];
@@ -87,10 +79,7 @@ final class S3BucketPolicyTest extends TestCase
         }
         $needed = array_keys($needed);
 
-        foreach (array_keys(self::GRANTED_AHEAD) as $ahead) {
-            self::assertNotContains($ahead, $needed, $ahead.' is now used by the code: take it off GRANTED_AHEAD.');
-        }
-        $expected = [...$needed, ...array_keys(self::GRANTED_AHEAD)];
+        $expected = $needed;
         sort($expected);
 
         self::assertSame($expected, $this->grantedActions(), 'infra/terraform/iam.tf must grant exactly what Peyra sends to S3.');
@@ -193,6 +182,7 @@ final class S3BucketPolicyTest extends TestCase
         $files->exists(7, $key);
         $files->size(7, $key);
         self::assertSame(['dossiers/7/pieces/0123456789abcdef0123456789abcdef.pdf' => 'dossiers/8/pieces/0123456789abcdef0123456789abcdef.pdf'], $files->copyAll(7, 8));
+        self::assertSame(1, $files->deleteAll(7));
     }
 
     private function answer(CommandInterface $command, ?RequestInterface $request, string $prefix): PromiseInterface
@@ -211,7 +201,7 @@ final class S3BucketPolicyTest extends TestCase
         return Create::promiseFor(new Result(match ($command->getName()) {
             'HeadObject' => ['ContentLength' => 16, 'ContentType' => 'application/pdf', 'LastModified' => $modified],
             'GetObject' => ['Body' => Utils::streamFor('%PDF-1.7 facture'), 'ContentLength' => 16],
-            'ListObjectsV2' => ['IsTruncated' => false, 'Contents' => [
+            'ListObjectsV2', 'ListObjects' => ['IsTruncated' => false, 'Contents' => [
                 ['Key' => $prefix.'dossiers/7/pieces/0123456789abcdef0123456789abcdef.pdf', 'Size' => 16, 'LastModified' => $modified],
             ]],
             'CreateMultipartUpload' => ['UploadId' => 'envoi-fictif'],

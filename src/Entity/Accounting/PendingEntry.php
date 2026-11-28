@@ -110,8 +110,18 @@ class PendingEntry implements DossierOwned
     /** @param list<GridGroup> $groups */
     public function replaceGroups(array $groups, \DateTimeImmutable $savedAt): void
     {
-        $this->groups = (string) json_encode(array_map(static fn (GridGroup $group): array => $group->toArray(), $groups), \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR);
+        $this->groups = self::encodeGroups($groups);
         $this->savedAt = $savedAt;
         ++$this->revision;
+    }
+
+    /**
+     * The column's text for these groups (the dossier copier rewrites it with the same writing).
+     *
+     * @param list<GridGroup> $groups
+     */
+    public static function encodeGroups(array $groups): string
+    {
+        return (string) json_encode(array_map(static fn (GridGroup $group): array => $group->toArray(), $groups), \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR);
     }
 }

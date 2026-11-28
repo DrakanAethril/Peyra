@@ -59,6 +59,54 @@ final class DossierRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /**
+     * A teacher's own templates, newest first.
+     *
+     * @return list<Dossier>
+     */
+    public function findTemplatesOf(User $author): array
+    {
+        /* @var list<Dossier> */
+        return $this->createQueryBuilder('d')
+            ->andWhere('d.kind = :template')
+            ->andWhere('d.owner = :author')
+            ->setParameter('template', DossierKind::Template)
+            ->setParameter('author', $author)
+            ->orderBy('d.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * How many students' and groups' dossiers were made from each of these templates (« utilisations »).
+     *
+     * @param list<Dossier> $templates
+     *
+     * @return array<int, int> by template id
+     */
+    public function countCopiesOf(array $templates): array
+    {
+        if ([] === $templates) {
+            return [];
+        }
+        /** @var list<array{template: int|string, copies: int|string}> $rows */
+        $rows = $this->createQueryBuilder('d')
+            ->select('IDENTITY(d.sourceTemplate) AS template, COUNT(d.id) AS copies')
+            ->andWhere('d.sourceTemplate IN (:templates)')
+            ->andWhere('d.kind IN (:kinds)')
+            ->setParameter('templates', $templates)
+            ->setParameter('kinds', [DossierKind::Student, DossierKind::Group])
+            ->groupBy('d.sourceTemplate')
+            ->getQuery()
+            ->getArrayResult();
+        $counts = [];
+        foreach ($rows as $row) {
+            $counts[(int) $row['template']] = (int) $row['copies'];
+        }
+
+        return $counts;
+    }
+
     public function findCommonTemplateNamed(string $denomination): ?Dossier
     {
         foreach ($this->findCommonTemplates() as $template) {

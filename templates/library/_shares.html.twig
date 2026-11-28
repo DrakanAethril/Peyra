@@ -1,0 +1,58 @@
+{#
+ # A template's shares, for its author (conception § 4): the colleagues it is shared with and their
+ # right, changed or taken back in place; a colleague picked by name (autocomplete), reading or change.
+ #}
+<twig:Px:Card title="Partages" meta="{{ shares is empty ? 'avec personne' : shares|length ~ ' ' ~ (shares|length > 1 ? 'collègues' : 'collègue') }}" id="partages" :flush="shares is not empty">
+    {% if shares is empty %}
+        <p class="px-u-muted">Personne d’autre que vous ne lit ce modèle.</p>
+    {% else %}
+        <twig:Px:Table caption="Collègues avec qui {{ dossier.libraryTitle }} est partagé" class="px-templateshares">
+            <thead>
+                <tr><th scope="col">Collègue</th><th scope="col">Droit</th><th scope="col">Depuis</th><th scope="col"><span class="px-u-sr-only">Actions</span></th></tr>
+            </thead>
+            <tbody>
+                {% for share in shares %}
+                    <tr>
+                        <th scope="row">{{ share.teacher.displayName }}</th>
+                        <td><twig:Px:Badge tone="{{ share.canEdit ? 'info' : 'neutral' }}" label="{{ share.canEdit ? 'Modification' : 'Lecture' }}"/></td>
+                        <td>{{ share.sharedAt|date('d/m/Y') }}</td>
+                        <td class="px-u-right">
+                            <div class="px-cluster px-templateshares__actions">
+                            <form method="post" action="{{ path('app_library_share_right', {dossier: dossier.id, share: share.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('library-shares-' ~ dossier.id) }}">
+                                <input type="hidden" name="right" value="{{ share.canEdit ? 'read' : 'edit' }}">
+                                <twig:Px:Button type="submit" variant="quiet" size="sm">{{ share.canEdit ? 'Passer en lecture' : 'Passer en modification' }}</twig:Px:Button>
+                            </form>
+                            <form method="post" action="{{ path('app_library_share_revoke', {dossier: dossier.id, share: share.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('library-shares-' ~ dossier.id) }}">
+                                <twig:Px:ConfirmButton label="Retirer" confirmLabel="Confirmer le retrait" icon="x" type="submit" size="sm"/>
+                            </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </twig:Px:Table>
+    {% endif %}
+    <twig:block name="foot">
+        <form method="post" action="{{ path('app_library_share', {dossier: dossier.id}) }}" class="px-formline" data-controller="focus-error">
+            <input type="hidden" name="_token" value="{{ csrf_token('library-shares-' ~ dossier.id) }}">
+            <twig:Px:Field id="colleague" label="Partager avec" :error="share_error" hint="Tapez deux lettres du nom ou de l’identifiant d’un collègue.">
+                <div class="px-formline__control">
+                    <div class="px-picker" data-controller="user-picker" data-user-picker-url-value="{{ path('app_library_colleagues', {dossier: dossier.id}) }}">
+                        <input type="text" id="colleague" name="colleague_label" value="{{ share_label }}" class="px-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="colleague-list"
+                               aria-describedby="colleague_hint{{ share_error ? ' colleague_error' }}"{% if share_error %} aria-invalid="true"{% endif %} autocomplete="off"
+                               data-user-picker-target="input" data-action="input->user-picker#search keydown->user-picker#keydown">
+                        <input type="hidden" name="colleague" value="" data-user-picker-target="value">
+                        <div class="px-popover px-picker__panel" data-user-picker-target="panel" hidden>
+                            <ul class="px-picker__list" id="colleague-list" role="listbox" aria-label="Enseignants" data-user-picker-target="list"></ul>
+                            <p class="px-picker__foot"><twig:Px:Kbd combo="ArrowUp"/><twig:Px:Kbd combo="ArrowDown"/> choisir <twig:Px:Kbd combo="Enter"/> valider <twig:Px:Kbd combo="Escape"/> fermer</p>
+                        </div>
+                    </div>
+                    <twig:Px:Select id="right" :options="[{value: 'read', label: 'Lecture'}, {value: 'edit', label: 'Modification'}]" value="read" aria-label="Droit" class="px-templateshares__right"/>
+                    <twig:Px:Button type="submit" icon="send">Partager</twig:Px:Button>
+                </div>
+            </twig:Px:Field>
+        </form>
+    </twig:block>
+</twig:Px:Card>

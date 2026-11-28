@@ -62,6 +62,30 @@ final class UserRepository extends ServiceEntityRepository
     }
 
     /**
+     * Teachers whose name or login contains the text, someone left out (a template's author picking
+     * the colleagues to share it with).
+     *
+     * @return list<User>
+     */
+    public function searchTeachers(string $text, ?User $except = null, int $limit = 10): array
+    {
+        $like = '%'.addcslashes(mb_strtolower($text), '%_\\').'%';
+        $query = $this->createQueryBuilder('u')
+            ->andWhere('u.kind = :teacher')
+            ->andWhere('LOWER(u.displayName) LIKE :like OR LOWER(u.login) LIKE :like')
+            ->setParameter('teacher', AccountKind::Teacher)
+            ->setParameter('like', $like)
+            ->orderBy('u.displayName', 'ASC')
+            ->setMaxResults($limit);
+        if (null !== $except) {
+            $query->andWhere('u != :except')->setParameter('except', $except);
+        }
+
+        /* @var list<User> */
+        return $query->getQuery()->getResult();
+    }
+
+    /**
      * Teachers whose name or login contains the text, for the autocomplete of « Désigner un
      * administrateur » (administrators excluded: they are already on the list).
      *

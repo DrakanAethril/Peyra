@@ -1,0 +1,49 @@
+{#
+ # Bibliothèque › Dossiers modèles (design-ux.md § 3.3, gabarit L en cartes): mine, shared with me,
+ # provided (the common library), as filter chips with their counts, and a search (GET, kept in
+ # the address). « Nouveau dossier modèle » is the page's action.
+ #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'templates' %}
+{% set library_title = 'Dossiers modèles' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Dossiers modèles" :trail="[{label: 'Bibliothèque', href: path('app_library')}]">
+        <twig:block name="actions">
+            <twig:Px:Button variant="primary" href="{{ path('app_library_new') }}" icon="plus">Nouveau dossier modèle</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card :flush="true">
+        <twig:Px:Filters action="{{ path('app_library') }}" search="{{ search }}" searchLabel="Rechercher un modèle" resetHref="{{ shelf or search ? path('app_library') : null }}">
+            {% if shelf %}<input type="hidden" name="shelf" value="{{ shelf.value }}">{% endif %}
+            <twig:Px:FilterChip label="Tous" :count="total" href="{{ path('app_library', search ? {q: search} : {}) }}" :current="shelf is null"/>
+            {% for case in shelves %}
+                <twig:Px:FilterChip label="{{ case.label }}" :count="counts[case.value]" href="{{ path('app_library', {shelf: case.value}|merge(search ? {q: search} : {})) }}" :current="shelf == case"/>
+            {% endfor %}
+        </twig:Px:Filters>
+    </twig:Px:Card>
+
+    {% if cards is empty %}
+        <twig:Px:Card>
+            {% if total == 0 %}
+                <twig:Px:Empty :page="true" icon="book-copy" title="Aucun dossier modèle pour l’instant" text="Un dossier modèle se prépare une fois et se distribue à toute une classe. Partez d’un dossier vide ou de la copie d’un modèle.">
+                    <twig:block name="action"><twig:Px:Button variant="primary" href="{{ path('app_library_new') }}" icon="plus">Nouveau dossier modèle</twig:Px:Button></twig:block>
+                </twig:Px:Empty>
+            {% else %}
+                <twig:Px:Empty icon="search" title="Aucun modèle ne correspond" text="Changez de filtre ou de mots cherchés."/>
+            {% endif %}
+        </twig:Px:Card>
+    {% else %}
+        <div class="px-dossiers">
+            {% for template_card in cards %}
+                {{ include('library/_card.html.twig') }}
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block facts %}<span>Modèles · <b>{{ total }}</b></span><span>Mes modèles · <b>{{ counts.mine }}</b></span>{% endblock %}

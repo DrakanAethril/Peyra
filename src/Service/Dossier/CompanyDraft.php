@@ -6,6 +6,8 @@ namespace App\Service\Dossier;
 
 use App\Entity\Dossier\Company;
 use App\Service\Shared\FrenchFormat;
+use App\Service\Shared\PostValue;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * The fiche société as a person typed it, before CompanySheet checks it: texts, the capital in
@@ -46,6 +48,27 @@ final class CompanyDraft
         $draft->city = $company->getCity();
         $draft->vatRegime = $company->getVatRegime()->value;
         $draft->profitTaxRegime = $company->getProfitTaxRegime()->value;
+
+        return $draft;
+    }
+
+    /** The fiche's fields of a posted form (dossier/_company_fields.html.twig). */
+    public static function fromRequest(Request $request): self
+    {
+        $draft = new self();
+        $draft->denomination = PostValue::trimmed($request, 'denomination');
+        $draft->legalForm = PostValue::trimmed($request, 'legalForm');
+        $draft->siret = PostValue::trimmed($request, 'siret');
+        $draft->vatNumber = PostValue::trimmed($request, 'vatNumber');
+        $draft->nafCode = PostValue::trimmed($request, 'nafCode');
+        $draft->activity = PostValue::trimmed($request, 'activity');
+        $draft->street = PostValue::trimmed($request, 'street');
+        $draft->street2 = PostValue::trimmed($request, 'street2');
+        $draft->postalCode = PostValue::trimmed($request, 'postalCode');
+        $draft->city = PostValue::trimmed($request, 'city');
+        $draft->vatRegime = PostValue::trimmed($request, 'vatRegime');
+        $draft->profitTaxRegime = PostValue::trimmed($request, 'profitTaxRegime');
+        $draft->capitalCents = PostValue::cents($request, 'capital');
 
         return $draft;
     }

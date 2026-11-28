@@ -25,7 +25,7 @@
 {% block context_bar %}
     {% if view.teacher %}
         {% if dossier.template %}
-            <twig:Px:ContextBar tone="template" backLabel="Revenir à l’accueil" backHref="{{ path('app_teacher_home') }}">Dossier modèle · {{ dossier.name }}{% if dossier.owner is null %} · bibliothèque commune{% endif %}{% if view.canEdit %} · vos modifications valent pour les prochaines distributions{% endif %}</twig:Px:ContextBar>
+            <twig:Px:ContextBar tone="template" backLabel="Revenir à la bibliothèque" backHref="{{ path('app_library_template', {dossier: dossier.id}) }}">Dossier modèle · {{ dossier.libraryTitle }}{% if dossier.owner is null %} · bibliothèque commune{% endif %}{% if view.canEdit %} · vos modifications valent pour les prochaines distributions{% endif %}</twig:Px:ContextBar>
         {% elseif view.holders|length == 1 %}
             <twig:Px:ContextBar backLabel="Revenir à la fiche de l’étudiant" backHref="{{ path('app_teacher_student', {id: view.holders[0].id}) }}">Dossier de {{ view.holderNames }} · {{ view.canEdit ? 'vos actions sont signées de votre nom' : 'en lecture' }}</twig:Px:ContextBar>
         {% else %}

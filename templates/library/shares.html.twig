@@ -1,0 +1,56 @@
+{#
+ # Bibliothèque › Partages (design-ux.md § 3.3, gabarit L): the templates the teacher shares and with
+ # whom, those colleagues share with them; a row opens the template's fiche, where shares change.
+ #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'shares' %}
+{% set library_title = 'Partages' %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Partages" :trail="[{label: 'Bibliothèque', href: path('app_library')}, {label: 'Partages', href: path('app_library_shares')}]"/>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Card title="Mes modèles partagés" meta="{{ given|length }} {{ given|length > 1 ? 'partages' : 'partage' }}" :flush="given is not empty">
+        {% if given is empty %}
+            <twig:Px:Empty icon="send" title="Vous ne partagez aucun modèle" text="Un modèle se partage depuis sa fiche, en lecture ou en modification."/>
+        {% else %}
+            <twig:Px:Table caption="Mes modèles partagés avec des collègues">
+                <thead><tr><th scope="col">Modèle</th><th scope="col">Collègue</th><th scope="col">Droit</th><th scope="col">Depuis</th></tr></thead>
+                <tbody data-controller="rows">
+                    {% for share in given %}
+                        <tr>
+                            <th scope="row"><a href="{{ path('app_library_template', {dossier: share.dossier.id}) }}#partages">{{ share.dossier.libraryTitle }}</a></th>
+                            <td>{{ share.teacher.displayName }}</td>
+                            <td><twig:Px:Badge tone="{{ share.canEdit ? 'info' : 'neutral' }}" label="{{ share.canEdit ? 'Modification' : 'Lecture' }}"/></td>
+                            <td>{{ share.sharedAt|date('d/m/Y') }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+
+    <twig:Px:Card title="Partagés avec moi" meta="{{ received|length }} {{ received|length > 1 ? 'modèles' : 'modèle' }}" :flush="received is not empty">
+        {% if received is empty %}
+            <twig:Px:Empty icon="book-copy" title="Aucun modèle partagé avec vous" text="Un collègue qui vous partage un modèle le fait apparaître ici et dans « Partagés avec moi »."/>
+        {% else %}
+            <twig:Px:Table caption="Modèles que des collègues partagent avec moi">
+                <thead><tr><th scope="col">Modèle</th><th scope="col">Auteur</th><th scope="col">Droit</th><th scope="col">Depuis</th></tr></thead>
+                <tbody data-controller="rows">
+                    {% for share in received %}
+                        <tr>
+                            <th scope="row"><a href="{{ path('app_library_template', {dossier: share.dossier.id}) }}">{{ share.dossier.libraryTitle }}</a></th>
+                            <td>{{ share.dossier.owner.displayName }}</td>
+                            <td><twig:Px:Badge tone="{{ share.canEdit ? 'info' : 'neutral' }}" label="{{ share.canEdit ? 'Modification' : 'Lecture' }}"/></td>
+                            <td>{{ share.sharedAt|date('d/m/Y') }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </twig:Px:Table>
+        {% endif %}
+    </twig:Px:Card>
+{% endblock %}
+
+{% block facts %}<span>Partages donnés · <b>{{ given|length }}</b></span><span>Reçus · <b>{{ received|length }}</b></span>{% endblock %}

@@ -106,6 +106,17 @@ enum AuditAction: string
     /** A lettering undone (« délettrer »). */
     case LinesUnlettered = 'accounting.lines_unlettered';
 
+    /** A template's card changed: title, description, level, processes (step 1.8a). */
+    case TemplateCardChanged = 'library.card_changed';
+
+    /** A template shared with a colleague, its right changed, or the share taken back. */
+    case TemplateShared = 'library.shared';
+
+    case TemplateUnshared = 'library.unshared';
+
+    /** A template deleted from the library, with its content (its trail stays). */
+    case TemplateDeleted = 'library.deleted';
+
     public function label(): string
     {
         return match ($this) {
@@ -141,6 +152,10 @@ enum AuditAction: string
             self::EntrySubscriptionGenerated => 'Écritures d’abonnement générées',
             self::LinesLettered => 'Lignes lettrées',
             self::LinesUnlettered => 'Lettrage défait',
+            self::TemplateCardChanged => 'Fiche du modèle modifiée',
+            self::TemplateShared => 'Modèle partagé',
+            self::TemplateUnshared => 'Partage du modèle retiré',
+            self::TemplateDeleted => 'Modèle supprimé',
         };
     }
 }

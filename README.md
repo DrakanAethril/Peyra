@@ -85,7 +85,13 @@ profil (comptable fournisseurs, comptable clients, gestionnaire de paie, chef co
 donne un enseignant de la classe, et qui ouvre ou ferme les journaux, la validation et les paramètres
 du dossier (`app:dev:dossiers` fait un dossier de groupe de démonstration : Inès Morel, Théo Garnier,
 Chloé Fabre) ; la Piste d'audit liste chaque geste fait dans le dossier, qui, quoi, quand (heure
-réelle et date du dossier), ceux d'un enseignant signés de son nom. Les plans comptables de référence (PCG 2026, PCG 2025, PCG antérieur), lus dans
+réelle et date du dossier), ceux d'un enseignant signés de son nom. Côté enseignant, la
+Bibliothèque range les dossiers modèles : les siens, ceux que des collègues lui partagent (en
+lecture ou en modification) et ceux de la bibliothèque commune ; chacun a sa fiche (titre, niveau
+visé, processus couverts, description), se duplique, se partage et se supprime après un
+récapitulatif ; un nouveau modèle part d'un dossier vide (société, exercice, plan de référence et
+cinq journaux posés) ou de la copie d'un autre. Toute copie de dossier passe par un seul copieur,
+éprouvé par un test qui compare le dossier de démonstration et sa copie table par table. Les plans comptables de référence (PCG 2026, PCG 2025, PCG antérieur), lus dans
 les textes de l'ANC, sont dans `fixtures/pcg/`.
 
 La pile de développement : `php` (FrankenPHP et Caddy), `database` (MariaDB, comme en

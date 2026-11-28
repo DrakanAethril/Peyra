@@ -12,6 +12,8 @@ use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Accounting\EntryOrigin;
 use App\Enum\Dossier\DossierKind;
+use App\Enum\Dossier\TemplateLevel;
+use App\Enum\Shared\BtsProcess;
 use App\Enum\ThirdParty\PaymentMethod;
 use App\Enum\ThirdParty\ThirdPartyKind;
 use App\Repository\Accounting\EntryLineRepository;
@@ -52,6 +54,9 @@ final class DemoInstallCommandTest extends KernelTestCase
         self::assertSame('2026-01-31', $vasseur->getDossierDate()->format('Y-m-d'), 'La fin de janvier, dont les achats et la banque sont saisis.');
         self::assertSame('99941273600018', $vasseur->getCompany()->getSiret());
         self::assertSame(8_000_000, $vasseur->getCompany()->getCapital()->cents);
+        self::assertSame('Vasseur, à-nouveaux 2026', $vasseur->getLibraryTitle(), 'Its card in the library.');
+        self::assertSame(TemplateLevel::First, $vasseur->getLibraryLevel());
+        self::assertSame([BtsProcess::P1, BtsProcess::P2], $vasseur->getLibraryProcesses());
 
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
         [$exercises, $closedPeriods] = self::getContainer()->get(DossierContext::class)->within($vasseur, static fn (): array => [

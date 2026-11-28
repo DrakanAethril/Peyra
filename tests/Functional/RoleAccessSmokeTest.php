@@ -80,6 +80,11 @@ final class RoleAccessSmokeTest extends WebTestCase
         yield 'Correspondance avec l’annuaire' => ['/teacher/admin/directory', $admins];
         yield 'Recherche d’enseignants' => ['/teacher/admin/classes/teachers/search?q=pr', $admins];
         yield 'Paramètres réglementaires' => ['/teacher/regulatory', $teachers];
+        yield 'Bibliothèque › Dossiers modèles' => ['/teacher/library', $teachers];
+        yield 'Bibliothèque › Dossiers modèles, filtrés' => ['/teacher/library?shelf=mine&q=vasseur', $teachers];
+        yield 'Bibliothèque › Partages' => ['/teacher/library/shares', $teachers];
+        yield 'Nouveau dossier modèle' => ['/teacher/library/new', $teachers];
+        yield 'Nouveau dossier modèle vide' => ['/teacher/library/new/empty', $teachers];
     }
 
     /** The sheet of a regulatory value and « Nouvelle valeur datée », on a value written for the test. */
@@ -251,6 +256,49 @@ final class RoleAccessSmokeTest extends WebTestCase
             $actual[$role] = $client->getResponse()->getStatusCode();
         }
         self::assertSame(['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302], $actual, '/accounting/entry/guided');
+    }
+
+    /**
+     * A template of the library: prof.durand's own (prof.martin, an administrator, is not let into
+     * it), and one of the common library, which every teacher reads and administrators delete.
+     */
+    public function testTheScreensOfATemplate(): void
+    {
+        $client = static::createClient();
+        $client->disableReboot();
+        $this->submitLogin($client, self::ACCOUNTS['teacher']);
+        $durand = $this->account($client, self::ACCOUNTS['teacher']);
+        \assert($durand instanceof User);
+        $own = (int) $this->savedDossier(DossierKind::Template, $durand)->getId();
+        $common = (int) $this->savedDossier(DossierKind::Template, null)->getId();
+        $this->signOut($client);
+        $this->submitLogin($client, self::ACCOUNTS['admin']);
+        $this->signOut($client);
+        $this->submitLogin($client, self::ACCOUNTS['student']);
+        $ines = $this->account($client, self::ACCOUNTS['student']);
+        \assert($ines instanceof User);
+        $student = (int) $this->savedDossier(DossierKind::Student, $ines)->getId();
+
+        $table = [
+            '/teacher/library/'.$own => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/teacher/library/'.$own.'/delete' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/teacher/library/'.$own.'/colleagues?q=ma' => ['student' => 404, 'teacher' => 200, 'admin' => 404, 'refused' => 302],
+            '/teacher/library/'.$common => ['student' => 404, 'teacher' => 200, 'admin' => 200, 'refused' => 302],
+            '/teacher/library/'.$common.'/delete' => ['student' => 404, 'teacher' => 404, 'admin' => 200, 'refused' => 302],
+            '/teacher/library/'.$common.'/colleagues?q=ma' => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
+            '/teacher/library/'.$student => ['student' => 404, 'teacher' => 404, 'admin' => 404, 'refused' => 302],
+        ];
+        foreach ($table as $url => $expected) {
+            $actual = [];
+            foreach (self::ACCOUNTS as $role => $login) {
+                self::ensureKernelShutdown();
+                $client = static::createClient();
+                $this->submitLogin($client, $login);
+                $client->request('GET', $url);
+                $actual[$role] = $client->getResponse()->getStatusCode();
+            }
+            self::assertSame($expected, $actual, $url);
+        }
     }
 
     /** @param array<string, int> $expected */

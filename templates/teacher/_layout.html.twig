@@ -1,8 +1,8 @@
 {#
  # The teacher space with its rail and top bar (design-ux.md §§ 2.4 and 2.6). A screen extends it,
- # sets `rail_current` (accueil, classes, parametres) and, on a class's screens, `switcher_class`
- # outside any block, and fills page_head, page, status and, when the module has sections,
- # module_tabs. Only the modules that exist are in the rail: Bibliothèque, Pièces and Référentiel
+ # sets `rail_current` (accueil, classes, bibliotheque, parametres) and, on a class's screens,
+ # `switcher_class` outside any block, and fills page_head, page, status and, when the module has
+ # sections, module_tabs. Only the modules that exist are in the rail: Pièces and Référentiel
  # arrive with their lots. « Paramètres » opens on the regulatory values, which every teacher reads;
  # its administration sections are drawn for administrators only (teacher/_settings_tabs.html.twig).
  #}
@@ -13,6 +13,7 @@
 {% block rail %}
     <twig:Px:RailItem href="{{ path('app_teacher_home') }}" icon="house" label="Accueil" :current="(rail_current ?? '') == 'accueil'"/>
     <twig:Px:RailItem href="{{ path('app_teacher_classes') }}" icon="graduation-cap" label="Classes" :current="(rail_current ?? '') == 'classes'"/>
+    <twig:Px:RailItem href="{{ path('app_library') }}" icon="book-copy" label="Bibliothèque" :current="(rail_current ?? '') == 'bibliotheque'"/>
     <twig:Px:RailItem href="{{ path('app_regulatory') }}" icon="settings" label="Paramètres" :current="(rail_current ?? '') == 'parametres'"/>
 {% endblock %}
 

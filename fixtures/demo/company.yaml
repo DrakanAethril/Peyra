@@ -32,3 +32,14 @@ exercises:
 
 # The dossier's date: the end of January, whose purchases and bank are entered (entries.yaml).
 dossier_date: '2026-01-31'
+
+# Its card in the library (Bibliothèque › Dossiers modèles, step 1.8a): what the referents read
+# before they distribute it. It grows with the lots.
+library:
+  title: Vasseur, à-nouveaux 2026
+  level: first
+  processes: [P1, P2]
+  description: >-
+    Menuiserie de Montbrison, une douzaine de salariés, TVA au réel normal mensuel, IS. L'exercice
+    2026 s'ouvre sur ses à-nouveaux ; les achats et la banque de janvier sont saisis, avec des
+    brouillards à contrôler et trois fournisseurs déjà lettrés.

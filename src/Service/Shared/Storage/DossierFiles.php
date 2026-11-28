@@ -19,7 +19,9 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
  * - the files' half of « every business row carries its dossier ». Copying a dossier (distribution,
  * restore points, conception § 3 bis) copies its prefix and hands back the new key of each file.
  *
- * Nothing here deletes a dossier's files: nothing is ever deleted automatically (CLAUDE.md).
+ * Files are deleted with their dossier only (`deleteAll()`), by a person's gesture - a template or
+ * a dossier deleted, a dossier taken back to a restore point: nothing is ever deleted
+ * automatically (CLAUDE.md).
  */
 final readonly class DossierFiles
 {
@@ -123,6 +125,26 @@ final readonly class DossierFiles
         }
 
         return $map;
+    }
+
+    /**
+     * Deletes every file of a dossier and answers how many there were: the dossier is deleted, or
+     * its content is about to be replaced by a restore point's (App\Service\Dossier\Copy\DossierEraser).
+     */
+    public function deleteAll(int $dossierId): int
+    {
+        $prefix = rtrim(self::prefix($dossierId), '/');
+        $count = 0;
+        foreach ($this->storage->listContents($prefix, true) as $item) {
+            if ($item->isFile()) {
+                ++$count;
+            }
+        }
+        if ($count > 0) {
+            $this->storage->deleteDirectory($prefix);
+        }
+
+        return $count;
     }
 
     /** The key, once it is known to belong to the dossier. */

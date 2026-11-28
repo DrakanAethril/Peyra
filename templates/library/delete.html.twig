@@ -1,0 +1,54 @@
+{#
+ # Supprimer un dossier modèle (design-ux.md § 6.2): the récapitulatif of what goes - its content,
+ # its shares - and what stays - the dossiers distributed from it, its trail -, then its title
+ # typed. Author only; administrators for the common library.
+ #}
+{% extends 'library/_layout.html.twig' %}
+
+{% set library_tab = 'templates' %}
+{% set library_title = 'Supprimer ' ~ dossier.libraryTitle %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Supprimer le modèle" :trail="[
+        {label: 'Bibliothèque', href: path('app_library')},
+        {label: 'Dossiers modèles', href: path('app_library')},
+        {label: dossier.libraryTitle, href: path('app_library_template', {dossier: dossier.id})},
+        {label: 'Supprimer', href: path('app_library_delete', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button variant="quiet" href="{{ path('app_library_template', {dossier: dossier.id}) }}">Annuler</twig:Px:Button>
+            <twig:Px:Button type="submit" variant="danger" form="template-delete" icon="trash-2">Supprimer le modèle</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    <twig:Px:Stepper label="Suppression" :steps="[{label: 'Récapitulatif', href: path('app_library_delete', {dossier: dossier.id}), state: 'current'}]"/>
+
+    <div class="px-split">
+        <twig:Px:Card title="Ce qui sera supprimé" meta="sans retour possible">
+            <ul class="px-recap">
+                <li>Le dossier modèle « {{ dossier.libraryTitle }} » ({{ dossier.name }}) et sa fiche.</li>
+                <li><b>{{ contents.validated }}</b> écritures validées, <b>{{ contents.drafts }}</b> au brouillard, <b>{{ contents.accounts }}</b> comptes, <b>{{ contents.journals }}</b> journaux, <b>{{ contents.thirdParties }}</b> tiers, <b>{{ contents.entryTemplates }}</b> modèles d’écriture et <b>{{ contents.subscriptions }}</b> abonnements.</li>
+                {% if shares > 0 %}<li>Ses partages : <b>{{ shares }}</b> {{ shares > 1 ? 'collègues ne le liront plus' : 'collègue ne le lira plus' }}.</li>{% endif %}
+            </ul>
+        </twig:Px:Card>
+        <twig:Px:Card title="Ce qui reste">
+            <ul class="px-recap">
+                <li>{% if card.copies > 0 %}Les <b>{{ card.copies }}</b> {{ card.copies > 1 ? 'dossiers distribués' : 'dossier distribué' }} depuis ce modèle : {{ card.copies > 1 ? 'ce sont des copies, elles gardent' : 'c’est une copie, elle garde' }} tout leur contenu.{% else %}Ce modèle n’a jamais été distribué.{% endif %}</li>
+                <li>Sa piste d’audit, avec la ligne de cette suppression.</li>
+            </ul>
+        </twig:Px:Card>
+    </div>
+
+    <form method="post" action="{{ path('app_library_delete', {dossier: dossier.id}) }}" id="template-delete" novalidate data-controller="focus-error">
+        <input type="hidden" name="_token" value="{{ csrf_token('library-delete-' ~ dossier.id) }}">
+        <twig:Px:Card title="Confirmer">
+            <twig:Px:Field id="confirmTitle" label="Tapez « {{ dossier.libraryTitle }} » pour supprimer ce modèle" :required="true" :error="error">
+                <twig:Px:Input id="confirmTitle" value="{{ typed }}" :required="true" :error="error" autocomplete="off" spellcheck="false"/>
+            </twig:Px:Field>
+        </twig:Px:Card>
+    </form>
+{% endblock %}
+
+{% block facts %}<span>Modèle · <b>{{ dossier.libraryTitle }}</b></span>{% endblock %}
