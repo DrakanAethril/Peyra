@@ -92,9 +92,9 @@ Run the suite both ways before pushing, as CI does: ParaTest gives every test fi
 process, so a test that leaks global state (an environment variable unset, a static) only breaks
 the files after it under `bin/phpunit`.
 
-Application commands (`src/Command/`). **One is scheduled** (`app:restore-points:advance`, every
-minute): `App\Scheduler\PeyraSchedule` holds the list, and `PeyraScheduleTest` pins it, so adding a
-task is a decision the test makes visible.
+Application commands (`src/Command/`). **Two are scheduled** (`app:restore-points:advance` and
+`app:distribution:advance`, every minute): `App\Scheduler\PeyraSchedule` holds the list, and
+`PeyraScheduleTest` pins it, so adding a task is a decision the test makes visible.
 
 | Command | Role |
 |---|---|
@@ -102,7 +102,8 @@ task is a decision the test makes visible.
 | `app:ldap:check [login]` | **Diagnostic.** Says whether the directory answers and the service account binds, and how a person is read (DN, groups, the entry rule's decision), without printing a secret |
 | `app:dev:school` | **Development and test only.** 2025-2026 and 2026-2027 (current), BTS CG 1 and 2, the mapping `cg-1`/`cg-2`, the teachers of the classes |
 | `app:demo:install` | Installs the demonstration dossier, Menuiserie Vasseur SARL (`fixtures/demo/`: company and exercises, the PCG 2026 plus its own accounts, six journals, 59 third parties, the opening balance of 2026 as one validated entry of AN, January's purchases and Banque Populaire with two drafts in each, seven entry templates, two subscriptions, three suppliers lettered; date 31/01/2026), as a template of the **common library** (no author). Development and production: run once at the first deploy (`docs/production.md`), never by `deploy-prod.sh` - an installed template is never replaced, and one an administrator deleted must not come back |
-| `app:dev:dossiers` | **Development and test only**, until the distribution of step 1.8c: gives each student enrolled this year their own Menuiserie Vasseur, built from the fixtures (the template installed first if missing), and one group's Menuiserie Vasseur to `ines.morel` (Comptable fournisseurs), `theo.garnier` (Comptable clients) and `chloe.fabre` (Chef comptable) when enrolled. Sign the students in first: their first sign-in places them |
+| `app:dev:dossiers` | **Development and test only.** Distributes Menuiserie Vasseur (the common library's template, installed first if missing) to each class of the current year - every student who holds no copy of it yet -, then as one shared dossier to `ines.morel` (Comptable fournisseurs), `theo.garnier` (Comptable clients) and `chloe.fabre` (Chef comptable) when enrolled in one class; the copies are made at once. Sign the students in first: their first sign-in places them |
+| `app:distribution:advance` | **Scheduled every minute.** Makes the dossiers of the distributions a request left waiting (a worker restarted), one copy per pass under its own lock; usually finds nothing |
 | `app:restore-points:advance` | **Scheduled every minute.** Finishes the restore points still in preparation and the returns still running that a request left (a worker restarted); usually finds nothing. Takes each dossier's lock |
 | `app:test:parallel-databases` | **Test only.** Copies the migrated `peyra_test` into `peyra_test1`… for ParaTest (tests/README.md) |
 
@@ -986,6 +987,36 @@ Lot 1, step 1.8b (design-ux.md § 4.9), held by code in `src/Service/Dossier/Res
 - `DossierEraser::deleteDossier()` deletes a dossier's points (and their copies) first. Locks are
   in memory in the test environment (ParaTest processes share the project directory, not their
   ids). Twig resolves `point.ready` to a method `ready()` before `isReady()`: mutators are `mark…()`.
+
+## Distribution (built at step 1.8c)
+
+Lot 1, step 1.8c (design-ux.md § 4.2), held by code in `src/Service/Dossier/Distribution/`,
+`App\Controller\Library\{DistributeController,DistributionsController}` and `templates/library/distribut*`:
+
+- **`Distribution`** (global: template, title, author - null for a command -, class, mode, start date)
+  and **`DistributionCopy`** (global: a student, or a group's name and members `{student, profile}`
+  as JSON; its dossier once made; waiting / copying / ready / failed). `DistributionVoter::MANAGE`: its
+  author alone, no administrator bypass; `TemplateVoter::DISTRIBUTE`: whoever reads the template.
+- **« Distribuer »** (card and fiche of a template, `/teacher/library/{dossier}/distribute`): three GET
+  steps carrying `DistributionChoices` (`class`, `pick[]`, `mode`, `group[id]`, `profile[id]`, `start`),
+  then the POST of the récapitulatif. **`DistributionPlan::of()` is the pure rule**: on the first
+  display everybody but those who already hold a copy of the template is ticked; default groups of
+  about three as even as can be; a group of one, nobody ticked, a bad date stop it.
+- **`Distributions` is the one door** (launch, make, fail, retry, moveDate, withdraw; audit trail
+  subject `distribution`). **A dossier is made whole or not at all**, in one transaction: its row,
+  `DossierCopier` (`CopyKind::Template`), a group's `DossierMember`s with their profiles, and its
+  **« État de départ »** - a `RestorePoint` of origin `Start`, outside the limit of ten
+  (`RestorePointRepository::countAgainstLimit()`), deleted by a teacher only; the files of a copy that
+  stops go through `DossierEraser::deleteFilesOf()`.
+- **Background**: `DistributionQueue` → `DistributionWorkListener` (kernel.terminate) → `DistributionRunner`,
+  one copy per pass under the lock `Distributions::lockName($copyId)`, read again under it; a failure is
+  logged, said on the line (« Relancer »), and the other copies go on. `app:distribution:advance` finishes
+  what a stopped worker left. The progress page (`/teacher/library/distributions/{id}`) listens to
+  `DistributionLive::topic()` (`distribution_live_url()`) and polls every two seconds while copies are pending.
+- Moving the date of a distribution goes through `DossierDates::move()` dossier by dossier, for those the
+  teacher may date (`DossierVoter::SET_DATE`: a teacher of the class this year); withdrawing deletes each
+  dossier through `DossierEraser::deleteDossier()` (the copies detached first: the unit of work must not
+  hold a dossier it deletes), after the title is typed.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

@@ -27,7 +27,7 @@
     {% set live_url = distribution_live_url(distribution) %}
     {% if live_url %}<div hidden data-controller="dossier-live" data-dossier-live-url-value="{{ live_url }}"></div>{% endif %}
 
-    <turbo-frame id="distribution-progress" target="_top">
+    <turbo-frame id="distribution-progress" target="_top" class="px-stack">
         <div hidden data-controller="live-frame" data-live-frame-frame-value="distribution-progress" data-live-frame-events-value="{{ ['progress']|json_encode }}" data-live-frame-poll-value="{{ progress.running ? 2000 : 0 }}"></div>
         <twig:Px:Card title="{{ progress.sentence }}" meta="{{ distribution.mode.label|lower }} · date de départ {{ distribution.startDate|date('d/m/Y') }}">
             <progress class="px-distribution-bar" max="100" value="{{ progress.percent }}" aria-label="Dossiers faits">{{ progress.percent }} %</progress>

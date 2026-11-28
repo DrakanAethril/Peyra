@@ -82,3 +82,10 @@
         }
     }
 }
+
+/* Distribuer, step 2: the group and profile selects keep the width of their longest choice. */
+@layer px.components {
+    .px-distribution-groups .px-select {
+        min-inline-size: 9rem;
+    }
+}

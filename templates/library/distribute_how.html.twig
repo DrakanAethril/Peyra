@@ -40,12 +40,12 @@
                 </twig:Px:Card>
 
                 <twig:Px:Card :flush="true" title="Groupes" meta="un dossier partagé par groupe ; un profil par membre" data-distribution-mode-target="groups" :hidden="plan.mode.value != 'group'">
-                    <twig:Px:Table caption="Le groupe et le profil de chaque étudiant coché">
+                    <twig:Px:Table caption="Le groupe et le profil de chaque étudiant coché" class="px-distribution-groups">
                         <thead><tr><th scope="col">Nom</th><th scope="col">Groupe</th><th scope="col">Profil dans le dossier du groupe</th></tr></thead>
                         <tbody>
                             {% for line in ticked %}
                                 <tr>
-                                    <td class="px-u-fill">{{ line.student.sortName }}</td>
+                                    <td>{{ line.student.sortName }}</td>
                                     <td>
                                         <label class="px-u-sr-only" for="group-{{ line.student.id }}">Groupe de {{ line.student.sortName }}</label>
                                         <twig:Px:Select id="group-{{ line.student.id }}" name="group[{{ line.student.id }}]" size="sm" :options="range(1, ticked|length)|map(n => {value: n, label: 'Groupe ' ~ n})" value="{{ line.group }}"/>
