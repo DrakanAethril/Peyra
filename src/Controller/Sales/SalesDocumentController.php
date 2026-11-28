@@ -58,7 +58,7 @@ final class SalesDocumentController extends AbstractController
             if (null !== $fields) {
                 $document = $documents->create($dossier, $kind, $fields, $me);
                 $entityManager->flush();
-                $this->addFlash('status', \sprintf('%s enregistré en brouillon.', $kind->label()));
+                $this->addFlash('status', \sprintf('Brouillon de %s enregistré.', mb_strtolower($kind->label())));
 
                 return $this->redirectToRoute('app_sales_document', ['dossier' => $dossier->getId(), 'id' => $document->getId()], Response::HTTP_SEE_OTHER);
             }
@@ -84,7 +84,7 @@ final class SalesDocumentController extends AbstractController
             if (null !== $fields) {
                 $documents->update($document, $fields, $me);
                 $entityManager->flush();
-                $this->addFlash('status', \sprintf('%s enregistré.', $document->getType()->label()));
+                $this->addFlash('status', 'Brouillon enregistré.');
 
                 return $this->redirectToRoute('app_sales_document', ['dossier' => $dossier->getId(), 'id' => $document->getId()], Response::HTTP_SEE_OTHER);
             }
@@ -101,7 +101,7 @@ final class SalesDocumentController extends AbstractController
         $refusals = $documents->validationRefusals($document);
         if ([] === $refusals) {
             $documents->validate($document, $me);
-            $this->addFlash('status', \sprintf('%s validé sous le numéro %s.', $document->getType()->label(), $document->getNumber() ?? ''));
+            $this->addFlash('status', \sprintf('Validation faite : numéro %s.', $document->getNumber() ?? ''));
         } else {
             $this->addFlash('status', 'Le document n’est pas validé : '.implode(' ', $refusals));
         }
@@ -137,7 +137,7 @@ final class SalesDocumentController extends AbstractController
         }
         $next = $documents->transform($document, $into, $me);
         $entityManager->flush();
-        $this->addFlash('status', \sprintf('%s créé en brouillon depuis %s.', $into->label(), $document->getNumber() ?? ''));
+        $this->addFlash('status', \sprintf('Brouillon de %s ouvert depuis %s.', mb_strtolower($into->label()), $document->getNumber() ?? ''));
 
         return $this->redirectToRoute('app_sales_document', ['dossier' => $dossier->getId(), 'id' => $next->getId()], Response::HTTP_SEE_OTHER);
     }
@@ -151,7 +151,7 @@ final class SalesDocumentController extends AbstractController
         }
         $documents->send($document, $me);
         $entityManager->flush();
-        $this->addFlash('status', \sprintf('%s envoyé à %s.', $document->getNumber() ?? '', $document->getCustomer()->getName()));
+        $this->addFlash('status', \sprintf('%s est parti chez %s : l’envoi figure dans l’historique.', $document->getNumber() ?? '', $document->getCustomer()->getName()));
 
         return $this->redirectToRoute('app_sales_document', ['dossier' => $dossier->getId(), 'id' => $id], Response::HTTP_SEE_OTHER);
     }
@@ -198,7 +198,7 @@ final class SalesDocumentController extends AbstractController
 
         return [
             'dossier' => $dossier,
-            'type' => $type,
+            'doc_type' => $type,
             'document' => $document,
             'draft' => $draft,
             'editable' => $editable,

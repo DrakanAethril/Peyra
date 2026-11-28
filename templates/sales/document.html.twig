@@ -7,18 +7,18 @@
  #}
 {% extends 'sales/_layout.html.twig' %}
 
-{% set sales_tab = type.invoicing ? 'invoices' : 'orders' %}
-{% set dossier_title = document ? document.title : 'Nouveau : ' ~ type.label|lower %}
+{% set sales_tab = doc_type.invoicing ? 'invoices' : 'orders' %}
+{% set dossier_title = document ? document.title : 'Nouveau : ' ~ doc_type.label|lower %}
 {% set can_validate = document and document.draft and is_granted('SALES_VALIDATE', dossier) %}
 {% set can_send = document and not document.draft and is_granted('SALES_VALIDATE', dossier) %}
 {% set can_transform = document and not document.draft and is_granted('SALES_ENTER', dossier) %}
 {% set status_keys = (editable ? [{combo: 'F10', verb: 'Enregistrer'}] : [])|merge(can_validate ? [{combo: 'Ctrl+Enter', verb: 'Valider'}] : []) %}
 
 {% block page_head %}
-    <twig:Px:PageHead title="{{ document ? type.label ~ ' ' ~ (document.number ?? '(brouillon)') : 'Nouveau : ' ~ type.label|lower }}" :trail="[
+    <twig:Px:PageHead title="{{ document ? doc_type.label ~ ' ' ~ (document.number ?? '(brouillon)') : 'Nouveau : ' ~ doc_type.label|lower }}" :trail="[
         {label: 'Ventes', href: path('app_sales_documents', {dossier: dossier.id, type: 'quote'})},
-        {label: type.plural, href: path('app_sales_documents', {dossier: dossier.id, type: type.value})},
-        {label: document ? (document.number ?? 'Brouillon') : 'Nouveau', href: document ? path('app_sales_document', {dossier: dossier.id, id: document.id}) : path('app_sales_document_new', {dossier: dossier.id, type: type.value})},
+        {label: doc_type.plural, href: path('app_sales_documents', {dossier: dossier.id, type: doc_type.value})},
+        {label: document ? (document.number ?? 'Brouillon') : 'Nouveau', href: document ? path('app_sales_document', {dossier: dossier.id, id: document.id}) : path('app_sales_document_new', {dossier: dossier.id, type: doc_type.value})},
     ]">
         <twig:block name="badge">{% if document %} <twig:Px:Badge :of="document.state"/>{% if document.sentOn %} <twig:Px:Badge tone="info" label="Envoyé le {{ document.sentOn|date_fr }}"/>{% endif %}{% endif %}</twig:block>
         <twig:block name="actions">
@@ -49,7 +49,7 @@
                 {% if can_validate %}
                     <form class="px-confirmbar" method="post" action="{{ path('app_sales_document_validate', {dossier: dossier.id, id: document.id}) }}" role="alertdialog" aria-labelledby="sales-validate-text" hidden data-confirm-bar-target="bar" data-action="keydown->confirm-bar#keydown">
                         <input type="hidden" name="_token" value="{{ csrf_token('sales-validate-' ~ document.id) }}">
-                        <p id="sales-validate-text">Valider {{ type.withArticle }} ? {{ type.value == 'invoice' ? 'Elle prend le numéro suivant et ne pourra plus être modifiée : un avoir la corrigera.' : 'Il prend le numéro suivant et ne pourra plus être modifié.' }} Les modifications non enregistrées sont perdues.</p>
+                        <p id="sales-validate-text">Valider {{ doc_type.withArticle }} ? {{ doc_type.value == 'invoice' ? 'Elle prend le numéro suivant et ne pourra plus être modifiée : un avoir la corrigera.' : 'Il prend le numéro suivant et ne pourra plus être modifié.' }} Les modifications non enregistrées sont perdues.</p>
                         <twig:Px:Button variant="quiet" data-action="confirm-bar#close">Annuler</twig:Px:Button>
                         <twig:Px:Button type="submit" variant="primary" data-confirm-bar-target="confirm">Valider</twig:Px:Button>
                     </form>
@@ -71,10 +71,10 @@
     {% endif %}
 
     {% if editable %}
-        <form method="post" action="{{ document ? path('app_sales_document', {dossier: dossier.id, id: document.id}) : path('app_sales_document_new', {dossier: dossier.id, type: type.value}) }}" id="sales-form" novalidate data-controller="focus-error sales-lines" data-action="keydown->sales-lines#keydown" data-sales-lines-next-value="{{ draft.lines|length }}" data-sales-lines-catalogue-value="{{ catalogue|json_encode }}">
+        <form method="post" action="{{ document ? path('app_sales_document', {dossier: dossier.id, id: document.id}) : path('app_sales_document_new', {dossier: dossier.id, type: doc_type.value}) }}" id="sales-form" novalidate data-controller="focus-error sales-lines" data-action="keydown->sales-lines#keydown" data-sales-lines-next-value="{{ draft.lines|length }}" data-sales-lines-catalogue-value="{{ catalogue|json_encode }}">
             <input type="hidden" name="_token" value="{{ csrf_token(document ? 'sales-' ~ document.id : 'sales-new-' ~ dossier.id) }}">
             <div class="px-stack">
-                <twig:Px:Card title="{{ type.label }}">
+                <twig:Px:Card title="{{ doc_type.label }}">
                     <div class="px-fieldgrid">
                         <twig:Px:Field id="customer" label="Client" :required="true" :wide="true" :error="draft.error('customer')">
                             <twig:Px:Select id="customer" placeholder="Choisir le client…" :options="customer_options" value="{{ draft.customer }}" :required="true" :error="draft.error('customer')" autofocus/>
@@ -82,7 +82,7 @@
                         <twig:Px:Field id="date" label="Date" :required="true" :error="draft.error('date')">
                             <twig:Px:DateInput id="date" :reference="dossier.dossierDate" :value="draft.date('date')" :required="true" :error="draft.error('date')"/>
                         </twig:Px:Field>
-                        {% if type.value == 'invoice' %}
+                        {% if doc_type.value == 'invoice' %}
                             <twig:Px:Field id="dueDate" label="Échéance" hint="Vide : les conditions du client, lues à la validation." :error="draft.error('dueDate')">
                                 <twig:Px:DateInput id="dueDate" :reference="dossier.dossierDate" :value="draft.date('dueDate')" hint="1" :error="draft.error('dueDate')"/>
                             </twig:Px:Field>
@@ -129,7 +129,7 @@
             </form>
         {% endif %}
     {% else %}
-        <twig:Px:Card title="{{ type.label }} {{ document.number ?? '(brouillon)' }}">
+        <twig:Px:Card title="{{ doc_type.label }} {{ document.number ?? '(brouillon)' }}">
             <dl class="px-facts">
                 <dt>Client</dt><dd><a class="px-link" href="{{ path('app_third_party', {dossier: dossier.id, code: document.customer.code}) }}">{{ document.customer.code }}</a> {{ (document.customerPrint ?? {name: document.customer.name}).name }}</dd>
                 <dt>Date</dt><dd>{{ document.date|date_fr }}</dd>
@@ -186,7 +186,7 @@
                     <thead><tr><th scope="col" class="px-u-num">Date</th><th scope="col">Événement</th><th scope="col">Par</th></tr></thead>
                     <tbody>
                         {% for event in document.history|reverse %}
-                            <tr><td class="px-u-num">{{ event.on|date_fr }}</td><td>{{ event.detail }}</td><td>{{ event.by }}</td></tr>
+                            <tr><td class="px-u-num">{{ date(event.on)|date_fr }}</td><td>{{ event.detail }}</td><td>{{ event.by }}</td></tr>
                         {% endfor %}
                     </tbody>
                 </twig:Px:Table>

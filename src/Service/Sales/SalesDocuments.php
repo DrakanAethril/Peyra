@@ -126,27 +126,27 @@ final readonly class SalesDocuments
     {
         $document = new SalesDocument($dossier, $type, $this->customer($dossier, $fields->customer), $fields->date);
         $document->rewrite($document->getCustomer(), $fields->date, $fields->dueDate, $fields->reference, $fields->lines);
-        $document->recordHistory('created', $dossier->getDossierDate(), self::name($by), \sprintf('%s créé en brouillon', $type->label()));
+        $document->recordHistory('created', $dossier->getDossierDate(), self::name($by), 'Brouillon ouvert');
         $this->entityManager->persist($document);
-        $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentCreated, $by, \sprintf('%s créé en brouillon pour %s', $type->label(), $document->getCustomer()->getName()), ['type' => $type->value]);
+        $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentCreated, $by, \sprintf('Brouillon de %s ouvert pour %s', mb_strtolower($type->label()), $document->getCustomer()->getName()), ['type' => $type->value]);
 
         return $document;
     }
 
-    public function update(SalesDocument $document, SalesDocumentFields $fields, User $by): void
+    public function update(SalesDocument $document, SalesDocumentFields $fields, User|string $by): void
     {
         $dossier = $document->getDossier();
         $document->rewrite($this->customer($dossier, $fields->customer), $fields->date, $fields->dueDate, $fields->reference, $fields->lines);
-        $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentChanged, $by, \sprintf('%s en brouillon modifié', $document->getType()->label()), ['document' => $document->getId()]);
+        $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentChanged, $by, \sprintf('Brouillon de %s modifié', mb_strtolower($document->getType()->label())), ['document' => $document->getId()]);
     }
 
     /** A draft only: it carries no number, so the numbering keeps no gap. */
-    public function delete(SalesDocument $document, User $by): void
+    public function delete(SalesDocument $document, User|string $by): void
     {
         if (!$document->isDraft()) {
             throw new \LogicException('A validated commercial document is never deleted.');
         }
-        $this->auditTrail->inDossier($document->getDossier(), AuditAction::SalesDocumentDeleted, $by, \sprintf('%s en brouillon supprimé', $document->getType()->label()), ['document' => $document->getId()]);
+        $this->auditTrail->inDossier($document->getDossier(), AuditAction::SalesDocumentDeleted, $by, \sprintf('Brouillon de %s supprimé', mb_strtolower($document->getType()->label())), ['document' => $document->getId()]);
         $this->entityManager->remove($document);
     }
 
@@ -200,8 +200,8 @@ final readonly class SalesDocuments
                 $dueDate = $customer->getPaymentTerms()->dueDate($document->getDate());
             }
             $document->markValidated($number, self::print($customer), $dueDate);
-            $document->recordHistory('validated', $dossier->getDossierDate(), self::name($by), \sprintf('Validé sous le numéro %s', $number));
-            $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentValidated, $by, \sprintf('%s %s validé', $type->label(), $number), ['document' => $document->getId(), 'number' => $number]);
+            $document->recordHistory('validated', $dossier->getDossierDate(), self::name($by), \sprintf('Validation sous le numéro %s', $number));
+            $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentValidated, $by, \sprintf('Validation de %s %s', mb_strtolower($type->label()), $number), ['document' => $document->getId(), 'number' => $number]);
             $this->entityManager->flush();
         });
     }
@@ -233,10 +233,10 @@ final readonly class SalesDocuments
         $dossier = $document->getDossier();
         $next = new SalesDocument($dossier, $into, $document->getCustomer(), $dossier->getDossierDate(), $document);
         $next->rewrite($document->getCustomer(), $dossier->getDossierDate(), null, $document->getReference(), $document->getLines());
-        $next->recordHistory('created', $dossier->getDossierDate(), self::name($by), \sprintf('%s créé en brouillon depuis %s', $into->label(), $document->getNumber() ?? ''));
-        $document->recordHistory('transformed', $dossier->getDossierDate(), self::name($by), \sprintf('Transformé en %s', mb_strtolower($into->label())));
+        $next->recordHistory('created', $dossier->getDossierDate(), self::name($by), \sprintf('Brouillon ouvert depuis %s', $document->getNumber() ?? ''));
+        $document->recordHistory('transformed', $dossier->getDossierDate(), self::name($by), \sprintf('Transformation en %s', mb_strtolower($into->label())));
         $this->entityManager->persist($next);
-        $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentCreated, $by, \sprintf('%s créé depuis %s', $into->label(), $document->getNumber() ?? ''), ['type' => $into->value, 'source' => $document->getId()]);
+        $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentCreated, $by, \sprintf('Brouillon de %s ouvert depuis %s', mb_strtolower($into->label()), $document->getNumber() ?? ''), ['type' => $into->value, 'source' => $document->getId()]);
 
         return $next;
     }
@@ -248,8 +248,8 @@ final readonly class SalesDocuments
         $document->markSent($dossier->getDossierDate());
         $customer = $document->getCustomer();
         $to = null === $customer->getEmail() ? $customer->getName() : \sprintf('%s (%s)', $customer->getName(), $customer->getEmail());
-        $document->recordHistory('sent', $dossier->getDossierDate(), self::name($by), \sprintf('Envoyé à %s', $to));
-        $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentSent, $by, \sprintf('%s %s envoyé à %s', $document->getType()->label(), $document->getNumber() ?? '', $customer->getName()), ['document' => $document->getId()]);
+        $document->recordHistory('sent', $dossier->getDossierDate(), self::name($by), \sprintf('Envoi à %s', $to));
+        $this->auditTrail->inDossier($dossier, AuditAction::SalesDocumentSent, $by, \sprintf('Envoi de %s à %s', $document->getNumber() ?? '', $customer->getName()), ['document' => $document->getId()]);
     }
 
     /** @return CustomerPrint */

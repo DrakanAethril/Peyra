@@ -47,7 +47,7 @@ final class SalesDocumentsController extends AbstractController
 
         return $this->render('sales/documents.html.twig', [
             'dossier' => $dossier,
-            'type' => $shown,
+            'doc_type' => $shown,
             'family' => $family,
             'counts' => $counts,
             'document_rows' => \array_slice($rows, $page->offset(), $page->perPage),

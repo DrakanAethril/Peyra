@@ -47,11 +47,11 @@
                             <tr data-rows-target="row">
                                 <td class="px-u-code"><a class="px-link" href="{{ path('app_third_party', {dossier: dossier.id, code: customer.code}) }}">{{ customer.code }}</a></td>
                                 <td class="px-u-code">{{ customer.auxiliaryCode }}</td>
-                                <td class="px-u-fill" title="{{ customer.name }}">{{ customer.name }}</td>
-                                <td>{{ customer.city }}</td>
-                                <td>{{ customer.paymentTerms.label }} · {{ customer.paymentMethod.label|lower }}</td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ customer.name }}">{{ customer.name }}</td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ customer.city }}">{{ customer.city }}</td>
+                                <td class="px-u-truncate px-u-truncate-short" title="{{ customer.paymentTerms.label }} · {{ customer.paymentMethod.label }}">{{ customer.paymentTerms.label }} · {{ customer.paymentMethod.label|lower }}</td>
                                 {% set owed = outstanding[customer.id] ?? null %}
-                                <td class="px-u-num">{% if owed is not null and not owed.isZero %}<a class="px-link" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: customer.auxiliaryCode ?? customer.code}) }}">{{ owed.balance|balance }}</a>{% endif %}</td>
+                                <td class="px-u-num">{% if owed is not null and not owed.balance.isZero %}<a class="px-link" href="{{ path('app_accounting_consultation', {dossier: dossier.id, account: customer.auxiliaryCode ?? customer.code}) }}">{{ owed.balance|balance }}</a>{% endif %}</td>
                             </tr>
                         {% endfor %}
                     </tbody>

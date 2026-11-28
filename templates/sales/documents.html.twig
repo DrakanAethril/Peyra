@@ -4,34 +4,34 @@
  #}
 {% extends 'sales/_layout.html.twig' %}
 
-{% set sales_tab = type.invoicing ? 'invoices' : 'orders' %}
-{% set dossier_title = type.plural %}
+{% set sales_tab = doc_type.invoicing ? 'invoices' : 'orders' %}
+{% set dossier_title = doc_type.plural %}
 {% set can_enter = is_granted('SALES_ENTER', dossier) %}
-{% set can_create = can_enter and type.value != 'credit_note' %}
+{% set can_create = can_enter and doc_type.value != 'credit_note' %}
 {% set status_keys = can_create ? [{combo: 'N', verb: 'Nouveau'}] : [] %}
 
 {% block page_head %}
-    <twig:Px:PageHead title="{{ type.plural }}" :trail="[
+    <twig:Px:PageHead title="{{ doc_type.plural }}" :trail="[
         {label: 'Ventes', href: path('app_sales_documents', {dossier: dossier.id, type: 'quote'})},
-        {label: type.plural, href: path('app_sales_documents', {dossier: dossier.id, type: type.value})},
+        {label: doc_type.plural, href: path('app_sales_documents', {dossier: dossier.id, type: doc_type.value})},
     ]">
         <twig:block name="actions">
-            {% if can_create %}<twig:Px:Button href="{{ path('app_sales_document_new', {dossier: dossier.id, type: type.value}) }}" variant="primary" icon="plus" shortcut="N">Nouveau : {{ type.label|lower }}</twig:Px:Button>{% endif %}
+            {% if can_create %}<twig:Px:Button href="{{ path('app_sales_document_new', {dossier: dossier.id, type: doc_type.value}) }}" variant="primary" icon="plus" shortcut="N">Nouveau : {{ doc_type.label|lower }}</twig:Px:Button>{% endif %}
         </twig:block>
     </twig:Px:PageHead>
 {% endblock %}
 
 {% block page %}
     <twig:Px:Card :flush="true">
-        <twig:Px:Filters action="{{ path('app_sales_documents', {dossier: dossier.id, type: type.value}) }}">
+        <twig:Px:Filters action="{{ path('app_sales_documents', {dossier: dossier.id, type: doc_type.value}) }}">
             {% for case in family %}
-                <twig:Px:FilterChip label="{{ case.plural }}" href="{{ path('app_sales_documents', {dossier: dossier.id, type: case.value}) }}" :count="counts[case.value]" :current="case == type"/>
+                <twig:Px:FilterChip label="{{ case.plural }}" href="{{ path('app_sales_documents', {dossier: dossier.id, type: case.value}) }}" :count="counts[case.value]" :current="case == doc_type"/>
             {% endfor %}
         </twig:Px:Filters>
         {% if document_rows is empty %}
-            <twig:Px:Empty icon="file-text" title="Aucun document" text="{{ type.value == 'credit_note' ? 'Un avoir se crée depuis la facture validée qu’il corrige : « Créer un avoir » sur sa fiche.' : 'Aucun document de ce type pour l’instant. « Nouveau » en ouvre un brouillon ; un document validé se transforme en le suivant.' }}"/>
+            <twig:Px:Empty icon="file-text" title="Aucun document" text="{{ doc_type.value == 'credit_note' ? 'Un avoir se crée depuis la facture validée qu’il corrige : « Créer un avoir » sur sa fiche.' : 'Aucun document de ce type pour l’instant. « Nouveau » en ouvre un brouillon ; un document validé se transforme en le suivant.' }}"/>
         {% else %}
-            <twig:Px:Table caption="{{ type.plural }} de {{ dossier.name }}" :rows="true">
+            <twig:Px:Table caption="{{ doc_type.plural }} de {{ dossier.name }}" :rows="true">
                 <thead>
                     <tr>
                         <th scope="col">Numéro</th>
@@ -65,4 +65,4 @@
     </twig:Px:Card>
 {% endblock %}
 
-{% block facts %}<span>{{ type.plural }} · <b>{{ shown_total }}</b></span>{% endblock %}
+{% block facts %}<span>{{ doc_type.plural }} · <b>{{ shown_total }}</b></span>{% endblock %}

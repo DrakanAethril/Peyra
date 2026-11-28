@@ -9,6 +9,7 @@ use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Payroll\PayrollBody;
 use App\Entity\Payroll\PayrollEstablishment;
+use App\Entity\Sales\SalesSequence;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Audit\AuditAction;
@@ -32,10 +33,12 @@ use App\Service\Accounting\Template\TemplateSheet;
 use App\Service\Audit\AuditTrail;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Exercises;
+use App\Service\Inventory\ArticleSheet;
 use App\Service\Payroll\Employee\EmployeeSheet;
 use App\Service\Payroll\Hiring\HiringFormalities;
 use App\Service\Payroll\Plan\PayrollPlanInstaller;
 use App\Service\Payroll\Settings\PayrollEstablishmentRules;
+use App\Service\Sales\SalesDocuments;
 use App\Service\Shared\Portal\PortalFault;
 use App\Service\ThirdParty\ThirdPartyRules;
 use App\Service\ThirdParty\ThirdPartySheet;
@@ -80,6 +83,8 @@ final readonly class DemoInstaller
         private EmployeeRepository $employeeRepository,
         private HiringFormalities $hiring,
         private EntryRepository $entries,
+        private ArticleSheet $articleSheet,
+        private SalesDocuments $salesDocuments,
         #[Autowire('%kernel.project_dir%/fixtures/demo')]
         private string $directory,
     ) {
@@ -115,6 +120,7 @@ final readonly class DemoInstaller
         $payrollFile = DemoPayrollFile::read($this->directory.'/payroll.yaml');
         $employeeFile = DemoEmployeeFile::read($this->directory.'/employees.yaml');
         $hiringFile = DemoHiringFile::read($this->directory.'/hiring.yaml');
+        $salesFile = DemoSalesFile::read($this->directory.'/sales.yaml');
         $dossier = new Dossier(DossierKind::Template, $file->company, $file->dossierDate, null, null, $at, null);
         $dossier->describeInLibrary($file->library['title'], $file->library['description'], $file->library['level'], $file->library['processes']);
         $this->entityManager->persist($dossier);
@@ -143,6 +149,7 @@ final readonly class DemoInstaller
         $this->context->within($dossier, fn () => $this->installPayroll($dossier, $payrollFile, $actor));
         $this->context->within($dossier, fn () => $this->installEmployees($dossier, $employeeFile, $actor));
         $this->context->within($dossier, fn () => $this->installHiring($dossier, $hiringFile, $actor));
+        $this->context->within($dossier, fn () => $this->installSales($dossier, $salesFile, $actor));
         $this->auditTrail->inDossier(
             $dossier,
             AuditAction::DossierCreated,
@@ -204,6 +211,42 @@ final readonly class DemoInstaller
                 throw new \InvalidArgumentException(\sprintf('hiring.yaml : %s : %s', $declaration['number'], implode(' ', array_map(static fn (PortalFault $fault): string => $fault->motive, $outcome))));
             }
             $this->entityManager->flush();
+        }
+    }
+
+    /**
+     * Its sales (step 2.3): the articles through their fiche's door, the numbering the books already
+     * used, then the commercial documents through SalesDocuments - drafted, transformed, validated
+     * in the file's order. A fault names its place and installs nothing more.
+     */
+    private function installSales(Dossier $dossier, DemoSalesFile $file, string $actor): void
+    {
+        foreach ($file->articles as $draft) {
+            $fields = $this->articleSheet->check($draft, $dossier) ?? throw new \InvalidArgumentException(\sprintf('sales.yaml : article %s : %s', $draft->code, implode(' ', $draft->errors)));
+            $this->articleSheet->create($dossier, $fields, $actor);
+            $this->entityManager->flush();
+        }
+        foreach ($file->numbering as $numbering) {
+            $this->entityManager->persist(new SalesSequence($dossier, $numbering['type'], $numbering['year'], $numbering['last'], $numbering['date']));
+        }
+        $this->entityManager->flush();
+        $made = [];
+        foreach ($file->documents as $index => $entry) {
+            if (null !== $entry['draft']) {
+                $fields = $this->salesDocuments->check($entry['draft'], $dossier) ?? throw new \InvalidArgumentException(\sprintf('sales.yaml : documents[%d] : %s', $index, implode(' ', $entry['draft']->errors)));
+                $document = $this->salesDocuments->create($dossier, $entry['type'], $fields, $actor);
+            } else {
+                $document = $this->salesDocuments->transform($made[$entry['madeFrom'] ?? 0], $entry['type'], $actor);
+            }
+            $this->entityManager->flush();
+            if ($entry['validate']) {
+                $refusals = $this->salesDocuments->validationRefusals($document);
+                if ([] !== $refusals) {
+                    throw new \InvalidArgumentException(\sprintf('sales.yaml : documents[%d] : %s', $index, implode(' ', $refusals)));
+                }
+                $this->salesDocuments->validate($document, $actor);
+            }
+            $made[$index] = $document;
         }
     }
 
