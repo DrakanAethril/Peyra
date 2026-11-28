@@ -26,11 +26,11 @@
 #
 # Les valeurs sociales (lot 4, étape 4.1) viennent des données préparées pour Peyra
 # (plan/donnees/reglementaire/social-2026.yaml, recherche du 27/11/2026), sources et marques
-# verified
-# gardées. Écarts avec elles : les taux d'exemple d'accident du travail et de versement mobilité n'y
-# sont pas (ce sont des données de l'établissement, saisies dans Paie et social › Paramètres de
-# paie) ; le plafond de l'assurance chômage est mis entre guillemets (une virgule dans une table en
-# ligne) ; la majoration des heures complémentaires est ajoutée (service-public, 28/11/2026).
+# verified gardées. Écarts avec elles : les taux d'exemple d'accident du travail et de versement
+# mobilité n'y sont pas (ce sont des données de l'établissement, saisies dans Paie et social ›
+# Paramètres de paie) ; le plafond de l'assurance chômage est mis entre guillemets (une virgule dans
+# une table en ligne) ; la majoration des heures complémentaires est ajoutée (service-public,
+# 28/11/2026).
 millesime: 2026
 consulted_on: 2026-11-27
 entries:

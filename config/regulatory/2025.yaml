@@ -26,12 +26,11 @@
 #
 # Les valeurs sociales (lot 4, étape 4.1) viennent des données préparées pour Peyra
 # (plan/donnees/reglementaire/social-2025.yaml, recherche du 27/11/2026), sources et marques
-# verified
-# gardées. Écarts avec elles : les taux d'exemple d'accident du travail et de versement mobilité n'y
-# sont pas (ce sont des données de l'établissement, saisies dans Paie et social › Paramètres de
-# paie) ; maladie et allocations familiales gardent leur taux réduit et son seuil, mais leur taux
-# plein se lit sous employer_rate comme en 2026 ; la majoration des heures complémentaires est
-# ajoutée (service-public, 28/11/2026).
+# verified gardées. Écarts avec elles : les taux d'exemple d'accident du travail et de versement
+# mobilité n'y sont pas (ce sont des données de l'établissement, saisies dans Paie et social ›
+# Paramètres de paie) ; maladie et allocations familiales gardent leur taux réduit et son seuil,
+# mais leur taux plein se lit sous employer_rate comme en 2026 ; la majoration des heures
+# complémentaires est ajoutée (service-public, 28/11/2026).
 millesime: 2025
 consulted_on: 2026-11-27
 entries:
