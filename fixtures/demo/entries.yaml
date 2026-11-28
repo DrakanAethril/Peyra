@@ -1654,14 +1654,6 @@ entries:
       - { account: '512200', credit: '960.00' }
   - journal: BQ2
     date: '2026-03-10'
-    document: VIR-RIVO-0011
-    label: "Agencements Rivoire SAS VIR-RIVO-0011"
-    validated: true
-    lines:
-      - { account: '512200', debit: '6084.00' }
-      - { account: '411000', third_party: C0042, credit: '6084.00' }
-  - journal: BQ2
-    date: '2026-03-10'
     document: VIR-SJUS-0014
     label: "Mairie de Saint-Just VIR-SJUS-0014"
     validated: true

@@ -118,7 +118,7 @@ final class DemoInstallCommandTest extends KernelTestCase
         // The install clears the entity manager as it goes: what follows reads lazily, inside the dossier.
         $context->enter($vasseur);
         $entries = $context->within($vasseur, static fn (): array => self::getContainer()->get(EntryRepository::class)->findBy([], ['id' => 'ASC']));
-        self::assertCount(246, $entries, 'Les à-nouveaux, les 80 écritures de janvier, 82 de février, 81 de mars et les deux abonnements de mars.');
+        self::assertCount(245, $entries, 'Les à-nouveaux, les 80 écritures de janvier, 82 de février, 80 de mars et les deux abonnements de mars.');
         $opening = $entries[0];
         self::assertSame(['AN-2026-00001', 'AN-2026-001', '2026-01-01', EntryOrigin::Opening, 67], [$opening->getNumberLabel(), $opening->getDocument(), $opening->getEntryDate()->format('Y-m-d'), $opening->getOrigin(), \count($opening->getLines())]);
         self::assertSame([45_926_031, 45_926_031], [$opening->totalDebit()->cents, $opening->totalCredit()->cents]);
@@ -146,7 +146,7 @@ final class DemoInstallCommandTest extends KernelTestCase
         }
         ksort($states);
         self::assertSame([
-            'ACH brouillard' => 4, 'ACH validée' => 47, 'AN validée' => 1, 'BQ1 validée' => 31, 'BQ2 brouillard' => 2, 'BQ2 validée' => 104,
+            'ACH brouillard' => 4, 'ACH validée' => 47, 'AN validée' => 1, 'BQ1 validée' => 31, 'BQ2 brouillard' => 2, 'BQ2 validée' => 103,
             'OD validée' => 10, 'VTE brouillard' => 2, 'VTE validée' => 45,
         ], $states, 'États par journal.');
         $drafts = array_map(static fn ($entry): string => $entry->getDocument(), array_values(array_filter($entries, static fn ($entry): bool => !$entry->isValidated())));
