@@ -1162,6 +1162,17 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   is the contract's at four decimals, a premium applied to it then rounded to four. The mensualised
   salary is the exception: its amount is the contract's salary. Tests: `tests/Service/Payroll/Engine/`,
   reference payslips worked out by hand (`StandardPlanFixture` reads the plan and the millésimes).
+- **Contributions** (step 4.3b, `PayslipContributions`): `PayslipInput` also takes the
+  `PayslipEstablishment` (headcount, AT and mobility rates, collective hours). **Each share is rounded
+  on its own, rubrique by rubrique**; a line of the clarified payslip is their sum
+  (`Payslip::lineTotal()`), never base × summed rate. Brackets, the CSG abatement and the reduction's
+  parameters are numbers in `config/regulatory/` (`social.ceiling_brackets`, `social.csg_abatement`);
+  a rate whose value carries `<rate>_reduced` + `reduced_rate_threshold_smic` is 2025's reduced rate.
+- **The general reduction has one formula per millésime**, chosen by `social.general_reduction.regime`
+  (`rgcp` → `GeneralReductionRgcp`, `rgdu` → `GeneralReductionRgdu`): a new millésime's formula is a
+  new class and a new regime value, never an `if` on the year. Monthly, against the January SMIC of
+  reference (`smic_monthly_reference`) prorated and raised by the overtime hours; `DecimalPower` gives
+  the RGDU's ^1,75 without a float.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 
