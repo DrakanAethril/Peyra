@@ -262,7 +262,7 @@ final class DemoInstallCommandTest extends KernelTestCase
             $employees = self::getContainer()->get(EmployeeRepository::class)->findByDossier($vasseur);
             self::assertSame(['S001', 'S002', 'S003', 'S004', 'S005', 'S006', 'S007', 'S008', 'S009', 'S010', 'S011'], array_map(static fn ($e): string => $e->getRegistrationNumber(), $employees));
             $today = $vasseur->getDossierDate();
-            self::assertSame(10, \count(array_filter($employees, static fn ($e): bool => EmployeeState::Present === $e->stateAt($today))));
+            self::assertCount(10, array_filter($employees, static fn ($e): bool => EmployeeState::Present === $e->stateAt($today)));
             [$paul, , $thomas, $hugo, $julien, , $sandrine, , , , $yanis] = $employees;
             self::assertTrue($paul->termsAt($today)->isExecutive());
             self::assertSame([240_000, '151.67'], [$thomas->termsAt($today)->getBaseSalary()->cents, $thomas->termsAt($today)->getMonthlyHours()]);

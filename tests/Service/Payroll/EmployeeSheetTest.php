@@ -64,7 +64,7 @@ final class EmployeeSheetTest extends KernelTestCase
         $history = EmploymentHistory::of($julien, $dossier->getDossierDate());
         self::assertSame(['current', 'upcoming'], array_column($history, 'when'));
         self::assertSame(['Embauche'], $history[0]['changes']);
-        self::assertSame(["Emploi : Menuisier d’atelier qualifié → Pilote du centre d’usinage", "Salaire de base : 2\u{202F}250,00 → 2\u{202F}380,00"], $history[1]['changes']);
+        self::assertSame(['Emploi : Menuisier d’atelier qualifié → Pilote du centre d’usinage', "Salaire de base : 2\u{202F}250,00 → 2\u{202F}380,00"], $history[1]['changes']);
 
         // The same day again corrects it, without a new row; nothing changed writes nothing.
         $draft = EmployeeDraft::of($julien, $julien->getTerms()[1]);
@@ -73,7 +73,7 @@ final class EmployeeSheetTest extends KernelTestCase
         self::assertNotNull($fields);
         self::assertTrue($sheet->update($julien, $fields, $student));
         $entityManager->flush();
-        self::assertCount(2, $julien->getTerms());
+        self::assertSame(['2015-03-02', '2026-04-01'], array_map(static fn ($t): string => $t->getEffectiveFrom()->format('Y-m-d'), $julien->getTerms()));
         self::assertSame(239_000, $julien->getTerms()[1]->getBaseSalary()->cents);
         $draft = EmployeeDraft::of($julien, $julien->getTerms()[1]);
         $fields = $sheet->check($draft, $dossier, $julien);
@@ -103,7 +103,7 @@ final class EmployeeSheetTest extends KernelTestCase
         self::assertSame('Les conditions de l’embauche ne se suppriment pas : corrigez-les.', EmployeeSheet::termsDeletionRefusal($julien->getTerms()[0]));
         $sheet->deleteTerms($julien->getTerms()[1], $student);
         $entityManager->flush();
-        self::assertCount(1, $julien->getTerms());
+        self::assertSame(['2015-03-09'], array_map(static fn ($t): string => $t->getEffectiveFrom()->format('Y-m-d'), $julien->getTerms()));
         self::assertSame(EmployeeState::Present, $julien->stateAt($dossier->getDossierDate()));
         self::assertSame(EmployeeState::Upcoming, $julien->stateAt(new \DateTimeImmutable('2015-03-08')));
 
