@@ -28,6 +28,12 @@ final class Gesture
         return 'modifier les paramètres du dossier';
     }
 
+    /** Alt Inser in the grid: an account is part of the plan, one of the settings. */
+    public static function account(): string
+    {
+        return 'créer un compte du plan';
+    }
+
     public static function lettering(DossierArea $area): string
     {
         return match ($area) {

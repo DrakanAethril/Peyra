@@ -30,7 +30,7 @@
 
 {% block page %}
     <twig:Px:Card :flush="true">
-        <twig:Px:Filters action="{{ audit_url }}" search="{{ filters.q ?? '' }}" searchLabel="Mots du détail ou auteur" resetHref="{{ filters is not empty ? audit_url : null }}">
+        <twig:Px:Filters action="{{ audit_url }}" search="{{ filters.q ?? '' }}" searchLabel="Détail ou auteur" resetHref="{{ filters is not empty ? audit_url : null }}">
             <twig:Px:FilterChip label="Tous" href="{{ path('app_dossier_audit', {dossier: dossier.id}|merge(filters)|merge({role: null})) }}" :count="role_counts.all" :current="role_filter == ''"/>
             <twig:Px:FilterChip label="Enseignants" href="{{ path('app_dossier_audit', {dossier: dossier.id}|merge(filters)|merge({role: 'teacher'})) }}" :count="role_counts.teacher" :current="role_filter == 'teacher'"/>
             <twig:Px:FilterChip label="Étudiants" href="{{ path('app_dossier_audit', {dossier: dossier.id}|merge(filters)|merge({role: 'student'})) }}" :count="role_counts.student" :current="role_filter == 'student'"/>

@@ -4,7 +4,7 @@
  # then « Tous mes dossiers ». With a single dossier it is a text, without a menu. Changing dossier
  # opens the other one's dashboard. (The restore point joins the panel at step 1.8.)
  #}
-{% set exercise_label = (view.exercise ? 'Exercice ' ~ view.exercise.code : 'Hors exercice') ~ (dossier.kind.value == 'group' ? ' · dossier de groupe' : '') %}
+{% set exercise_label = (view.exercise ? 'Exercice ' ~ view.exercise.code : 'Hors exercice') ~ (dossier.kind.value == 'group' ? ' · groupe' : '') %}
 {% if view.switcherCount <= 1 %}
     <div class="px-switcher px-switcher--static">
         <b class="px-switcher__name">{{ dossier.name }}</b>

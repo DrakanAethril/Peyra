@@ -51,7 +51,7 @@
                             <td>
                                 {% if can_assign and row.member %}
                                     <label class="px-u-sr-only" for="profile-{{ row.member.id }}">Profil de {{ row.user.displayName }}</label>
-                                    <twig:Px:Select id="profile-{{ row.member.id }}" name="profile[{{ row.member.id }}]" size="sm" :value="row.profile ? row.profile.value : ''" :options="[{value: '', label: 'Sans profil (tous les droits)'}]|merge(profiles|map(p => {value: p.value, label: p.label}))"/>
+                                    <twig:Px:Select id="profile-{{ row.member.id }}" name="profile[{{ row.member.id }}]" size="sm" class="px-rights__profile" :value="row.profile ? row.profile.value : ''" :options="[{value: '', label: 'Sans profil (tous les droits)'}]|merge(profiles|map(p => {value: p.value, label: p.label}))"/>
                                 {% elseif row.profile %}
                                     <twig:Px:Chip tone="role">{{ row.profile.label }}</twig:Px:Chip>
                                 {% else %}
@@ -67,7 +67,7 @@
     </twig:Px:Card>
 
     <twig:Px:Card :flush="true" title="Profils et droits" meta="dossiers de groupe">
-        <twig:Px:Table caption="Ce que chaque profil ouvre, domaine par domaine">
+        <twig:Px:Table caption="Ce que chaque profil ouvre, domaine par domaine" class="px-rights__matrix">
             <thead><tr>
                 <th scope="col">Domaine</th>
                 {% for profile in profiles %}

@@ -114,6 +114,8 @@
                                     <td class="px-brouillard__controls">
                                         {% if row.changing %}
                                             <twig:Px:Badge tone="info" label="En cours de modification"/>
+                                        {% elseif row.refused %}
+                                            <span title="{{ row.refused }}"><twig:Px:Badge tone="neutral" label="Hors de votre profil"/></span>
                                         {% elseif row.errors is not empty %}
                                             <twig:Px:Badge tone="danger" label="Refusée"/> <span>{{ row.errors|first }}</span>
                                         {% elseif row.controls is not empty %}

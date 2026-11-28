@@ -10,6 +10,7 @@ use App\Entity\Dossier\Period;
 use App\Entity\Identity\User;
 use App\Enum\Accounting\JournalType;
 use App\Enum\Dossier\AccessLevel;
+use App\Enum\Dossier\DossierArea;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntryRepository;
 use App\Repository\Accounting\EntryTemplateRepository;
@@ -30,6 +31,7 @@ use App\Service\Accounting\Entry\PendingStale;
 use App\Service\Accounting\Template\GuidedEntry;
 use App\Service\Accounting\Template\TemplateCall;
 use App\Service\Dossier\Rights\DossierRights;
+use App\Service\Dossier\Rights\Gesture;
 use App\Service\Shared\DateValue;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\JsonRequestPayload;
@@ -111,7 +113,7 @@ final class EntryGridController extends AbstractController
                 'dossierDate' => $dossier->getDossierDate()->format('Y-m-d'),
                 'focus' => QueryValue::nullableInt($request, 'entry'),
                 'templates' => $this->templatesOf($dossier, $journal, $templates, $accounts),
-                'canCreateAccount' => $this->isGranted(DossierRightVoter::SETTINGS, $dossier),
+                'accountRefusal' => $editable ? $rights->refusal($dossier, $me, DossierArea::Settings, AccessLevel::Enter, Gesture::account()) : null,
             ],
             'lookup' => $grid->lookup($context),
         ]);
