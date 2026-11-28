@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Service\Payroll\Payslip;
 
 use App\Entity\Dossier\Dossier;
+use App\Entity\Identity\User;
 use App\Entity\Payroll\Employee;
 use App\Entity\Payroll\MonthlyPayslip;
-use App\Entity\Identity\User;
 use App\Entity\Payroll\PayrollItem;
 use App\Entity\Payroll\PayrollMonthClosure;
 use App\Enum\Audit\AuditAction;

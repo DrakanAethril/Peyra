@@ -1,16 +1,34 @@
 {#
- # One rubrique of the calculated payslip (step 4.4a): base, rates and shares as the engine gave them,
- # an apprentice's employee base under the employer's; its explanation travels in a <template> that a
- # click, Entrée or F5 shows in the drawer (payslip_controller.js).
+ # One rubrique of the payslip (steps 4.4a and 4.4b): base, rates and shares as the engine gave them,
+ # an apprentice's employee base under the employer's. Its open cells (`open_cells[row.code]`,
+ # PayslipLineCells) are fields of the payslip's form - what was typed, `cell[code.field]`, beside what
+ # they showed, `shown[code.field]`: a changed cell is forced, an emptied one goes back to the
+ # calculation. A value forced by hand is tinted and says « forcée ». The explanation travels in a
+ # <template> that a click, F5 or Entrée on the line shows in the drawer (payslip_controller.js).
  #}
+{% set open = open_cells[row.code] ?? [] %}
+{% macro cell(row, field, display, open, cells, errors, texts) %}
+    {% set key = row.code ~ '.' ~ field %}
+    {% set forced = row.isForced(field) %}
+    {% if field in open %}
+        {% set shown = texts[key] ?? '' %}
+        <input class="px-payslip__cell{{ forced ? ' is-forced' : '' }}" form="payslip-elements" name="cell[{{ key }}]" value="{{ cells[key] ?? shown }}" aria-label="{{ row.label }} : {{ {base: 'base', employeeRate: 'taux salarié', employeeAmount: 'part salarié', employerRate: 'taux employeur', employerAmount: 'part employeur'}[field] }}{{ forced ? ' (valeur forcée)' : '' }}" autocomplete="off" inputmode="decimal" data-payslip-target="cell"{% if errors[key] is defined %} aria-invalid="true" title="{{ errors[key] }}"{% endif %}>
+        <input type="hidden" form="payslip-elements" name="shown[{{ key }}]" value="{{ shown }}">
+        {% if errors[key] is defined %}<span class="px-field__error">{{ errors[key] }}</span>{% elseif forced %}<span class="px-payslip__forced">forcée</span>{% endif %}
+    {% elseif forced %}
+        <span class="px-payslip__value is-forced">{{ display }}</span><span class="px-payslip__forced">forcée</span>
+    {% else %}
+        {{ display }}
+    {% endif %}
+{% endmacro %}
 {% set row_base = row.base is null ? '' : (row.baseUnit ? row.baseUnit.format(row.base) : row.base) %}
-<tr tabindex="0" data-payslip-target="line" data-action="click->payslip#explain focus->payslip#focusLine keydown->payslip#lineKey" title="Détail du calcul (F5)">
-    <th scope="row"><span class="px-u-code px-u-muted">{{ row.code }}</span> {{ row.label }}</th>
-    <td class="px-u-num">{{ row_base }}{% if row.employeeBase is not null and row.base is not null and row.employeeBase != row.base %}<br><small class="px-u-muted">salarié : {{ row.baseUnit ? row.baseUnit.format(row.employeeBase) : row.employeeBase }}</small>{% endif %}</td>
-    <td class="px-u-num">{{ row.employeeRate is null ? '' : (row.employeeRateUnit ? row.employeeRateUnit.format(row.employeeRate) : row.employeeRate) }}</td>
-    <td class="px-u-num">{{ row.employeeAmount.isZero and row.employerAmount is not null ? '' : row.employeeAmount|amount }}</td>
-    <td class="px-u-num">{{ row.employerRate is null ? '' : (row.employerRateUnit ? row.employerRateUnit.format(row.employerRate) : row.employerRate) }}</td>
-    <td class="px-u-num">{{ row.employerAmount is null ? '' : row.employerAmount|amount }}</td>
+<tr tabindex="{{ open is empty ? 0 : -1 }}" class="px-payslip__line" data-payslip-target="line" data-code="{{ row.code }}" data-removable="{{ (removable[row.code] ?? false) ? '1' : '' }}" data-action="click->payslip#explain focusin->payslip#focusLine keydown->payslip#lineKey" title="Détail du calcul (F5)">
+    <th scope="row"><span class="px-u-code px-u-muted">{{ row.code }}</span> {{ row.label }}{% if row.added %} <twig:Px:Badge tone="info" label="ajoutée"/>{% endif %}</th>
+    <td class="px-u-num">{{ _self.cell(row, 'base', row_base, open, cells, errors, cell_texts) }}{% if row.employeeBase is not null and row.base is not null and row.employeeBase != row.base %}<br><small class="px-u-muted">salarié : {{ row.baseUnit ? row.baseUnit.format(row.employeeBase) : row.employeeBase }}</small>{% endif %}</td>
+    <td class="px-u-num">{{ _self.cell(row, 'employeeRate', row.employeeRate is null ? '' : (row.employeeRateUnit ? row.employeeRateUnit.format(row.employeeRate) : row.employeeRate), open, cells, errors, cell_texts) }}</td>
+    <td class="px-u-num">{{ _self.cell(row, 'employeeAmount', row.employeeAmount.isZero and row.employerAmount is not null ? '' : row.employeeAmount|amount, open, cells, errors, cell_texts) }}</td>
+    <td class="px-u-num">{{ _self.cell(row, 'employerRate', row.employerRate is null ? '' : (row.employerRateUnit ? row.employerRateUnit.format(row.employerRate) : row.employerRate), open, cells, errors, cell_texts) }}</td>
+    <td class="px-u-num">{{ _self.cell(row, 'employerAmount', row.employerAmount is null ? '' : row.employerAmount|amount, open, cells, errors, cell_texts) }}</td>
     <template>
         <h3 class="px-u-strong">{{ row.code }} · {{ row.label }}</h3>
         <dl class="px-facts">

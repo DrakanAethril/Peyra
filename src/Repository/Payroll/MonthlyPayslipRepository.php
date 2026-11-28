@@ -43,7 +43,7 @@ final class MonthlyPayslipRepository extends ServiceEntityRepository
     /** @return list<MonthlyPayslip> the employee's validated payslips from that day (included) to that month (excluded) */
     public function findValidatedBetween(Employee $employee, \DateTimeImmutable $from, \DateTimeImmutable $before): array
     {
-        /** @var list<MonthlyPayslip> */
+        /* @var list<MonthlyPayslip> */
         return $this->createQueryBuilder('p')
             ->where('p.employee = :employee')->andWhere('p.status = :validated')
             ->andWhere('p.month >= :from')->andWhere('p.month < :before')
