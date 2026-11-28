@@ -79,7 +79,13 @@ lettrage automatique par montant ou par pièce) et recherche les écritures ; le
 balance auxiliaire et la balance âgée à l'écran (chaque montant mène à la consultation du compte),
 en PDF et en tableur ; chaque liste s'exporte en tableur (XLSX) ou en CSV. `Ctrl K` cherche dans le
 dossier un écran, un compte, un tiers, une écriture (numéro, pièce ou montant) ou une action, et
-propose sur un champ vide les derniers écrans ouverts. Les plans comptables de référence (PCG 2026, PCG 2025, PCG antérieur), lus dans
+propose sur un champ vide les derniers écrans ouverts. Système d'information › Utilisateurs et
+droits dit qui entre dans le dossier et jusqu'où : dans un dossier de groupe, chaque membre a un
+profil (comptable fournisseurs, comptable clients, gestionnaire de paie, chef comptable) que lui
+donne un enseignant de la classe, et qui ouvre ou ferme les journaux, la validation et les paramètres
+du dossier (`app:dev:dossiers` fait un dossier de groupe de démonstration : Inès Morel, Théo Garnier,
+Chloé Fabre) ; la Piste d'audit liste chaque geste fait dans le dossier, qui, quoi, quand (heure
+réelle et date du dossier), ceux d'un enseignant signés de son nom. Les plans comptables de référence (PCG 2026, PCG 2025, PCG antérieur), lus dans
 les textes de l'ANC, sont dans `fixtures/pcg/`.
 
 La pile de développement : `php` (FrankenPHP et Caddy), `database` (MariaDB, comme en

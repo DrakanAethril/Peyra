@@ -113,10 +113,16 @@ final class RightsScreensTest extends WebTestCase
         $client->request('GET', $this->url($dossier, '/accounting/third-parties/new'));
         self::assertResponseStatusCodeSame(404);
 
-        // The brouillard holds back the bank's draft.
+        // The brouillard holds back the bank's draft; its fiche changes it but does not validate it.
         $crawler = $client->request('GET', $this->url($dossier, '/accounting/brouillard'));
         self::assertCount(1, $crawler->filter('main input[name="entries[]"][disabled]'));
         self::assertSelectorTextContains('main tbody', 'Hors de votre profil');
+        $payment = (string) $crawler->filter('main input[name="entries[]"][disabled]')->attr('value');
+        $crawler = $client->request('GET', $this->url($dossier, '/accounting/entries/'.$payment));
+        self::assertSelectorExists('main [data-confirm-bar-target="actions"] a[href*="/accounting/entry?"]');
+        self::assertSelectorNotExists('form[action$="/validate"]');
+        $client->request('POST', $this->url($dossier, '/accounting/entries/'.$payment.'/validate'), ['_token' => 'any']);
+        self::assertResponseStatusCodeSame(404);
     }
 
     public function testTheTrailIsReadFilteredAndExported(): void

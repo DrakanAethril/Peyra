@@ -31,9 +31,13 @@
         <p class="px-u-muted">Les profils (comptable fournisseurs, comptable clients, gestionnaire de paie, chef comptable) servent aux dossiers partagés par un groupe. Dans ce dossier, chacun a les droits de sa place ci-dessous.</p>
     {% endif %}
 
-    <twig:Px:Card :flush="true" title="Utilisateurs du dossier" meta="{{ user_rows|length }} personne{{ user_rows|length > 1 ? 's' : '' }}">
+    <twig:Px:Card :flush="true" title="Utilisateurs du dossier" meta="{{ user_rows is empty ? '' : user_rows|length ~ ' personne' ~ (user_rows|length > 1 ? 's' : '') }}">
         {% if user_rows is empty %}
-            <twig:Px:Empty icon="users" title="Personne d’autre" text="Ce dossier n’est encore partagé avec personne."/>
+            {% if dossier.template and dossier.owner is null %}
+                <twig:Px:Empty icon="users" title="Bibliothèque commune" text="Tout enseignant de la filière lit ce modèle ; les administrateurs de Peyra le modifient."/>
+            {% else %}
+                <twig:Px:Empty icon="users" title="Personne d’autre" text="Ce dossier n’est encore partagé avec personne."/>
+            {% endif %}
         {% else %}
             {% if can_assign %}<form method="post" action="{{ path('app_dossier_users_save', {dossier: dossier.id}) }}" id="users-form">
                 <input type="hidden" name="_token" value="{{ csrf_token('dossier-users-' ~ dossier.id) }}">{% endif %}
@@ -92,6 +96,6 @@
 {% endblock %}
 
 {% block facts %}
-    <span>{{ user_rows|length }} utilisateur{{ user_rows|length > 1 ? 's' : '' }}</span>
+    {% if user_rows is not empty %}<span>{{ user_rows|length }} utilisateur{{ user_rows|length > 1 ? 's' : '' }}</span>{% endif %}
     {% if my_profile %}<span>Votre profil · <b>{{ my_profile.label }}</b></span>{% endif %}
 {% endblock %}
