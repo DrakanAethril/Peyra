@@ -94,15 +94,18 @@ final class PayslipNet
         $deductions = [];
         $tax = null;
         foreach ($ordered as $spec) {
-            if (PayrollItemKind::Deduction !== $spec->kind || !$spec->status->holds($input->employee->executive)) {
+            if (PayrollItemKind::Deduction !== $spec->kind || !$input->adjustments->takes($spec, $input->employee->executive)) {
                 continue;
             }
-            $row = match ($spec->base) {
+            $row = $input->adjustments->apply($spec, match ($spec->base) {
                 PayrollBase::BenefitsInKind => self::benefitsRow($spec, $benefits),
                 PayrollBase::EnteredAmount => self::amountRow($spec, $input),
-                PayrollBase::NetTaxable => $tax = self::taxRow($spec, $input, $netTaxable),
+                PayrollBase::NetTaxable => self::taxRow($spec, $input, $netTaxable),
                 default => throw new \LogicException(\sprintf('Rubrique %s : une retenue ne repose pas sur « %s ».', $spec->code, $spec->base->label())),
-            };
+            });
+            if (PayrollBase::NetTaxable === $spec->base) {
+                $tax = $row;
+            }
             if (null !== $row) {
                 $deductions[] = $row;
             }
