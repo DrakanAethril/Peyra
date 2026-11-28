@@ -1,7 +1,8 @@
 {#
  # Paie et social › Salariés (lot 4, step 4.2a, gabarit L): the dossier's employees by matricule,
  # each with the terms in force at the dossier's date (a hire to come shows its first ones);
- # filtered by where they stand that day, searched by matricule or name. Filters in GET.
+ # filtered by where they stand that day, searched by matricule or name, with what their hiring
+ # formalities still need (step 4.2b). Filters in GET.
  #}
 {% extends 'payroll/_layout.html.twig' %}
 
@@ -22,6 +23,7 @@
 {% endblock %}
 
 {% block page %}
+    {{ include('payroll/hiring/_employees_tabs.html.twig', {employees_current: 'list'}) }}
     {% if total == 0 %}
         <twig:Px:Card>
             <twig:Px:Empty icon="users" title="Aucun salarié dans ce dossier." text="Chaque salarié a sa fiche : état civil, contrat, emploi, statut, temps de travail et salaire de base, et l’historique de leurs changements."/>
@@ -53,6 +55,7 @@
                             <th scope="col" class="px-u-num">Horaire</th>
                             <th scope="col" class="px-u-num">Salaire de base</th>
                             <th scope="col">État</th>
+                            <th scope="col">Formalités</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -68,6 +71,8 @@
                                 <td class="px-u-num">{{ terms.monthlyHours|hours }}</td>
                                 <td class="px-u-num">{{ terms.baseSalary|amount }}</td>
                                 <td><twig:Px:Badge :of="employee.stateAt(dossier.dossierDate)"/></td>
+                                {% set checklist = checklists[employee.id] %}
+                                <td><a class="px-link" href="{{ path('app_payroll_employee_formalities', {dossier: dossier.id, number: employee.registrationNumber}) }}">{% if not checklist.followed %}<span class="px-u-muted">Avant le dossier</span>{% elseif checklist.openCount == 0 %}<twig:Px:Badge tone="success" label="À jour"/>{% else %}<twig:Px:Badge tone="{{ checklist.dpae.value == 'overdue' or checklist.visit.value == 'overdue' ? 'danger' : 'warning' }}" label="{{ checklist.openCount }} à faire"/>{% endif %}</a></td>
                             </tr>
                         {% endfor %}
                     </tbody>

@@ -187,6 +187,37 @@ final class EmployeeRulesTest extends TestCase
         self::assertSame('Le numéro commence par 1 pour un homme.', $draft->error('nir'));
     }
 
+    public function testTheHourOfHireAndTheTrialPeriod(): void
+    {
+        $draft = self::thomas();
+        foreach (['8h' => '08:00', '8h30' => '08:30', '7:30' => '07:30', '07:30' => '07:30', ' 13 h 05 ' => '13:05'] as $typed => $hour) {
+            $draft->hireTime = (string) $typed;
+            self::assertSame($hour, self::check($draft)?->hireTime, (string) $typed);
+        }
+        foreach (['24:00', '8h75', 'huit heures'] as $typed) {
+            $draft->hireTime = $typed;
+            self::assertNull(self::check($draft), $typed);
+            self::assertSame('Une heure s’écrit 08:30 ou 8h30.', $draft->error('hireTime'));
+        }
+        $draft->hireTime = '';
+        $draft->trialPeriod = '  2   mois ';
+        $fields = self::check($draft);
+        self::assertNull($fields?->hireTime);
+        self::assertSame('2 mois', $fields?->trialPeriod);
+    }
+
+    public function testTheDpaesFieldsAreRequiredWhenTheLevelAsks(): void
+    {
+        $draft = self::thomas();
+        self::assertNotNull(EmployeeRules::check($draft, self::COLLECTIVE, static fn (): ?string => null, false), 'Without the level: birth place and hour may wait.');
+        self::assertNull(EmployeeRules::check($draft, self::COLLECTIVE, static fn (): ?string => null, true));
+        self::assertSame('La DPAE indique le lieu de naissance.', $draft->error('birthPlace'));
+        self::assertSame('La DPAE indique l’heure d’embauche.', $draft->error('hireTime'));
+
+        [$draft->birthPlace, $draft->hireTime] = ['Montbrison (42)', '8h'];
+        self::assertNotNull(EmployeeRules::check($draft, self::COLLECTIVE, static fn (): ?string => null, true));
+    }
+
     private static function check(EmployeeDraft $draft): ?EmployeeFields
     {
         return EmployeeRules::check($draft, self::COLLECTIVE, static fn (): ?string => null);

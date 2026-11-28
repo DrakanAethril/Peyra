@@ -33,6 +33,7 @@ use App\Service\Dossier\Distribution\DistributionRunner;
 use App\Service\Dossier\Distribution\Distributions;
 use App\Service\Dossier\Restore\RestorePoints;
 use App\Service\Dossier\Restore\RestoreRefused;
+use App\Service\Regulatory\RegulatorySync;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -59,6 +60,8 @@ final class DistributionsTest extends KernelTestCase
     {
         self::bootKernel();
         $at = new \DateTimeImmutable(self::AT);
+        // The demonstration's DPAE reads the regulatory delays (step 4.2b), as production syncs them before installing it.
+        self::getContainer()->get(RegulatorySync::class)->run(new \DateTimeImmutable('2026-11-28 10:00'));
         $installer = self::getContainer()->get(DemoInstaller::class);
         $installer->installTemplate('test', $at);
         $this->template = $installer->findTemplate() ?? throw new \LogicException('The demonstration is installed.');

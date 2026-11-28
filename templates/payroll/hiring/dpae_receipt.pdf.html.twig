@@ -1,0 +1,27 @@
+{# The acknowledgement of a DPAE as a PDF (lot 4, step 4.2b): what the simulated portal received, and its number. #}
+{% extends 'doc/_document.html.twig' %}
+
+{% block title %}Accusé de réception DPAE {{ declaration.number }}{% endblock %}
+
+{% block body %}
+    <article class="px-doc">
+        <p class="px-doc__subtitle">Portail social (simulé) · Simulation : rien n’a été transmis</p>
+        <h1 class="px-doc__title">Accusé de réception de la déclaration préalable à l’embauche</h1>
+        <p class="px-doc__subtitle">N° {{ declaration.number }} · reçue le {{ declaration.declaredOn|date_fr }}</p>
+
+        <h2 class="px-doc__section">Déclaration reçue</h2>
+        <table class="px-doc__table">
+            <colgroup><col style="width: 38%"><col></colgroup>
+            <tbody>
+                {% for line in declaration.content %}
+                    <tr><th scope="row">{{ line[0] }}</th><td>{{ line[1] }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if declaration.late %}
+            <p class="px-doc__clause"><strong>Déclaration hors délai</strong> : déposée après l’embauche du {{ employee.hiredOn|date_fr }}. La DPAE se dépose avant la prise de poste.</p>
+        {% endif %}
+        <p class="px-doc__legal">Document fictif établi par Peyra, PGI pédagogique, pour un dossier d’entraînement. Aucune déclaration n’a été adressée à l’Urssaf. L’accusé de réception se conserve : il prouve la déclaration ; la DPAE vaut aussi demande d’immatriculation du salarié à la sécurité sociale s’il ne l’est pas encore.</p>
+    </article>
+{% endblock %}

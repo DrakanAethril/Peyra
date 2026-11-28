@@ -73,4 +73,16 @@ final readonly class Assistance
     {
         return $this->runsControls();
     }
+
+    /** The employee's fiche requires what the DPAE declares - birth place, hour of hire (G and B: « champs obligatoires de la DPAE »). */
+    public function requiresHiringDeclarationFields(): bool
+    {
+        return $this->blocks();
+    }
+
+    /** A simulated portal explains each motive of a rejection (G); elsewhere the motive alone is given, as the real portals do. */
+    public function explainsPortalRejections(): bool
+    {
+        return AssistanceLevel::Guided === $this->level;
+    }
 }

@@ -22,6 +22,7 @@ use App\Service\Accounting\Fec\Import\FecImportDraft;
 use App\Service\Dossier\Demo\DemoInstaller;
 use App\Service\Dossier\DossierContext;
 use App\Service\Dossier\Library\EmptyTemplateDraft;
+use App\Service\Regulatory\RegulatorySync;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -47,6 +48,8 @@ final class FecImportTest extends KernelTestCase
 
     public function testTheDemonstrationsFecImportedThenExportedGivesTheSameLines(): void
     {
+        // The demonstration's DPAE reads the regulatory delays (step 4.2b), as production syncs them before installing it.
+        self::getContainer()->get(RegulatorySync::class)->run(new \DateTimeImmutable('2026-11-28 10:00'));
         $installer = self::getContainer()->get(DemoInstaller::class);
         $installer->installTemplate('test', new \DateTimeImmutable('2026-11-28 09:00'));
         $demo = $installer->findTemplate() ?? throw new \LogicException('The demonstration is installed.');

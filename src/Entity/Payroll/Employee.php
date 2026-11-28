@@ -97,6 +97,18 @@ class Employee implements DossierOwned
     #[ORM\Column(length: 120, nullable: true)]
     private ?string $trainingCentre = null;
 
+    /** The hour of hire the DPAE declares, « 08:00 » (step 4.2b). */
+    #[ORM\Column(length: 5, nullable: true)]
+    private ?string $hireTime = null;
+
+    /** The trial period the contract names, as written (« 2 mois », « 14 jours »); null: none. */
+    #[ORM\Column(length: 40, nullable: true)]
+    private ?string $trialPeriod = null;
+
+    /** The day of the information and prevention visit (« visite d'information et de prévention »), planned or held; HiringFormalities writes it. */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $informationVisitOn = null;
+
     /** @var Collection<int, EmploymentTerms> */
     #[ORM\OneToMany(targetEntity: EmploymentTerms::class, mappedBy: 'employee', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['effectiveFrom' => 'ASC'])]
@@ -223,6 +235,33 @@ class Employee implements DossierOwned
         return $this->trainingCentre;
     }
 
+    public function getHireTime(): ?string
+    {
+        return $this->hireTime;
+    }
+
+    public function getTrialPeriod(): ?string
+    {
+        return $this->trialPeriod;
+    }
+
+    public function getInformationVisitOn(): ?\DateTimeImmutable
+    {
+        return $this->informationVisitOn;
+    }
+
+    /** HiringFormalities is the caller. */
+    public function planInformationVisit(?\DateTimeImmutable $on): void
+    {
+        $this->informationVisitOn = $on;
+    }
+
+    /** The age in whole years on a day. */
+    public function ageOn(\DateTimeImmutable $day): int
+    {
+        return $this->birthDate->diff($day)->y;
+    }
+
     public function identify(string $registrationNumber, string $lastName, string $firstName, Sex $sex, \DateTimeImmutable $birthDate, ?string $birthPlace, string $nationality, ?string $nir): void
     {
         $this->registrationNumber = $registrationNumber;
@@ -247,10 +286,12 @@ class Employee implements DossierOwned
         $this->withholdingRate = $rate;
     }
 
-    public function contract(ContractType $type, \DateTimeImmutable $hiredOn, ?\DateTimeImmutable $endsOn, ?string $fixedTermReason, ?string $diploma, ?string $trainingCentre): void
+    public function contract(ContractType $type, \DateTimeImmutable $hiredOn, ?string $hireTime, ?string $trialPeriod, ?\DateTimeImmutable $endsOn, ?string $fixedTermReason, ?string $diploma, ?string $trainingCentre): void
     {
         $this->contractType = $type;
         $this->hiredOn = $hiredOn;
+        $this->hireTime = $hireTime;
+        $this->trialPeriod = $trialPeriod;
         $this->contractEndsOn = $endsOn;
         $this->fixedTermReason = $fixedTermReason;
         $this->diploma = $diploma;

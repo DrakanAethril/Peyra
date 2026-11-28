@@ -1,0 +1,5 @@
+{# The views of Paie et social › Salariés (steps 4.2a, 4.2b): the list, the registre unique du personnel. #}
+<twig:Px:Tabs label="Salariés" :tabs="[
+    {label: 'Liste', href: path('app_payroll_employees', {dossier: dossier.id}), current: employees_current == 'list'},
+    {label: 'Registre unique du personnel', href: path('app_payroll_register', {dossier: dossier.id}), current: employees_current == 'register'},
+]"/>

@@ -13,6 +13,7 @@ use App\Repository\Identity\SchoolYearRepository;
 use App\Repository\Payroll\EmployeeRepository;
 use App\Service\Dossier\DossierContext;
 use App\Service\Identity\SchoolClasses;
+use App\Service\Regulatory\RegulatorySync;
 use App\Tests\Support\BuildsSchool;
 use App\Tests\Support\SavesDossiers;
 use App\Tests\Support\SignsIn;
@@ -106,6 +107,7 @@ final class EmployeeScreensTest extends WebTestCase
         $year = $client->getContainer()->get(SchoolYearRepository::class)->findCurrent();
         \assert($ines instanceof User && $year instanceof SchoolYear);
         $dossier = $this->savedDossier(DossierKind::Student, $ines, $year);
+        $client->getContainer()->get(RegulatorySync::class)->run(new \DateTimeImmutable('2026-11-28 10:00'));
         $client->getContainer()->get(EntityManagerInterface::class)->persist(new PayrollEstablishment($dossier, '8.69', '2.1', null, '151.67'));
         $client->getContainer()->get(EntityManagerInterface::class)->flush();
 
