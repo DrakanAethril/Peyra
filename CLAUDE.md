@@ -1132,7 +1132,7 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   mobility rates, working time). `PayrollItemRules` is pure; `PayrollItemSheet` adds the code, the
   body and **a regulatory value that reads at the dossier's date** - a rate the law fixes is never
   written in a rubrique, it names its key and path (`social.agirc_arrco.ceg`, `0.employee_rate`).
-- **The standard plan is data**, `fixtures/payroll/standard-plan.yaml` (50 rubriques), installed by
+- **The standard plan is data**, `fixtures/payroll/standard-plan.yaml` (58 rubriques), installed by
   `PayrollPlanInstaller` into an empty plan; `StandardPayrollPlanTest` reads every value it names
   from `config/regulatory/2025.yaml` and `2026.yaml`. 2025's maladie and famille carry their full
   rate under `employer_rate`, like 2026, the reduced one beside it for the engine.
@@ -1221,6 +1221,12 @@ Lot 1, step 1.9a (A47 A-1 du LPF, read on Légifrance on 2026-11-28), held by co
   due ÷ whole-month salary. **Absences are recognised by their base, never their code**: the salary is
   `contract_hours`, an absence `entry_exit_days` or subtracting `entered_hours` at the hourly rate, the
   sick pay `sick_pay` (hours as quantity, daily allowances as amount, on the same code).
+- **The apprentice and the end of a contract** (step 4.3e): `PayslipApprentice` (regime by the contract's
+  start, `social.apprentice.exemption`) shrinks the employee's base of the rubriques with a regulatory employee
+  rate - `PayslipRow::$employeeBase`, the employer's base unchanged - and the CSG base; `PayslipNet` exempts the
+  net taxable within the annual SMIC (`PayslipYearToDate::$apprenticeExempt`). The fixed-term indemnity (1500)
+  and the compensatory leave (1320) are computed after the month's gross; `PayslipSeverance` is the one reading
+  of a dismissal or conventional termination indemnity and **refuses** one partly subject to contributions.
 
 ## Cross-cutting building blocks (built at step 0.6a)
 

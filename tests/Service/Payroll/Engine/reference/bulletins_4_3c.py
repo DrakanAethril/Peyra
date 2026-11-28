@@ -17,7 +17,31 @@ Règles de 4.3d, reprises des sources et non du moteur :
 - SMIC de référence corrigé selon le rapport salaire dû ÷ salaire dû si présent tout le mois, sur les seuls
   éléments affectés par l'absence (salaire, absences, sorties, maintien), arrondi une fois (D241-7 IV) ;
 - maintien de salaire : heures maintenues × (taux horaire × 90 %, 4 décimales), arrondi, moins les IJSS saisies.
+
+Règles de 4.3e (apprenti, solde de tout compte), reprises des sources et non du moteur (cas 13 à 19) :
+- apprenti, contrat commencé depuis le 01/03/2025 : cotisations salariales légales et conventionnelles, CSG et CRDS
+  sur la part du brut au-delà de 50 % du SMIC mensuel ; commencé avant : cotisations au-delà de 79 % du SMIC, ni CSG
+  ni CRDS (service-public F2918). Seuil = SMIC mensuel du jour × part × jours de la période d'emploi ÷ jours du mois,
+  arrondi une fois au centime ; la part exonérée vient en déduction de la base de chaque rubrique qui commence au
+  premier euro (tranche 1, brut entier, 4 plafonds, tranches 1 et 2) ; l'assiette CSG est (brut − seuil) abattue de
+  1,75 % plus les parts patronales santé et prévoyance ;
+- salaire d'apprenti exonéré d'impôt dans la limite annuelle du SMIC (F11249 : 21 622 € pour 2025), consommée
+  au fil de l'année : exonéré du mois = min(net imposable avant exonération, limite − déjà exonéré) ;
+- indemnité de fin de CDD : 10 % de la rémunération brute du contrat (mois précédents + brut du dernier mois avant
+  les indemnités, F803), due à la fin du terme ; indemnité compensatrice de congés payés : le plus favorable du
+  maintien (heures des jours restants × taux horaire) et du dixième de la période de référence (mois précédents +
+  brut du dernier mois, indemnité de fin de contrat comprise) × jours restants ÷ jours acquis ;
+- indemnité légale de licenciement : salaire de référence × (1/4 par année jusqu'à 10 ans + 1/3 au-delà), les mois
+  complets d'une année incomplète au prorata, arrondi une fois (F987) ; ancienneté du jour d'embauche au lendemain
+  du dernier jour ;
+- indemnité de rupture (licenciement, rupture conventionnelle) : exonérée d'impôt pour le montant légal, au-delà
+  dans la limite du plus grand de 2 × la rémunération brute de l'année précédente et de 50 % de l'indemnité, sans
+  dépasser 6 PASS (F408) ; exonérée de cotisations dans la même limite et dans celle de 2 PASS, rien au-delà de 10
+  PASS ; CSG et CRDS, sans abattement, sur ce qui dépasse le plus petit du montant légal et de la part exonérée de
+  cotisations ; contribution patronale sur la part exonérée d'une rupture conventionnelle, 30 % en 2025, 40 % en 2026.
 """
+from datetime import date, timedelta
+from fractions import Fraction
 from decimal import Decimal as D, ROUND_HALF_UP, getcontext
 
 getcontext().prec = 40
@@ -116,6 +140,14 @@ def payslip(case):
         maintained = r2(D(case['maintained_hours']) * r4(hourly * D('0.90'))) - D(case.get('ijss', '0'))
         gross_rows['1220'] = max(D(0), maintained)
         affected += gross_rows['1220']
+    # 4.3e : indemnité de fin de CDD, puis indemnité compensatrice de congés payés.
+    if 'precarite_before' in case:
+        gross_rows['1500'] = pct(D(case['precarite_before']) + sum(gross_rows.values(), D(0)), '10')
+    if 'iccp' in case:
+        c = case['iccp']
+        reference = D(c['reference_before']) + sum(gross_rows.values(), D(0))
+        tenth = pct(r2(reference * D(c['days']) / D(c['acquired'])), '10')
+        gross_rows['1320'] = max(tenth, r2(D(c['hours']) * hourly))
     gross = sum(gross_rows.values(), D(0))
     pss = pss if 'present_days' not in case and 'unpaid_days' not in case else \
         r2(pss * (D(case.get('present_days', days)) - D(case.get('unpaid_days', '0'))) / days)
@@ -130,11 +162,18 @@ def payslip(case):
 
     t1, t2, t12, t4 = tranche(0, 1), tranche(1, 8), tranche(0, 8), tranche(0, 4)
     executive = case.get('executive', False)
+    # 4.3e : apprenti, part exonérée du mois (seuil proratisé sur les jours de la période d'emploi).
+    app = case.get('apprentice')
+    exempt_part = D(0)
+    if app:
+        share = D('50') if app == 'new' else D('79')
+        exempt_part = r2(D(case['smic_now']) * share / 100 * D(case.get('present_days', days)) / days)
 
-    def add(code, base, ee, er):
+    def add(code, base, ee, er, lo=0):
         if base == 0:
             return
-        rows[code] = (base, ee, pct(base, ee) if ee else D(0), er, pct(base, er) if er else None)
+        ee_base = max(D(0), base - exempt_part) if (app and ee and lo == 0) else base
+        rows[code] = (base, ee, pct(ee_base, ee) if ee else D(0), er, pct(base, er) if er else None, ee_base)
 
     health, family = Y['health'], Y['family']
     if case['year'] == 2025:   # taux réduits de 2025 : brut ≤ 2,25 (3,3) SMIC de référence du mois
@@ -152,8 +191,8 @@ def payslip(case):
     add('2210', gross, '0.40', Y['old_uncapped_er'])
     add('2300', t1, '3.15', '4.72')
     add('2310', t1, '0.86', '1.29')
-    add('2320', t2, '8.64', '12.95')
-    add('2330', t2, '1.08', '1.62')
+    add('2320', t2, '8.64', '12.95', lo=1)
+    add('2330', t2, '1.08', '1.62', lo=1)
     if g1 > c1:   # CET : salaire (cumulé) au-dessus du plafond (cumulé)
         add('2340', t12, '0.14', '0.21')
     add('2400', gross, None, family)
@@ -167,12 +206,14 @@ def payslip(case):
     add('2640', gross, None, '0.55')
     add('2660', gross, None, '0.68')
     # CSG : 98,25 % du brut dans la limite de 4 plafonds du mois + parts patronales santé et prévoyance.
-    abated = min(gross, 4 * pss)
     employer_provident = health_flat + (rows['2050'][4] if '2050' in rows else D(0))
-    csg_base = r2(abated * D('0.9825')) + (gross - abated) + employer_provident
-    add('2800', csg_base, '6.80', None)
-    add('2810', csg_base, '2.40', None)
-    add('2820', csg_base, '0.50', None)
+    if app != 'old':   # un apprenti de l'ancien régime ne paie ni CSG ni CRDS
+        subject = max(D(0), gross - exempt_part)
+        abated = min(subject, 4 * pss)
+        csg_base = r2(abated * D('0.9825')) + (subject - abated) + employer_provident
+        for code, rate in (('2800', '6.80'), ('2810', '2.40'), ('2820', '0.50')):
+            if csg_base:
+                rows[code] = (csg_base, rate, pct(csg_base, rate), None, None, csg_base)
     # Réduction salariale sur HS : taux effectif vieillesse (≤ 11,31 %).
     if ot:
         weighted = sum((rows[c][0] * D(rows[c][1]) for c in ('2200', '2210', '2300', '2310', '2320', '2330', '2340') if c in rows and rows[c][1]), D(0))
@@ -202,13 +243,18 @@ def payslip(case):
     if month_red != 0:
         rows['2900'] = (gross, None, D(0), C, -month_red)
     urssaf = r2(month_red * (T - D('0.0601')) / T)
+    severance = D(0)
+    sev = case.get('severance')
+    if sev:
+        severance, sev_rows = indemnity(case['year'], sev)
+        rows.update(sev_rows)
     employee = sum((r[2] for r in rows.values()), D(0))
     employer = sum((r[4] or D(0) for r in rows.values()), D(0))
     # Net imposable : + CSG/CRDS non déductibles + part patronale santé (pas la prévoyance) − HS exonérées.
-    nd = sum((rows[c][2] for c in ('2810', '2820') if c in rows), D(0))
+    nd = sum((rows[c][2] for c in ('2810', '2820', '2830', '2840', '2850') if c in rows), D(0))
     exempt = D(0)
     if ot:
-        others = sum((rows[c][0] * D(rows[c][1]) for c in rows if c not in ('2800', '2810', '2820', '2910') and rows[c][0] is not None and rows[c][1] and c != '2920'), D(0))
+        others = sum((rows[c][5] * D(rows[c][1]) for c in rows if c not in ('2800', '2810', '2820', '2910') and rows[c][0] is not None and rows[c][1] and c != '2920'), D(0))
         eff_all = others / gross
         on_ot = pct(ot, eff_all) + rows['2910'][2]          # cotisations salariales des HS, réduction déduite
         csg_ot = r2(ot * D('0.9825') * D('6.80') / 100)
@@ -216,12 +262,17 @@ def payslip(case):
         left = D('7500') - D(before.get('exempt', '0'))
         exempt = min(exempt, max(D(0), left))
     net_taxable = gross - employee + nd + health_flat - exempt
+    app_exempt = D(0)
+    if app:   # salaire d'apprenti exonéré d'impôt dans la limite annuelle du SMIC
+        left_app = max(D(0), D(case['app_limit']) - D(before.get('app_exempt', '0')))
+        app_exempt = min(max(D(0), net_taxable), left_app)
+        net_taxable -= app_exempt
     net_social = gross - employee
     car = gross_rows.get('1400', D(0))
     meals = r2(D(case.get('meals', '0')) * D(case.get('meal_price', '0')))
     expenses = D(case.get('expenses', '0'))
     advance = D(case.get('advance', '0'))
-    before_tax = gross - employee - car + meals + expenses - advance
+    before_tax = gross - employee - car + meals + expenses - advance + severance
     if 'pas' in case:
         rate = D(case['pas'])
     else:
@@ -230,9 +281,42 @@ def payslip(case):
     return dict(gross=gross, rows={**{c: (None, None, a, None, None) for c, a in gross_rows.items()}, **rows}, t1=t1, t2=t2, C=C, smic=smic_month, pss=pss, red_month=month_red, red_cum=red1,
                 urssaf=urssaf, retirement=month_red - urssaf, employee=employee, employer=employer,
                 net_social=net_social, net_taxable=net_taxable, exempt=exempt, before_tax=before_tax,
-                pas_rate=rate, pas=tax, net=before_tax - tax, cost=gross + employer,
+                pas_rate=rate, pas=tax, app_exempt=app_exempt, severance=severance, exempt_part=exempt_part, net=before_tax - tax, cost=gross + employer,
                 cum=dict(gross=g1, ceiling=c1, smic=s1, reduction=red1, net_taxable=D(before.get('net_taxable', '0')) + net_taxable,
-                         exempt=D(before.get('exempt', '0')) + exempt))
+                         exempt=D(before.get('exempt', '0')) + exempt, app_exempt=D(before.get('app_exempt', '0')) + app_exempt))
+
+
+PASS = {2025: D('47100'), 2026: D('48060')}
+RC_RATE = {2025: '30', 2026: '40'}
+
+
+def legal_indemnity(reference, hired, last_day):
+    """Indemnité légale de licenciement (F987) et l'ancienneté en mois complets."""
+    end = last_day + timedelta(days=1)
+    months = (end.year - hired.year) * 12 + end.month - hired.month - (1 if end.day < hired.day else 0)
+    if months < 8:
+        return D(0), months
+    years = Fraction(months, 12)
+    amount = Fraction(str(reference)) * (min(years, 10) * Fraction(1, 4) + max(years - 10, 0) * Fraction(1, 3))
+    return r2(D(amount.numerator) / D(amount.denominator)), months
+
+
+def indemnity(year, sev):
+    """Une indemnité de rupture : son montant, ses lignes de CSG/CRDS et de contribution patronale."""
+    legal, _ = legal_indemnity(D(sev['reference']), sev['hired'], sev['last_day'])
+    amount = D(sev['agreed']) if sev.get('agreed') else legal
+    P = PASS[year]
+    tax_exempt = amount if amount <= legal else min(amount, max(legal, min(max(2 * D(sev['previous_year_gross']), amount / 2), 6 * P)))
+    social_exempt = D(0) if amount > 10 * P else min(tax_exempt, 2 * P)
+    assert social_exempt == amount, 'part soumise à cotisations : hors du périmètre'
+    csg_base = amount - min(legal, social_exempt)
+    rows = {}
+    for code, rate in (('2830', '6.80'), ('2840', '2.40'), ('2850', '0.50')):
+        if csg_base:
+            rows[code] = (csg_base, rate, pct(csg_base, rate), None, None, csg_base)
+    if sev['kind'] == 'rc':
+        rows['2710'] = (social_exempt, None, D(0), RC_RATE[year], pct(social_exempt, RC_RATE[year]), social_exempt)
+    return amount, rows
 
 
 def show(name, case, codes=()):
@@ -241,7 +325,7 @@ def show(name, case, codes=()):
     for c in codes:
         print('  ', c, p['rows'].get(c))
     for k in ('gross', 'pss', 'employee', 'employer', 'C', 'smic', 'red_month', 'red_cum', 'urssaf', 'retirement', 'net_social',
-              'net_taxable', 'exempt', 'before_tax', 'pas_rate', 'pas', 'net', 'cost', 't1', 't2'):
+              'net_taxable', 'exempt', 'before_tax', 'pas_rate', 'pas', 'net', 'cost', 't1', 't2', 'exempt_part', 'app_exempt', 'severance'):
         print('   %-12s %s' % (k, p[k]))
     print('   cum', {k: str(v) for k, v in p['cum'].items()})
     return p
@@ -317,3 +401,43 @@ if __name__ == '__main__':
     #     T = 0,3194 et chômage 4,05 %.
     show('Entrée le 10 mars 2025', dict(year=2025, month=3, salary='2100.00', grid=GRID_2025, days_in_month='31',
                                         outside_days='9', present_days='22'), ['1230', '2000', '2400', '2900'])
+
+    # --- 4.3e : apprenti, solde de tout compte ---------------------------------------------------------
+    # 13. Hugo Marchand, novembre 2026 : apprenti en 2e année (51 % de 1 867,02 = 952,18), contrat du 01/09/2025
+    #     (nouveau régime : 50 % du SMIC, 933,51), sans complémentaire santé, taux neutre.
+    show('Marchand novembre 2026, apprenti', dict(year=2026, salary='952.18', apprentice='new', smic_now='1867.02',
+                                                   app_limit='21876', health_flat=False, grid=GRID_MAY_2026),
+         ['2200', '2210', '2300', '2310', '2800', '2810', '2820', '2900'])
+    # 14. Apprenti de l'ancien régime (contrat du 01/09/2024), 2 000,00 par mois (minimum conventionnel), décembre
+    #     2025 après onze mois identiques : cotisations au-delà de 79 % du SMIC (1 423,42), ni CSG ni CRDS, impôt
+    #     exonéré jusqu'à 21 622,00 dans l'année.
+    old = dict(year=2025, salary='2000.00', apprentice='old', smic_now='1801.80', app_limit='21622', health_flat=False, pas='0')
+    m = payslip(old)
+    show('Apprenti ancien régime, un mois', old, ['2200', '2210', '2300', '2310'])
+    show('Apprenti ancien régime, décembre 2025', dict(old, before=dict(
+        gross=str(11 * m['gross']), ceiling=str(11 * D('3925')), smic=str(11 * m['smic']), reduction=str(-11 * m['rows']['2900'][4]),
+        net_taxable=str(11 * m['net_taxable']), app_exempt=str(11 * m['app_exempt']))), ['2200', '2900'])
+    # 15. Apprenti entré le 15/06/2026 (16 jours sur 30), 53 % de 1 867,02 = 989,52 : seuil 933,51 × 16 ÷ 30.
+    show('Apprenti entré le 15 juin 2026', dict(year=2026, salary='989.52', apprentice='new', smic_now='1867.02', app_limit='21876',
+                                                 health_flat=False, pas='0', days_in_month='30', outside_days='14', present_days='16'),
+         ['1230', '2200', '2210', '2300', '2310', '2800'])
+    # 16. Yanis Chabert, CDD du 01/04 au 30/09/2026, 1 950,00 par mois : indemnité de fin de contrat sur 9 750,00 des
+    #     mois précédents + septembre ; congés payés : 15 jours acquis non pris (87,5 h), dixième sur 9 750,00 + septembre.
+    show('Chabert septembre 2026, fin de CDD', dict(year=2026, salary='1950.00', pas='2.1', precarite_before='9750.00',
+                                                     iccp=dict(hours='87.5', days='15', acquired='15', reference_before='9750.00')),
+         ['1500', '1320', '2200', '2900'])
+    # 17. Licenciement pour motif personnel, dernier jour le 30/11/2026, embauche le 01/03/2014 (12 ans 9 mois), salaire
+    #     de référence 2 600,00 = salaire du mois ; PAS 6 %.
+    show('Licenciement novembre 2026', dict(year=2026, salary='2600.00', pas='6.0', severance=dict(
+        kind='dismissal', reference='2600.00', hired=date(2014, 3, 1), last_day=date(2026, 11, 30))), ['2830', '2900'])
+    # 18. Rupture conventionnelle, dernier jour le 31/10/2025, embauche le 01/05/2019 (6 ans 6 mois), salaire de référence
+    #     3 000,00 (légale 4 875,00), indemnité convenue 7 000,00, rémunération brute de 2024 36 000,00 ; PAS 7,5 %.
+    show('Rupture conventionnelle octobre 2025', dict(year=2025, month=10, salary='3000.00', pas='7.5', severance=dict(
+        kind='rc', reference='3000.00', agreed='7000.00', previous_year_gross='36000.00', hired=date(2019, 5, 1),
+        last_day=date(2025, 10, 31))), ['2830', '2840', '2850', '2710', '2900'])
+    # 19. La même en 2026 (embauche le 01/05/2020, dernier jour le 31/10/2026) : contribution patronale à 40 %.
+    show('Rupture conventionnelle octobre 2026', dict(year=2026, salary='3000.00', pas='7.5', severance=dict(
+        kind='rc', reference='3000.00', agreed='7000.00', previous_year_gross='36000.00', hired=date(2020, 5, 1),
+        last_day=date(2026, 10, 31))), ['2830', '2840', '2850', '2710'])
+    print('== Indemnité légale (exemples de F987) :', legal_indemnity(D('1500'), date(2020, 1, 1), date(2023, 6, 30)),
+          legal_indemnity(D('1500'), date(2010, 1, 1), date(2022, 9, 30)))

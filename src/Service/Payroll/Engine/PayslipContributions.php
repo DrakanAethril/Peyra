@@ -43,6 +43,14 @@ use Brick\Math\RoundingMode;
  *   (a negative base); the contribution due above the ceiling looks at the year; the general reduction
  *   is the year's less what was made.
  *
+ * - **an apprentice** (step 4.3e, PayslipApprentice): the part of the salary the law exempts comes off the
+ *   employee's base of every rubrique whose employee rate the law sets and whose bracket starts at the first
+ *   euro, the employer's base unchanged; the CSG and CRDS stand on the gross pay above that part (a contract
+ *   started before 1 March 2025 pays none);
+ * - **a severance indemnity** (step 4.3e, PayslipSeverance): its part subject to the CSG and the CRDS, and the
+ *   part of a conventional termination's exempt from contributions, which the employer's specific
+ *   contribution stands on.
+ *
  * Every share is its base times its rate, rounded half up to the cent on its own (DECISIONS 4.3b).
  * A rubrique whose base is nil, or whose sides have nothing to apply, makes no line.
  */
@@ -67,6 +75,7 @@ final class PayslipContributions
     /** @var array<string, PayslipRow> */
     private array $done = [];
     private ?GeneralReduction $reduction = null;
+    private readonly ?PayslipApprentice $apprentice;
 
     /** @param list<PayslipRow> $grossRows */
     private function __construct(private readonly PayslipInput $input, array $grossRows, Money $gross)
@@ -77,6 +86,7 @@ final class PayslipContributions
         $this->ceiling = $month->ceiling($monthly);
         $this->ceilingText = $month->ceilingExplanation($monthly);
         $this->presence = PayslipPresence::ratio($input->plan, $grossRows);
+        $this->apprentice = PayslipApprentice::of($input);
         $overtime = BigDecimal::zero();
         $premium = BigDecimal::zero();
         $pay = BigDecimal::zero();
@@ -176,7 +186,8 @@ final class PayslipContributions
         if (null !== $base && $base['value']->isZero()) {
             return null;
         }
-        $employee = $this->side($spec, $spec->employeeRate, $base);
+        $employeeBase = $this->apprenticeBase($spec, $base);
+        $employee = $this->side($spec, $spec->employeeRate, $employeeBase ?? $base);
         $employer = $this->side($spec, $spec->employerRate, $base);
         if (null === $employee && null === $employer) {
             return null;
@@ -185,13 +196,16 @@ final class PayslipContributions
         $formulas = [];
         $rates = [];
         $notes = [];
-        foreach (['salarié' => $employee, 'employeur' => $employer] as $who => $side) {
+        if (null !== $employeeBase && null !== $employee) {
+            $notes[] = $employeeBase['origin'];
+        }
+        foreach (['salarié' => [$employee, $employeeBase ?? $base], 'employeur' => [$employer, $base]] as $who => [$side, $sideBase]) {
             if (null === $side) {
                 continue;
             }
-            $formulas[] = (null === $base || null === $side['rate'] || null === $side['unit']
+            $formulas[] = (null === $sideBase || null === $side['rate'] || null === $side['unit']
                 ? 'Montant '.$who.' : '.FrenchFormat::amountInEuros($side['amount']->abs())
-                : \sprintf('Part %s : %s × %s = %s', $who, $base['unit']->format($base['value']), $side['unit']->format($side['rate']), FrenchFormat::amountInEuros($side['amount']->abs()))).($spec->subtracts ? ', en déduction' : '');
+                : \sprintf('Part %s : %s × %s = %s', $who, $sideBase['unit']->format($sideBase['value']), $side['unit']->format($side['rate']), FrenchFormat::amountInEuros($side['amount']->abs()))).($spec->subtracts ? ', en déduction' : '');
             $rates[] = ucfirst($who).' : '.$side['origin'];
             array_push($notes, ...$side['notes']);
         }
@@ -210,7 +224,31 @@ final class PayslipContributions
             $employer['unit'] ?? null,
             $employer['amount'] ?? null,
             $spec->line,
+            null === $employee ? null : ($employeeBase['value'] ?? null),
         );
+    }
+
+    /**
+     * An apprentice's employee base: the base less the part of the salary the law exempts, for a rubrique
+     * on the gross pay whose employee rate the law sets and whose bracket starts at the first euro (the part
+     * exempt is the bottom of the salary). Null otherwise: the employee's base is the line's.
+     *
+     * @param array{value: BigDecimal, unit: PayslipUnit, origin: string}|null $base
+     *
+     * @return array{value: BigDecimal, unit: PayslipUnit, origin: string}|null
+     */
+    private function apprenticeBase(PayrollItemSpec $spec, ?array $base): ?array
+    {
+        if (null === $this->apprentice || null === $base || PayrollBase::Gross !== $spec->base || PayrollRateSource::Regulatory !== $spec->employeeRate->getSource()) {
+            return null;
+        }
+        if (PayrollCeiling::None !== $spec->ceiling && !$this->input->regulatory->decimal('social.ceiling_brackets', $spec->ceiling->value, 'from')->isZero()) {
+            return null;
+        }
+        $exempt = $this->apprentice->exempt->toDecimal();
+        $value = BigDecimal::max(BigDecimal::zero(), $base['value']->minus($exempt));
+
+        return ['value' => $value, 'unit' => $base['unit'], 'origin' => \sprintf('%s Base salariale : %s − %s = %s.', $this->apprentice->explanation, PayslipUnit::Euros->format($base['value']), PayslipUnit::Euros->format($exempt), PayslipUnit::Euros->format($value))];
     }
 
     /**
@@ -233,6 +271,18 @@ final class PayslipContributions
                 return ['value' => $shares, 'unit' => $euros, 'origin' => 'Part patronale des cotisations de prévoyance et de complémentaire santé du bulletin : '.$euros->format($shares).'.'];
             })(),
             PayrollBase::OvertimePay => ['value' => $this->premiumPay, 'unit' => $euros, 'origin' => \sprintf('Rémunération des heures supplémentaires et complémentaires du mois, majorations comprises (rubriques %s) : %s.', implode(', ', $this->premiumCodes), $euros->format($this->premiumPay))],
+            PayrollBase::SeveranceCsg => (function () use ($euros): array {
+                $severance = PayslipSeverance::of($this->input);
+                $value = null === $severance ? BigDecimal::zero() : $severance->csgBase->toDecimal();
+
+                return ['value' => $value, 'unit' => $euros, 'origin' => 'Part de l’indemnité de rupture soumise à la CSG et à la CRDS, sans abattement : '.$euros->format($value).'.'];
+            })(),
+            PayrollBase::ConventionalExempt => (function () use ($euros): array {
+                $severance = PayslipSeverance::of($this->input);
+                $value = null === $severance || PayrollBase::ConventionalBreak !== $severance->base ? BigDecimal::zero() : $severance->socialExempt->toDecimal();
+
+                return ['value' => $value, 'unit' => $euros, 'origin' => 'Part de l’indemnité de rupture conventionnelle exonérée de cotisations sociales : '.$euros->format($value).'.'];
+            })(),
             PayrollBase::OvertimeHours => ['value' => $this->overtimeHours, 'unit' => PayslipUnit::Hours, 'origin' => 'Heures supplémentaires du mois (les heures complémentaires n’y ouvrent pas droit) : '.PayslipUnit::Hours->format($this->overtimeHours).'.'],
             default => throw new \LogicException(\sprintf('Rubrique %s : une cotisation ne repose pas sur « %s ».', $spec->code, $spec->base->label())),
         };
@@ -311,14 +361,20 @@ final class PayslipContributions
     {
         $euros = PayslipUnit::Euros;
         $percent = PayslipUnit::Percent;
+        $apprentice = $this->apprentice;
+        if (null !== $apprentice && !$apprentice->newRegime) {
+            return ['value' => BigDecimal::zero(), 'unit' => $euros, 'origin' => $apprentice->explanation.' Contrat commencé avant le nouveau régime : ni CSG ni CRDS.'];
+        }
+        $subject = null === $apprentice ? $this->gross : BigDecimal::max(BigDecimal::zero(), $this->gross->minus($apprentice->exempt->toDecimal()));
         $abatement = $this->input->regulatory->decimal('social.csg_abatement', 'rate');
         $limit = $this->input->regulatory->decimal('social.csg_abatement', 'limit_pss')->multipliedBy($this->ceiling);
         $kept = BigDecimal::of(100)->minus($abatement);
-        $abated = BigDecimal::min($this->gross, $limit);
-        $whole = $this->gross->minus($abated);
+        $abated = BigDecimal::min($subject, $limit);
+        $whole = $subject->minus($abated);
         $value = $percent->times($abated, $kept)->plus($whole);
         $shares = $this->providentShares();
-        $text = \sprintf('%s du brut (%s × %s, abattement de %s pour frais professionnels', $percent->format($kept), $euros->format($abated), $percent->format($kept), $percent->format($abatement));
+        $text = null === $apprentice ? '' : \sprintf('%s Brut au-delà de la part exonérée : %s − %s = %s ; ', $apprentice->explanation, $euros->format($this->gross), $euros->format($apprentice->exempt->toDecimal()), $euros->format($subject));
+        $text .= \sprintf('%s du brut (%s × %s, abattement de %s pour frais professionnels', $percent->format($kept), $euros->format($abated), $percent->format($kept), $percent->format($abatement));
         $text .= $whole->isPositive() ? \sprintf(' dans la limite de %s ; au-delà, %s entiers)', $euros->format($limit), $euros->format($whole)) : ')';
 
         return ['value' => $value->plus($shares), 'unit' => $euros, 'origin' => \sprintf('%s = %s, plus la part patronale de prévoyance et de complémentaire santé, sans abattement (%s) : %s.', $text, $euros->format($value), $euros->format($shares), $euros->format($value->plus($shares)))];
@@ -460,10 +516,11 @@ final class PayslipContributions
         $weighted = BigDecimal::zero();
         $codes = [];
         foreach ($this->done as $row) {
-            if (PayslipSection::Retirement !== $row->line?->section() || null === $row->employeeRate || null === $row->base) {
+            $base = $row->employeeBaseOrBase();
+            if (PayslipSection::Retirement !== $row->line?->section() || null === $row->employeeRate || null === $base) {
                 continue;
             }
-            $weighted = $weighted->plus($row->employeeRate->multipliedBy($row->base));
+            $weighted = $weighted->plus($row->employeeRate->multipliedBy($base));
             $codes[] = $row->code;
         }
         $rate = $this->gross->isZero() ? BigDecimal::zero() : $weighted->dividedBy($this->gross, 4, RoundingMode::HalfUp)->strippedOfTrailingZeros();

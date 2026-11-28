@@ -28,6 +28,9 @@ use Brick\Math\RoundingMode;
  *   contributions still due on it - the effective employee rate of the rubriques on the gross, less the
  *   reduction - and less its deductible CSG, within the year's limit
  *   (`social.overtime.income_tax_exemption`).
+ * - **An apprentice's salary** (step 4.3e, CGI art. 81 bis, `social.apprentice.income_tax_exemption`) is exempt
+ *   from income tax within the annual SMIC, the limit used up over the year (PayslipYearToDate): the net
+ *   taxable loses what is exempt this month.
  * - **Prélèvement à la source**: the net taxable times the rate the tax office sent, or the neutral
  *   rate of the grid (WithholdingTax), rounded half up to the cent.
  * - **Net à payer avant impôt**: the gross pay less the employee contributions, plus the items not
@@ -37,6 +40,7 @@ use Brick\Math\RoundingMode;
 final class PayslipNet
 {
     public const string EXEMPTION_KEY = 'social.overtime.income_tax_exemption';
+    public const string APPRENTICE_KEY = 'social.apprentice.income_tax_exemption';
 
     /**
      * @param list<PayrollItemSpec> $ordered the plan in its order
@@ -63,6 +67,8 @@ final class PayslipNet
         $exempt = self::exemptOvertime($input, $rows, $gross, $overtimePay);
         $netSocial = $gross->minus($employee);
         $netTaxable = $gross->minus($employee)->plus($nonDeductible)->plus($health)->minus($exempt['amount']);
+        $apprentice = self::apprenticeExempt($input, $netTaxable);
+        $netTaxable = $netTaxable->minus($apprentice['amount'] ?? Money::zero());
         $explanations = [
             'netSocial' => new PayslipExplanation(
                 \sprintf('%s − %s = %s', FrenchFormat::amountInEuros($gross), FrenchFormat::amountInEuros($employee), FrenchFormat::amountInEuros($netSocial)),
@@ -72,10 +78,11 @@ final class PayslipNet
             ),
             'netTaxable' => new PayslipExplanation(
                 \sprintf('%s − %s + %s + %s − %s = %s', FrenchFormat::amountInEuros($gross), FrenchFormat::amountInEuros($employee), FrenchFormat::amountInEuros($nonDeductible), FrenchFormat::amountInEuros($health), FrenchFormat::amountInEuros($exempt['amount']), FrenchFormat::amountInEuros($netTaxable)),
-                'Salaire brut moins les cotisations salariales, plus la CSG et la CRDS non déductibles et la part patronale de la complémentaire santé, moins les heures supplémentaires exonérées.',
+                'Salaire brut moins les cotisations salariales, plus la CSG et la CRDS non déductibles et la part patronale de la complémentaire santé, moins les heures supplémentaires exonérées'.(null === $apprentice ? '.' : \sprintf(' et le salaire d’apprenti exonéré (%s).', FrenchFormat::amountInEuros($apprentice['amount']))),
                 'Sans taux : la part patronale de prévoyance n’est pas imposable (article 83 du code général des impôts).',
             ),
             'exemptOvertime' => $exempt['explanation'],
+            ...(null === $apprentice ? [] : ['apprenticeExempt' => $apprentice['explanation']]),
             'employerCost' => new PayslipExplanation(
                 \sprintf('%s + %s = %s', FrenchFormat::amountInEuros($gross), FrenchFormat::amountInEuros($employer), FrenchFormat::amountInEuros($gross->plus($employer))),
                 'Salaire brut plus les cotisations patronales, réductions déduites.',
@@ -132,6 +139,7 @@ final class PayslipNet
             $before->generalReduction->plus($reduction->amount ?? Money::zero()),
             $before->exemptOvertime->plus($exempt['amount']),
             $before->netTaxable->plus($netTaxable),
+            $before->apprenticeExempt->plus($apprentice['amount'] ?? Money::zero()),
         );
 
         return ['rows' => $deductions, 'totals' => new PayslipTotals(
@@ -147,6 +155,7 @@ final class PayslipNet
             $netPay,
             $gross->plus($employer),
             $explanations,
+            $apprentice['amount'] ?? null,
         ), 'yearToDate' => $yearToDate];
     }
 
@@ -195,8 +204,8 @@ final class PayslipNet
                 $reduction = $reduction->plus($row->employeeAmount);
             } elseif (PayslipLine::CsgDeductible === $row->line) {
                 $csgRate = $csgRate->plus($row->employeeRate ?? BigDecimal::zero());
-            } elseif (PayslipLine::CsgCrdsNonDeductible !== $row->line && PayslipUnit::Percent === $row->employeeRateUnit && null !== $row->employeeRate && null !== $row->base) {
-                $weighted = $weighted->plus($row->employeeRate->multipliedBy($row->base));
+            } elseif (PayslipLine::CsgCrdsNonDeductible !== $row->line && PayslipUnit::Percent === $row->employeeRateUnit && null !== $row->employeeRate && null !== ($base = $row->employeeBaseOrBase())) {
+                $weighted = $weighted->plus($row->employeeRate->multipliedBy($base));
             }
         }
         $onOvertime = Money::euros($overtimePay->multipliedBy($weighted)->dividedBy($gross->toDecimal()->multipliedBy(100), 2, RoundingMode::HalfUp));
@@ -224,6 +233,34 @@ final class PayslipNet
             'Exonération d’impôt sur le revenu dans la limite annuelle de '.FrenchFormat::amountInEuros($limit).' nets (article 81 quater du code général des impôts).',
             $source,
             $notes,
+        )];
+    }
+
+    /**
+     * An apprentice's salary exempt from income tax this month: the net taxable, within what the year's
+     * limit leaves. Null for an employee who is not an apprentice.
+     *
+     * @return array{amount: Money, explanation: PayslipExplanation}|null
+     */
+    private static function apprenticeExempt(PayslipInput $input, Money $netTaxable): ?array
+    {
+        if (!$input->employee->isApprentice()) {
+            return null;
+        }
+        $limit = Money::euros($input->regulatory->decimal(self::APPRENTICE_KEY, 'annual_limit'));
+        $already = $input->yearToDate->apprenticeExempt;
+        $left = $limit->minus($already);
+        if ($left->isNegative()) {
+            $left = Money::zero();
+        }
+        $taxable = $netTaxable->isNegative() ? Money::zero() : $netTaxable;
+        $amount = $taxable->compareTo($left) > 0 ? $left : $taxable;
+
+        return ['amount' => $amount, 'explanation' => new PayslipExplanation(
+            \sprintf('Exonéré : %s%s', FrenchFormat::amountInEuros($amount), $amount->equals($taxable) ? ', tout le salaire imposable du mois' : \sprintf(', ce qui reste de la limite annuelle sur %s', FrenchFormat::amountInEuros($taxable))),
+            'Net imposable du mois avant l’exonération : '.FrenchFormat::amountInEuros($taxable).'.',
+            \sprintf('Salaire d’apprenti exonéré d’impôt sur le revenu dans la limite annuelle du SMIC (article 81 bis du code général des impôts) : %s ; déjà exonéré cette année %s ; reste %s.', FrenchFormat::amountInEuros($limit), FrenchFormat::amountInEuros($already), FrenchFormat::amountInEuros($left)),
+            PayslipSource::of($input->regulatory, self::APPRENTICE_KEY, 'annual_limit'),
         )];
     }
 
