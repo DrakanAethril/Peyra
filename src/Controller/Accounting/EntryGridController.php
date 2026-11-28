@@ -9,12 +9,14 @@ use App\Entity\Dossier\Dossier;
 use App\Entity\Dossier\Period;
 use App\Entity\Identity\User;
 use App\Enum\Accounting\JournalType;
+use App\Enum\Dossier\AccessLevel;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntryRepository;
 use App\Repository\Accounting\EntryTemplateRepository;
 use App\Repository\Accounting\JournalRepository;
 use App\Repository\Accounting\PendingEntryRepository;
 use App\Repository\Dossier\PeriodRepository;
+use App\Security\Voter\DossierRightVoter;
 use App\Security\Voter\DossierVoter;
 use App\Service\Accounting\Chart\AccountDraft;
 use App\Service\Accounting\Chart\AccountNumber;
@@ -27,6 +29,7 @@ use App\Service\Accounting\Entry\PendingEntries;
 use App\Service\Accounting\Entry\PendingStale;
 use App\Service\Accounting\Template\GuidedEntry;
 use App\Service\Accounting\Template\TemplateCall;
+use App\Service\Dossier\Rights\DossierRights;
 use App\Service\Shared\DateValue;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\JsonRequestPayload;
@@ -50,7 +53,10 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * the brouillard (`save`), Ctrl Entrée validates the month's brouillard (`validate`), Alt Inser
  * creates the account typed (`account`), F6 calls one of the journal's entry templates (`template`:
  * its lines, amounts computed from the amount typed, laid in the current entry by the browser). The journal and the month last entered are taken again
- * (the session, per dossier). Whoever only reads the dossier sees the grid without fields.
+ * (the session, per dossier). Whoever only reads the dossier sees the grid without fields; in a
+ * group's dossier the member's profile decides (DossierRightVoter): a journal it closes is not
+ * offered, one it reads is drawn without fields, Ctrl Entrée needs « validation », Alt Inser the
+ * dossier's settings.
  */
 #[Route('/d/{dossier}/accounting/entry', requirements: ['dossier' => '\d+'])]
 final class EntryGridController extends AbstractController
@@ -58,10 +64,11 @@ final class EntryGridController extends AbstractController
     private const string SESSION_KEY = 'entry_grid';
 
     #[Route('', name: 'app_accounting_entry', methods: ['GET'])]
-    public function index(Dossier $dossier, Request $request, JournalRepository $journals, PeriodRepository $periods, EntryRepository $entries, PendingEntryRepository $pendingRows, PendingEntries $pending, JournalGrid $grid, EntryTemplateRepository $templates, AccountRepository $accounts, #[CurrentUser] User $me): Response
+    public function index(Dossier $dossier, Request $request, JournalRepository $journals, PeriodRepository $periods, EntryRepository $entries, PendingEntryRepository $pendingRows, PendingEntries $pending, JournalGrid $grid, EntryTemplateRepository $templates, AccountRepository $accounts, DossierRights $rights, #[CurrentUser] User $me): Response
     {
         $remembered = $this->remembered($request, $dossier);
-        $journal = $this->journalOf($dossier, $journals, QueryValue::trimmed($request, 'journal', $remembered['journal'] ?? ''));
+        $readable = array_values(array_filter($journals->findByDossier($dossier), fn (Journal $one): bool => $this->isGranted(DossierRightVoter::JOURNAL_READ, $one)));
+        $journal = $this->journalOf($readable, QueryValue::trimmed($request, 'journal', $remembered['journal'] ?? ''));
         $period = $this->periodOf($dossier, $periods, QueryValue::trimmed($request, 'period', $remembered['period'] ?? ''));
         if (null === $journal || null === $period) {
             return $this->render('accounting/entry_grid_empty.html.twig', ['dossier' => $dossier, 'no_journal' => null === $journal]);
@@ -69,7 +76,8 @@ final class EntryGridController extends AbstractController
         $this->remember($request, $dossier, $journal, $period);
 
         $context = $grid->context($dossier, $journal, $period);
-        $editable = $this->isGranted(DossierVoter::EDIT, $dossier);
+        $editable = $this->isGranted(DossierRightVoter::JOURNAL_ENTER, $journal);
+        $profileNote = $this->isGranted(DossierVoter::EDIT, $dossier) ? $rights->journalRefusal($journal, $me, $editable ? AccessLevel::Validate : AccessLevel::Enter) : null;
         $closed = self::closedReason($period);
         $others = [];
         foreach ($pendingRows->findAllPending($journal, $period) as $row) {
@@ -83,10 +91,12 @@ final class EntryGridController extends AbstractController
             'dossier' => $dossier,
             'journal' => $journal,
             'period' => $period,
-            'journal_list' => $journals->findByDossier($dossier),
+            'journal_list' => $readable,
             'period_list' => $periods->findByDossier($dossier),
             'editable' => $editable && null === $closed,
             'closed_reason' => $closed,
+            'profile_note' => null === $closed ? $profileNote : null,
+            'can_validate' => $this->isGranted(DossierRightVoter::JOURNAL_VALIDATE, $journal),
             'others' => $others,
             'drafts_count' => \count($entries->findDrafts()),
             'level' => $context->level,
@@ -101,6 +111,7 @@ final class EntryGridController extends AbstractController
                 'dossierDate' => $dossier->getDossierDate()->format('Y-m-d'),
                 'focus' => QueryValue::nullableInt($request, 'entry'),
                 'templates' => $this->templatesOf($dossier, $journal, $templates, $accounts),
+                'canCreateAccount' => $this->isGranted(DossierRightVoter::SETTINGS, $dossier),
             ],
             'lookup' => $grid->lookup($context),
         ]);
@@ -148,6 +159,9 @@ final class EntryGridController extends AbstractController
     public function account(Dossier $dossier, Request $request, AccountSheet $sheet, EntityManagerInterface $entityManager, #[CurrentUser] User $me): JsonResponse
     {
         $this->guard($dossier, $request);
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
+            throw new NotFoundHttpException('The profile keeps the plan closed.');
+        }
         $payload = JsonRequestPayload::fromRequest($request);
         $draft = new AccountDraft();
         $draft->number = AccountNumber::normalize($payload->string('number'));
@@ -177,6 +191,9 @@ final class EntryGridController extends AbstractController
         $this->guard($dossier, $request);
         $payload = JsonRequestPayload::fromRequest($request);
         $template = $templates->findOneByCode($dossier, strtoupper($payload->string('template'))) ?? throw new NotFoundHttpException('No such template.');
+        if (!$this->isGranted(DossierRightVoter::JOURNAL_ENTER, $template->getJournal())) {
+            throw new NotFoundHttpException('The profile does not enter in this journal.');
+        }
         $date = DateValue::parse($payload->string('date')) ?? $dossier->getDossierDate();
         $cents = $payload->int('amount');
         $call = TemplateCall::lines($template, $date, null === $cents ? null : Money::cents($cents), $payload->string('rate'), '', static fn (string $number) => $accounts->findOneByNumber($dossier, $number));
@@ -238,6 +255,9 @@ final class EntryGridController extends AbstractController
         $this->guard($dossier, $request);
         $payload = JsonRequestPayload::fromRequest($request);
         $journal = $journals->findOneByCode($dossier, strtoupper($payload->string('journal'))) ?? throw new NotFoundHttpException('No such journal.');
+        if (!$this->isGranted(DossierRightVoter::JOURNAL_ENTER, $journal)) {
+            throw new NotFoundHttpException('The profile does not enter in this journal.');
+        }
         $period = $this->periodOf($dossier, $periods, $payload->string('period'), false) ?? throw new NotFoundHttpException('No such period.');
         if (null !== self::closedReason($period)) {
             throw new NotFoundHttpException('A closed period takes no entry.');
@@ -269,10 +289,14 @@ final class EntryGridController extends AbstractController
         return null;
     }
 
-    /** The journal asked, else the first purchase journal, else the first that is not the à-nouveaux. */
-    private function journalOf(Dossier $dossier, JournalRepository $journals, string $code): ?Journal
+    /**
+     * The journal asked among those the person may open, else the first purchase journal, else the
+     * first that is not the à-nouveaux.
+     *
+     * @param list<Journal> $all
+     */
+    private function journalOf(array $all, string $code): ?Journal
     {
-        $all = $journals->findByDossier($dossier);
         foreach ($all as $journal) {
             if ($journal->getCode() === strtoupper($code)) {
                 return $journal;

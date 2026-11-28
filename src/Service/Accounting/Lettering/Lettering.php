@@ -9,9 +9,13 @@ use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
 use App\Enum\Accounting\LetteringMode;
 use App\Enum\Audit\AuditAction;
+use App\Enum\Dossier\AccessLevel;
+use App\Enum\Dossier\DossierArea;
 use App\Repository\Accounting\EntryLineRepository;
 use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Audit\AuditTrail;
+use App\Service\Dossier\Rights\DossierRights;
+use App\Service\Dossier\Rights\Gesture;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\Money;
 use Doctrine\DBAL\LockMode;
@@ -32,7 +36,9 @@ use Doctrine\ORM\EntityManagerInterface;
  * Each gesture runs under a lock on the account's row - two tabs never take one letter -, reads
  * the account's lines again under it, dates the letters with the dossier's date (the FEC's DateLet),
  * is recorded in the audit trail and flushed in one transaction. A refusal is a LetteringRefused,
- * which writes nothing. Runs inside the dossier's context.
+ * which writes nothing. A member of a group's dossier letters where their profile enters
+ * (DossierArea::ofLettering(): a supplier with the purchases, a customer with the sales). Runs
+ * inside the dossier's context.
  */
 final readonly class Lettering
 {
@@ -41,6 +47,7 @@ final readonly class Lettering
         private EntryLineRepository $lines,
         private AssistanceLevels $assistance,
         private AuditTrail $auditTrail,
+        private DossierRights $rights,
     ) {
     }
 
@@ -65,6 +72,7 @@ final readonly class Lettering
             }
         }
         self::refuseUnlettrable($key);
+        $this->refuseUnlessAllowed($dossier, $key, $actor);
         $partialAllowed = !$this->assistance->for($dossier)->blocks();
 
         return $this->transactional($key, function (array $accountLines) use ($dossier, $key, $chosen, $partialAllowed, $actor): LetteringResult {
@@ -105,6 +113,8 @@ final readonly class Lettering
     /** A group of the account undone; answers how many lines lost their letter. */
     public function unletter(Dossier $dossier, LetteringKey $key, string $letter, User|string $actor): int
     {
+        $this->refuseUnlessAllowed($dossier, $key, $actor);
+
         return $this->transactional($key, function (array $accountLines) use ($dossier, $key, $letter, $actor): int {
             $group = array_values(array_filter($accountLines, static fn (EntryLine $line): bool => null !== $line->getLetter() && LetterSequence::same($line->getLetter(), $letter)));
             if ([] === $group) {
@@ -145,6 +155,7 @@ final readonly class Lettering
     public function letterProposals(Dossier $dossier, LetteringKey $key, LetteringMode $mode, User|string $actor): array
     {
         self::refuseUnlettrable($key);
+        $this->refuseUnlessAllowed($dossier, $key, $actor);
 
         return $this->transactional($key, function (array $accountLines) use ($dossier, $key, $mode, $actor): array {
             $groups = self::proposalsAmong($accountLines, $mode);
@@ -172,6 +183,21 @@ final readonly class Lettering
 
             return $letters;
         });
+    }
+
+    /** The area of the key's lettering, for a refusal and for the screen. */
+    public static function areaOf(LetteringKey $key): DossierArea
+    {
+        return DossierArea::ofLettering($key->thirdParty?->getKind());
+    }
+
+    private function refuseUnlessAllowed(Dossier $dossier, LetteringKey $key, User|string $actor): void
+    {
+        $area = self::areaOf($key);
+        $refusal = $this->rights->refusal($dossier, $actor, $area, AccessLevel::Enter, Gesture::lettering($area));
+        if (null !== $refusal) {
+            throw new LetteringRefused($refusal);
+        }
     }
 
     /**
@@ -267,7 +293,7 @@ final readonly class Lettering
     /** @param array<string, mixed> $details */
     private function record(Dossier $dossier, AuditAction $action, User|string $actor, LetteringKey $key, string $summary, array $details): void
     {
-        $this->auditTrail->record($action, $actor, 'dossier', (string) $dossier->getId(), $summary, [
+        $this->auditTrail->inDossier($dossier, $action, $actor, $summary, [
             'dossier' => $dossier->getId(),
             'account' => $key->account->getNumber(),
             'thirdParty' => $key->thirdParty?->getCode(),

@@ -11,7 +11,7 @@ use App\Enum\Accounting\AccountNature;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\JournalRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
-use App\Security\Voter\DossierVoter;
+use App\Security\Voter\DossierRightVoter;
 use App\Service\Accounting\Chart\AccountDraft;
 use App\Service\Accounting\Chart\AccountNumber;
 use App\Service\Accounting\Chart\AccountSheet;
@@ -31,7 +31,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 /**
  * The fiche of an account (design-ux.md § 3.2, « Plan de comptes », gabarit F): number, label,
  * lettrable, collective; its class, nature and the reference account it subdivides as facts. F10
- * saves for whoever works in the dossier (DossierVoter::EDIT), anybody else reads; an unused account
+ * saves for whoever works in the dossier (DossierRightVoter::SETTINGS: the profile's « Paramètres du dossier »), anybody else reads; an unused account
  * leaves the plan by a two-step button. The address is the account's number.
  */
 #[Route('/d/{dossier}/accounting/accounts', requirements: ['dossier' => '\d+'])]
@@ -40,7 +40,7 @@ final class AccountController extends AbstractController
     #[Route('/new', name: 'app_accounting_account_new', methods: ['GET', 'POST'])]
     public function create(Dossier $dossier, Request $request, AccountSheet $sheet, ReferenceCharts $charts, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier)) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $draft = new AccountDraft();
@@ -73,7 +73,7 @@ final class AccountController extends AbstractController
         $draft = AccountDraft::of($account);
         $status = Response::HTTP_OK;
         if ($request->isMethod('POST')) {
-            if (!$this->isGranted(DossierVoter::EDIT, $dossier)) {
+            if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
                 throw new NotFoundHttpException('Not yours to change.');
             }
             $this->read($request, $dossier, $draft, 'dossier-account-'.$account->getId());
@@ -100,7 +100,7 @@ final class AccountController extends AbstractController
     public function delete(Dossier $dossier, string $number, Request $request, AccountRepository $accounts, AccountSheet $sheet, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $account = $accounts->findOneByNumber($dossier, $number) ?? throw new NotFoundHttpException('No such account.');
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !$this->isCsrfTokenValid('dossier-account-delete-'.$account->getId(), $request->request->getString('_token'))) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier) || !$this->isCsrfTokenValid('dossier-account-delete-'.$account->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $refusal = $sheet->deletionRefusal($account);

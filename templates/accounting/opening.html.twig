@@ -43,7 +43,7 @@
     {% elseif report.journal is null %}
         <twig:Px:Card>
             <twig:Px:Empty icon="book-text" title="Aucun journal d’à-nouveaux" text="La balance d’ouverture se saisit dans un journal dédié, de type « À-nouveaux » (code AN le plus souvent). Créez-le, puis revenez ici.">
-                <twig:block name="action">{% if can_edit %}<twig:Px:Button href="{{ path('app_accounting_journal_new', {dossier: dossier.id}) }}" variant="primary" icon="plus">Nouveau journal</twig:Px:Button>{% endif %}</twig:block>
+                <twig:block name="action">{% if can_settings %}<twig:Px:Button href="{{ path('app_accounting_journal_new', {dossier: dossier.id}) }}" variant="primary" icon="plus">Nouveau journal</twig:Px:Button>{% endif %}</twig:block>
             </twig:Px:Empty>
         </twig:Px:Card>
     {% else %}

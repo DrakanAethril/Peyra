@@ -6,12 +6,14 @@ namespace App\Entity\Dossier;
 
 use App\Entity\Identity\User;
 use App\Enum\Dossier\DossierKind;
+use App\Enum\Dossier\DossierProfile;
 use App\Repository\Dossier\DossierMemberRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * A student who works in a group's dossier (conception § 4, « un dossier par groupe »). Their
- * profile in it (comptable fournisseurs, chef comptable…) joins at step 1.7. Who enters a dossier
+ * A student who works in a group's dossier (conception § 4, « un dossier par groupe »), with their
+ * profile in it (comptable fournisseurs, chef comptable…: App\Service\Dossier\Rights\ProfileMatrix;
+ * none = every right), given by a teacher (DossierProfiles). Who enters a dossier
  * is not part of its content: the row is global, read by DossierVoter before any context exists,
  * and never copied with the dossier.
  */
@@ -35,6 +37,9 @@ class DossierMember
 
     #[ORM\Column]
     private \DateTimeImmutable $addedAt;
+
+    #[ORM\Column(length: 30, nullable: true, enumType: DossierProfile::class)]
+    private ?DossierProfile $profile = null;
 
     public function __construct(Dossier $dossier, User $student, \DateTimeImmutable $addedAt)
     {
@@ -64,5 +69,16 @@ class DossierMember
     public function getAddedAt(): \DateTimeImmutable
     {
         return $this->addedAt;
+    }
+
+    public function getProfile(): ?DossierProfile
+    {
+        return $this->profile;
+    }
+
+    /** Through DossierProfiles, which records it in the audit trail. */
+    public function assignProfile(?DossierProfile $profile): void
+    {
+        $this->profile = $profile;
     }
 }

@@ -7,7 +7,7 @@ namespace App\Controller\ThirdParty;
 use App\Controller\Accounting\AccountImportController;
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
-use App\Security\Voter\DossierVoter;
+use App\Security\Voter\DossierRightVoter;
 use App\Service\ThirdParty\ThirdPartyImport;
 use App\Service\ThirdParty\ThirdPartyImportReport;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,7 +29,7 @@ final class ThirdPartyImportController extends AbstractController
     #[Route('/d/{dossier}/accounting/third-parties/import', name: 'app_third_parties_import', requirements: ['dossier' => '\d+'], methods: ['GET', 'POST'])]
     public function import(Dossier $dossier, Request $request, ThirdPartyImport $import, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier)) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $policy = AccountImportController::policy();

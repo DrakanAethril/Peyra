@@ -12,12 +12,14 @@ use App\Repository\Dossier\DossierRepository;
 use App\Repository\Dossier\ExerciseRepository;
 use App\Repository\Dossier\PeriodRepository;
 use App\Security\Voter\DossierVoter;
+use App\Service\Dossier\Rights\DossierRights;
 use Symfony\Bundle\SecurityBundle\Security;
 
 /**
  * What the PGI shell draws around every screen of a dossier (design-ux.md § 2.1): the switcher, the
- * date chip and its panel (exercise, period, the last three moves), and - for a teacher - the
- * ribbon that says whose dossier this is. Read inside the dossier's context.
+ * date chip and its panel (exercise, period, the last three moves), the member's profile chip in a
+ * group's dossier, and - for a teacher - the ribbon that says whose dossier this is. Read inside
+ * the dossier's context.
  *
  * @phpstan-import-type ListingGroup from DossierListing
  */
@@ -31,6 +33,7 @@ final readonly class DossierShell
         private ExerciseRepository $exercises,
         private PeriodRepository $periods,
         private DossierDateChangeRepository $dateChanges,
+        private DossierRights $rights,
     ) {
     }
 
@@ -54,6 +57,7 @@ final readonly class DossierShell
             $me->isTeacher(),
             $holders,
             $dateMoved,
+            $this->rights->profileOf($dossier, $me),
         );
     }
 

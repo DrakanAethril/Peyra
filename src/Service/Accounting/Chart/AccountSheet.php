@@ -115,11 +115,10 @@ final readonly class AccountSheet
     {
         $account = new Account($dossier, $draft->number, $draft->label, $draft->lettrable, $draft->collective, AccountOrigin::Created);
         $this->entityManager->persist($account);
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $dossier,
             AuditAction::AccountCreated,
             $by,
-            'dossier',
-            (string) $dossier->getId(),
             \sprintf('Compte %s %s créé dans %s', $draft->number, $draft->label, $dossier->getName()),
             ['dossier' => $dossier->getId(), 'number' => $draft->number],
         );
@@ -137,11 +136,10 @@ final readonly class AccountSheet
             return false;
         }
         $account->describe($draft->number, $draft->label, $draft->lettrable, $draft->collective);
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $account->getDossier(),
             AuditAction::AccountChanged,
             $by,
-            'dossier',
-            (string) $account->getDossier()->getId(),
             $before['number'] === $draft->number
                 ? \sprintf('Compte %s modifié', $draft->number)
                 : \sprintf('Compte %s renuméroté %s', $before['number'], $draft->number),
@@ -204,11 +202,10 @@ final readonly class AccountSheet
         if (null !== $this->deletionRefusal($account)) {
             throw new \LogicException('This account is in use.');
         }
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $account->getDossier(),
             AuditAction::AccountDeleted,
             $by,
-            'dossier',
-            (string) $account->getDossier()->getId(),
             \sprintf('Compte %s %s supprimé du plan', $account->getNumber(), $account->getLabel()),
             ['dossier' => $account->getDossier()->getId(), 'number' => $account->getNumber(), 'label' => $account->getLabel()],
         );

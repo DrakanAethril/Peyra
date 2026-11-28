@@ -8,7 +8,7 @@
 
 {% set settings_current = 'third_parties' %}
 {% set dossier_title = 'Tiers' %}
-{% set can_edit = is_granted('DOSSIER_EDIT', dossier) %}
+{% set can_edit = is_granted('DOSSIER_SETTINGS', dossier) %}
 {% set status_keys = can_edit ? [{combo: 'N', verb: 'Nouveau tiers'}, {combo: '/', verb: 'Rechercher'}] : [{combo: '/', verb: 'Rechercher'}] %}
 
 {% block page_head %}

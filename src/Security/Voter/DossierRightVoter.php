@@ -1,0 +1,68 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Security\Voter;
+
+use App\Entity\Accounting\Journal;
+use App\Entity\Dossier\Dossier;
+use App\Entity\Identity\User;
+use App\Enum\Dossier\AccessLevel;
+use App\Enum\Dossier\DossierArea;
+use App\Service\Dossier\Rights\DossierRights;
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Security\Core\Authorization\Voter\Vote;
+use Symfony\Component\Security\Core\Authorization\Voter\Voter;
+use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
+
+/**
+ * A dossier's rights area by area (lot 1, step 1.7), for the screens: DossierVoter says who works
+ * in the dossier, the profile (App\Service\Dossier\Rights\DossierRights) how far.
+ *
+ * - SETTINGS (a dossier): change its settings - the fiche société, the plan, the journals, the third
+ *   parties, the entry templates, the subscriptions;
+ * - JOURNAL_READ (a journal): see its entry screen - a journal the profile closes is not offered;
+ * - JOURNAL_ENTER: enter in it (pending work, drafts, F6, the opening balance);
+ * - JOURNAL_VALIDATE: validate and reverse its entries.
+ *
+ * The doors hold the same rules (Ledger, Lettering refuse a gesture the profile does not allow);
+ * a refusal of a screen reads as a 404.
+ *
+ * @extends Voter<string, Dossier|Journal>
+ */
+final class DossierRightVoter extends Voter
+{
+    public const string SETTINGS = 'DOSSIER_SETTINGS';
+    public const string JOURNAL_READ = 'JOURNAL_READ';
+    public const string JOURNAL_ENTER = 'JOURNAL_ENTER';
+    public const string JOURNAL_VALIDATE = 'JOURNAL_VALIDATE';
+
+    public function __construct(private readonly DossierVoter $dossiers, private readonly DossierRights $rights)
+    {
+    }
+
+    protected function supports(string $attribute, mixed $subject): bool
+    {
+        return (self::SETTINGS === $attribute && $subject instanceof Dossier)
+            || (\in_array($attribute, [self::JOURNAL_READ, self::JOURNAL_ENTER, self::JOURNAL_VALIDATE], true) && $subject instanceof Journal);
+    }
+
+    protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
+    {
+        $user = $token->getUser();
+        if (!$user instanceof User) {
+            return false;
+        }
+        $dossier = $subject instanceof Journal ? $subject->getDossier() : $subject;
+        [$area, $wanted] = match ($attribute) {
+            self::SETTINGS => [DossierArea::Settings, AccessLevel::Enter],
+            self::JOURNAL_READ => [null, AccessLevel::Read],
+            self::JOURNAL_ENTER => [null, AccessLevel::Enter],
+            default => [null, AccessLevel::Validate],
+        };
+        $area ??= $subject instanceof Journal ? DossierArea::ofJournal($subject->getType()) : DossierArea::Settings;
+        $works = VoterInterface::ACCESS_GRANTED === $this->dossiers->vote($token, $dossier, [AccessLevel::Read === $wanted ? DossierVoter::VIEW : DossierVoter::EDIT]);
+
+        return $works && $this->rights->allows($dossier, $user, $area, $wanted);
+    }
+}

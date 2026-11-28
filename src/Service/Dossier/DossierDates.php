@@ -34,11 +34,10 @@ final readonly class DossierDates
         $change = new DossierDateChange($dossier, $from, $to, $at, $by);
         $this->entityManager->persist($change);
         $dossier->moveDate($to, $at);
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $dossier,
             AuditAction::DossierDateMoved,
             $by,
-            'dossier',
-            (string) $dossier->getId(),
             \sprintf('Date du dossier %s : du %s au %s', $dossier->getName(), $from->format('d/m/Y'), $to->format('d/m/Y')),
             ['dossier' => $dossier->getId(), 'from' => $from->format('Y-m-d'), 'to' => $to->format('Y-m-d')],
         );

@@ -11,7 +11,8 @@ use App\Service\Accounting\Entry\EntryControl;
  * A draft as the brouillard lists it (design-ux.md § 3.2): its controls at the dossier's level of
  * assistance, its faults if the Ledger would refuse it now (a month closed since), whether a
  * control stops it (levels G and B: its box cannot be ticked), whether the person is changing it
- * in the grid (held back, like the grid's Ctrl Entrée does).
+ * in the grid (held back, like the grid's Ctrl Entrée does), and why the person's profile may not
+ * validate it (a group's dossier, step 1.7).
  */
 final readonly class BrouillardRow
 {
@@ -25,17 +26,21 @@ final readonly class BrouillardRow
         public array $errors,
         public bool $blocked,
         public bool $changing,
+        public ?string $refused = null,
     ) {
     }
 
     public function isSelectable(): bool
     {
-        return !$this->blocked && !$this->changing;
+        return !$this->blocked && !$this->changing && null === $this->refused;
     }
 
     /** The sentence that says why the box cannot be ticked, null when it can. */
     public function reason(): ?string
     {
+        if (null !== $this->refused) {
+            return $this->refused;
+        }
         if ($this->changing) {
             return 'Vous modifiez cette écriture dans la grille : enregistrez-la (F10) avant de la valider.';
         }

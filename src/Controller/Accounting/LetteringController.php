@@ -8,6 +8,7 @@ use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
 use App\Enum\Accounting\AssistanceLevel;
 use App\Enum\Accounting\LetteringMode;
+use App\Enum\Dossier\AccessLevel;
 use App\Repository\Accounting\AccountRepository;
 use App\Security\Voter\DossierVoter;
 use App\Service\Accounting\Entry\AssistanceLevels;
@@ -15,6 +16,8 @@ use App\Service\Accounting\Lettering\Lettering;
 use App\Service\Accounting\Lettering\LetteringBoard;
 use App\Service\Accounting\Lettering\LetteringKey;
 use App\Service\Accounting\Lettering\LetteringRefused;
+use App\Service\Dossier\Rights\DossierRights;
+use App\Service\Dossier\Rights\Gesture;
 use App\Service\Shared\PostValue;
 use App\Service\Shared\QueryValue;
 use App\Service\Shared\ReturnPath;
@@ -37,7 +40,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 final class LetteringController extends AbstractController
 {
     #[Route('', name: 'app_accounting_lettering', methods: ['GET'])]
-    public function index(Dossier $dossier, Request $request, LetteringBoard $board, Lettering $lettering, AssistanceLevels $assistance, AccountRepository $accounts): Response
+    public function index(Dossier $dossier, Request $request, LetteringBoard $board, Lettering $lettering, AssistanceLevels $assistance, AccountRepository $accounts, DossierRights $rights, #[CurrentUser] User $me): Response
     {
         $typed = mb_strtoupper(QueryValue::trimmed($request, 'account'));
         $on = QueryValue::trimmed($request, 'on');
@@ -50,6 +53,8 @@ final class LetteringController extends AbstractController
 
         [$key, $error] = '' === $typed || null !== $collective ? [null, null] : $board->key($dossier, $typed, $on);
         $view = null === $key ? null : $board->view($dossier, $key, QueryValue::bool($request, 'all'));
+        $editable = $this->isGranted(DossierVoter::EDIT, $dossier);
+        $profileNote = null === $key || !$editable ? null : $rights->refusal($dossier, $me, Lettering::areaOf($key), AccessLevel::Enter, Gesture::lettering(Lettering::areaOf($key)));
         $proposals = null === $view || null === $auto ? [] : LetteringBoard::lettered($lettering->proposals($view->key, $auto), $view->usedLetters);
         $proposed = [];
         foreach ($proposals as $group) {
@@ -72,6 +77,8 @@ final class LetteringController extends AbstractController
             'proposals' => $proposals,
             'proposed' => $proposed,
             'last' => QueryValue::trimmed($request, 'last'),
+            'can_letter' => $editable && null === $profileNote,
+            'profile_note' => $profileNote,
             'here' => ReturnPath::here($request->getPathInfo(), (string) $request->getQueryString()),
             'return_path' => ReturnPath::of(QueryValue::trimmed($request, 'return'), (int) $dossier->getId()),
         ], new Response(status: null !== $error ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));

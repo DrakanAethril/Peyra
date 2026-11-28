@@ -38,6 +38,34 @@ final readonly class DossierHolders
     }
 
     /**
+     * The teachers who teach, this school year, a class one of these students is enrolled in - who
+     * work in their dossiers (Utilisateurs et droits).
+     *
+     * @param list<User> $students
+     *
+     * @return list<User> by name
+     */
+    public function teachersThisYear(array $students): array
+    {
+        $year = $this->years->findCurrent();
+        if (null === $year || [] === $students) {
+            return [];
+        }
+        /** @var list<User> $teachers */
+        $teachers = $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->andWhere('u.id IN (SELECT IDENTITY(t.teacher) FROM '.TeacherClass::class.' t JOIN '.Enrolment::class.' e WITH e.schoolClass = t.schoolClass WHERE e.schoolYear = :year AND e.student IN (:students))')
+            ->setParameter('year', $year)
+            ->setParameter('students', $students)
+            ->orderBy('u.sortName', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $teachers;
+    }
+
+    /**
      * « Les enseignants de sa classe de l'année lisent tous ses dossiers, toutes années »: the
      * teacher teaches, this school year, a class one of these students is enrolled in.
      *

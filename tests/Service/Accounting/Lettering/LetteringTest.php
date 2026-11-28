@@ -22,6 +22,7 @@ use App\Service\Accounting\Lettering\LetteringBoard;
 use App\Service\Accounting\Lettering\LetteringKey;
 use App\Service\Accounting\Lettering\LetteringRefused;
 use App\Service\Audit\AuditTrail;
+use App\Service\Dossier\Rights\DossierRights;
 use App\Tests\Support\BuildsLedger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -81,7 +82,7 @@ final class LetteringTest extends KernelTestCase
                 return AssistanceLevel::Blocking;
             }
         };
-        $lettering = new Lettering($container->get(EntityManagerInterface::class), $container->get(EntryLineRepository::class), $blocking, $container->get(AuditTrail::class));
+        $lettering = new Lettering($container->get(EntityManagerInterface::class), $container->get(EntryLineRepository::class), $blocking, $container->get(AuditTrail::class), $container->get(DossierRights::class));
 
         $this->expectExceptionMessage("La sélection n’est pas soldée : écart de 2\u{202F}158,12 au crédit. Ajoutez les lignes qui la soldent.");
         $lettering->letter($dossier, [$lines['invoice']->getId(), $lines['downPayment']->getId()], 'test');

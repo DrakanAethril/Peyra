@@ -15,7 +15,7 @@ use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntryTemplateRepository;
 use App\Repository\Accounting\JournalRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
-use App\Security\Voter\DossierVoter;
+use App\Security\Voter\DossierRightVoter;
 use App\Service\Accounting\Template\TemplateDraft;
 use App\Service\Accounting\Template\TemplateLineDraft;
 use App\Service\Accounting\Template\TemplateRules;
@@ -35,7 +35,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * the dossier's entry templates, and the fiche of one - code, label, journal, the amount a call asks
  * and its VAT rate, then its lines (account or auxiliary code, third party, label, side, amount:
  * HT, TVA, TTC, fixed, balance, to type). F10 saves for whoever works in the dossier
- * (DossierVoter::EDIT), anybody else reads. The address of a template is its code.
+ * (DossierRightVoter::SETTINGS: the profile's « Paramètres du dossier »), anybody else reads. The address of a template is its code.
  */
 #[Route('/d/{dossier}/accounting/templates', requirements: ['dossier' => '\d+'])]
 final class TemplatesController extends AbstractController
@@ -57,7 +57,7 @@ final class TemplatesController extends AbstractController
     #[Route('/new', name: 'app_accounting_template_new', methods: ['GET', 'POST'])]
     public function create(Dossier $dossier, Request $request, TemplateSheet $sheet, JournalRepository $journals, AccountRepository $accounts, ThirdPartyRepository $thirdParties, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier)) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $draft = new TemplateDraft();
@@ -88,7 +88,7 @@ final class TemplatesController extends AbstractController
         $status = Response::HTTP_OK;
         $fault = null;
         if ($request->isMethod('POST')) {
-            if (!$this->isGranted(DossierVoter::EDIT, $dossier)) {
+            if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
                 throw new NotFoundHttpException('Not yours to change.');
             }
             $this->read($request, $draft, 'dossier-template-'.$template->getId());
@@ -114,7 +114,7 @@ final class TemplatesController extends AbstractController
     public function delete(Dossier $dossier, string $code, Request $request, EntryTemplateRepository $templates, TemplateSheet $sheet, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
         $template = $templates->findOneByCode($dossier, $code) ?? throw new NotFoundHttpException('No such template.');
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier) || !$this->isCsrfTokenValid('dossier-template-delete-'.$template->getId(), $request->request->getString('_token'))) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier) || !$this->isCsrfTokenValid('dossier-template-delete-'.$template->getId(), $request->request->getString('_token'))) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $refusal = $sheet->deletionRefusal($template);

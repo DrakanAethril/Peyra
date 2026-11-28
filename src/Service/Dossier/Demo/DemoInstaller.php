@@ -7,12 +7,14 @@ namespace App\Service\Dossier\Demo;
 use App\Entity\Accounting\Account;
 use App\Entity\Accounting\Journal;
 use App\Entity\Dossier\Dossier;
+use App\Entity\Dossier\DossierMember;
 use App\Entity\Identity\SchoolYear;
 use App\Entity\Identity\User;
 use App\Entity\ThirdParty\ThirdParty;
 use App\Enum\Accounting\AccountOrigin;
 use App\Enum\Audit\AuditAction;
 use App\Enum\Dossier\DossierKind;
+use App\Enum\Dossier\DossierProfile;
 use App\Repository\Accounting\AccountRepository;
 use App\Repository\Dossier\DossierRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
@@ -87,6 +89,25 @@ final readonly class DemoInstaller
         return $this->build(DossierKind::Student, $student, $year, $actor, $at, $template);
     }
 
+    /**
+     * The demonstration dossier as a group's, its members each with their profile (development
+     * only, until the distribution of step 1.8 makes the groups' dossiers).
+     *
+     * @param list<array{0: User, 1: DossierProfile|null}> $members
+     */
+    public function buildForGroup(array $members, SchoolYear $year, Dossier $template, string $actor, \DateTimeImmutable $at): Dossier
+    {
+        $dossier = $this->build(DossierKind::Group, null, $year, $actor, $at, $template);
+        foreach ($members as [$student, $profile]) {
+            $member = new DossierMember($dossier, $student, $at);
+            $member->assignProfile($profile);
+            $this->entityManager->persist($member);
+        }
+        $this->entityManager->flush();
+
+        return $dossier;
+    }
+
     private function build(DossierKind $kind, ?User $owner, ?SchoolYear $year, string $actor, \DateTimeImmutable $at, ?Dossier $template): Dossier
     {
         $file = DemoCompanyFile::read($this->directory.'/company.yaml');
@@ -119,11 +140,10 @@ final readonly class DemoInstaller
         $this->context->within($dossier, fn () => $this->installTemplates($dossier, $templateFile, $actor));
         $this->context->within($dossier, fn () => $this->installSubscriptions($dossier, $subscriptionFile, $actor, $at));
         $this->context->within($dossier, fn () => $this->installLetterings($dossier, $letteringFile, $actor));
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $dossier,
             AuditAction::DossierCreated,
             $actor,
-            'dossier',
-            (string) $dossier->getId(),
             \sprintf('%s créé (%s)', $dossier->getName(), $kind->label()),
             ['dossier' => $dossier->getId(), 'kind' => $kind->value, 'owner' => $owner?->getLogin()],
         );

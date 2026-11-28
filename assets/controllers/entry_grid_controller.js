@@ -72,6 +72,7 @@ export default class extends Controller {
         this.exercise = grid.exercise;
         this.dossierDate = grid.dossierDate;
         this.counterpart = grid.counterpart;
+        this.canCreateAccount = grid.canCreateAccount !== false;
         this.lookup = new Lookup(this.lookupValue);
         this.revision = this.revisionValue;
         this.groups = grid.groups.map((group) => this.adopt(group));
@@ -1713,6 +1714,11 @@ export default class extends Controller {
 
     openCreate() {
         if (this.pos?.field !== 'account') {
+            return;
+        }
+        if (!this.canCreateAccount) {
+            this.say('Votre profil ne permet pas de créer un compte : le plan de comptes fait partie des paramètres du dossier.');
+
             return;
         }
         const typed = this.inputAt().value.replace(/\s+/g, '');

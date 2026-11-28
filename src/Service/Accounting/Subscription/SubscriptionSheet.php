@@ -71,11 +71,10 @@ final readonly class SubscriptionSheet
         $subscription = new EntrySubscription($dossier, $fields->template, $fields->firstMonth);
         self::write($subscription, $fields);
         $this->entityManager->persist($subscription);
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $dossier,
             AuditAction::EntrySubscriptionCreated,
             $by,
-            'dossier',
-            (string) $dossier->getId(),
             \sprintf('Abonnement %s créé : modèle %s, %d échéances depuis %s', $fields->label, $fields->template->getCode(), $fields->occurrences, FrenchFormat::period($fields->firstMonth)),
             ['dossier' => $dossier->getId(), 'template' => $fields->template->getCode(), 'occurrences' => $fields->occurrences, 'target' => $fields->target->value],
         );
@@ -91,11 +90,10 @@ final readonly class SubscriptionSheet
         if (self::snapshot($subscription) === $before) {
             return false;
         }
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $subscription->getDossier(),
             AuditAction::EntrySubscriptionChanged,
             $by,
-            'dossier',
-            (string) $subscription->getDossier()->getId(),
             \sprintf('Abonnement %s modifié', $fields->label),
             ['dossier' => $subscription->getDossier()->getId(), 'subscription' => $subscription->getId(), 'before' => $before],
         );
@@ -105,11 +103,10 @@ final readonly class SubscriptionSheet
 
     public function delete(EntrySubscription $subscription, User $by): void
     {
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $subscription->getDossier(),
             AuditAction::EntrySubscriptionDeleted,
             $by,
-            'dossier',
-            (string) $subscription->getDossier()->getId(),
             \sprintf('Abonnement %s supprimé (%d échéances générées sur %d)', $subscription->getLabel(), $subscription->getGenerated(), $subscription->getOccurrences()),
             ['dossier' => $subscription->getDossier()->getId(), 'subscription' => $subscription->getId(), 'template' => $subscription->getTemplate()->getCode()],
         );

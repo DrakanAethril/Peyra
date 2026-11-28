@@ -6,7 +6,7 @@ namespace App\Controller\Accounting;
 
 use App\Entity\Dossier\Dossier;
 use App\Entity\Identity\User;
-use App\Security\Voter\DossierVoter;
+use App\Security\Voter\DossierRightVoter;
 use App\Service\Accounting\Chart\ChartImport;
 use App\Service\Accounting\Chart\ChartImportReport;
 use App\Service\Shared\Storage\UploadPolicy;
@@ -30,7 +30,7 @@ final class AccountImportController extends AbstractController
     #[Route('/d/{dossier}/accounting/accounts/import', name: 'app_accounting_accounts_import', requirements: ['dossier' => '\d+'], methods: ['GET', 'POST'])]
     public function import(Dossier $dossier, Request $request, ChartImport $import, EntityManagerInterface $entityManager, #[CurrentUser] User $me): Response
     {
-        if (!$this->isGranted(DossierVoter::EDIT, $dossier)) {
+        if (!$this->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
             throw new NotFoundHttpException('Not yours to change.');
         }
         $policy = self::policy();

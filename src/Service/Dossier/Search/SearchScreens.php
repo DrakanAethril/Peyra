@@ -6,16 +6,20 @@ namespace App\Service\Dossier\Search;
 
 use App\Entity\Dossier\Dossier;
 use App\Repository\Accounting\JournalRepository;
+use App\Security\Voter\DossierRightVoter;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 
 /**
  * The screens and actions of a dossier the global search offers (Ctrl K, design-ux.md § 2.1): the
  * catalogue of what exists today - the dashboard, Comptabilité's screens (Saisie, one line per
  * journal, the guided entry when it is open to the person, À-nouveaux, Brouillard, Consultation,
  * Lettrage, Recherche d'écritures, the five editions, the five views of the settings), Système d'information ›
- * Société - and, for whoever may change the dossier, the actions that create (« Nouvelle
- * écriture », « Nouveau compte »…). The search never offers a module a mission closes: the
- * missions (step 2.9) narrow this catalogue. Read inside the dossier's context.
+ * Société, Utilisateurs et droits, Piste d'audit - and, for whoever may change the dossier, the
+ * actions that create (« Nouvelle écriture », « Nouveau compte »…). The search never offers a
+ * module a mission closes, nor what a profile closes (a journal it does not open, the settings'
+ * actions it does not change: DossierRightVoter); the missions (step 2.9) narrow this catalogue
+ * too. Read inside the dossier's context.
  *
  * A screen's key is its route, plus the journal for the grid of one journal
  * (« app_accounting_entry:ACH »): what RecentScreens keeps.
@@ -29,7 +33,7 @@ final readonly class SearchScreens
         'app_accounting_edition_general_ledger', 'app_accounting_edition_trial_balance',
         'app_accounting_edition_third_party_balance', 'app_accounting_edition_aged_balance',
         'app_accounting_accounts', 'app_accounting_journals', 'app_third_parties', 'app_accounting_templates',
-        'app_accounting_subscriptions', 'app_dossier_company',
+        'app_accounting_subscriptions', 'app_dossier_company', 'app_dossier_users', 'app_dossier_audit',
     ];
 
     /** What an empty search shows when nothing was opened yet. */
@@ -46,6 +50,7 @@ final readonly class SearchScreens
     public function __construct(
         private UrlGeneratorInterface $urls,
         private JournalRepository $journals,
+        private AuthorizationCheckerInterface $authorization,
     ) {
     }
 
@@ -83,6 +88,9 @@ final readonly class SearchScreens
             $screen('app_accounting_entry', 'Saisie par journal', self::ENTRY, 'book-text', 'ecriture grille comptabilite'),
         ];
         foreach ($this->journals->findByDossier($dossier) as $journal) {
+            if (!$this->authorization->isGranted(DossierRightVoter::JOURNAL_READ, $journal)) {
+                continue;
+            }
             $items[] = new SearchItem(
                 SearchGroup::Screens,
                 $journal->getLabel(),
@@ -116,6 +124,8 @@ final readonly class SearchScreens
             $screen('app_accounting_templates', 'Modèles d’écriture', self::SETTINGS, 'settings', 'saisie f6'),
             $screen('app_accounting_subscriptions', 'Abonnements', self::SETTINGS, 'settings', 'loyer echeances generer'),
             $screen('app_dossier_company', 'Société', 'Système d’information', 'database', 'entreprise siret dossier'),
+            $screen('app_dossier_users', 'Utilisateurs et droits', 'Système d’information', 'users', 'profils membres groupe matrice'),
+            $screen('app_dossier_audit', 'Piste d’audit', 'Système d’information', 'history', 'historique journal qui quoi quand'),
         ];
     }
 
@@ -136,8 +146,13 @@ final readonly class SearchScreens
             terms: $terms,
         );
 
+        $actions = [$action('app_accounting_entry', 'Nouvelle écriture', self::ENTRY, 'plus', 'creer saisir ajouter')];
+        if (!$this->authorization->isGranted(DossierRightVoter::SETTINGS, $dossier)) {
+            return $actions;
+        }
+
         return [
-            $action('app_accounting_entry', 'Nouvelle écriture', self::ENTRY, 'plus', 'creer saisir ajouter'),
+            ...$actions,
             $action('app_accounting_account_new', 'Nouveau compte', self::SETTINGS, 'plus', 'creer ajouter plan'),
             $action('app_third_party_new', 'Nouveau tiers', self::SETTINGS, 'plus', 'creer ajouter client fournisseur'),
             $action('app_accounting_journal_new', 'Nouveau journal', self::SETTINGS, 'plus', 'creer ajouter'),

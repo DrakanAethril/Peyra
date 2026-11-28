@@ -23,6 +23,25 @@ final class DossierMemberRepository extends ServiceEntityRepository
         return null !== $this->findOneBy(['dossier' => $dossier, 'student' => $student]);
     }
 
+    public function findOneFor(Dossier $dossier, User $student): ?DossierMember
+    {
+        return $this->findOneBy(['dossier' => $dossier, 'student' => $student]);
+    }
+
+    /** @return list<DossierMember> the group's members, by name */
+    public function findByDossier(Dossier $dossier): array
+    {
+        /* @var list<DossierMember> */
+        return $this->createQueryBuilder('m')
+            ->join('m.student', 's')
+            ->addSelect('s')
+            ->andWhere('m.dossier = :dossier')
+            ->setParameter('dossier', $dossier)
+            ->orderBy('s.sortName', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     /** @return list<User> the group's students, by name */
     public function findStudents(Dossier $dossier): array
     {

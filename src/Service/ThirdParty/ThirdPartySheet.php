@@ -114,11 +114,10 @@ final readonly class ThirdPartySheet
         $thirdParty = new ThirdParty($dossier, $draft->code, $fields->kind, $draft->name);
         self::write($thirdParty, $draft, $fields);
         $this->entityManager->persist($thirdParty);
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $dossier,
             AuditAction::ThirdPartyCreated,
             $by,
-            'dossier',
-            (string) $dossier->getId(),
             \sprintf('Tiers %s %s créé dans %s', $draft->code, $draft->name, $dossier->getName()),
             ['dossier' => $dossier->getId(), 'code' => $draft->code, 'kind' => $fields->kind->value, 'auxiliary' => $fields->auxiliaryCode],
         );
@@ -135,11 +134,10 @@ final readonly class ThirdPartySheet
             return false;
         }
         self::write($thirdParty, $draft, $fields);
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $thirdParty->getDossier(),
             AuditAction::ThirdPartyChanged,
             $by,
-            'dossier',
-            (string) $thirdParty->getDossier()->getId(),
             $before['code'] === $draft->code ? \sprintf('Tiers %s modifié', $draft->code) : \sprintf('Tiers %s renommé %s', $before['code'], $draft->code),
             ['dossier' => $thirdParty->getDossier()->getId(), 'fields' => $changed, 'before' => array_intersect_key($before, array_flip($changed))],
         );
@@ -152,11 +150,10 @@ final readonly class ThirdPartySheet
         if (null !== $this->deletionRefusal($thirdParty)) {
             throw new \LogicException('This third party is named on entry lines.');
         }
-        $this->auditTrail->record(
+        $this->auditTrail->inDossier(
+            $thirdParty->getDossier(),
             AuditAction::ThirdPartyDeleted,
             $by,
-            'dossier',
-            (string) $thirdParty->getDossier()->getId(),
             \sprintf('Tiers %s %s supprimé', $thirdParty->getCode(), $thirdParty->getName()),
             ['dossier' => $thirdParty->getDossier()->getId(), 'code' => $thirdParty->getCode(), 'auxiliary' => $thirdParty->getAuxiliaryCode()],
         );
