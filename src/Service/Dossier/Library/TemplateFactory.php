@@ -58,6 +58,36 @@ final readonly class TemplateFactory
     /** The template, or null with the draft's faults written. */
     public function create(EmptyTemplateDraft $draft, User $by, \DateTimeImmutable $at): ?Dossier
     {
+        $start = $this->prepare($draft);
+        if (null === $start) {
+            return null;
+        }
+
+        return $this->entityManager->wrapInTransaction(function () use ($draft, $start, $by, $at): Dossier {
+            $template = $this->open($start, $draft->title, 'dossier vide', $by, $at);
+            $this->context->within($template, function () use ($template, $by): void {
+                foreach (self::JOURNALS as [$code, $label, $type, $counterpart]) {
+                    $journal = new JournalDraft();
+                    $journal->code = $code;
+                    $journal->label = $label;
+                    $journal->type = $type->value;
+                    $journal->counterpart = $counterpart;
+                    $fields = $this->journals->check($journal, $template) ?? throw new \LogicException(\sprintf('The journal %s of a new template: %s', $code, implode(' ', $journal->errors)));
+                    $this->journals->create($template, $journal, $fields, $by);
+                }
+            });
+            $this->entityManager->flush();
+
+            return $template;
+        });
+    }
+
+    /**
+     * The draft's company, exercise, date and reference chart checked (the FEC's import starts
+     * from them too), or null with the draft's faults written.
+     */
+    public function prepare(EmptyTemplateDraft $draft): ?TemplateStart
+    {
         $company = $this->companies->check($draft->company);
         $draft->errors = [];
         $card = new TemplateCardDraft();
@@ -94,30 +124,26 @@ final readonly class TemplateFactory
             return null;
         }
 
-        return $this->entityManager->wrapInTransaction(function () use ($draft, $company, $start, $end, $date, $chart, $by, $at): Dossier {
-            $template = new Dossier(DossierKind::Template, $company, $date, $by, $this->years->findCurrent(), $at, $by);
-            $template->describeInLibrary('' === $draft->title ? null : $draft->title, null, null, []);
-            $this->entityManager->persist($template);
-            $this->entityManager->flush();
-            $this->auditTrail->inDossier($template, AuditAction::DossierCreated, $by, \sprintf('Dossier modèle « %s » créé (dossier vide)', $template->getLibraryTitle()), ['dossier' => $template->getId(), 'kind' => DossierKind::Template->value]);
-            $this->exercises->open($template, self::exerciseCode($start, $end), $start, $end);
-            $this->chartInstaller->install($template, $chart, $by);
-            $this->entityManager->flush();
-            $this->context->within($template, function () use ($template, $by): void {
-                foreach (self::JOURNALS as [$code, $label, $type, $counterpart]) {
-                    $journal = new JournalDraft();
-                    $journal->code = $code;
-                    $journal->label = $label;
-                    $journal->type = $type->value;
-                    $journal->counterpart = $counterpart;
-                    $fields = $this->journals->check($journal, $template) ?? throw new \LogicException(\sprintf('The journal %s of a new template: %s', $code, implode(' ', $journal->errors)));
-                    $this->journals->create($template, $journal, $fields, $by);
-                }
-            });
-            $this->entityManager->flush();
+        return new TemplateStart($company, $start, $end, $date, $chart);
+    }
 
-            return $template;
-        });
+    /**
+     * A new template of the teacher's own: its card's title, its first exercise and months, the
+     * plan of its reference chart - no journal yet. Flushed; the caller holds the transaction.
+     * `$how` ends the trail's line (« dossier vide », « depuis le FEC … »).
+     */
+    public function open(TemplateStart $start, string $title, string $how, User $by, \DateTimeImmutable $at): Dossier
+    {
+        $template = new Dossier(DossierKind::Template, $start->company, $start->dossierDate, $by, $this->years->findCurrent(), $at, $by);
+        $template->describeInLibrary('' === $title ? null : $title, null, null, []);
+        $this->entityManager->persist($template);
+        $this->entityManager->flush();
+        $this->auditTrail->inDossier($template, AuditAction::DossierCreated, $by, \sprintf('Dossier modèle « %s » créé (%s)', $template->getLibraryTitle(), $how), ['dossier' => $template->getId(), 'kind' => DossierKind::Template->value]);
+        $this->exercises->open($template, self::exerciseCode($start->exerciseStart, $start->exerciseEnd), $start->exerciseStart, $start->exerciseEnd);
+        $this->chartInstaller->install($template, $start->chart, $by);
+        $this->entityManager->flush();
+
+        return $template;
     }
 
     /** « 2026 » for a calendar year, « 2026-2027 » for an exercise across two. */

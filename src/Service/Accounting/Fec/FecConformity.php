@@ -22,12 +22,15 @@ use App\Service\Shared\Money;
  *   figures closing EcritureNum); in the chronological order of their validation (ValidDate), after
  *   the reprise of the à-nouveaux that opens the file - the leading entries of the first journal
  *   and the first day; the whole file balanced.
+ *
+ * The import of a FEC (step 1.9b) asks less: no name (`$fileName` null) and no sequence
+ * (`$sequence` false) - Peyra numbers the entries it validates itself, in its own order.
  */
 final class FecConformity
 {
-    public static function check(string $bytes, string $fileName, ?\DateTimeImmutable $start = null, ?\DateTimeImmutable $end = null): FecReport
+    public static function check(string $bytes, ?string $fileName, ?\DateTimeImmutable $start = null, ?\DateTimeImmutable $end = null, bool $sequence = true): FecReport
     {
-        $head = self::name($fileName, $end);
+        $head = null === $fileName ? [] : self::name($fileName, $end);
         $document = FecReader::read($bytes);
         if (\is_string($document)) {
             return new FecReport([...$head, new FecFinding(null, null, $document)], 0, 0, Money::zero(), Money::zero());
@@ -105,9 +108,13 @@ final class FecConformity
                 $findings[] = new FecFinding($entry['line'], null, \sprintf('L’écriture %s n’est pas équilibrée : %s au débit, %s au crédit.', $entry['number'], FrenchFormat::amount($entry['debit']), FrenchFormat::amount($entry['credit'])));
             }
         }
-        $findings = [...$findings, ...self::order(array_values($entries))];
+        if ($sequence) {
+            $findings = [...$findings, ...self::order(array_values($entries))];
+        }
         usort($findings, static fn (FecFinding $a, FecFinding $b): int => ($a->line ?? \PHP_INT_MAX) <=> ($b->line ?? \PHP_INT_MAX));
-        $findings = [...$findings, ...self::numbering(array_values($entries))];
+        if ($sequence) {
+            $findings = [...$findings, ...self::numbering(array_values($entries))];
+        }
         if ([] === $document->lines) {
             $findings[] = new FecFinding(null, null, 'Le fichier ne contient aucune écriture : il n’a que sa ligne d’en-tête.');
         }

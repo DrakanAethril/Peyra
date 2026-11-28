@@ -91,6 +91,7 @@ final class RoleAccessSmokeTest extends WebTestCase
         yield 'Bibliothèque › Distribution' => ['/teacher/library/distributions', $teachers];
         yield 'Nouveau dossier modèle' => ['/teacher/library/new', $teachers];
         yield 'Nouveau dossier modèle vide' => ['/teacher/library/new/empty', $teachers];
+        yield 'Nouveau dossier modèle depuis un FEC' => ['/teacher/library/new/fec', $teachers];
     }
 
     /** The sheet of a regulatory value and « Nouvelle valeur datée », on a value written for the test. */
