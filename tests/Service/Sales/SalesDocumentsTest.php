@@ -112,5 +112,4 @@ final class SalesDocumentsTest extends KernelTestCase
 
         return $document;
     }
-
 }
