@@ -110,7 +110,7 @@ final class TemplateScreensTest extends WebTestCase
         $client->request('GET', $this->url($dossier, '/accounting/entry?journal=ACH&period=2026-02-01'));
         self::assertSelectorNotExists('a[href$="/accounting/entry/guided"]');
 
-        // At G and B (a mission's level, step 2.9) the same screen opens: GuidedEntry::isOpen(), tested apart.
+        // At G and B (a mission's level, step 2.9) the same screen opens: Assistance::opensGuidedEntry(), tested apart.
     }
 
     public function testTheTeacherWritesAnEntryThroughTheGuidedEntry(): void

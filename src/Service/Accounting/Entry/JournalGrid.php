@@ -18,6 +18,7 @@ use App\Service\Accounting\Ledger\EntryRules;
 use App\Service\Accounting\Ledger\EntryScope;
 use App\Service\Accounting\Ledger\Ledger;
 use App\Service\Accounting\Ledger\LedgerReader;
+use App\Service\Shared\Assistance\Assistance;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -373,7 +374,7 @@ final readonly class JournalGrid
                 ++$outcome->held;
                 continue;
             }
-            if ($context->level->blocks()) {
+            if (Assistance::at($context->level)->blocks()) {
                 $check = $this->check($context, new GridGroup('e'.$draft->getId(), $draft->getId(), $draft->getEntryDate()->format('Y-m-d'), $draft->getDocument(), GridDrafts::linesOf($draft, $context->counterpart())));
                 if (!$check->isWritable()) {
                     ++$outcome->held;

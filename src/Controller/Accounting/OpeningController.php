@@ -10,7 +10,7 @@ use App\Security\Voter\DossierRightVoter;
 use App\Security\Voter\DossierVoter;
 use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Accounting\Opening\OpeningBalance;
-use App\Service\Accounting\Template\GuidedEntry;
+use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\QueryValue;
 use App\Service\Shared\ReturnPath;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -49,7 +49,7 @@ final class OpeningController extends AbstractController
             'report' => $report,
             'can_edit' => null !== $report?->journal && $this->isGranted(DossierRightVoter::JOURNAL_ENTER, $report->journal),
             'can_settings' => $this->isGranted(DossierRightVoter::SETTINGS, $dossier),
-            'guided_open' => $editable && GuidedEntry::isOpen($assistance->for($dossier), $this->isGranted('ROLE_TEACHER')),
+            'guided_open' => $editable && Assistance::at($assistance->for($dossier))->opensGuidedEntry($this->isGranted('ROLE_TEACHER')),
             'here' => ReturnPath::here($request->getPathInfo(), (string) $request->getQueryString()),
         ]);
     }

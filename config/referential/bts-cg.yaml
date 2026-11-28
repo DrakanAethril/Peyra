@@ -1,0 +1,394 @@
+# Peyra - le référentiel du BTS Comptabilité et gestion, en données (App\Service\Shared\Referential\
+# Referential le lit et le vérifie entier). Les missions visent ses activités, la correction positionne
+# par activité, le passeport professionnel et le mode épreuve lisent ses épreuves.
+#
+# Source : référentiel annexé à l'arrêté du 3 novembre 2014 modifié (arrêtés du 9 juin 2016 et du
+# 15 septembre 2016, NOR MENS1624975A), document « Référentiel d'activité, de compétences et
+# d'évaluation » de la fiche RNCP 39159, lu le 2026-11-27 (pages 8, 11 à 21, 93-94, 98 à 108).
+# Les intitulés sont recopiés du texte, graphies comprises (« Elaboration », « mise en oeuvre ») ;
+# retouches : ponctuation finale des composantes supprimée, apostrophes typographiques, codes
+# préfixés de « A » comme le règlement d'examen les écrit (A1.2, A1.2.1). `note` signale un écart
+# avec la page des référents, où le texte l'emporte.
+#
+# Un référentiel rénové sera un autre fichier, avec son `edition` : les codes visés par une mission
+# se lisent dans l'édition où elle a été composée.
+#
+# Épreuves d'une composante : celles de son activité, sauf mention. Règle du règlement d'examen :
+# P1 à P4 relèvent de E41 et E42 sauf A1.1, A1.7, A2.1, A2.8, A3.1, A4.1, A4.4, A3.2.5 et A3.3.8
+# (E6) ; P5 et P6 de E5 ; P7 de E41, E42 et E5.
+edition: '2014'
+diploma: BTS Comptabilité et gestion
+rncp: RNCP39159
+text: Arrêté du 3 novembre 2014 modifié par les arrêtés du 9 juin 2016 et du 15 septembre 2016 (NOR MENS1624975A)
+source_url: https://www.francecompetences.fr/recherche/rncp/39159/
+consulted_on: 2026-11-27
+
+exams:
+  - code: E41
+    unit: U41
+    title: Étude de cas
+    coefficient: 9
+    form: "Écrite, 4 h 30 (ponctuelle, ou CCF : une situation écrite dans les mêmes conditions en 2e année)"
+    on_workstation: false
+    verified: true
+  - code: E42
+    unit: U42
+    title: Pratiques comptables fiscales et sociales
+    coefficient: 4
+    form: "CCF, deux situations d’évaluation ; ponctuelle, orale et pratique, 30 minutes, 15 minutes de préparation"
+    on_workstation: true
+    verified: true
+  - code: E5
+    unit: U5
+    title: Situations de contrôle de gestion et d’analyse financière
+    coefficient: 5
+    form: "CCF, deux situations d’évaluation ; ponctuelle, orale, 30 minutes, 30 minutes de préparation"
+    on_workstation: true
+    verified: true
+  - code: E6
+    unit: U6
+    title: Parcours de professionnalisation
+    coefficient: 5
+    form: "Ponctuelle orale, 30 minutes"
+    on_workstation: false
+    verified: true
+
+processes:
+  - code: P1
+    title: Contrôle et traitement comptable des opérations commerciales
+    verified: true
+    activities:
+      - code: A1.1
+        title: Analyse du système d’information comptable (SIC)
+        exams: [E6]
+        verified: true
+        components:
+          - {code: A1.1.1, title: "Identification des caractéristiques du SIC dans l’entreprise et ses acteurs"}
+          - {code: A1.1.2, title: "Repérage de l’organisation comptable : la hiérarchie des travaux comptables"}
+          - {code: A1.1.3, title: "Repérage des sources du droit comptable et des obligations liées à l’exercice du métier"}
+          - {code: A1.1.4, title: "Analyse et description des mécanismes comptables : les modèles comptables, les principes d’enregistrement"}
+      - code: A1.2
+        title: Contrôle des documents commerciaux
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A1.2.1, title: "Tenue et suivi des dossiers clients : du contrôle du devis au contrôle de l’encaissement"}
+          - {code: A1.2.2, title: "Tenue et suivi des dossiers fournisseurs : du contrôle de la commande au contrôle du règlement"}
+          - {code: A1.2.3, title: "Contrôle des opérations et des traitements dématérialisés"}
+          - {code: A1.2.4, title: "Conception des procédures d’archivage des documents commerciaux dans le respect des procédures comptables"}
+      - code: A1.3
+        title: Enregistrement et suivi des opérations comptables relatives aux clients
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A1.3.1, title: "Enregistrement, contrôle et validation des opérations relatives aux clients (y compris celles générées par le PGI)"}
+          - {code: A1.3.2, title: "Suivi des créances, contrôle et lettrage"}
+          - {code: A1.3.3, title: "Enregistrement, suivi des effets de commerce créés"}
+      - code: A1.4
+        title: Production de l’information relative au risque client
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A1.4.1, title: "Analyse de la composition du portefeuille client et de son évolution"}
+          - {code: A1.4.2, title: "Alerte, conseil pour réduire le risque client"}
+          - {code: A1.4.3, title: "Relance des clients"}
+      - code: A1.5
+        title: Enregistrement et suivi des opérations relatives aux fournisseurs
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A1.5.1, title: "Recherche des informations, y compris techniques, relatives aux factures fournisseurs"}
+          - {code: A1.5.2, title: "Vérification et validation des factures d’achat de bien, de service et/ou d’acquisition d’immobilisation"}
+          - {code: A1.5.3, title: "Mise en évidence et traitement des anomalies dans le processus achat"}
+          - {code: A1.5.4, title: "Enregistrement des factures d’achat de bien, de service et/ou d’acquisition d’immobilisation"}
+          - {code: A1.5.5, title: "Gestion des échéances relatives aux règlements des fournisseurs"}
+          - {code: A1.5.6, title: "Enregistrements relatifs aux opérations de financement"}
+      - code: A1.6
+        title: Réalisation des rapprochements bancaires (comptabilité de trésorerie)
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A1.6.1, title: "Pointage des relevés et des comptes bancaires"}
+          - {code: A1.6.2, title: "Réalisation d’un état de rapprochement"}
+          - {code: A1.6.3, title: "Enregistrement des écritures de régularisation suite au rapprochement bancaire"}
+      - code: A1.7
+        title: "Contribution à la performance du processus « Contrôle et traitement comptable des opérations commerciales » et la recherche de la sécurisation des opérations"
+        exams: [E6]
+        verified: true
+        components:
+          - {code: A1.7.1, title: "Présentation des caractéristiques de l’organisation du processus « Contrôle et traitement des opérations commerciales »"}
+          - {code: A1.7.2, title: "Analyse du processus « Contrôle et traitement comptable des opérations commerciales »"}
+
+  - code: P2
+    title: Contrôle et production de l’information financière
+    verified: true
+    activities:
+      - code: A2.1
+        title: Conduite d’une veille réglementaire nécessaire à l’établissement des comptes
+        exams: [E6]
+        verified: true
+        components:
+          - {code: A2.1.1, title: "Identification des évolutions de la réglementation comptable et fiscale"}
+          - {code: A2.1.2, title: "Formulation de propositions et conseils sur les options comptables favorables"}
+      - code: A2.2
+        title: Réalisation des travaux comptables relatifs à la constitution de l’entreprise et l’évolution du capital
+        note: "La page des référents écrit « et évolution du capital » ; le texte dit « et l’évolution du capital »."
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A2.2.1, title: "Enregistrement des opérations comptables relatives à la constitution de l’entreprise"}
+          - {code: A2.2.2, title: "Enregistrement des opérations comptables relatives à l’augmentation de capital"}
+      - code: A2.3
+        title: Réalisation des opérations d’inventaire
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A2.3.1, title: "Réalisation, enregistrement, contrôle des travaux d’inventaire relatif aux clients, aux fournisseurs et aux stocks"}
+          - {code: A2.3.2, title: "Réalisation, enregistrement, contrôle des travaux d’inventaire relatifs aux immobilisations"}
+          - {code: A2.3.3, title: "Ajustement des comptes de gestion et apurement des comptes d’attente"}
+          - {code: A2.3.4, title: "Traitement des provisions réglementées et des amortissements exceptionnels"}
+          - {code: A2.3.5, title: "Réalisation des contrôles nécessaires et proposition d’évolutions dans les procédures d’inventaire – Mise à jour du dossier de révision"}
+      - code: A2.4
+        title: Production des comptes annuels et des situations intermédiaires
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A2.4.1, title: "Identification des opérations à réaliser pour la production des comptes annuels et des situations intermédiaires"}
+          - {code: A2.4.2, title: "Préparation des comptes annuels et des situations intermédiaires"}
+          - {code: A2.4.3, title: "Présentation des projets de comptes annuels ou de situations intermédiaires"}
+      - code: A2.5
+        title: Suivi comptable des travaux relatifs à l’affectation des résultats
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A2.5.1, title: "Présentation d’un projet de répartition du résultat aux organes de direction"}
+          - {code: A2.5.2, title: "Enregistrement des opérations comptables nécessaires et obligatoires"}
+          - {code: A2.5.3, title: "Mise à jour des documents de synthèse suite à la répartition du résultat"}
+      - code: A2.6
+        title: Sauvegarde et archivage des documents comptables
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A2.6.1, title: "Sauvegarde et archivage des documents de synthèse et des situations intermédiaires"}
+          - {code: A2.6.2, title: "Réponse à une demande de contrôle extérieure"}
+      - code: A2.7
+        title: Production d’informations nécessaires à la consolidation
+        note: "La page des référents écrit « Contribution à la production d’informations… » ; le texte dit « Production d’informations nécessaires à la consolidation »."
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A2.7.1, title: "Caractérisation de l’entreprise dans le périmètre de consolidation"}
+          - {code: A2.7.2, title: "Participation à la réalisation de retraitements simples"}
+      - code: A2.8
+        title: "Contribution à la performance du processus « Contrôle et production de l’information financière » et la recherche de la sécurisation des opérations"
+        exams: [E6]
+        verified: true
+        components:
+          - {code: A2.8.1, title: "Présentation des caractéristiques de l’organisation du processus « Contrôle et production de l’information financière »"}
+          - {code: A2.8.2, title: "Analyse du processus « Contrôle et production de l’information financière »"}
+
+  - code: P3
+    title: Gestion des obligations fiscales
+    verified: true
+    activities:
+      - code: A3.1
+        title: Conduite de la veille fiscale
+        exams: [E6]
+        verified: true
+        components:
+          - {code: A3.1.1, title: "Réalisation de la veille juridique nécessaire à l’application des obligations fiscales"}
+          - {code: A3.1.2, title: "Identification des obligations fiscales de l’organisation"}
+          - {code: A3.1.3, title: "Elaboration de l’échéancier fiscal"}
+      - code: A3.2
+        title: Traitement des opérations relatives à la TVA
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A3.2.1, title: "Préparation de la déclaration de TVA"}
+          - {code: A3.2.2, title: "Etablissement, contrôle et transmission de la déclaration de TVA"}
+          - {code: A3.2.3, title: "Enregistrements comptables de la déclaration de TVA"}
+          - {code: A3.2.4, title: "Conseil en matière de régime et d’options de TVA"}
+          - {code: A3.2.5, title: "Contribution à l’évolution des procédures de traitement et de contrôle de TVA", exams: [E6]}
+      - code: A3.3
+        title: Traitement des opérations relatives aux impôts directs
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A3.3.1, title: "Caractérisation de la situation fiscale de l’entreprise"}
+          - {code: A3.3.2, title: "Détermination du résultat fiscal (BIC ou IS)"}
+          - {code: A3.3.3, title: "Etablissement, contrôle et transmission de la déclaration du résultat"}
+          - {code: A3.3.4, title: "Liquidation et recouvrement de l’impôt sur les sociétés"}
+          - {code: A3.3.5, title: "Enregistrement des opérations relatives à l’impôt sur les sociétés (IS)"}
+          - {code: A3.3.6, title: "Traitement particulier du régime d’imposition des Très Petites Entreprises"}
+          - {code: A3.3.7, title: "Participation au calcul de l’impôt sur le revenu (IR)"}
+          - {code: A3.3.8, title: "Contribution à l’évolution des procédures de traitement et de contrôle des impôts directs", exams: [E6]}
+      - code: A3.4
+        title: Traitement des cas particuliers et autres impôts
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A3.4.1, title: "Identification et recensement des autres impôts directs"}
+          - {code: A3.4.2, title: "Recouvrement et enregistrement des autres impôts directs"}
+
+  - code: P4
+    title: Gestion des relations sociales
+    verified: true
+    activities:
+      - code: A4.1
+        title: Conduite de la veille sociale
+        exams: [E6]
+        verified: true
+        components:
+          - {code: A4.1.1, title: "Réalisation d’une veille juridique nécessaire au respect des obligations sociales"}
+          - {code: A4.1.2, title: "Adaptation des procédures et des traitements internes"}
+          - {code: A4.1.3, title: "Mise à jour de l’échéancier social"}
+      - code: A4.2
+        title: Préparation des formalités administratives de gestion du personnel et information des salariés
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A4.2.1, title: "Établissement des formalités d’embauche et de départ"}
+          - {code: A4.2.2, title: "Recueil des informations relatives au suivi de la durée de travail"}
+          - {code: A4.2.3, title: "Recueil des informations relatives au suivi des absences et des congés"}
+      - code: A4.3
+        title: Gestion comptable de la paie et information des salariés
+        exams: [E41, E42]
+        verified: true
+        components:
+          - {code: A4.3.1, title: "Prise en compte des éléments collectifs nécessaires à l’élaboration des bulletins de paie"}
+          - {code: A4.3.2, title: "Prise en compte des éléments personnels nécessaires à l’élaboration des bulletins de paie"}
+          - {code: A4.3.3, title: "Préparation, établissement et contrôle des déclarations sociales"}
+          - {code: A4.3.4, title: "Enregistrements dans le journal de paie"}
+          - {code: A4.3.5, title: "Contrôle et comptabilisation de l’épargne salariale"}
+          - {code: A4.3.6, title: "Mise à jour des indicateurs d’un tableau de bord social"}
+      - code: A4.4
+        title: "Contribution à la performance du processus « Gestion des relations sociales » et la recherche de la sécurisation des opérations"
+        exams: [E6]
+        verified: true
+        components:
+          - {code: A4.4.1, title: "Présentation des caractéristiques de l’organisation du processus « Gestion des relations sociales »"}
+          - {code: A4.4.2, title: "Analyse du processus « Gestion des relations sociales »"}
+
+  - code: P5
+    title: Analyse et prévision de l’activité
+    verified: true
+    activities:
+      - code: A5.1
+        title: Identification de la structure des coûts
+        exams: [E5]
+        verified: true
+        components:
+          - {code: A5.1.1, title: "Analyse de la décision de gestion"}
+          - {code: A5.1.2, title: "Recensement des coûts associés à une activité, un produit ou un service de l’organisation"}
+      - code: A5.2
+        title: Calcul, contrôle et analyse des coûts de revient des activités, produits et services de l’organisation
+        exams: [E5]
+        verified: true
+        components:
+          - {code: A5.2.1, title: "Sélection, recherche et extraction des informations pertinentes"}
+          - {code: A5.2.2, title: "Mise en oeuvre d’un système de calcul de coûts"}
+          - {code: A5.2.3, title: "Analyse de la démarche mise en œuvre"}
+          - {code: A5.2.4, title: "Evaluation des coûts et des marges et leur suivi"}
+          - {code: A5.2.5, title: "Analyse de la variabilité des coûts et des résultats obtenus"}
+      - code: A5.3
+        title: Prévision et suivi de l’activité
+        exams: [E5]
+        verified: true
+        components:
+          - {code: A5.3.1, title: "Mise en évidence des écarts entre coûts prévisionnels et coûts réels"}
+          - {code: A5.3.2, title: "Analyse des écarts et formulation de conseils"}
+      - code: A5.4
+        title: Mise en place d’une gestion budgétaire
+        exams: [E5]
+        verified: true
+        components:
+          - {code: A5.4.1, title: "Prévision des composantes de l’activité"}
+          - {code: A5.4.2, title: "Etablissement des budgets"}
+          - {code: A5.4.3, title: "Contrôle et suivi de l’exécution budgétaire"}
+      - code: A5.5
+        title: Elaboration des tableaux de bord opérationnels
+        exams: [E5]
+        verified: true
+        components:
+          - {code: A5.5.1, title: "Identification, proposition des critères de performance adaptés au contexte"}
+          - {code: A5.5.2, title: "Présentation des tableaux de bord"}
+          - {code: A5.5.3, title: "Participation aux opérations de « reporting »"}
+
+  - code: P6
+    title: Analyse de la situation financière
+    verified: true
+    activities:
+      - code: A6.1
+        title: Analyse de la performance de l’organisation
+        exams: [E5]
+        verified: true
+        components:
+          - {code: A6.1.1, title: "Interprétation et analyse du compte de résultat (ratios, SIG)"}
+          - {code: A6.1.2, title: "Analyse de la performance financière de l’organisation (CAF)"}
+      - code: A6.2
+        title: Analyse de la rentabilité d’un investissement
+        note: "La page des référents écrit « de l’investissement » ; le texte dit « d’un investissement »."
+        exams: [E5]
+        verified: true
+        components:
+          - {code: A6.2.1, title: "Interprétation et analyse des informations relatives à un projet d’investissement"}
+          - {code: A6.2.2, title: "Sélection de la solution"}
+      - code: A6.3
+        title: Analyse de l’équilibre financier de l’organisation
+        exams: [E5]
+        verified: true
+        components:
+          - {code: A6.3.1, title: "Elaboration et analyse du bilan fonctionnel et des équilibres financiers"}
+          - {code: A6.3.2, title: "Analyse des ratios de structure et de l’équilibre financier"}
+      - code: A6.4
+        title: Analyse de la trésorerie et de la solvabilité de l’organisation
+        exams: [E5]
+        verified: true
+        components:
+          - {code: A6.4.1, title: "Analyse des moyens de financement, évaluation des risques"}
+          - {code: A6.4.2, title: "Suivi de la trésorerie de l’entreprise"}
+      - code: A6.5
+        title: Analyse des modalités de financement
+        exams: [E5]
+        verified: true
+        components:
+          - {code: A6.5.1, title: "Participation au choix de financement de l’activité"}
+          - {code: A6.5.2, title: "Analyse du choix de financement de l’investissement"}
+      - code: A6.6
+        title: Analyse dynamique des flux financiers
+        exams: [E5]
+        verified: true
+        components:
+          - {code: A6.6.1, title: "Interprétation d’un tableau de financement", note: "Le texte écrit « interprétation » sans majuscule."}
+          - {code: A6.6.2, title: "Interprétation d’un tableau des flux"}
+
+  - code: P7
+    title: Fiabilisation de l’information et système d’information comptable
+    note: "Intitulé de la présentation des processus (page 8, sans « (SIC) »). La page du processus (page 20) écrit « Fiabilisation de l’information et du système d’Information comptable (SIC) »."
+    verified: true
+    activities:
+      - code: A7.1
+        title: Recherche d’information
+        exams: [E41, E42, E5]
+        verified: true
+        components:
+          - {code: A7.1.1, title: "Caractérisation du SI"}
+          - {code: A7.1.2, title: "Evaluation des besoins d’information"}
+          - {code: A7.1.3, title: "Mise en œuvre des méthodes de recherche d’information"}
+          - {code: A7.1.4, title: "Réalisation d’une veille informationnelle"}
+      - code: A7.2
+        title: Gérer les informations de l’organisation
+        exams: [E41, E42, E5]
+        verified: true
+        components:
+          - {code: A7.2.1, title: "Contrôle de la fiabilité des informations"}
+          - {code: A7.2.2, title: "Maintien de la fiabilité et de la sécurité des informations"}
+          - {code: A7.2.3, title: "Structuration des informations"}
+      - code: A7.3
+        title: Contribuer à la qualité du système d’information
+        exams: [E41, E42, E5]
+        verified: true
+        components:
+          - {code: A7.3.1, title: "Optimisation du traitement de l’information"}
+          - {code: A7.3.2, title: "Participation à l’évolution du système d’information"}
+          - {code: A7.3.3, title: "Participation à la sécurité du système d’information"}

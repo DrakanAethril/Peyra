@@ -67,7 +67,7 @@ final readonly class SearchScreens
     }
 
     /**
-     * @param bool $guidedOpen whether the guided entry is open to the person (GuidedEntry::isOpen)
+     * @param bool $guidedOpen whether the guided entry is open to the person (Assistance::opensGuidedEntry())
      *
      * @return list<SearchItem> in the order of the rail and the module tabs
      */

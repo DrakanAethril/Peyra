@@ -14,15 +14,18 @@ use App\Repository\Accounting\AccountRepository;
 use App\Repository\Accounting\EntryLineRepository;
 use App\Repository\Accounting\JournalRepository;
 use App\Repository\ThirdParty\ThirdPartyRepository;
+use App\Service\Accounting\Entry\AssistanceLevels;
 use App\Service\Audit\AuditTrail;
+use App\Service\Shared\Assistance\Assistance;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * The one door to a dossier's plan by hand (Comptabilité › Paramètres comptables › Plan de
  * comptes): checks an account as typed, names every fault under its field, creates, changes and
  * deletes - each gesture in the audit trail. A number that subdivides no account of the reference
- * chart is **signalled, not refused**: the assistance level that would refuse it arrives with the
- * missions (step 2.8), and until then the dossier warns (design-ux.md § 3.2, « A : signalé »).
+ * chart is refused at levels G and B, signalled at A, let through silently at 0 (design-ux.md
+ * § 3.2, « B : numéro hors PCG refusé ; A : signalé »; Assistance decides). An account already
+ * outside the chart keeps its number when its other fields change.
  * Runs inside the dossier's context; the caller checks DossierVoter::EDIT and flushes.
  */
 final readonly class AccountSheet
@@ -38,6 +41,7 @@ final readonly class AccountSheet
         private AuditTrail $auditTrail,
         private ThirdPartyRepository $thirdParties,
         private EntryLineRepository $lines,
+        private AssistanceLevels $assistance,
     ) {
     }
 
@@ -72,7 +76,13 @@ final readonly class AccountSheet
                     }
                 }
             }
-            $draft->warning = $this->outsideChart($dossier, $draft->number);
+            $outside = $this->outsideChart($dossier, $draft->number);
+            $newNumber = null === $account || $draft->number !== $account->getNumber();
+            if (null !== $outside && $newNumber && $this->refusesOutsideChart($dossier)) {
+                $draft->errors['number'] ??= self::outsideChartRefusal($outside);
+            } else {
+                $draft->warning = $outside;
+            }
         }
 
         if ('' === $draft->label) {
@@ -99,15 +109,33 @@ final readonly class AccountSheet
         return [] === $draft->errors;
     }
 
-    /** The warning for a number that subdivides no account of the dossier's reference chart, or null. */
+    /**
+     * The warning for a number that subdivides no account of the dossier's reference chart, or null
+     * - null too at an assistance level that says nothing of it.
+     */
     public function outsideChart(Dossier $dossier, string $number): ?string
     {
+        if (!Assistance::at($this->assistance->for($dossier))->signalsAccountOutsideChart()) {
+            return null;
+        }
         $chart = null === $dossier->getChartCode() ? null : $this->charts->get($dossier->getChartCode());
         if (null === $chart || null !== $chart->rootOf($number)) {
             return null;
         }
 
         return \sprintf('Le compte %s ne subdivise aucun compte du %s : vérifiez son numéro.', $number, $chart->label);
+    }
+
+    /** Whether the dossier's level refuses a new number outside the reference chart (G and B). */
+    public function refusesOutsideChart(Dossier $dossier): bool
+    {
+        return Assistance::at($this->assistance->for($dossier))->refusesAccountOutsideChart();
+    }
+
+    /** The refusal made of outsideChart()'s warning. */
+    public static function outsideChartRefusal(string $warning): string
+    {
+        return str_replace(' : vérifiez son numéro.', ' : choisissez un numéro du plan.', $warning);
     }
 
     /** A checked draft as a new account of the plan. */

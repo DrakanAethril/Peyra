@@ -2,7 +2,8 @@
  # Fiche étudiant (design-ux.md § 3.3, gabarit F): the enrolments year by year, the groups read
  # when the account was created, « Changer de classe » for the current year with the reminder that
  # the dossiers do not move; the dossiers of every year, « Ouvrir le dossier » in a new tab (design-ux.md
- # § 2.4). Missions, positioning and accommodations join it with their lots.
+ # § 2.4); « Aménagements »: their own assistance level (step 2.8). Missions and positioning join it
+ # with their lots.
  #}
 {% extends 'classes/_layout.html.twig' %}
 
@@ -51,6 +52,20 @@
             </twig:Px:Card>
         {% endif %}
     </div>
+
+    {% if is_granted('STUDENT_ACCOMMODATE', student) %}
+        <twig:Px:Card title="Aménagements" meta="différenciation, aménagements d’un étudiant">
+            <form method="post" action="{{ path('app_teacher_student_assistance', {id: student.id}) }}" class="px-form">
+                <input type="hidden" name="_token" value="{{ csrf_token('student-assistance-' ~ student.id) }}">
+                <twig:Px:Segmented legend="Niveau d’assistance propre" name="level" value="{{ student.assistanceLevel ? student.assistanceLevel.value : 'mission' }}"
+                    hint="Il l’emporte sur celui de chaque mission. Sans mission, l’étudiant travaille en avertissements."
+                    :options="[{value: 'mission', label: 'Celui de la mission'}]|merge(assistance_levels|map(l => {value: l.value, label: l.label}))"/>
+                <div class="px-cluster">
+                    <twig:Px:Button type="submit" variant="secondary" shortcut="F10">Enregistrer</twig:Px:Button>
+                </div>
+            </form>
+        </twig:Px:Card>
+    {% endif %}
 
     <twig:Px:Card :flush="true" title="Dossiers" meta="toutes années ; ils sont à l’étudiant, pas à sa classe">
         {% if dossier_groups is empty %}

@@ -19,7 +19,7 @@
         |merge(last and face.holdsLetter(last) ? [{combo: 'Ctrl+Z', verb: 'Défaire le dernier lettrage'}] : [])
     : [{combo: 'F4', verb: 'Liste des comptes'}, {combo: 'Enter', verb: 'Ouvrir'}] %}
 {% set keep = {account: key ? key.code : (typed ?: null), on: key ? key.otherAccount : null} %}
-{% set partial_allowed = not level.blocks %}
+{% set partial_allowed = assistance.allowsPartialLettering %}
 
 {% block page_head %}
     <twig:Px:PageHead title="{{ key ? 'Lettrage · ' ~ key.describe ~ ' · ' ~ key.label : 'Lettrage' }}" :trail="[
@@ -27,7 +27,7 @@
         {label: 'Consultation', href: path('app_accounting_consultation', {dossier: dossier.id})},
         {label: 'Lettrage', href: path('app_accounting_lettering', {dossier: dossier.id})},
     ]|merge(key ? [{label: key.code, href: path('app_accounting_lettering', {dossier: dossier.id}|merge(keep))}] : [])">
-        <twig:block name="badge"> <twig:Px:Badge tone="neutral" label="{{ level.label }}"/></twig:block>
+        <twig:block name="badge"> <twig:Px:Badge tone="neutral" label="{{ assistance.level.label }}"/></twig:block>
         <twig:block name="actions">
             {% if return_path %}<twig:Px:Button href="{{ return_path }}" variant="quiet" icon="chevron-left">Revenir</twig:Px:Button>{% endif %}
             {% if key %}
@@ -283,7 +283,7 @@
 {% block facts %}
     {% if face %}
         <span>{{ key.describe }} · reste à lettrer <b>{{ face.openBalance|balance }}</b></span>
-        <span>Niveau d’assistance · <b>{{ level.label }}</b>{{ level.blocks ? ', sélection soldée exigée' : ', lettrage partiel permis' }}</span>
+        <span>Niveau d’assistance · <b>{{ assistance.level.label }}</b>{{ partial_allowed ? ', lettrage partiel permis' : ', sélection soldée exigée' }}</span>
     {% else %}
         <span>{{ lettering_rows|length }} compte{{ lettering_rows|length > 1 ? 's' : '' }} à lettrer</span>
     {% endif %}

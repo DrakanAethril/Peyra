@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity\Identity;
 
+use App\Enum\Accounting\AssistanceLevel;
 use App\Enum\Identity\AccountKind;
 use App\Enum\Identity\EntryBasis;
 use App\Enum\Identity\PlacementOutcome;
@@ -81,6 +82,13 @@ class User implements UserInterface
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?User $departedBy = null;
+
+    /**
+     * A student's own assistance level (an aménagement, or differentiation), set by a teacher on
+     * their record: it overrides the level of every mission. Null: the mission's.
+     */
+    #[ORM\Column(length: 16, nullable: true, enumType: AssistanceLevel::class)]
+    private ?AssistanceLevel $assistanceLevel = null;
 
     #[ORM\Column]
     private bool $administrator = false;
@@ -214,6 +222,19 @@ class User implements UserInterface
     {
         $this->departedAt = null;
         $this->departedBy = null;
+    }
+
+    public function getAssistanceLevel(): ?AssistanceLevel
+    {
+        return $this->assistanceLevel;
+    }
+
+    public function setAssistanceLevel(?AssistanceLevel $level): void
+    {
+        if (!$this->isStudent()) {
+            throw new \LogicException('Only a student has an assistance level of their own.');
+        }
+        $this->assistanceLevel = $level;
     }
 
     /**

@@ -28,10 +28,10 @@ use App\Service\Accounting\Entry\GridOutcome;
 use App\Service\Accounting\Entry\JournalGrid;
 use App\Service\Accounting\Entry\PendingEntries;
 use App\Service\Accounting\Entry\PendingStale;
-use App\Service\Accounting\Template\GuidedEntry;
 use App\Service\Accounting\Template\TemplateCall;
 use App\Service\Dossier\Rights\DossierRights;
 use App\Service\Dossier\Rights\Gesture;
+use App\Service\Shared\Assistance\Assistance;
 use App\Service\Shared\DateValue;
 use App\Service\Shared\FrenchFormat;
 use App\Service\Shared\JsonRequestPayload;
@@ -102,7 +102,7 @@ final class EntryGridController extends AbstractController
             'others' => $others,
             'drafts_count' => \count($entries->findDrafts()),
             'level' => $context->level,
-            'guided_open' => $editable && GuidedEntry::isOpen($context->level, $this->isGranted('ROLE_TEACHER')),
+            'guided_open' => $editable && Assistance::at($context->level)->opensGuidedEntry($this->isGranted('ROLE_TEACHER')),
             'grid' => [
                 'groups' => $grid->groups($context, $editable ? $me : null),
                 'revision' => $editable ? $pending->revision($journal, $period, $me) : 0,
