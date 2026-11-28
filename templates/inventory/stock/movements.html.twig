@@ -68,6 +68,8 @@
                                 <td class="px-u-fill">
                                     {% if movement.salesDocument %}
                                         <a class="px-link" href="{{ path('app_sales_document', {dossier: dossier.id, side: movement.salesDocument.type.side, id: movement.salesDocument.id}) }}">{{ movement.label }}</a>
+                                    {% elseif movement.stockCount %}
+                                        <a class="px-link" href="{{ path('app_inventory_stock_count', {dossier: dossier.id, id: movement.stockCount.id}) }}">{{ movement.label }}</a>
                                     {% else %}{{ movement.label }}{% endif %}
                                 </td>
                             </tr>

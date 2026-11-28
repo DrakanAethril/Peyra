@@ -1,0 +1,43 @@
+{#
+ # Achats et stocks › Stocks › Nouvel inventaire (step 2.5b, gabarit F): the day (the dossier's by
+ # default) and the storage place counted; F10 opens the inventory, a line per article whose stock
+ # is followed, and shows its sheet.
+ #}
+{% extends 'inventory/_layout.html.twig' %}
+
+{% set inventory_tab = 'stock' %}
+{% set dossier_title = 'Nouvel inventaire' %}
+{% set status_keys = [{combo: 'F10', verb: 'Ouvrir l’inventaire'}] %}
+
+{% block page_head %}
+    <twig:Px:PageHead title="Nouvel inventaire physique" :trail="[
+        {label: 'Achats et stocks', href: path('app_inventory_articles', {dossier: dossier.id})},
+        {label: 'Inventaire physique', href: path('app_inventory_stock_counts', {dossier: dossier.id})},
+        {label: 'Nouvel inventaire', href: path('app_inventory_stock_count_new', {dossier: dossier.id})},
+    ]">
+        <twig:block name="actions">
+            <twig:Px:Button href="{{ path('app_inventory_stock_counts', {dossier: dossier.id}) }}" variant="quiet">Annuler</twig:Px:Button>
+            <twig:Px:Button type="submit" variant="primary" form="count-new-form" shortcut="F10 Ctrl+S">Ouvrir l’inventaire</twig:Px:Button>
+        </twig:block>
+    </twig:Px:PageHead>
+{% endblock %}
+
+{% block page %}
+    {% if errors is not empty %}
+        <twig:Px:Alert tone="danger">L’inventaire n’est pas ouvert : {{ errors|length > 1 ? errors|length ~ ' champs sont à corriger' : 'un champ est à corriger' }}.</twig:Px:Alert>
+    {% endif %}
+    <form method="post" action="{{ path('app_inventory_stock_count_new', {dossier: dossier.id}) }}" id="count-new-form" novalidate data-controller="focus-error">
+        <input type="hidden" name="_token" value="{{ csrf_token('stock-count-new-' ~ dossier.id) }}">
+        <twig:Px:Card title="Inventaire">
+            <div class="px-fieldgrid">
+                <twig:Px:Field id="date" label="Date du comptage" :required="true" :error="errors.date ?? null">
+                    <twig:Px:DateInput id="date" :value="count_date" :reference="dossier.dossierDate" :required="true" :error="errors.date ?? null"/>
+                </twig:Px:Field>
+                <twig:Px:Field id="location" label="Dépôt compté" :required="true" hint="Chaque article suivi en stock y est compté." :error="errors.location ?? null">
+                    <twig:Px:Input id="location" value="{{ location }}" hint="1" :required="true" :error="errors.location ?? null" list="stock-places" maxlength="40" autocomplete="off"/>
+                </twig:Px:Field>
+            </div>
+            <datalist id="stock-places">{% for place in places %}<option value="{{ place }}"></option>{% endfor %}</datalist>
+        </twig:Px:Card>
+    </form>
+{% endblock %}

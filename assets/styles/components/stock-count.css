@@ -1,0 +1,20 @@
+/*
+ * The sheet of a physical inventory (Stocks, step 2.5b): the counted quantity a field of a
+ * quantity's width, the reason taking what the designation leaves.
+ */
+@layer px.components {
+    .px-stock-count {
+        & td:has(> .px-input) {
+            padding-block: var(--px-space-4);
+        }
+
+        & .px-stock-count__counted {
+            width: 7rem;
+        }
+
+        & .px-stock-count__reason {
+            width: 100%;
+            min-width: 16rem;
+        }
+    }
+}
